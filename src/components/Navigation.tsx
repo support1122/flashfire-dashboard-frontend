@@ -24,7 +24,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
   const tabs: TabItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'jobs', label: 'Job Tracker', icon: Briefcase },
-    { id: 'optimizer', label: 'Resume Optimizer', icon: FileText },
+    { id: 'optimizer', label: 'Documents', icon: FileText },
   ];
 
   useEffect(() => {
