@@ -35,7 +35,11 @@ const JobCard: React.FC<JobCardProps> = ({
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-gray-900 ">{job.jobTitle}</h4>
           <div className="flex items-center text-sm text-gray-600 mt-1">
-            <img src={`https://www.${job.companyName}.com/favicon.ico`} alt="Company Logo" className="w-[20px] h-[20px] m-2" />
+<img
+  src={`https://www.google.com/s2/favicons?domain=${job.companyName}.com&sz=64`}
+  alt="Company Logo"
+  className="w-[20px] h-[20px] m-2"
+/>
             <span className="">{job.companyName}</span> <hr />
           </div>
         </div>

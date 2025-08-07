@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Zap, Sparkles, FileText, Upload } from 'lucide-react';
+import { Document, Page, pdfjs } from 'react-pdf';
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const ResumeOptimizer: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<'base' | 'optimized'>('base');
   const [baseResume, setBaseResume] = useState<string | null>(null);
-  const [optimizedResume, setOptimizedResume] = useState<string | null>(null);
+  const [coverLetter, setCoverLetter] = useState<string | null>(null);
 
   useEffect(() => {
     const storedAuth = localStorage.getItem('userAuth');
@@ -13,8 +15,8 @@ const ResumeOptimizer: React.FC = () => {
       try {
         const parsed = JSON.parse(storedAuth);
         const resumeLink = parsed.userDetails?.resumeLink;
-        const optimizedResumeLink = parsed.userDetails?.optimizedResumeLink;
-        if (optimizedResumeLink) setOptimizedResume(optimizedResumeLink); // Load optimized resume from localStorage
+        const coverLetter = parsed.userDetails?.coverLetter;
+        if (coverLetter) setCoverLetter(coverLetter); // Load optimized resume from localStorage
         if (resumeLink) setBaseResume(resumeLink); // Load base resume from localStorage
       } catch (error) {
         console.error('Error parsing userAuth from localStorage:', error);
@@ -24,7 +26,7 @@ const ResumeOptimizer: React.FC = () => {
 
  const handleFileUpload = async (
   e: React.ChangeEvent<HTMLInputElement>,
-  type: 'base' | 'optimized'
+  type: 'base' | 'coverLetter'
 ) => {
   const file = e.target.files?.[0];
   if (!file) return;
@@ -34,7 +36,7 @@ const ResumeOptimizer: React.FC = () => {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", import.meta.env.VITE_CLOUDINARY_CLOUD_PRESET_PDF);
-    formData.append("resource_type", "raw");
+    formData.append("resource_type", "auto");
 
     const res = await fetch(
       `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/upload`,
@@ -71,14 +73,14 @@ const ResumeOptimizer: React.FC = () => {
             planLimit: parsed.userDetails.planLimit,
           }),
         });
-      } else if (type === "optimized") {
-        setOptimizedResume(uploadedURL);
+      } else if (type === "coverLetter") {
+        setCoverLetter(uploadedURL);
 
         const updatedUser = {
           ...parsed,
           userDetails: {
             ...parsed.userDetails,
-            optimizedResumeLink: uploadedURL,
+            coverLetter: uploadedURL,
           },
         };
         localStorage.setItem("userAuth", JSON.stringify(updatedUser));
@@ -87,7 +89,7 @@ const ResumeOptimizer: React.FC = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            optimizedResumeLink: uploadedURL,
+            coverLetter: uploadedURL,
             token: parsed.token,
             userDetails: parsed.userDetails,
             planType: parsed.userDetails.planType,
@@ -106,9 +108,9 @@ const ResumeOptimizer: React.FC = () => {
 
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ">
       {/* Header */}
-      <div className="mb-8 flex justify-between items-start">
+      {/* <div className="mb-8 flex justify-between items-start">
         <div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2 flex items-center">
             <Zap className="w-8 h-8 mr-3 text-purple-600" />
@@ -119,10 +121,10 @@ const ResumeOptimizer: React.FC = () => {
             Add 6–10 strategic keywords from any job description • Maintain exact format • 95%+ ATS Score
           </p>
         </div>
-      </div>
+      </div> */}
 
       {/* Tabs Layout */}
-      <div className="grid grid-cols-4 gap-8">
+      <div className="flex justify-between items-center">
         {/* Left-side Tabs */}
         <div className="col-span-1">
           <div className="flex flex-col space-y-2">
@@ -135,12 +137,12 @@ const ResumeOptimizer: React.FC = () => {
               Base Resume
             </button>
             <button
-              onClick={() => setActiveTab('optimized')}
+              onClick={() => setActiveTab('coverLetter')}
               className={`text-left p-3 rounded-lg border hover:bg-purple-100 ${
-                activeTab === 'optimized' ? 'bg-purple-200 font-bold' : ''
+                activeTab === 'coverLetter' ? 'bg-purple-200 font-bold' : ''
               }`}
             >
-              Optimized Resume
+              Cover Letter
             </button>
           </div>
         </div>
@@ -149,8 +151,8 @@ const ResumeOptimizer: React.FC = () => {
         <div className="col-span-3">
           {/* Base Resume Tab */}
           {activeTab === 'base' && (
-            <div className="bg-white rounded-xl w-full shadow-sm border border-gray-200 p-6">
-              <div className="flex justify-between mb-4">
+            <div className="bg-white rounded-xl w-full shadow-sm border border-gray-200 p-2">
+              <div className="flex justify-between mb-1">
                 <h4 className="text-lg font-medium text-gray-800 flex items-center">
                   <FileText className="w-5 h-5 mr-2 text-purple-500" />
                   Base Resume
@@ -171,8 +173,8 @@ const ResumeOptimizer: React.FC = () => {
               {baseResume ? (
                 <iframe
                   src={baseResume}
-                  title="Base Resume"
-                  className="w-full h-[500px] border rounded"
+                  title="Cover Letter"
+                  className="w-[50vw] h-[90vh] border rounded"
                 />
               ) : (
                 <p className="text-sm text-gray-500">No base resume uploaded yet.</p>
@@ -181,34 +183,34 @@ const ResumeOptimizer: React.FC = () => {
           )}
 
           {/* Optimized Resume Tab */}
-          {activeTab === 'optimized' && (
-            <div className="bg-white rounded-xl w-full shadow-sm border border-gray-200 p-6">
-              <div className="flex justify-between mb-4">
+          {activeTab === 'coverLetter' && (
+            <div className="bg-white rounded-xl w-full shadow-sm border border-gray-200 p-2">
+              <div className="flex justify-between mb-1">
                 <h4 className="text-lg font-medium text-gray-800 flex items-center">
                   <FileText className="w-5 h-5 mr-2 text-purple-500" />
-                  Optimized Resume
+                 Cover Letter
                 </h4>
                 <label className="flex items-center space-x-2 cursor-pointer text-sm text-purple-600">
                   <Upload className="w-4 h-4" />
                   <span className='border-2 p-2 rounded-2xl font-bold hover:text-white hover:bg-violet-600 duration-300'>
-                    {isUploading ? "Uploading..." : "Upload Optimized Resume"}
+                    {isUploading ? "Uploading..." : "Upload CoverLetter"}
                   </span>
                   <input
                     type="file"
                     hidden
                     accept=".pdf,.doc,.docx"
-                    onChange={(e) => handleFileUpload(e, 'optimized')}
+                    onChange={(e) => handleFileUpload(e, 'coverLetter')}
                   />
                 </label>
               </div>
-              {optimizedResume ? (
+              {coverLetter ? (
                 <iframe
-                  src={optimizedResume}
-                  title="Optimized Resume"
-                  className="w-full h-[500px] border rounded"
+                  src={coverLetter}
+                  title="Cover Letter"
+                  className="w-[50vw] h-[90vh] border rounded"
                 />
               ) : (
-                <p className="text-sm text-gray-500">No optimized resume uploaded yet.</p>
+                <p className="text-sm text-gray-500">No cover letter uploaded yet.</p>
               )}
             </div>
           )}
