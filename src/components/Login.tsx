@@ -39,7 +39,7 @@ const statsData = [
     icon: <TrendingUp className="w-5 h-5 text-green-400" />,
   },
   {
-    value: "50K+",
+    value: "100+",
     label: "Users Hired",
     icon: <Users className="w-5 h-5 text-purple-400" />,
   },
@@ -281,3 +281,4 @@ const statsData = [
 );
 
 }
+
