@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState, Suspense, lazy } from "react";
 import LoadingScreen from "./LoadingScreen";
+import { formatDistanceToNow } from 'date-fns';
 
 const AttachmentsModal = lazy(() => import("./AttachmentsModal"));
 
@@ -73,7 +74,11 @@ export default function JobModal({ setShowJobModal, jobDetails }) {
                 <Calendar className="w-4 h-4 text-gray-500 mr-2" />
                 <span className="text-sm font-medium text-gray-600">Added On</span>
               </div>
-              <p className="text-lg font-semibold text-gray-900">{jobDetails.createdAt}</p>
+              <p className="text-lg font-semibold text-gray-900">
+  {jobDetails.createdAt && !isNaN(new Date(jobDetails.createdAt).getTime())
+    ? formatDistanceToNow(new Date(jobDetails.createdAt), { addSuffix: true })
+    : "N/A"}
+</p>
             </div>
             <div className="bg-white rounded-lg border border-gray-200 p-4">
               <div className="flex items-center mb-2">
