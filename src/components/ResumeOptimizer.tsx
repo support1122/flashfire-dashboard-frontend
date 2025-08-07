@@ -124,7 +124,7 @@ const ResumeOptimizer: React.FC = () => {
       </div> */}
 
       {/* Tabs Layout */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-around items-center">
         {/* Left-side Tabs */}
         <div className="col-span-1">
           <div className="flex flex-col space-y-2">
@@ -172,10 +172,10 @@ const ResumeOptimizer: React.FC = () => {
               </div>
               {baseResume ? (
                 <iframe
-                  src={baseResume}
-                  title="Cover Letter"
-                  className="w-[50vw] h-[90vh] border rounded"
-                />
+  src={baseResume}
+  className="w-[50vw] h-[80vh] border rounded"
+  title="Resume"
+/>
               ) : (
                 <p className="text-sm text-gray-500">No base resume uploaded yet.</p>
               )}
@@ -207,7 +207,7 @@ const ResumeOptimizer: React.FC = () => {
                 <iframe
                   src={coverLetter}
                   title="Cover Letter"
-                  className="w-[50vw] h-[90vh] border rounded"
+                  className="w-[50vw] h-[80vh] border rounded"
                 />
               ) : (
                 <p className="text-sm text-gray-500">No cover letter uploaded yet.</p>
