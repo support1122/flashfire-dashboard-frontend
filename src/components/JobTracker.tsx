@@ -203,23 +203,27 @@ const { userJobs, setUserJobs, loading } = useUserJobs();
     </p>
   </div>
 )} */}
-        <div className="mt-4 sm:mt-0 flex items-center justify-center space-x-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search jobs..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
-          </div>
+        <div className="mt-4 sm:mt-0 flex items-center justify-center gap-4 w-full">
+  {/* Search Input */}
+  <div className="relative">
+    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+    <input
+      type="text"
+      placeholder="Search jobs..."
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+    />
+  </div>
 
-          <button
-            onClick={() => setShowJobForm(true)}
-            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center space-x-2 transform hover:scale-105"
-          >+Add_Jobs</button>
-        </div>
+  {/* Add Job Button */}
+  <button
+    onClick={() => setShowJobForm(true)}
+    className="whitespace-nowrap bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:scale-105"
+  >
+    Add Jobs
+  </button>
+</div>
       </div>
 
       {/* Kanban Board */}
