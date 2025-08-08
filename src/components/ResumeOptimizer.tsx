@@ -16,6 +16,17 @@ type Entry = {
 const toRawPdfUrl = (url: string | null) =>
   url ? url.replace("/image/upload/", "/raw/upload/") : url;
 
+const fmtDate = (d?: string | Date) =>
+  d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "2-digit", year: "numeric" }) : "—";
+
+// Small download icon (no external deps)
+const DownloadIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+    <path d="M12 3a1 1 0 011 1v9.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4A1 1 0 118.707 11.293L11 13.586V4a1 1 0 011-1z"></path>
+    <path d="M5 18a1 1 0 011-1h12a1 1 0 110 2H6a1 1 0 01-1-1z"></path>
+  </svg>
+);
+
 export default function DocumentUpload() {
   const [activeTab, setActiveTab] = useState<"base" | "optimized" | "cover">("base");
 
@@ -30,7 +41,7 @@ export default function DocumentUpload() {
   const [metadata, setMetadata] = useState({ jobRole: "", companyName: "", jobLink: "" });
 
   // Preview state
-  const [previewMode, setPreviewMode] = useState<boolean>(true); // true = show iframe; false = list/upload
+  const [previewMode, setPreviewMode] = useState<boolean>(true); // true = show iframe; false = list/upload (table)
   const [activePreviewUrl, setActivePreviewUrl] = useState<string | null>(null);
   const [iframeError, setIframeError] = useState<string | null>(null);
 
@@ -114,7 +125,7 @@ export default function DocumentUpload() {
     optimizedList,
     coverList,
     previewMode,
-    activePreviewUrl, // in deps but we early-return if it's set
+    activePreviewUrl,
   ]);
 
   // ---- handlers ----
@@ -241,6 +252,63 @@ export default function DocumentUpload() {
     }
   };
 
+  // ---- Reusable Table (list view when Change Document) ----
+  const DocsTable = ({
+    items,
+    category,
+    onPick,
+  }: {
+    items: Entry[];
+    category: "Resume" | "Cover Letter" | "Base";
+    onPick: (item: Entry) => void;
+  }) => (
+    <div className="border rounded-lg overflow-hidden">
+      <div className="grid grid-cols-12 bg-gray-100 text-sm font-semibold px-4 py-3">
+        <div className="col-span-6">Title</div>
+        <div className="col-span-2">Category</div>
+        <div className="col-span-2">Created On</div>
+        <div className="col-span-1">Job linked</div>
+        <div className="col-span-1 text-right">Quick actions</div>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="px-4 py-6 text-sm text-gray-500">No documents yet.</div>
+      ) : (
+        <ul className="divide-y">
+          {items.map((it, i) => (
+            <li
+              key={i}
+              className="grid grid-cols-12 items-center px-4 py-4 hover:bg-gray-50 cursor-pointer"
+              onClick={() => onPick(it)}
+              title="Click to preview"
+            >
+              <div className="col-span-6 min-w-0">
+                <p className="truncate">
+                  {(it.jobRole || "—") + " at " + (it.companyName || "—")}
+                </p>
+              </div>
+              <div className="col-span-2">{category}</div>
+              <div className="col-span-2">{fmtDate(it.createdAt)}</div>
+              <div className="col-span-1">{it.jobLink ? 1 : 0}</div>
+              <div className="col-span-1 flex justify-end">
+                <a
+                  href={toRawPdfUrl(it.url) || it.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-gray-700 hover:text-blue-600"
+                  onClick={(e) => e.stopPropagation()}
+                  title="Download"
+                >
+                  <DownloadIcon />
+                </a>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
   // ---- Reusable Preview Panel (iframe) ----
   const PreviewPanel = ({ url, onChange }: { url: string; onChange: () => void }) => {
     if (!url) return null;
@@ -250,7 +318,7 @@ export default function DocumentUpload() {
       <div className="flex flex-col items-center">
         <div className="border shadow mb-4 w-full max-w-3xl h-[80vh] bg-gray-50">
           <iframe
-            key={url}                // <-- force reload when URL changes
+            key={url} // force reload when URL changes
             title="pdf-preview"
             src={src}
             className="w-full h-full"
@@ -273,7 +341,7 @@ export default function DocumentUpload() {
           >
             Download
           </a>
-          <button onClick={onChange} className="bg-gray-600 text-white px-4 py-2 rounded">
+          <button onClick={onChange} className="bg-gray-700 text-white px-4 py-2 rounded">
             Change Document
           </button>
         </div>
@@ -295,7 +363,7 @@ export default function DocumentUpload() {
                 onClick={() => {
                   setActiveTab("base");
                   setPreviewMode(true);
-                  setActivePreviewUrl(null); // let effect choose default for the tab
+                  setActivePreviewUrl(null);
                 }}
               >
                 Base Resume
@@ -305,7 +373,7 @@ export default function DocumentUpload() {
                 onClick={() => {
                   setActiveTab("optimized");
                   setPreviewMode(true);
-                  setActivePreviewUrl(null); // important
+                  setActivePreviewUrl(null);
                 }}
               >
                 Optimized Resumes
@@ -315,7 +383,7 @@ export default function DocumentUpload() {
                 onClick={() => {
                   setActiveTab("cover");
                   setPreviewMode(true);
-                  setActivePreviewUrl(null); // important
+                  setActivePreviewUrl(null);
                 }}
               >
                 Cover Letters
@@ -330,8 +398,8 @@ export default function DocumentUpload() {
             {/* BASE TAB */}
             {activeTab === "base" && (
               <section>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold mb-3">Base Resume</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold">Base Resume</h3>
                   {baseResume && previewMode && (
                     <button
                       className="px-3 py-1.5 rounded bg-gray-700 text-white text-sm"
@@ -342,12 +410,36 @@ export default function DocumentUpload() {
                   )}
                 </div>
 
-                {/* Preview or upload */}
                 {baseResume && previewMode ? (
-                  <PreviewPanel url={toRawPdfUrl(activePreviewUrl || baseResume) as string} onChange={() => setPreviewMode(false)} />
+                  <PreviewPanel
+                    url={toRawPdfUrl(activePreviewUrl || baseResume) as string}
+                    onChange={() => setPreviewMode(false)}
+                  />
                 ) : (
-                  <div>
-                    <div className="mb-3">
+                  <>
+                    {/* Base table (single row if exists) */}
+                    {baseResume ? (
+                      <DocsTable
+                        items={[
+                          {
+                            jobRole: "Base Resume",
+                            companyName: "",
+                            url: baseResume,
+                            createdAt: undefined,
+                          },
+                        ]}
+                        category="Base"
+                        onPick={(it) => {
+                          setActivePreviewUrl(toRawPdfUrl(it.url)!);
+                          setPreviewMode(true);
+                          setIframeError(null);
+                        }}
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-500 mb-4">No base resume uploaded yet.</p>
+                    )}
+
+                    <div className="mt-4">
                       <label className="inline-flex items-center gap-2 cursor-pointer">
                         <span className="text-sm font-medium">Upload / Replace Base Resume</span>
                         <input
@@ -360,17 +452,7 @@ export default function DocumentUpload() {
                         <span className="px-3 py-1.5 rounded bg-blue-600 text-white text-sm">Choose File</span>
                       </label>
                     </div>
-                    {baseResume ? (
-                      <p className="text-sm">
-                        Current:{" "}
-                        <a className="text-blue-600 underline break-all" href={toRawPdfUrl(baseResume) || "#"} target="_blank" rel="noreferrer">
-                          View in new tab
-                        </a>
-                      </p>
-                    ) : (
-                      <p className="text-sm text-gray-500">No base resume uploaded yet.</p>
-                    )}
-                  </div>
+                  </>
                 )}
               </section>
             )}
@@ -378,8 +460,8 @@ export default function DocumentUpload() {
             {/* OPTIMIZED TAB */}
             {activeTab === "optimized" && (
               <section>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold mb-3">Optimized Resumes</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold">Optimized Resumes</h3>
                   {previewMode ? (
                     <button
                       className="px-3 py-1.5 rounded bg-gray-700 text-white text-sm"
@@ -402,48 +484,23 @@ export default function DocumentUpload() {
                   )}
                 </div>
 
-                {/* Preview or list */}
                 {optimizedList.length === 0 ? (
                   <p className="text-sm text-gray-500">No optimized resumes yet.</p>
                 ) : previewMode && activePreviewUrl ? (
-                  <PreviewPanel url={toRawPdfUrl(activePreviewUrl) as string} onChange={() => setPreviewMode(false)} />
+                  <PreviewPanel
+                    url={toRawPdfUrl(activePreviewUrl) as string}
+                    onChange={() => setPreviewMode(false)}
+                  />
                 ) : (
-                  <ul className="divide-y mt-2">
-                    {optimizedList.map((item, i) => (
-                      <li
-                        key={i}
-                        className="py-3 cursor-pointer hover:bg-gray-50"
-                        onClick={() => {
-                          setActivePreviewUrl(toRawPdfUrl(item.url)!);
-                          setPreviewMode(true);
-                          setIframeError(null);
-                        }}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">
-                              {item.jobRole || "—"} @ {item.companyName || "—"}
-                            </p>
-                            <div className="text-xs text-gray-500 space-x-2">
-                              {item.jobLink ? (
-                                <a
-                                  href={item.jobLink}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="underline break-all"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  Job Link
-                                </a>
-                              ) : null}
-                              {item.createdAt ? <span>{new Date(item.createdAt).toLocaleString()}</span> : null}
-                            </div>
-                          </div>
-                          <span className="text-blue-600 underline text-sm">Preview</span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  <DocsTable
+                    items={optimizedList}
+                    category="Resume"
+                    onPick={(it) => {
+                      setActivePreviewUrl(toRawPdfUrl(it.url)!);
+                      setPreviewMode(true);
+                      setIframeError(null);
+                    }}
+                  />
                 )}
               </section>
             )}
@@ -451,8 +508,8 @@ export default function DocumentUpload() {
             {/* COVER TAB */}
             {activeTab === "cover" && (
               <section>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold mb-3">Cover Letters</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold">Cover Letters</h3>
                   {previewMode ? (
                     <button
                       className="px-3 py-1.5 rounded bg-gray-700 text-white text-sm"
@@ -475,48 +532,23 @@ export default function DocumentUpload() {
                   )}
                 </div>
 
-                {/* Preview or list */}
                 {coverList.length === 0 ? (
                   <p className="text-sm text-gray-500">No cover letters yet.</p>
                 ) : previewMode && activePreviewUrl ? (
-                  <PreviewPanel url={toRawPdfUrl(activePreviewUrl) as string} onChange={() => setPreviewMode(false)} />
+                  <PreviewPanel
+                    url={toRawPdfUrl(activePreviewUrl) as string}
+                    onChange={() => setPreviewMode(false)}
+                  />
                 ) : (
-                  <ul className="divide-y mt-2">
-                    {coverList.map((item, i) => (
-                      <li
-                        key={i}
-                        className="py-3 cursor-pointer hover:bg-gray-50"
-                        onClick={() => {
-                          setActivePreviewUrl(toRawPdfUrl(item.url)!);
-                          setPreviewMode(true);
-                          setIframeError(null);
-                        }}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">
-                              {item.jobRole || "—"} @ {item.companyName || "—"}
-                            </p>
-                            <div className="text-xs text-gray-500 space-x-2">
-                              {item.jobLink ? (
-                                <a
-                                  href={item.jobLink}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="underline break-all"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  Job Link
-                                </a>
-                              ) : null}
-                              {item.createdAt ? <span>{new Date(item.createdAt).toLocaleString()}</span> : null}
-                            </div>
-                          </div>
-                          <span className="text-blue-600 underline text-sm">Preview</span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  <DocsTable
+                    items={coverList}
+                    category="Cover Letter"
+                    onPick={(it) => {
+                      setActivePreviewUrl(toRawPdfUrl(it.url)!);
+                      setPreviewMode(true);
+                      setIframeError(null);
+                    }}
+                  />
                 )}
               </section>
             )}
