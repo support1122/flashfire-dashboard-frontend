@@ -9,23 +9,26 @@ export function getTimeAgo(dateString: string): string {
     const [month, day, year] = datePart.split('/').map(Number);
     if (!month || !day || !year) return 'N/A';
 
-    const time24 = convertTo24Hour(timePartRaw); // e.g. "06:59:09 PM" → "18:59:09"
+    const time24 = convertTo24Hour(timePartRaw);
     if (!time24) return 'N/A';
 
-    const isoDate = new Date(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${time24}`);
-    if (isNaN(isoDate.getTime())) return 'N/A';
+    const [hours, minutes, seconds] = time24.split(':').map(Number);
+    const addedDate = new Date(year, month - 1, day, hours, minutes, seconds);
+    if (isNaN(addedDate.getTime())) return 'N/A';
 
     const now = new Date();
-    const diffMs = now.getTime() - isoDate.getTime();
+    const diffMs = now.getTime() - addedDate.getTime();
     const diffSec = Math.floor(diffMs / 1000);
     const diffMin = Math.floor(diffSec / 60);
     const diffHr = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHr / 24);
 
-    if (diffSec < 60) return `just now`;
-    if (diffMin < 60) return `${diffMin} min${diffMin > 1 ? 's' : ''} ago`;
-    if (diffHr < 24) return `${diffHr} hour${diffHr > 1 ? 's' : ''} ago`;
-    return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
+    if (diffSec < 60) return 'Added Now';
+    if (diffMin < 60) return 'Added less than an hour ago';
+    if (diffHr === 1) return 'Added an hour ago';
+    if (diffHr < 24) return `Added ${diffHr} hours ago`;
+    if (diffDay === 1) return 'Added 1 day ago';
+    return `Added ${diffDay} days ago`;
   } catch (err) {
     console.error('getTimeAgo error:', err);
     return 'N/A';
