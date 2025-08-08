@@ -13,6 +13,8 @@ export function getTimeAgo(dateString: string): string {
     if (!time24) return 'N/A';
 
     const [hours, minutes, seconds] = time24.split(':').map(Number);
+
+    // ✅ This creates local time, not UTC
     const addedDate = new Date(year, month - 1, day, hours, minutes, seconds);
     if (isNaN(addedDate.getTime())) return 'N/A';
 
