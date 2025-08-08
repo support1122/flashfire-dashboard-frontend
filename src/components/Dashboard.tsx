@@ -192,7 +192,15 @@ const Dashboard: React.FC = () => {
           <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-lg font-semibold text-gray-900">{((userJobs?.filter(item=>item.currentStatus == 'interviewing').length + userJobs?.filter(item=>item.currentStatus == 'offer').length + userJobs?.filter(item=>item.currentStatus == 'rejected').length)/userJobs.length)*100}%</p>
+                <p className="text-lg font-semibold text-gray-900">
+  {(
+    (
+      userJobs?.filter(item => item.currentStatus === 'interviewing').length +
+      userJobs?.filter(item => item.currentStatus === 'offer').length +
+      userJobs?.filter(item => item.currentStatus === 'rejected').length
+    ) / userJobs?.length * 100
+  ).toFixed(1)}%
+</p>
                 <p className="text-sm text-gray-600">Response Rate</p>
               </div>
               <Target className="w-8 h-8 text-green-500" />

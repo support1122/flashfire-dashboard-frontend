@@ -1,7 +1,7 @@
 import React from 'react';
 import { Edit3, Trash2, Calendar, Building } from 'lucide-react';
 import { Job } from '../types';
-
+import { formatDistanceToNow } from 'date-fns';
 interface JobCardProps {
   job: Job;
   onDragStart: (e: React.DragEvent, job: Job) => void;
@@ -35,7 +35,7 @@ const JobCard: React.FC<JobCardProps> = ({
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-gray-900 ">{job.jobTitle}</h4>
           <div className="flex items-center text-sm text-gray-600 mt-1">
-{/*  <img src={https://www.${job.companyName}.com/favicon.ico} alt="Company Logo" className="w-[20px] h-[20px] m-2" /> */}
+<img src={`https://www.google.com/s2/favicons?domain=${job.companyName}.com&sz=64`} alt="Company Logo" className="w-[20px] h-[20px] m-2" />
             <span className="">{job.companyName}</span> <hr />
           </div>
         </div>
@@ -43,7 +43,9 @@ const JobCard: React.FC<JobCardProps> = ({
 
       <div className="flex items-center text-xs text-gray-500 mb-3">
         <Calendar className="w-3 h-3 mr-1" />
-        <span>{job.createdAt}</span>
+        <span>{job.createdAt && !isNaN(new Date(job.createdAt).getTime())
+            ? formatDistanceToNow(new Date(job.createdAt), { addSuffix: true })
+            : "N/A"}</span>
       </div>
 
       <div className="flex items-center justify-between">

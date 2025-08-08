@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { useState, Suspense, lazy } from "react";
 import LoadingScreen from "./LoadingScreen";
+import { parse, formatDistanceToNow } from 'date-fns';
+import { getTimeAgo } from '../utils/getTimeAgo.ts'  // update path as needed
+
+
 
 const AttachmentsModal = lazy(() => import("./AttachmentsModal"));
 
@@ -65,14 +69,18 @@ export default function JobModal({ setShowJobModal, jobDetails }) {
             <div className="bg-white rounded-lg border border-gray-200 p-4">
               <h4 className="text-sm font-medium text-gray-600 mb-6">Company Name</h4>
               
-              <p className="text-lg flex gap-4 font-semibold text-gray-900">  {jobDetails.companyName}</p>
+              <p className="text-lg flex gap-4 font-semibold text-gray-900"> <img src={`https://www.google.com/s2/favicons?domain=${jobDetails.companyName}.com&sz=64`} alt="Company Logo" className="w-[30px] h-[30px] m-2" />
+ {jobDetails.companyName}</p>
             </div>
             <div className="bg-white rounded-lg border border-gray-200 p-4">
               <div className="flex items-center mb-2">
                 <Calendar className="w-4 h-4 text-gray-500 mr-2" />
                 <span className="text-sm font-medium text-gray-600">Added On</span>
               </div>
-              <p className="text-lg font-semibold text-gray-900">{jobDetails.createdAt}</p>
+           <p className="text-lg font-semibold text-gray-900">
+  {jobDetails.createdAt ? getTimeAgo(jobDetails.createdAt) : 'N/A'}
+</p>
+
             </div>
             <div className="bg-white rounded-lg border border-gray-200 p-4">
               <div className="flex items-center mb-2">
@@ -300,5 +308,4 @@ export default function JobModal({ setShowJobModal, jobDetails }) {
       </div>
     </div>
   );
-
 }

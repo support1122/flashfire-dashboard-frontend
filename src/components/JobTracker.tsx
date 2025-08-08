@@ -203,7 +203,7 @@ const { userJobs, setUserJobs, loading } = useUserJobs();
     </p>
   </div>
 )} */}
-        <div className="mt-4 sm:mt-0 flex items-center justify-center gap-4 w-full">
+       <div className="mt-4 sm:mt-0 flex items-center justify-center gap-4 w-full">
   {/* Search Input */}
   <div className="relative">
     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -224,6 +224,7 @@ const { userJobs, setUserJobs, loading } = useUserJobs();
     Add Jobs
   </button>
 </div>
+
       </div>
 
       {/* Kanban Board */}
