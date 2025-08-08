@@ -1,3 +1,4 @@
+import { ArrowLeftCircle, DownloadCloud } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
 type PendingType = "optimized" | "coverLetter" | null;
@@ -252,7 +253,7 @@ export default function DocumentUpload() {
     }
   };
 
-  // ---- Reusable Table (list view when Change Document) ----
+  // ---- Reusable Table (list view when View All Docs) ----
   const DocsTable = ({
     items,
     category,
@@ -263,11 +264,11 @@ export default function DocumentUpload() {
     onPick: (item: Entry) => void;
   }) => (
     <div className="border rounded-lg overflow-hidden">
-      <div className="grid grid-cols-12 bg-gray-100 text-sm font-semibold px-4 py-3">
+      <div className="grid grid-cols-12 bg-gray-100 text-sm font-bold px-4 py-3 ">
         <div className="col-span-6">Title</div>
         <div className="col-span-2">Category</div>
         <div className="col-span-2">Created On</div>
-        <div className="col-span-1">Job linked</div>
+        <div className="col-span-1">Job links</div>
         <div className="col-span-1 text-right">Quick actions</div>
       </div>
 
@@ -289,7 +290,20 @@ export default function DocumentUpload() {
               </div>
               <div className="col-span-2">{category}</div>
               <div className="col-span-2">{fmtDate(it.createdAt)}</div>
-              <div className="col-span-1">{it.jobLink ? 1 : 0}</div>
+              <div className="col-span-1">
+                {it.jobLink ? (
+                  <a
+                    href={it.jobLink.startsWith('http') ? it.jobLink : `https://${it.jobLink}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    Click Here
+                  </a>
+                ) : (
+                  '--'
+                )}
+              </div>              
               <div className="col-span-1 flex justify-end">
                 <a
                   href={toRawPdfUrl(it.url) || it.url}
@@ -317,6 +331,7 @@ export default function DocumentUpload() {
     return (
       <div className="flex flex-col items-center">
         <div className="border shadow mb-4 w-full max-w-3xl h-[80vh] bg-gray-50">
+          
           <iframe
             key={url} // force reload when URL changes
             title="pdf-preview"
@@ -340,9 +355,9 @@ export default function DocumentUpload() {
             className="bg-blue-600 text-white px-4 py-2 rounded"
           >
             Download
-          </a>
-          <button onClick={onChange} className="bg-gray-700 text-white px-4 py-2 rounded">
-            Change Document
+          </a> 
+          <button onClick={onChange} className="bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded">
+            View All Docs
           </button>
         </div>
       </div>
@@ -352,9 +367,9 @@ export default function DocumentUpload() {
   // ---- UI ----
   return (
     <div className="max-w-5xl mx-auto p-4">
-      <div className="grid grid-cols-12 gap-4">
+      <div className="grid grid-cols-12 gap-4 h-fit overflow-y-scroll">
         {/* Left sidebar */}
-        <aside className="col-span-12 md:col-span-3">
+        <aside className="col-span-12 md:col-span-3 fixed top-25 ml-4 w-1/5 left-0 ">
           <div className="bg-white rounded-lg shadow border">
             <h2 className="px-4 py-3 font-semibold border-b">Documents</h2>
             <nav className="flex md:flex-col">
@@ -372,7 +387,7 @@ export default function DocumentUpload() {
                 className={`px-4 py-3 text-left w-full hover:bg-gray-50 ${activeTab === "optimized" ? "bg-blue-50 text-blue-700 font-medium" : ""}`}
                 onClick={() => {
                   setActiveTab("optimized");
-                  setPreviewMode(true);
+                  setPreviewMode(false);
                   setActivePreviewUrl(null);
                 }}
               >
@@ -382,7 +397,7 @@ export default function DocumentUpload() {
                 className={`px-4 py-3 text-left w-full hover:bg-gray-50 ${activeTab === "cover" ? "bg-blue-50 text-blue-700 font-medium" : ""}`}
                 onClick={() => {
                   setActiveTab("cover");
-                  setPreviewMode(true);
+                  setPreviewMode(false);
                   setActivePreviewUrl(null);
                 }}
               >
@@ -393,7 +408,7 @@ export default function DocumentUpload() {
         </aside>
 
         {/* Main content */}
-        <main className="col-span-12 md:col-span-9">
+        <main className="col-span-12 md:col-span-9 w-3/4 fixed right-10">
           <div className="bg-white rounded-lg shadow border p-4">
             {/* BASE TAB */}
             {activeTab === "base" && (
@@ -402,10 +417,10 @@ export default function DocumentUpload() {
                   <h3 className="text-lg font-semibold">Base Resume</h3>
                   {baseResume && previewMode && (
                     <button
-                      className="px-3 py-1.5 rounded bg-gray-700 text-white text-sm"
+                      className="px-3 py-1.5 rounded bg-blue-500 hover:bg-blue-700 text-white text-sm"
                       onClick={() => setPreviewMode(false)}
-                    >
-                      Change Document
+                    ><ArrowLeftCircle />
+                      View All Docs
                     </button>
                   )}
                 </div>
@@ -463,12 +478,15 @@ export default function DocumentUpload() {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-semibold">Optimized Resumes</h3>
                   {previewMode ? (
+                    // <div className="flex gap-4 px-3 py-1.5 rounded">
+                    //   <button type="button" className="p-2 m-2 rounded bg-blue-400 hover:bg-blue-700 flex"><a href=""><DownloadCloud /> Download  </a></button>
                     <button
-                      className="px-3 py-1.5 rounded bg-gray-700 text-white text-sm"
+                      className="p-2 m-2 rounded bg-blue-500 hover:bg-blue-700 text-white text-sm"
                       onClick={() => setPreviewMode(false)}
-                    >
-                      Change Document
+                    ><ArrowLeftCircle />
+                      View All Docs
                     </button>
+                    // </div>
                   ) : (
                     <label className="inline-flex items-center gap-2 cursor-pointer">
                       <span className="text-sm font-medium">Upload New</span>
@@ -512,10 +530,10 @@ export default function DocumentUpload() {
                   <h3 className="text-lg font-semibold">Cover Letters</h3>
                   {previewMode ? (
                     <button
-                      className="px-3 py-1.5 rounded bg-gray-700 text-white text-sm"
+                      className="px-3 py-1.5 rounded bg-blue-500 hover:bg-blue-700 text-white text-sm"
                       onClick={() => setPreviewMode(false)}
-                    >
-                      Change Document
+                    ><ArrowLeftCircle />
+                      View All Docs
                     </button>
                   ) : (
                     <label className="inline-flex items-center gap-2 cursor-pointer">
