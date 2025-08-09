@@ -637,16 +637,8 @@ export default function DocumentUpload() {
               </div>
 
               <div className="flex gap-2 pt-1">
-                <button type="submit" disabled={isUploading} className="bg-blue-600 text-white px-4 py-2 rounded w-1/2">
+                <button type="submit" disabled={isUploading} className="bg-blue-600 text-white px-4 py-2 rounded w-full">
                   {isUploading ? "Uploading..." : "Save & Upload"}
-                </button>
-                <button
-                  type="button"
-                  disabled={isUploading}
-                  onClick={() => handleMetadataSubmit(undefined, true)}
-                  className="bg-gray-600 text-white px-4 py-2 rounded w-1/2"
-                >
-                  {isUploading ? "Uploading..." : "Skip Metadata"}
                 </button>
               </div>
             </form>
