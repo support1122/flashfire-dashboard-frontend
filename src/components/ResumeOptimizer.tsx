@@ -275,50 +275,52 @@ export default function DocumentUpload() {
       {items.length === 0 ? (
         <div className="px-4 py-6 text-sm text-gray-500">No documents yet.</div>
       ) : (
-        <ul className="divide-y">
-          {items.map((it, i) => (
-            <li
-              key={i}
-              className="grid grid-cols-12 items-center px-4 py-4 hover:bg-gray-50 cursor-pointer"
-              onClick={() => onPick(it)}
-              title="Click to preview"
-            >
-              <div className="col-span-6 min-w-0">
-                <p className="truncate">
-                  {(it.jobRole || "—") + " at " + (it.companyName || "—")}
-                </p>
-              </div>
-              <div className="col-span-2">{category}</div>
-              <div className="col-span-2">{fmtDate(it.createdAt)}</div>
-              <div className="col-span-1">
-                {it.jobLink ? (
+        <div className="max-h-[400px] overflow-y-auto">
+          <ul className="divide-y">
+            {items.map((it, i) => (
+              <li
+                key={i}
+                className="grid grid-cols-12 items-center px-4 py-4 hover:bg-gray-50 cursor-pointer"
+                onClick={() => onPick(it)}
+                title="Click to preview"
+              >
+                <div className="col-span-6 min-w-0">
+                  <p className="truncate">
+                    {(it.jobRole || "—") + " at " + (it.companyName || "—")}
+                  </p>
+                </div>
+                <div className="col-span-2">{category}</div>
+                <div className="col-span-2">{fmtDate(it.createdAt)}</div>
+                <div className="col-span-1">
+                  {it.jobLink ? (
+                    <a
+                      href={it.jobLink.startsWith('http') ? it.jobLink : `https://${it.jobLink}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      Click Here
+                    </a>
+                  ) : (
+                    '--'
+                  )}
+                </div>              
+                <div className="col-span-1 flex justify-end">
                   <a
-                    href={it.jobLink.startsWith('http') ? it.jobLink : `https://${it.jobLink}`}
+                    href={toRawPdfUrl(it.url) || it.url}
                     target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
+                    rel="noreferrer"
+                    className="text-gray-700 hover:text-blue-600"
+                    onClick={(e) => e.stopPropagation()}
+                    title="Download"
                   >
-                    Click Here
+                    <DownloadIcon />
                   </a>
-                ) : (
-                  '--'
-                )}
-              </div>              
-              <div className="col-span-1 flex justify-end">
-                <a
-                  href={toRawPdfUrl(it.url) || it.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-gray-700 hover:text-blue-600"
-                  onClick={(e) => e.stopPropagation()}
-                  title="Download"
-                >
-                  <DownloadIcon />
-                </a>
-              </div>
-            </li>
-          ))}
-        </ul>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
