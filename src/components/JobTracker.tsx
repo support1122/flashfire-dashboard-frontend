@@ -232,30 +232,36 @@ const { userJobs, setUserJobs, loading } = useUserJobs();
   {/* Main Columns */}
   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-1 m-4 w-full">
     {statusColumns.map(({ status, label, color }) => {
-      const columnJobs = userJobs?.filter(
-        (job) =>
-          job?.status === status &&
-          (job?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            job?.company?.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
+      // Filter jobs by status and search query
+      const columnJobs = userJobs?.filter((job: Job) => {
+        const matchesStatus = job?.currentStatus === status;
+        if (!searchQuery.trim()) return matchesStatus;
+        const jobTitle = job?.jobTitle?.toLowerCase() || '';
+        const companyName = job?.companyName?.toLowerCase() || '';
+        const query = searchQuery.toLowerCase();
+        return (
+          matchesStatus &&
+          (jobTitle.includes(query) || companyName.includes(query))
+        );
+      });
 
       return (
         <div
           key={status}
           className={`rounded-lg border-2 border-dashed ${color} p-1 min-h-[600px]`}
           onDragOver={handleDragOver}
-          onDrop={(e) => handleDrop(e, status)}
+          onDrop={(e: React.DragEvent<HTMLDivElement>) => handleDrop(e, status)}
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900">{label}</h3>
             <span className="bg-white px-2 py-1 rounded-full text-sm font-medium text-gray-600">
-               {userJobs.filter((items)=>items.currentStatus==status).length}
+               {columnJobs?.length || 0}
             </span>
           </div>
 
           <div className=" space-y-2">
           <Suspense fallback={<LoadingScreen />}>
-            {userJobs?.filter((items)=>items.currentStatus == status).map((job) => (         
+            {columnJobs?.map((job) => (
               <JobCard 
                 showJobModal={showJobModal}
                 setShowJobModal={setShowJobModal}
@@ -266,10 +272,9 @@ const { userJobs, setUserJobs, loading } = useUserJobs();
                 onEdit={() => setEditingJob(job)}
                 onDelete={() => onDeleteJob(job.jobID)}
               />
-              
             ))}
           </Suspense>
-            {userJobs.filter((items)=>items.currentStatus==status).length === 0 && (
+            {(!columnJobs || columnJobs.length === 0) && (
               <div className="text-center py-8 text-gray-500">
                 <p className="text-sm">No jobs in this stage</p>
               </div>
