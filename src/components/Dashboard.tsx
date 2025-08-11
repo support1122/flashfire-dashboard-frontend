@@ -107,7 +107,7 @@ const Dashboard: React.FC = () => {
                 <Briefcase className="w-7 h-7 text-white" />
               </div>
               <div className="text-right">
-                <p className="text-3xl font-bold text-gray-900">{userJobs?.length}</p>
+                <p className="text-3xl font-bold text-gray-900">{userJobs?.length- userJobs.filter((items)=>items.currentStatus == 'deleted').length}</p>
                 <p className="text-sm font-medium text-gray-500">Total Applications</p>
               </div>
             </div>
@@ -199,7 +199,7 @@ const Dashboard: React.FC = () => {
       userJobs?.filter(item => item.currentStatus === 'offer').length +
       userJobs?.filter(item => item.currentStatus === 'rejected').length
     ) / userJobs?.length * 100
-  ).toFixed(1)}%
+  ).toFixed(0)}%
 </p>
                 <p className="text-sm text-gray-600">Response Rate</p>
               </div>

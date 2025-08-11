@@ -409,7 +409,7 @@ export default function DocumentUpload() {
 
         {/* Main content */}
         <main className="col-span-12 md:col-span-9 w-3/4 fixed right-10">
-          <div className="bg-white rounded-lg shadow border p-4">
+          <div className="bg-white rounded-lg shadow border p-4 w-[70vw] h-[90vh] overflow-y-scroll">
             {/* BASE TAB */}
             {activeTab === "base" && (
               <section>
