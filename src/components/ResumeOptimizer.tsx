@@ -275,7 +275,7 @@ export default function DocumentUpload() {
       {items.length === 0 ? (
         <div className="px-4 py-6 text-sm text-gray-500">No documents yet.</div>
       ) : (
-        <ul className="divide-y">
+        <ul className="divide-y flex flex-col flex-col-reverse">
           {items.map((it, i) => (
             <li
               key={i}
@@ -495,7 +495,7 @@ export default function DocumentUpload() {
                         className="hidden"
                         accept="application/pdf,.pdf"
                         onChange={(e) => handleFileUpload(e, "optimized")}
-                        disabled={isUploading || !baseResume}
+                        disabled={isUploading}
                       />
                       <span className="px-3 py-1.5 rounded bg-blue-600 text-white text-sm">Choose File</span>
                     </label>
@@ -543,7 +543,7 @@ export default function DocumentUpload() {
                         className="hidden"
                         accept="application/pdf,.pdf"
                         onChange={(e) => handleFileUpload(e, "coverLetter")}
-                        disabled={isUploading || !baseResume}
+                        disabled={isUploading}
                       />
                       <span className="px-3 py-1.5 rounded bg-blue-600 text-white text-sm">Choose File</span>
                     </label>
