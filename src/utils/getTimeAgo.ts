@@ -17,29 +17,22 @@ export function getTimeAgo(dateString: string): string {
     const t = to24HourParts(timePart);
     if (!t) return "N/A";
 
-    // Create date in UTC to avoid local timezone interference
-    const parsedDate = new Date(Date.UTC(year, month - 1, day, t.h, t.m, t.s || 0));
-    const now = new Date(); // Current time in local timezone (e.g., IST)
+    // Create date assuming IST (convert to UTC by subtracting 5:30)
+    const parsedDate = new Date(year, month - 1, day, t.h, t.m, t.s || 0);
+    parsedDate.setHours(parsedDate.getHours() - 5, parsedDate.getMinutes() - 30); // Adjust IST to UTC
+    const now = new Date(); // Current time in IST
 
     // Calculate difference
     let diffMs = now.getTime() - parsedDate.getTime();
     if (diffMs < 0) diffMs = 0; // Clamp future dates to "now"
 
     const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHr = Math.floor(diffMin / 60);
+    const diffHr = Math.floor(diffSec / 3600); // Hours directly from seconds
     const diffDay = Math.floor(diffHr / 24);
-    const diffMonth = Math.floor(diffDay / 30); // Approximate
-    const diffYear = Math.floor(diffMonth / 12);
 
-    const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
-
-    if (diffSec < 60) return "Just now";
-    if (diffMin < 60) return `${plural(diffMin, "minute")} ago`;
-    if (diffHr < 24) return `${plural(diffHr, "hour")} ago`;
-    if (diffDay < 30) return `${plural(diffDay, "day")} ago`;
-    if (diffMonth < 12) return `${plural(diffMonth, "month")} ago`;
-    return `${plural(diffYear, "year")} ago`;
+    if (diffSec < 60) return "Added now";
+    if (diffHr < 24) return `Added ${diffHr} hour${diffHr === 1 ? "" : "s"} ago`;
+    return `Added ${diffDay === 1 ? "a day" : `${diffDay} days`} ago`;
   } catch {
     return "N/A";
   }
