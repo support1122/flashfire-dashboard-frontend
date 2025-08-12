@@ -137,6 +137,12 @@ export default function JobModal({
   const setData = ctx?.setData ?? null;
   const currentUser = ctx?.userDetails ?? {};
 
+  // NEW (paste-to-upload buffer)
+  const [pastedImages, setPastedImages] = useState<File[]>([]);
+  const [pastedPreviews, setPastedPreviews] = useState<string[]>([]);
+  const [isUploadingPasted, setIsUploadingPasted] = useState(false);
+  const [pasteError, setPasteError] = useState<string | null>(null);
+
   const { setUserJobs } = useUserJobs(); // ⬅️ NEW: global jobs updater
 
   const [attachmentsModalActiveStatus, setAttachmentsModalActiveStatus] = useState(false);
@@ -145,9 +151,9 @@ export default function JobModal({
 
   // local image grid
   const [attachments, setAttachments] = useState<string[]>(() => jobDetails?.attachments || []);
-  const [imgFile, setImgFile] = useState<File | null>(null);
-  const [isUploadingImg, setIsUploadingImg] = useState(false);
-  const [imgError, setImgError] = useState<string | null>(null);
+  const [imgFile, setImgFile] = useState<File | null>(null); // kept for minimal-change parity (not used in paste flow)
+  const [isUploadingImg, setIsUploadingImg] = useState(false); // kept
+  const [imgError, setImgError] = useState<string | null>(null); // kept
 
   // optimized resume (document) — in DETAILS tab
   const docInputRef = useRef<HTMLInputElement | null>(null);
@@ -155,9 +161,80 @@ export default function JobModal({
   const [docError, setDocError] = useState<string | null>(null);
   const [recentDocUrl, setRecentDocUrl] = useState<string | null>(null);
 
+  // NEW: capture images from Ctrl+V
+  const handlePasteImages = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    setPasteError(null);
+    const items = e.clipboardData?.items || [];
+    const files: File[] = [];
+    for (const item of items) {
+      if (item.type && item.type.startsWith("image/")) {
+        const f = item.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (!files.length) return;
+    setPastedImages((prev) => [...prev, ...files]);
+    setPastedPreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
+  };
+
+  // NEW: upload pasted images -> Cloudinary -> persist to job.attachments[]
+  const uploadPastedImages = async () => {
+    setPasteError(null);
+    if (!pastedImages.length) return;
+
+    const jobID = jobDetails?.jobID;
+    const userEmail = currentUser?.email;
+    if (!jobID || !userEmail) {
+      setPasteError("Missing jobID or user email; cannot save attachments.");
+      return;
+    }
+
+    setIsUploadingPasted(true);
+    try {
+      const urls: string[] = [];
+      for (const file of pastedImages) {
+        const up = await uploadToCloudinary(file, {
+          resourceType: "image",
+          folder: "flashfirejobs/attachments",
+          preset: IMG_UPLOAD_PRESET,
+        });
+        if (up?.secure_url) urls.push(up.secure_url as string);
+      }
+
+      if (urls.length) {
+        // optimistic add to grid
+        setAttachments((prev) => [...urls, ...prev]);
+
+        // persist to backend
+        const resp = await persistAttachmentsToJob({
+          jobID,
+          userEmail,
+          urls,
+          token,
+        });
+
+        // sync from server list
+        if (resp?.updatedJobs) {
+          setUserJobs(resp.updatedJobs);
+          const updated = resp.updatedJobs.find((j) => j.jobID === jobID);
+          if (updated?.attachments) setAttachments(updated.attachments);
+        }
+      }
+
+      // clear paste buffer
+      pastedPreviews.forEach((u) => URL.revokeObjectURL(u));
+      setPastedPreviews([]);
+      setPastedImages([]);
+    } catch (e: any) {
+      setPasteError(e?.message || "Failed to upload pasted images.");
+    } finally {
+      setIsUploadingPasted(false);
+    }
+  };
+
   const copyToClipboard = (text: string) => navigator.clipboard.writeText(text);
 
-  /* ---------- Upload handlers ---------- */
+  /* ---------- Upload handlers (kept; not used in paste flow) ---------- */
   const handleImgUpload = async () => {
     setImgError(null);
     if (!imgFile) return;
@@ -184,10 +261,8 @@ export default function JobModal({
       });
       const url = up.secure_url as string;
 
-      // optimistic grid
       setAttachments((prev) => [url, ...prev]);
 
-      // persist to JobModel.attachments[]
       const resp = await persistAttachmentsToJob({
         jobID,
         userEmail,
@@ -195,11 +270,8 @@ export default function JobModal({
         token,
       });
 
-      // ⬅️ NEW: update global jobs list from server
       if (resp?.updatedJobs) {
         setUserJobs(resp.updatedJobs);
-
-        // keep local grid perfectly in sync with server for this job
         const updated = resp.updatedJobs.find((j) => j.jobID === jobID);
         if (updated?.attachments) {
           setAttachments(updated.attachments);
@@ -302,48 +374,18 @@ export default function JobModal({
       case "details":
         return (
           <div className="space-y-4">
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <h4 className="text-sm font-medium text-gray-600 mb-6">Company Name</h4>
-              <p className="text-lg flex gap-4 font-semibold text-gray-900">
+            <div className="bg-white rounded-lg flex justify-between border border-gray-200 p-4">
+              
+              <p className="text-lg flex flex-col justify-start items-center  font-semibold text-gray-900">
+                <h4 className="text-sm font-medium text-gray-600 mb-6">Company Name</h4>
                 <img
                   src={`https://www.google.com/s2/favicons?domain=${jobDetails.companyName}.com&sz=64`}
                   alt="Company Logo"
-                  className="w-[30px] h-[30px] m-2"
+                  className="w-[40px] h-[40px] m-2 mt-0"
                 />
                 {jobDetails.companyName}
               </p>
-            </div>
-
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center mb-2">
-                <Calendar className="w-4 h-4 text-gray-500 mr-2" />
-                <span className="text-sm font-medium text-gray-600">Added On</span>
-              </div>
-              <p className="text-lg font-semibold text-gray-900">
-                {jobDetails.createdAt ? getTimeAgo(jobDetails.createdAt) : "N/A"}
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center mb-2">
-                <Briefcase className="w-4 h-4 text-gray-500 mr-2" />
-                <span className="text-sm font-medium text-gray-600">Position</span>
-              </div>
-              <p className="text-lg font-semibold text-gray-900">{jobDetails.jobTitle}</p>
-            </div>
-
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center mb-2">
-                <User className="w-4 h-4 text-gray-500 mr-2" />
-                <span className="text-sm font-medium text-gray-600">Candidate</span>
-              </div>
-              <p className="text-lg font-semibold text-gray-900">
-                {currentUser?.email || jobDetails.userID}
-              </p>
-            </div>
-
-            {/* ---- Add Optimized Resume (DOCUMENT ONLY) ---- */}
-            <div className="bg-white rounded-lg border border-blue-200 p-4">
+              <div className="bg-white rounded-lg border border-blue-200 p-4">
               <div className="flex items-center mb-3">
                 <UploadIcon className="w-4 h-4 text-blue-600 mr-2" />
                 <h4 className="text-sm font-semibold text-blue-700">
@@ -382,6 +424,39 @@ export default function JobModal({
               )}
               {docError && <p className="mt-2 text-sm text-red-600">{docError}</p>}
             </div>
+
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center mb-2">
+                <Calendar className="w-4 h-4 text-gray-500 mr-2" />
+                <span className="text-sm font-medium text-gray-600">Added On</span>
+              </div>
+              <p className="text-lg font-semibold text-gray-900">
+                {jobDetails.createdAt ? getTimeAgo(jobDetails.createdAt) : "N/A"}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center mb-2">
+                <Briefcase className="w-4 h-4 text-gray-500 mr-2" />
+                <span className="text-sm font-medium text-gray-600">Position</span>
+              </div>
+              <p className="text-lg font-semibold text-gray-900">{jobDetails.jobTitle}</p>
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="flex items-center mb-2">
+                <User className="w-4 h-4 text-gray-500 mr-2" />
+                <span className="text-sm font-medium text-gray-600">Candidate</span>
+              </div>
+              <p className="text-lg font-semibold text-gray-900">
+                {currentUser?.email || jobDetails.userID}
+              </p>
+            </div>
+
+            {/* ---- Add Optimized Resume (DOCUMENT ONLY) ---- */}
+            
           </div>
         );
 
@@ -443,36 +518,68 @@ export default function JobModal({
                 <h4 className="text-lg font-semibold text-gray-900">Resume / Attachments</h4>
               </div>
 
-              {/* ---- Image Attachments (IMAGES ONLY) ---- */}
+              {/* ---- Paste Images (Ctrl+V) — replaces old file-upload UI ---- */}
               <div className="mb-6 rounded-lg border border-orange-200 p-4">
                 <div className="flex items-center mb-3">
                   <UploadIcon className="w-4 h-4 text-orange-600 mr-2" />
                   <h4 className="text-sm font-semibold text-orange-700">
-                    Upload Picture (PNG/JPG/WEBP)
+                    Paste Images (Ctrl+V) — PNG/JPG/WEBP
                   </h4>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    onChange={(e) => setImgFile(e.target.files?.[0] || null)}
-                    className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
-                  />
-                  <button
-                    onClick={handleImgUpload}
-                    disabled={!imgFile || isUploadingImg}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-600 text-white disabled:opacity-50"
-                  >
-                    {isUploadingImg ? (
-                      <Loader2 className="animate-spin w-4 h-4" />
-                    ) : (
-                      <UploadIcon className="w-4 h-4" />
-                    )}
-                    {isUploadingImg ? "Uploading..." : "Upload"}
-                  </button>
+                <div
+                  onPaste={handlePasteImages}
+                  className="border-2 border-dashed border-orange-400/70 rounded-lg p-4 min-h-[96px] flex items-center justify-center bg-orange-50"
+                >
+                  {pastedPreviews.length ? (
+                    <div className="w-full">
+                      <div className="flex flex-wrap gap-2">
+                        {pastedPreviews.map((src, idx) => (
+                          <img
+                            key={idx}
+                            src={src}
+                            alt={`pasted-${idx}`}
+                            className="w-20 h-20 object-cover rounded-md border"
+                          />
+                        ))}
+                      </div>
+
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          onClick={uploadPastedImages}
+                          disabled={isUploadingPasted}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-600 text-white disabled:opacity-50"
+                        >
+                          {isUploadingPasted ? (
+                            <Loader2 className="animate-spin w-4 h-4" />
+                          ) : (
+                            <UploadIcon className="w-4 h-4" />
+                          )}
+                          {isUploadingPasted ? "Uploading..." : "Upload pasted images"}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            pastedPreviews.forEach((u) => URL.revokeObjectURL(u));
+                            setPastedPreviews([]);
+                            setPastedImages([]);
+                          }}
+                          disabled={isUploadingPasted}
+                          className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-gray-600 text-sm flex items-center">
+                      <Copy className="w-4 h-4 mr-2" /> Copy an image and press{" "}
+                      <span className="mx-1 font-semibold">Ctrl+V</span> here
+                    </p>
+                  )}
                 </div>
-                {imgError && <p className="mt-2 text-sm text-red-600">{imgError}</p>}
+
+                {pasteError && <p className="mt-2 text-sm text-red-600">{pasteError}</p>}
               </div>
 
               {/* Image Grid */}
@@ -509,7 +616,7 @@ export default function JobModal({
                 <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <User className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                   <h3 className="text-gray-500 font-medium mb-1">No attachments yet</h3>
-                  <p className="text-gray-400 text-sm">Upload pictures above to see them here.</p>
+                  <p className="text-gray-400 text-sm">Paste images above to see them here.</p>
                 </div>
               )}
             </div>

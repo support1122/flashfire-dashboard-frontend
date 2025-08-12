@@ -49,7 +49,7 @@ const JobCard: React.FC<JobCardProps> = ({
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
+        {/* <div className="flex items-center space-x-2">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -67,7 +67,7 @@ const JobCard: React.FC<JobCardProps> = ({
           >
             <Trash2 className="w-4 h-4" />
           </button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

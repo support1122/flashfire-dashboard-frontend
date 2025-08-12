@@ -162,28 +162,13 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
     setIsSubmitting(true);
     setError(null);
 
-    try {
-      const uploadedUrls = await uploadImagesToCloudinary();
+    // ----- OPTIMISTIC UI FIRST -----
+    if (!isEditMode) {
+      const optimisticId = Date.now().toString();
 
-      if (isEditMode && job) {
-        // EDIT MODE -> PUT /api/jobs with action:"edit"
-        if (uploadedUrls.length) {
-          const resp = await persistAttachmentsToJobPUT({
-            jobID: job.jobID,
-            userDetails, // should contain { email }
-            token,
-            urls: uploadedUrls,
-          });
-          if (resp?.updatedJobs) setUserJobs(resp.updatedJobs);
-        }
-        onSuccess?.();
-        onCancel();
-        return;
-      }
-
-      // CREATE MODE -> POST /api/jobs
-      const jobDetails = {
-        jobID: Date.now().toString(),
+      // use object-URL previews in UI immediately (they won't persist—only visual feedback)
+      const optimisticJob = {
+        jobID: optimisticId,
         jobTitle: formData.jobTitle,
         companyName: formData.companyName,
         jobDescription: formData.jobDescription,
@@ -191,25 +176,84 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
         dateApplied: formData.dateApplied,
         currentStatus: formData.status,
         userID: userDetails.email,
-        attachments: uploadedUrls,
+        attachments: [], // will fill after Cloudinary returns
+        createdAt: new Date().toISOString(),
       };
 
-      const data = await createJobPOST({ jobDetails, userDetails, token });
+      setUserJobs((prev) => [optimisticJob, ...(prev || [])]);
 
-      if (data?.message === "invalid token please login again") {
-        localStorage.clear();
-        navigate("/login");
-        return;
-      }
-
-      setUserJobs(data?.NewJobList || []);
+      // close the modal immediately for snappy UX
       onSuccess?.();
       onCancel();
-    } catch (err: any) {
-      console.error(err);
-      setError(err?.message || "Failed to save job. Please try again.");
-    } finally {
       setIsSubmitting(false);
+
+      // background: upload to Cloudinary, then POST to backend with SAME payload shape
+      (async () => {
+        try {
+          const uploadedUrls = await uploadImagesToCloudinary();
+
+          const jobDetails = {
+            jobID: optimisticId, // same id so server list will replace the optimistic one
+            jobTitle: formData.jobTitle,
+            companyName: formData.companyName,
+            jobDescription: formData.jobDescription,
+            joblink: formData.joblink,
+            dateApplied: formData.dateApplied,
+            currentStatus: formData.status,
+            userID: userDetails.email,
+            attachments: uploadedUrls,
+          };
+
+          const data = await createJobPOST({ jobDetails, userDetails, token });
+
+          if (data?.message === "invalid token please login again") {
+            localStorage.clear();
+            navigate("/login");
+            return;
+          }
+
+          // sync full list from server (removes optimistic copy because jobID matches)
+          setUserJobs(data?.NewJobList || []);
+        } catch (err) {
+          console.error("[background create] failed:", err);
+          // optional: show a toast or mark the optimistic card as failed
+        } finally {
+          // clean up previews
+          previews.forEach((u) => URL.revokeObjectURL(u));
+        }
+      })();
+
+      return; // we’re done for create
+    }
+
+    // ----- EDIT MODE (optimistic close; then upload & persist attachments) -----
+    if (isEditMode && job) {
+      // close immediately
+      onSuccess?.();
+      onCancel();
+      setIsSubmitting(false);
+
+      // background upload & persist
+      (async () => {
+        try {
+          const uploadedUrls = await uploadImagesToCloudinary();
+          if (uploadedUrls.length) {
+            const resp = await persistAttachmentsToJobPUT({
+              jobID: job.jobID,
+              userDetails,
+              token,
+              urls: uploadedUrls,
+            });
+            if (resp?.updatedJobs) setUserJobs(resp.updatedJobs);
+          }
+        } catch (err) {
+          console.error("[background edit] failed:", err);
+        } finally {
+          previews.forEach((u) => URL.revokeObjectURL(u));
+        }
+      })();
+
+      return;
     }
   };
 
