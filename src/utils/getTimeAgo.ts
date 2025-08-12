@@ -17,9 +17,8 @@ export function getTimeAgo(dateString: string): string {
     const t = to24HourParts(timePart);
     if (!t) return "N/A";
 
-    // Create date assuming IST (convert to UTC by subtracting 5:30)
+    // Create date assuming IST (no UTC adjustment needed since now is also IST)
     const parsedDate = new Date(year, month - 1, day, t.h, t.m, t.s || 0);
-    parsedDate.setHours(parsedDate.getHours() - 5, parsedDate.getMinutes() - 30); // Adjust IST to UTC
     const now = new Date(); // Current time in IST
 
     // Calculate difference
