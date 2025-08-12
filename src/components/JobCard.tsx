@@ -2,6 +2,7 @@ import React from 'react';
 import { Edit3, Trash2, Calendar, Building } from 'lucide-react';
 import { Job } from '../types';
 import { formatDistanceToNow } from 'date-fns';
+import { getTimeAgo } from '../utils/getTimeAgo';
 interface JobCardProps {
   job: Job;
   onDragStart: (e: React.DragEvent, job: Job) => void;
@@ -43,9 +44,9 @@ const JobCard: React.FC<JobCardProps> = ({
 
       <div className="flex items-center text-xs text-gray-500 mb-3">
         <Calendar className="w-3 h-3 mr-1" />
-        <span>{job.createdAt && !isNaN(new Date(job.createdAt).getTime())
-            ? formatDistanceToNow(new Date(job.createdAt), { addSuffix: true })
-            : "N/A"}</span>
+        <span>
+          {getTimeAgo(job.dateAdded)}
+        </span>
       </div>
 
       <div className="flex items-center justify-between">

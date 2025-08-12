@@ -433,7 +433,7 @@ export default function JobModal({
                 <span className="text-sm font-medium text-gray-600">Added On</span>
               </div>
               <p className="text-lg font-semibold text-gray-900">
-                {jobDetails.createdAt ? getTimeAgo(jobDetails.createdAt) : "N/A"}
+                {jobDetails.createdAt ? getTimeAgo(jobDetails.dateAdded) : "N/A"}
               </p>
             </div>
 

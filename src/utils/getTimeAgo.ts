@@ -3,77 +3,56 @@ export function getTimeAgo(dateString: string): string {
 
   try {
     const parts = dateString.trim().split(",");
-    if (parts.length < 2) return "N/A";
+    if (parts.length !== 2) return "N/A";
 
-    const datePart = parts[0].trim();                // "08/12/2025" or "12/08/2025"
-    const timePartRaw = parts.slice(1).join(",").trim(); // "06:09 PM", "06:09:05 PM IST", etc.
+    const datePart = parts[0].trim(); // "12/8/2025"
+    const timePart = parts[1].trim(); // "12:40:41 am"
 
-    // Parse date numbers
-    const [a, b, yStr] = datePart.split("/").map(s => s.trim());
-    let A = Number(a), B = Number(b), Y = Number(yStr);
-    if (!A || !B || !Y) return "N/A";
-    if (Y < 100) Y += 2000; // guard 2-digit years
+    // Parse date (MM/DD/YYYY)
+    let [month, day, year] = datePart.split("/").map(s => Number(s.trim()));
+    if (!month || !day || !year || month > 12 || day > 31) return "N/A";
+    if (year < 100) year += 2000; // Handle 2-digit years
 
-    // Parse time as 24h parts
-    const t = to24HourParts(timePartRaw);
+    // Parse time
+    const t = to24HourParts(timePart);
     if (!t) return "N/A";
 
-    // Build two hypotheses: A/B/Y could be M/D/Y or D/M/Y
-    const candidateMDY = new Date(Y, A - 1, B, t.h, t.m, t.s || 0);
-    const candidateDMY = new Date(Y, B - 1, A, t.h, t.m, t.s || 0);
+    // Create date in UTC to avoid local timezone interference
+    const parsedDate = new Date(Date.UTC(year, month - 1, day, t.h, t.m, t.s || 0));
+    const now = new Date(); // Current time in local timezone (e.g., IST)
 
-    const now = new Date();
-
-    // Choose the candidate that is in the past and closest to now.
-    const diffMDY = now.getTime() - candidateMDY.getTime();
-    const diffDMY = now.getTime() - candidateDMY.getTime();
-
-    let chosen = candidateMDY;
-    if (isNaN(candidateMDY.getTime()) && !isNaN(candidateDMY.getTime())) {
-      chosen = candidateDMY;
-    } else if (!isNaN(candidateMDY.getTime()) && !isNaN(candidateDMY.getTime())) {
-      const pastMDY = diffMDY >= 0;
-      const pastDMY = diffDMY >= 0;
-      if (pastMDY && pastDMY) {
-        // both in past: pick the closer one
-        chosen = Math.abs(diffMDY) <= Math.abs(diffDMY) ? candidateMDY : candidateDMY;
-      } else if (pastMDY && !pastDMY) {
-        chosen = candidateMDY;
-      } else if (!pastMDY && pastDMY) {
-        chosen = candidateDMY;
-      } else {
-        // both future (weird clock or bad data): pick closer, then clamp to "now"
-        chosen = Math.abs(diffMDY) <= Math.abs(diffDMY) ? candidateMDY : candidateDMY;
-      }
-    }
-
-    let diffMs = now.getTime() - chosen.getTime();
-    if (diffMs < 0) diffMs = 0; // clamp tiny future diffs
+    // Calculate difference
+    let diffMs = now.getTime() - parsedDate.getTime();
+    if (diffMs < 0) diffMs = 0; // Clamp future dates to "now"
 
     const diffSec = Math.floor(diffMs / 1000);
     const diffMin = Math.floor(diffSec / 60);
-    const diffHr  = Math.floor(diffMin / 60);
+    const diffHr = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHr / 24);
+    const diffMonth = Math.floor(diffDay / 30); // Approximate
+    const diffYear = Math.floor(diffMonth / 12);
 
     const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
 
-    if (diffSec < 60) return "Added Now";
-    if (diffMin < 60) return `Added ${plural(diffMin, "Minute")} Ago`;
-    if (diffHr  < 24) return `Added ${plural(diffHr, "Hour")} Ago`;
-    return `Added ${plural(diffDay, "Day")} Ago`;
+    if (diffSec < 60) return "Just now";
+    if (diffMin < 60) return `${plural(diffMin, "minute")} ago`;
+    if (diffHr < 24) return `${plural(diffHr, "hour")} ago`;
+    if (diffDay < 30) return `${plural(diffDay, "day")} ago`;
+    if (diffMonth < 12) return `${plural(diffMonth, "month")} ago`;
+    return `${plural(diffYear, "year")} ago`;
   } catch {
     return "N/A";
   }
 }
 
 /** Robust 12h → 24h parser.
- * Accepts "6:09 PM", "06:09:05 pm", "6:09pm", "06:09 PM IST", etc.
+ * Accepts "12:40:41 am", "6:09 PM", "06:09:05 pm", etc.
  */
 function to24HourParts(input: string): { h: number; m: number; s: number } | null {
   if (!input) return null;
   const s = input.replace(/\s+/g, " ").trim().toUpperCase();
 
-  // Grab hh:mm[:ss] + AM/PM, ignore trailing zone labels
+  // Match hh:mm[:ss] + AM/PM
   const m = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)\b/);
   if (!m) return null;
 
