@@ -5,33 +5,43 @@ export function getTimeAgo(dateString: string): string {
     const parts = dateString.trim().split(",");
     if (parts.length !== 2) return "N/A";
 
-    const datePart = parts[0].trim(); // "12/8/2025"
-    const timePart = parts[1].trim(); // "12:40:41 am"
+    const datePart = parts[0].trim(); // "8/12/2025"
+    const timePart = parts[1].trim(); // "11:33:33 PM"
 
-    // Parse date (MM/DD/YYYY)
-    let [month, day, year] = datePart.split("/").map(s => Number(s.trim()));
-    if (!month || !day || !year || month > 12 || day > 31) return "N/A";
-    if (year < 100) year += 2000; // Handle 2-digit years
+    // Parse date parts
+    let [m1, d1, y1] = datePart.split("/").map(s => Number(s.trim()));
+    if (!m1 || !d1 || !y1 || m1 > 12 || d1 > 31) return "N/A";
+    if (y1 < 100) y1 += 2000; // Handle 2-digit years
 
     // Parse time
     const t = to24HourParts(timePart);
     if (!t) return "N/A";
 
-    // Create date assuming IST (no UTC adjustment needed since now is also IST)
-    const parsedDate = new Date(year, month - 1, day, t.h, t.m, t.s || 0);
+    // Parse as local time (IST)
+    let parsedDate = new Date(y1, m1 - 1, d1, t.h, t.m, t.s || 0);
     const now = new Date(); // Current time in IST
-
-    // Calculate difference
     let diffMs = now.getTime() - parsedDate.getTime();
+
+    // If MM/DD/YYYY results in a future date, try DD/MM/YYYY
+    if (diffMs < 0) {
+      parsedDate = new Date(y1, d1 - 1, m1, t.h, t.m, t.s || 0);
+      diffMs = now.getTime() - parsedDate.getTime();
+    }
+
     if (diffMs < 0) diffMs = 0; // Clamp future dates to "now"
 
     const diffSec = Math.floor(diffMs / 1000);
-    const diffHr = Math.floor(diffSec / 3600); // Hours directly from seconds
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHr = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHr / 24);
+    const diffMonth = Math.floor(diffDay / 30); // Approximate
+    const diffYear = Math.floor(diffMonth / 12);
 
-    if (diffSec < 60) return "Added now";
-    if (diffHr < 24) return `Added ${diffHr} hour${diffHr === 1 ? "" : "s"} ago`;
-    return `Added ${diffDay === 1 ? "a day" : `${diffDay} days`} ago`;
+    if (diffSec < 3600) return "Added now"; // Less than 1 hour
+    if (diffHr < 24) return `Added ${diffHr} hour${diffHr === 1 ? "" : "s"} ago`; // 1 hour to 1 day
+    if (diffDay < 30) return `Added ${diffDay === 1 ? "a" : diffDay} day${diffDay === 1 ? "" : "s"} ago`; // 1 day to 1 month
+    if (diffMonth < 12) return `Added ${diffMonth} month${diffMonth === 1 ? "" : "s"} ago`; // 1 month to 1 year
+    return `Added ${diffYear} year${diffYear === 1 ? "" : "s"} ago`; // More than 1 year
   } catch {
     return "N/A";
   }
