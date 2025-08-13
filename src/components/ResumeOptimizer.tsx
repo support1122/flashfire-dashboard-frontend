@@ -275,52 +275,50 @@ export default function DocumentUpload() {
       {items.length === 0 ? (
         <div className="px-4 py-6 text-sm text-gray-500">No documents yet.</div>
       ) : (
-        <div className="max-h-[400px] overflow-y-auto">
-          <ul className="divide-y">
-            {items.map((it, i) => (
-              <li
-                key={i}
-                className="grid grid-cols-12 items-center px-4 py-4 hover:bg-gray-50 cursor-pointer"
-                onClick={() => onPick(it)}
-                title="Click to preview"
-              >
-                <div className="col-span-6 min-w-0">
-                  <p className="truncate">
-                    {(it.jobRole || "—") + " at " + (it.companyName || "—")}
-                  </p>
-                </div>
-                <div className="col-span-2">{category}</div>
-                <div className="col-span-2">{fmtDate(it.createdAt)}</div>
-                <div className="col-span-1">
-                  {it.jobLink ? (
-                    <a
-                      href={it.jobLink.startsWith('http') ? it.jobLink : `https://${it.jobLink}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      Click Here
-                    </a>
-                  ) : (
-                    '--'
-                  )}
-                </div>              
-                <div className="col-span-1 flex justify-end">
+        <ul className="divide-y flex flex-col flex-col-reverse">
+          {items.map((it, i) => (
+            <li
+              key={i}
+              className="grid grid-cols-12 items-center px-4 py-4 hover:bg-gray-50 cursor-pointer"
+              onClick={() => onPick(it)}
+              title="Click to preview"
+            >
+              <div className="col-span-6 min-w-0">
+                <p className="truncate">
+                  {(it.jobRole || "—") + " at " + (it.companyName || "—")}
+                </p>
+              </div>
+              <div className="col-span-2">{category}</div>
+              <div className="col-span-2">{fmtDate(it.createdAt)}</div>
+              <div className="col-span-1">
+                {it.jobLink ? (
                   <a
-                    href={toRawPdfUrl(it.url) || it.url}
+                    href={it.jobLink.startsWith('http') ? it.jobLink : `https://${it.jobLink}`}
                     target="_blank"
-                    rel="noreferrer"
-                    className="text-gray-700 hover:text-blue-600"
-                    onClick={(e) => e.stopPropagation()}
-                    title="Download"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
                   >
-                    <DownloadIcon />
+                    Click Here
                   </a>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+                ) : (
+                  '--'
+                )}
+              </div>              
+              <div className="col-span-1 flex justify-end">
+                <a
+                  href={toRawPdfUrl(it.url) || it.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-gray-700 hover:text-blue-600"
+                  onClick={(e) => e.stopPropagation()}
+                  title="Download"
+                >
+                  <DownloadIcon />
+                </a>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -411,7 +409,7 @@ export default function DocumentUpload() {
 
         {/* Main content */}
         <main className="col-span-12 md:col-span-9 w-3/4 fixed right-10">
-          <div className="bg-white rounded-lg shadow border p-4">
+          <div className="bg-white rounded-lg shadow border p-4 w-[70vw] h-[90vh] overflow-y-scroll">
             {/* BASE TAB */}
             {activeTab === "base" && (
               <section>
@@ -497,7 +495,7 @@ export default function DocumentUpload() {
                         className="hidden"
                         accept="application/pdf,.pdf"
                         onChange={(e) => handleFileUpload(e, "optimized")}
-                        disabled={isUploading || !baseResume}
+                        disabled={isUploading}
                       />
                       <span className="px-3 py-1.5 rounded bg-blue-600 text-white text-sm">Choose File</span>
                     </label>
@@ -545,7 +543,7 @@ export default function DocumentUpload() {
                         className="hidden"
                         accept="application/pdf,.pdf"
                         onChange={(e) => handleFileUpload(e, "coverLetter")}
-                        disabled={isUploading || !baseResume}
+                        disabled={isUploading}
                       />
                       <span className="px-3 py-1.5 rounded bg-blue-600 text-white text-sm">Choose File</span>
                     </label>
@@ -637,8 +635,16 @@ export default function DocumentUpload() {
               </div>
 
               <div className="flex gap-2 pt-1">
-                <button type="submit" disabled={isUploading} className="bg-blue-600 text-white px-4 py-2 rounded w-full">
+                <button type="submit" disabled={isUploading} className="bg-blue-600 text-white px-4 py-2 rounded w-1/2">
                   {isUploading ? "Uploading..." : "Save & Upload"}
+                </button>
+                <button
+                  type="button"
+                  disabled={isUploading}
+                  onClick={() => handleMetadataSubmit(undefined, true)}
+                  className="bg-gray-600 text-white px-4 py-2 rounded w-1/2"
+                >
+                  {isUploading ? "Uploading..." : "Skip Metadata"}
                 </button>
               </div>
             </form>

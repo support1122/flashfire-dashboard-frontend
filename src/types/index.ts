@@ -9,6 +9,7 @@ export interface Job {
   joblink: string;
   currentStatus: JobStatus;
   attachments : [string]; 
+  dateAdded : String;
   // matchScore?: number;
   userID?: string; // Add user association
   createdAt: string;
