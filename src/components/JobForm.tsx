@@ -68,7 +68,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
     companyName: "",
     jobDescription: "",
     joblink: "",
-    dateApplied: new Date().toISOString().split("T")[0],
+    dateAdded: new Date().toLocaleString('en-US'),
     attachments: [] as string[],
     status: "saved" as JobStatus,
   });
@@ -166,7 +166,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
     // ---------- CREATE MODE ----------
     if (!isEditMode) {
       const optimisticId = Date.now().toString();
-      const nowIN = new Date().toLocaleString("en-IN", { hour12: true, timeZone: "Asia/Kolkata" });
+      const nowIN = new Date().toLocaleString("en-US", { hour12: true, timeZone: "Asia/Kolkata" });
 
       const optimisticJob = {
         jobID: optimisticId,
@@ -174,7 +174,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
         companyName: formData.companyName,
         jobDescription: formData.jobDescription,
         joblink: formData.joblink,
-        dateApplied: formData.dateApplied,
+        dateAdded: new Date().toLocaleString(),
         currentStatus: formData.status,
         userID: userDetails.email,
         attachments: [],
