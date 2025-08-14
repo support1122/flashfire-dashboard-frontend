@@ -192,7 +192,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
         onCancel();
         setIsSubmitting(false);
         closed = true;
-      }, 1000);
+      }, 2500);
 
       try {
         // 2) Immediately POST minimal payload (no attachments) to quickly detect duplicate
