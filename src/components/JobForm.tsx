@@ -174,7 +174,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
         companyName: formData.companyName,
         jobDescription: formData.jobDescription,
         joblink: formData.joblink,
-        dateAdded: new Date().toLocaleString(),
+        dateAdded: new Date().toLocaleString("en-US"),
         currentStatus: formData.status,
         userID: userDetails.email,
         attachments: [],
@@ -202,7 +202,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
           companyName: formData.companyName,
           jobDescription: formData.jobDescription,
           joblink: formData.joblink,
-          dateApplied: formData.dateApplied,
+          dateAdded: formData.dateAdded,
           currentStatus: formData.status,
           userID: userDetails.email,
           // attachments intentionally omitted for speed
