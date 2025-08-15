@@ -34,8 +34,10 @@ async function persistAttachmentsToJobPUT({
   return json as { message: string; updatedJobs?: any[] };
 }
 
-/** POST /api/jobs (create) */
-async function createJobPOST({
+/** Lightweight POST used to quickly detect 403 duplicate.
+ *  Returns status + body without throwing on non-2xx.
+ */
+async function createJobPOSTQuick({
   jobDetails,
   userDetails,
   token,
@@ -49,9 +51,8 @@ async function createJobPOST({
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ jobDetails, userDetails, token }),
   });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json?.message || "Failed to create job");
-  return json as { message: string; NewJobList?: any[] };
+  const body = await res.json().catch(() => ({}));
+  return { status: res.status, ok: res.ok, body };
 }
 
 interface JobFormProps {
@@ -67,7 +68,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
     companyName: "",
     jobDescription: "",
     joblink: "",
-    dateApplied: new Date().toISOString().split("T")[0],
+    dateAdded: new Date().toLocaleString('en-US'),
     attachments: [] as string[],
     status: "saved" as JobStatus,
   });
@@ -162,71 +163,100 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
     setIsSubmitting(true);
     setError(null);
 
-    // ----- OPTIMISTIC UI FIRST -----
+    // ---------- CREATE MODE ----------
     if (!isEditMode) {
       const optimisticId = Date.now().toString();
+      const nowIN = new Date().toLocaleString("en-US", { hour12: true, timeZone: "Asia/Kolkata" });
 
-      // use object-URL previews in UI immediately (they won't persist—only visual feedback)
       const optimisticJob = {
         jobID: optimisticId,
         jobTitle: formData.jobTitle,
         companyName: formData.companyName,
         jobDescription: formData.jobDescription,
         joblink: formData.joblink,
-        dateApplied: formData.dateApplied,
+        dateAdded: new Date().toLocaleString("en-US"),
         currentStatus: formData.status,
         userID: userDetails.email,
-        attachments: [], // will fill after Cloudinary returns
+        attachments: [],
         createdAt: new Date().toISOString(),
+        updatedAt: nowIN, // so it sorts to the top immediately
       };
 
-      setUserJobs((prev) => [optimisticJob, ...(prev || [])]);
+      let closed = false;
 
-      // close the modal immediately for snappy UX
-      onSuccess?.();
-      onCancel();
-      setIsSubmitting(false);
+      // 1) Arm a 1s gate: if no 403 by then, close form + optimistic update
+      const closeTimer = setTimeout(() => {
+        // optimistic UI add (top) then close
+        setUserJobs((prev) => [optimisticJob, ...(prev || [])]);
+        onSuccess?.();
+        onCancel();
+        setIsSubmitting(false);
+        closed = true;
+      }, 2500);
 
-      // background: upload to Cloudinary, then POST to backend with SAME payload shape
-      (async () => {
-        try {
-          const uploadedUrls = await uploadImagesToCloudinary();
+      try {
+        // 2) Immediately POST minimal payload (no attachments) to quickly detect duplicate
+        const jobDetails = {
+          jobID: optimisticId,
+          jobTitle: formData.jobTitle,
+          companyName: formData.companyName,
+          jobDescription: formData.jobDescription,
+          joblink: formData.joblink,
+          dateAdded: formData.dateAdded,
+          currentStatus: formData.status,
+          userID: userDetails.email,
+          // attachments intentionally omitted for speed
+        };
 
-          const jobDetails = {
-            jobID: optimisticId, // same id so server list will replace the optimistic one
-            jobTitle: formData.jobTitle,
-            companyName: formData.companyName,
-            jobDescription: formData.jobDescription,
-            joblink: formData.joblink,
-            dateApplied: formData.dateApplied,
-            currentStatus: formData.status,
-            userID: userDetails.email,
-            attachments: uploadedUrls,
-          };
+        const { status, ok, body } = await createJobPOSTQuick({ jobDetails, userDetails, token });
 
-          const data = await createJobPOST({ jobDetails, userDetails, token });
-
-          if (data?.message === "invalid token please login again") {
-            localStorage.clear();
-            navigate("/login");
-            return;
-          }
-
-          // sync full list from server (removes optimistic copy because jobID matches)
-          setUserJobs(data?.NewJobList || []);
-        } catch (err) {
-          console.error("[background create] failed:", err);
-          // optional: show a toast or mark the optimistic card as failed
-        } finally {
-          // clean up previews
-          previews.forEach((u) => URL.revokeObjectURL(u));
+        // If duplicate within 1s -> keep form open and show the message
+        if (status === 403 || body?.message === "Job Already Exist !") {
+          clearTimeout(closeTimer);
+          setIsSubmitting(false);
+          setError(body.message);
+          return;
         }
-      })();
 
-      return; // we’re done for create
+        // If token invalid, redirect (whether or not form has closed)
+        if (body?.message === "invalid token please login again") {
+          localStorage.clear();
+          navigate("/login");
+          return;
+        }
+
+        // 3) If ok (or other non-403), proceed to upload images and persist attachments in background
+        //    Whether the form has already closed or not, this runs quietly.
+        if (ok) {
+          (async () => {
+            try {
+              const uploadedUrls = await uploadImagesToCloudinary();
+              if (uploadedUrls.length) {
+                await persistAttachmentsToJobPUT({
+                  jobID: optimisticId,
+                  userDetails,
+                  token,
+                  urls: uploadedUrls,
+                });
+              }
+              // Optional: fetch final list from server if your POST returns NewJobList
+              // If your POST body has NewJobList, you could sync here instead.
+            } catch (err) {
+              console.error("[background attachments persist] failed:", err);
+            } finally {
+              previews.forEach((u) => URL.revokeObjectURL(u));
+            }
+          })();
+        }
+      } catch (err) {
+        // Network or unexpected error: if the form hasn't closed yet, let the gate close it.
+        console.error("[create quick] error:", err);
+      }
+
+      return; // end create mode
     }
 
-    // ----- EDIT MODE (optimistic close; then upload & persist attachments) -----
+    // ---------- EDIT MODE (unchanged: immediate close; background persist) ----------
     if (isEditMode && job) {
       // close immediately
       onSuccess?.();

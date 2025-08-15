@@ -3,14 +3,14 @@ export function getTimeAgo(dateString: string): string {
 
   try {
     const parts = dateString.trim().split(",");
-    if (parts.length !== 2) return "N/A";
+    if (parts.length !== 2) return "Added now" //"N/A";
 
     const datePart = parts[0].trim(); // "8/12/2025"
     const timePart = parts[1].trim(); // "11:33:33 PM"
 
     // Parse date parts
     let [m1, d1, y1] = datePart.split("/").map(s => Number(s.trim()));
-    if (!m1 || !d1 || !y1 || m1 > 12 || d1 > 31) return "N/A";
+    if (!m1 || !d1 || !y1 || m1 > 12 || d1 > 31) return "Added now";
     if (y1 < 100) y1 += 2000; // Handle 2-digit years
 
     // Parse time
@@ -36,6 +36,17 @@ export function getTimeAgo(dateString: string): string {
     const diffDay = Math.floor(diffHr / 24);
     const diffMonth = Math.floor(diffDay / 30); // Approximate
     const diffYear = Math.floor(diffMonth / 12);
+
+    // Cushion for minor TZ/drift issues (treat up to ~2 hours as "now" if same day)
+const sameDay =
+  parsedDate.getFullYear() === now.getFullYear() &&
+  parsedDate.getMonth() === now.getMonth() &&
+  parsedDate.getDate() === now.getDate();
+
+if (sameDay && Math.floor(diffMin) <= 120) {
+  return "Added now";
+}
+
 
     if (diffSec < 3600) return "Added now"; // Less than 1 hour
     if (diffHr < 24) return `Added ${diffHr} hour${diffHr === 1 ? "" : "s"} ago`; // 1 hour to 1 day
