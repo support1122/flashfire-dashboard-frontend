@@ -1,28 +1,25 @@
-import React, { useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
+import { UserContext } from "../state_management/UserContext";
+import { CarTaxiFront } from "lucide-react";
 
-// FlashFire — Client Onboarding Form (3‑step modal)
-// TailwindCSS required for styling. No external UI libraries.
-// Usage: <OnboardingModal open={isOpen} onClose={()=>setOpen(false)} onSubmit={(payload)=>console.log(payload)} />
-
+/** ---------- STEPS ---------- */
 const STEPS = [
   { key: "personal", title: "Personal & Education", blurb: "Tell us who you are and where you studied." },
   { key: "preferences", title: "Preferences & Experience", blurb: "Share your target roles, salary, and locations." },
   { key: "links", title: "Links, Documents & Consent", blurb: "Add URLs, upload documents, and confirm consent." },
 ] as const;
 
-type StepKey = typeof STEPS[number]["key"];
-
 type FormData = {
   firstName: string;
   lastName: string;
   contactNumber: string;
-  dob: string; // yyyy-mm-dd
-  bachelorsUniDegree: string; // name + degree + duration
-  bachelorsGradMonthYear: string; // yyyy-mm
-  mastersUniDegree: string; // name + degree + duration
-  mastersGradMonthYear: string; // yyyy-mm
-  visaStatus: string; // enum
-  visaExpiry: string; // yyyy-mm-dd
+  dob: string;
+  bachelorsUniDegree: string;
+  bachelorsGradMonthYear: string;
+  mastersUniDegree: string;
+  mastersGradMonthYear: string;
+  visaStatus: string;
+  visaExpiry: string;
   address: string;
   preferredRoles: string;
   experienceLevel: string;
@@ -33,10 +30,14 @@ type FormData = {
   linkedinUrl: string;
   githubUrl: string;
   portfolioUrl: string;
+  // Files (for UI only)
   coverLetterFile?: File | null;
   resumeFile?: File | null;
-  confirmAccuracy: boolean; // must be true
-  agreeTos: boolean; // must be true
+  // Cloudinary URLs (THIS is what we persist/send)
+  coverLetterUrl?: string;
+  resumeUrl?: string;
+  confirmAccuracy: boolean;
+  agreeTos: boolean;
 };
 
 const initialData: FormData = {
@@ -62,34 +63,17 @@ const initialData: FormData = {
   portfolioUrl: "",
   coverLetterFile: null,
   resumeFile: null,
+  coverLetterUrl: "",
+  resumeUrl: "",
   confirmAccuracy: false,
   agreeTos: false,
 };
 
-const VISA_OPTIONS = [
-  "CPT",
-  "F1",
-  "F1 OPT",
-  "F1 STEM OPT",
-  "H1B",
-  "Green Card",
-  "U.S. Citizen",
-  "Other",
-];
-
-const EXPERIENCE_OPTIONS = [
-  "Entry level",
-  "0-2 Years",
-  "0-3 Years",
-  "0-4 Years",
-  "0-5 Years",
-  "0-6 Years",
-  "0-7 Years",
-  "Other",
-];
-
+const VISA_OPTIONS = ["CPT", "F1", "F1 OPT", "F1 STEM OPT", "H1B", "Green Card", "U.S. Citizen", "Other"];
+const EXPERIENCE_OPTIONS = ["Entry level", "0-2 Years", "0-3 Years", "0-4 Years", "0-5 Years", "0-6 Years", "0-7 Years", "Other"];
 const SALARY_OPTIONS = ["60k-100k", "100k-150k", "150k-200k", "Other"];
 
+/** ---------- UI Helpers ---------- */
 function Header({ stepIndex }: { stepIndex: number }) {
   const step = STEPS[stepIndex];
   const percent = ((stepIndex + 1) / STEPS.length) * 100;
@@ -99,7 +83,9 @@ function Header({ stepIndex }: { stepIndex: number }) {
         <div className="flex items-center justify-between">
           <div>
             <p className="uppercase tracking-widest text-xs/5 text-white/80">FlashFire — Client Onboarding</p>
-            <h2 className="mt-1 text-xl font-semibold">Step {stepIndex + 1} of {STEPS.length}: {step.title}</h2>
+            <h2 className="mt-1 text-xl font-semibold">
+              Step {stepIndex + 1} of {STEPS.length}: {step.title}
+            </h2>
             <p className="mt-1 text-sm text-white/90">{step.blurb}</p>
           </div>
           <div className="hidden sm:block text-right">
@@ -121,7 +107,6 @@ function FieldLabel({ children, required = true }: { children: React.ReactNode; 
     </label>
   );
 }
-
 function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
@@ -134,7 +119,6 @@ function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     />
   );
 }
-
 function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
@@ -147,7 +131,6 @@ function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
     />
   );
 }
-
 function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
@@ -160,14 +143,50 @@ function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
     />
   );
 }
-
 function ErrorText({ children }: { children?: React.ReactNode }) {
   if (!children) return null;
   return <p className="mt-1 text-xs text-rose-600">{children}</p>;
 }
 
-function FileInput({ label, required, file, onFileChange }: { label: string; required?: boolean; file: File | null | undefined; onFileChange: (f: File | null) => void }) {
+/** ---------- Cloudinary upload (returns secure_url) ---------- */
+async function uploadToCloudinary(file: File, opts?: { resourceType?: "auto" | "image" | "raw"; folder?: string; preset?: string }) {
+  const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME as string;
+  const PRESET =
+    (opts?.preset || import.meta.env.VITE_CLOUDINARY_CLOUD_PRESET) as string;
+  const resourceType = opts?.resourceType || "auto";
+  const folder = opts?.folder || "flashfirejobs";
+
+  if (!CLOUD_NAME || !PRESET) throw new Error("Missing Cloudinary envs.");
+
+  const endpoint = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`;
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("upload_preset", PRESET);
+  fd.append("folder", folder);
+
+  const res = await fetch(endpoint, { method: "POST", body: fd });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json?.error?.message || "Upload failed");
+  return json.secure_url as string;
+}
+
+/** ---------- FileInput that uploads instantly ---------- */
+function FileInput({
+  label,
+  required,
+  file,
+  onFileChange,
+  onUploaded, // returns the secure_url
+}: {
+  label: string;
+  required?: boolean;
+  file: File | null | undefined;
+  onFileChange: (f: File | null) => void;
+  onUploaded: (url: string) => void;
+}) {
   const [error, setError] = useState<string>("");
+  const [uploading, setUploading] = useState(false);
+
   return (
     <div>
       <FieldLabel required={required}>{label}</FieldLabel>
@@ -175,7 +194,7 @@ function FileInput({ label, required, file, onFileChange }: { label: string; req
         type="file"
         className="mt-1 block w-full cursor-pointer rounded-xl border border-dashed border-gray-300 bg-white p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-white hover:file:bg-indigo-500"
         accept=".pdf,.doc,.docx,.txt"
-        onChange={(e) => {
+        onChange={async (e) => {
           const f = e.currentTarget.files?.[0] ?? null;
           if (!f) {
             onFileChange(null);
@@ -189,23 +208,36 @@ function FileInput({ label, required, file, onFileChange }: { label: string; req
           }
           setError("");
           onFileChange(f);
+
+          setUploading(true);
+          try {
+            const url = await uploadToCloudinary(f, { resourceType: "auto" });
+            onUploaded(url);
+          } catch (err: any) {
+            setError(err?.message || "Upload failed");
+            onFileChange(null);
+          } finally {
+            setUploading(false);
+          }
         }}
       />
       <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
         <span>Accepted: PDF, DOC, DOCX, TXT · Max 10 MB</span>
         {file && <span className="truncate rounded bg-gray-100 px-2 py-0.5 text-gray-700">{file.name}</span>}
+        {uploading && <span className="animate-pulse">Uploading…</span>}
       </div>
       <ErrorText>{error}</ErrorText>
     </div>
   );
 }
 
-export default function OnboardingModal({ open, onClose, onSubmit }: { open: boolean; onClose: () => void; onSubmit?: (data: FormData) => void }) {
+/** ---------- Main ---------- */
+export default function NewUserModal({ setUserProfileFormVisibility }: { setUserProfileFormVisibility: any }) {
   const [stepIndex, setStepIndex] = useState(0);
   const [data, setData] = useState<FormData>({ ...initialData });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const isLast = stepIndex === STEPS.length - 1;
-
+  const ctx = useContext(UserContext);
   const set = (patch: Partial<FormData>) => setData((d) => ({ ...d, ...patch }));
 
   const validateUrl = (v: string) => /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/.*)?$/i.test(v);
@@ -238,8 +270,11 @@ export default function OnboardingModal({ open, onClose, onSubmit }: { open: boo
       if (!data.linkedinUrl.trim() || !validateUrl(data.linkedinUrl)) e.linkedinUrl = "Valid URL required";
       if (!data.githubUrl.trim() || !validateUrl(data.githubUrl)) e.githubUrl = "Valid URL required";
       if (!data.portfolioUrl.trim() || !validateUrl(data.portfolioUrl)) e.portfolioUrl = "Valid URL required";
-      if (!data.coverLetterFile) e.coverLetterFile = "Required";
-      if (!data.resumeFile) e.resumeFile = "Required";
+
+      // Require Cloudinary URLs (not just selected files)
+      if (!data.coverLetterUrl) e.coverLetterUrl = "Cover letter upload is required";
+      if (!data.resumeUrl) e.resumeUrl = "Resume upload is required";
+
       if (!data.confirmAccuracy) e.confirmAccuracy = "You must confirm accuracy";
       if (!data.agreeTos) e.agreeTos = "You must agree to the Terms";
     }
@@ -252,17 +287,42 @@ export default function OnboardingModal({ open, onClose, onSubmit }: { open: boo
   };
   const back = () => setStepIndex((i) => Math.max(i - 1, 0));
 
-  const handleSubmit = () => {
-    // Validate final step (and all previous just in case)
-    for (let i = 0; i < STEPS.length; i++) {
-      if (!validateStep(i)) {
-        setStepIndex(i);
-        return;
-      }
+  const handleSubmit = async () => {
+  // ...validation...
+
+  try {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
+    const { coverLetterFile, resumeFile, ...payload } = data;
+
+    const token = ctx?.token;
+    const email = ctx?.userDetails?.email;
+    console.log(token, email)
+    if (!token || !email) {
+      throw new Error(JSON.stringify({ message: "Token or user details missing" }));
     }
-    onSubmit?.(data);
-    onClose();
-  };
+
+    const res = await fetch(`${API_BASE_URL}/setprofile`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,          // ✅ send token in header
+      },
+      body: JSON.stringify({ ...payload, email ,token, userDetails:ctx?.userDetails}), // ✅ flat body (no nested {payload})
+    });
+
+    const resJson = await res.json();              // ✅ await it
+    if (!res.ok) throw new Error(JSON.stringify(resJson));
+
+    // success UX
+    // toast(resJson.message);
+    setUserProfileFormVisibility(false);
+  } catch (err: any) {
+    console.error(err);
+    const msg = (() => { try { return JSON.parse(err.message)?.message; } catch { return err.message; } })();
+    alert(msg || "Something went wrong while submitting. Please try again.");
+  }
+};
+
 
   const page = useMemo(() => {
     switch (stepIndex) {
@@ -317,7 +377,9 @@ export default function OnboardingModal({ open, onClose, onSubmit }: { open: boo
               <Select value={data.visaStatus} onChange={(e) => set({ visaStatus: e.target.value })}>
                 <option value="">Select status…</option>
                 {VISA_OPTIONS.map((v) => (
-                  <option key={v} value={v}>{v}</option>
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
                 ))}
               </Select>
               <ErrorText>{errors.visaStatus}</ErrorText>
@@ -349,7 +411,9 @@ export default function OnboardingModal({ open, onClose, onSubmit }: { open: boo
               <Select value={data.experienceLevel} onChange={(e) => set({ experienceLevel: e.target.value })}>
                 <option value="">Select level…</option>
                 {EXPERIENCE_OPTIONS.map((v) => (
-                  <option key={v} value={v}>{v}</option>
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
                 ))}
               </Select>
               <ErrorText>{errors.experienceLevel}</ErrorText>
@@ -360,7 +424,9 @@ export default function OnboardingModal({ open, onClose, onSubmit }: { open: boo
               <Select value={data.expectedSalaryRange} onChange={(e) => set({ expectedSalaryRange: e.target.value })}>
                 <option value="">Select range…</option>
                 {SALARY_OPTIONS.map((v) => (
-                  <option key={v} value={v}>{v}</option>
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
                 ))}
               </Select>
               <ErrorText>{errors.expectedSalaryRange}</ErrorText>
@@ -404,18 +470,37 @@ export default function OnboardingModal({ open, onClose, onSubmit }: { open: boo
               <ErrorText>{errors.portfolioUrl}</ErrorText>
             </div>
 
+            {/* File inputs that upload instantly and save URL */}
             <div>
-              <FileInput label="Cover Letter (required)" required file={data.coverLetterFile ?? null} onFileChange={(f) => set({ coverLetterFile: f })} />
-              <ErrorText>{errors.coverLetterFile}</ErrorText>
+              <FileInput
+                label="Cover Letter (required)"
+                required
+                file={data.coverLetterFile ?? null}
+                onFileChange={(f) => set({ coverLetterFile: f })}
+                onUploaded={(url) => set({ coverLetterUrl: url })}
+              />
+              <ErrorText>{errors.coverLetterUrl}</ErrorText>
             </div>
             <div>
-              <FileInput label="Resume (required)" required file={data.resumeFile ?? null} onFileChange={(f) => set({ resumeFile: f })} />
-              <ErrorText>{errors.resumeFile}</ErrorText>
+              <FileInput
+                label="Resume (required)"
+                required
+                file={data.resumeFile ?? null}
+                onFileChange={(f) => set({ resumeFile: f })}
+                onUploaded={(url) => set({ resumeUrl: url })}
+              />
+              <ErrorText>{errors.resumeUrl}</ErrorText>
             </div>
 
             <div className="sm:col-span-2 space-y-3 rounded-xl border border-gray-200 p-4">
               <div className="flex items-start gap-3">
-                <input id="confirm" type="checkbox" className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" checked={data.confirmAccuracy} onChange={(e) => set({ confirmAccuracy: e.target.checked })} />
+                <input
+                  id="confirm"
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  checked={data.confirmAccuracy}
+                  onChange={(e) => set({ confirmAccuracy: e.target.checked })}
+                />
                 <label htmlFor="confirm" className="text-sm text-gray-800">
                   I confirm that the information provided is accurate and can be used for job applications on my behalf.
                   <span className="ml-1 text-rose-600">*</span>
@@ -424,10 +509,19 @@ export default function OnboardingModal({ open, onClose, onSubmit }: { open: boo
               <ErrorText>{errors.confirmAccuracy}</ErrorText>
 
               <div className="flex items-start gap-3">
-                <input id="tos" type="checkbox" className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" checked={data.agreeTos} onChange={(e) => set({ agreeTos: e.target.checked })} />
+                <input
+                  id="tos"
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  checked={data.agreeTos}
+                  onChange={(e) => set({ agreeTos: e.target.checked })}
+                />
                 <label htmlFor="tos" className="text-sm text-gray-800">
                   I agree to the Terms of Service and Privacy Policy of FlashFire, and the conditions listed at
-                  <a className="ml-1 underline decoration-indigo-600 decoration-2 underline-offset-2" href="https://www.flashfirejobs.com" target="_blank" rel="noreferrer">www.flashfirejobs.com</a>.
+                  <a className="ml-1 underline decoration-indigo-600 decoration-2 underline-offset-2" href="https://www.flashfirejobs.com" target="_blank" rel="noreferrer">
+                    www.flashfirejobs.com
+                  </a>
+                  .
                   <span className="ml-1 text-rose-600">*</span>
                 </label>
               </div>
@@ -440,25 +534,23 @@ export default function OnboardingModal({ open, onClose, onSubmit }: { open: boo
     }
   }, [stepIndex, data, errors]);
 
-  if (!open) return null;
+  // removed: if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
       {/* Modal */}
       <div className="relative z-10 mx-4 w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
         <Header stepIndex={stepIndex} />
 
-        <div className="max-h-[70vh] overflow-y-auto p-6">
-          {page}
-        </div>
+        <div className="max-h-[70vh] overflow-y-auto p-6">{page}</div>
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-4 py-3">
           <button
-            onClick={onClose}
+            onClick={() => setUserProfileFormVisibility(false)}
             className="inline-flex items-center rounded-xl px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
           >
             Cancel

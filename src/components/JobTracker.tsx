@@ -121,18 +121,23 @@ const JobTracker = () => {
 
   const onDeleteJob = async (jobID: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/jobs`, { //${API_BASE_URL}
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ jobID, userDetails, token, action: 'delete' }),
-      });
+      let Code = prompt('Enter The Code to Delete.');
+      if(Code !== import.meta.env.VITE_JOB_DELETION_CODE)
+        return;
+      else{
+          const response = await fetch(`${API_BASE_URL}/api/jobs`, { //${API_BASE_URL}
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ jobID, userDetails, token, action: 'delete' }),
+          });
 
-      const result = await response.json();
-      if (result.message === 'Jobs updated successfully') {
-        setUserJobs(result?.updatedJobs);
-        console.log('Job deleted:', result?.updatedJobs);
+          const result = await response.json();
+          if (result.message === 'Jobs updated successfully') {
+            setUserJobs(result?.updatedJobs);
+            console.log('Job deleted:', result?.updatedJobs);
+          }
       }
     } catch (error) {
       console.error('Error deleting job:', error);

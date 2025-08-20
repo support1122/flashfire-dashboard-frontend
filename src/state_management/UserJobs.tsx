@@ -42,7 +42,7 @@ export const UserJobsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const data = await res.json();
       console.log(data)
       if(data?.message =='Token or user details missing' || data?.message == 'Token or user details missing' || data?.message == 'Invalid token or expired') {
-        // navigate('/login');
+        navigate('/login');
         return;
       }
       setUserJobs(data?.allJobs || []);

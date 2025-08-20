@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Briefcase, FileText, User, LogOut, ChevronDown } from 'lucide-react';
+import { Home, Briefcase, FileText, User, LogOut, ChevronDown, Edit2Icon } from 'lucide-react';
 import { UserContext } from '../state_management/UserContext.tsx';
 
 interface NavigationProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  setUserProfileFormVisibility : any //React.Dispatch<React.SetStateAction<boolean>>;
+  
 }
 
 interface TabItem {
@@ -14,9 +16,11 @@ interface TabItem {
   icon: React.ElementType;
 }
 
-const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
+const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUserProfileFormVisibility }) => {
   const navigate = useNavigate();
-  const { userDetails, token } = useContext(UserContext);
+  let ctx = useContext(UserContext);
+  let token = ctx?.token;
+  let userDetails = ctx?.userDetails;
   const [user, setUser] = useState(userDetails?.name || '');
   const [profileDropDown, setProfileDropDown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -142,7 +146,14 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
                           {userDetails?.email}
                         </p>
                       </div>
+                       {/* <div className='flex justify-between'> */}
+                        <div className='w-fit'onClick={()=>setUserProfileFormVisibility(true)}>
                       
+                        <div className="hover:cursor-pointer inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-200 text-amber-700 border-2 border-amber-200">
+                          <Edit2Icon className='h-3 w-3 m-2' /> Edit/ Setup Profile
+                        </div>
+                      </div>
+                     
                       <div>
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                           Current Plan
@@ -152,6 +163,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }) => {
                           {userDetails?.planType || 'Free'}
                         </div>
                       </div>
+                    
                     </div>
 
                     {/* Action Buttons */}

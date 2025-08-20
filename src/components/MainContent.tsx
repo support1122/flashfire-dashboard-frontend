@@ -10,12 +10,14 @@ const JobTracker = lazy(()=>import('./JobTracker'))
 const ResumeOptimizer = lazy(()=>import('./ResumeOptimizer'))
 import { UserContext } from '../state_management/UserContext';
 import LoadingScreen from './LoadingScreen';
+import NewUserModal from './NewUserModal';
 // import {BaseResume} from '../types/index'
 
 
 export default function MainContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showPDFUploader, setShowPDFUploader] = useState(false);
+  const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
   const [baseResume, setBaseResume] = useState(null);
   const {userDetails, token} = useContext(UserContext);
   const navigate = useNavigate();
@@ -30,10 +32,10 @@ export default function MainContent() {
   return (
     <div className="min-h-screen bg-gray-50">
        <Suspense fallback={<LoadingScreen />}>
-        <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+        <Navigation activeTab={activeTab} onTabChange={setActiveTab} setUserProfileFormVisibility={setUserProfileFormVisibility} />
         </Suspense> 
         <main>
-          
+          {userProfileFormVisibility && <NewUserModal setUserProfileFormVisibility={setUserProfileFormVisibility} />}
           {activeTab === 'dashboard' && <Suspense fallback={<LoadingScreen />}><Dashboard /></Suspense>}
           
           

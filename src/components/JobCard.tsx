@@ -50,8 +50,8 @@ const JobCard: React.FC<JobCardProps> = ({
       </div>
 
       <div className="flex items-center justify-between">
-        {/* <div className="flex items-center space-x-2">
-          <button
+        <div className="flex items-center space-x-2">
+          {/* <button
             onClick={(e) => {
               e.stopPropagation();
               onEdit();
@@ -60,15 +60,19 @@ const JobCard: React.FC<JobCardProps> = ({
             title="Edit Job"
           >
             <Edit3 className="w-4 h-4" />
-          </button>
+          </button> */}
           <button
-            disabled
-            className="p-1 text-gray-300 bg-gray-100 rounded cursor-not-allowed transition-colors"
-            title="Delete Disabled"
+            // disabled
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="p-1  bg-gray-100 rounded hover:text-neutral-500 text-red-400 transition-colors"
+            title="Delete"
           >
             <Trash2 className="w-4 h-4" />
           </button>
-        </div> */}
+        </div>
       </div>
     </div>
   );

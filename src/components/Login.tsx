@@ -3,12 +3,14 @@ import React, { useState, useContext, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle,TrendingUp, Users, Award, Clock, Cross, X } from "lucide-react";
 import { UserContext } from "../state_management/UserContext";
+// import {userP}
 // import { GoogleLogin } from '@react-oauth/google';
 
 interface LoginResponse {
   message: string;
   token?: string;
   userDetails?: any; 
+  // userProfile?:any;
 }
 
 
