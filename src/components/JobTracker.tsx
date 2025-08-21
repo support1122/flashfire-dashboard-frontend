@@ -110,9 +110,19 @@ const JobTracker = () => {
     }
   }
 
-  const handleDragStart = (e: React.DragEvent, job: Job) => {
-    e.dataTransfer.setData('jobId', job.jobID);
-  };
+  // const handleDragStart = (e: React.DragEvent, job: Job) => {
+  //   e.dataTransfer.setData('jobId', job.jobID);
+  // };
+
+  // Replace your current handleDragStart with this:
+const handleDragStart = (e: React.DragEvent, job: Job) => {
+  // Keep backward compatibility with any existing reads
+  e.dataTransfer.setData('jobID', job.jobID);   // <-- new (capital D)
+  e.dataTransfer.setData('jobId', job.jobID);   // existing key some code may rely on
+  // Optional: source status for future-proofing (not strictly needed)
+  e.dataTransfer.setData('sourceStatus', job.currentStatus);
+};
+
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -165,15 +175,40 @@ const JobTracker = () => {
     }
   };
 
-  const handleDrop = (e: React.DragEvent, status: JobStatus) => {
-    e.preventDefault();
-    console.log(status)
-    const jobID = e.dataTransfer.getData('jobID');
-    console.log(jobID);
-    if (jobID) {
-      onUpdateJobStatus(jobID, status, userDetails);
-    }
-  };
+  // const handleDrop = (e: React.DragEvent, status: JobStatus) => {
+  //   e.preventDefault();
+  //   console.log(status)
+  //   const jobID = e.dataTransfer.getData('jobID');
+  //   console.log(jobID);
+  //   if (jobID) {
+  //     onUpdateJobStatus(jobID, status, userDetails);
+  //   }
+  // };
+
+
+  // Replace your current handleDrop with this:
+const handleDrop = (e: React.DragEvent, status: JobStatus) => {
+  e.preventDefault();
+  console.log(status);
+
+  // Be tolerant of either key
+  const jobID = e.dataTransfer.getData('jobID') || e.dataTransfer.getData('jobId');
+  console.log(jobID);
+
+  if (!jobID) return;
+
+  // Look up the job to know its current/source status
+  const job = userJobs?.find(j => j.jobID === jobID);
+
+  // If dragged OUT of 'saved' to anything EXCEPT 'deleted', open the JobModal
+  if (job && job.currentStatus === 'saved' && status !== 'deleted' && status !== 'saved') {
+    setSelectedJob(job);
+    setShowJobModal(true);   // <-- prompts user to upload optimized resume
+  }
+
+  // Preserve existing behavior: still update the status
+  onUpdateJobStatus(jobID, status, userDetails);
+};
 
   // Robust timestamp extractor for "en-IN" strings like "14/08/2025, 10:15:30 am"
   const tsFromUpdatedAt = (val: unknown): number => {
