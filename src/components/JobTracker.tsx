@@ -19,6 +19,10 @@ const JobTracker = () => {
   const { userJobs, setUserJobs, loading } = useUserJobs();
   const {userDetails, token, setData} = useContext(UserContext);
   const navigate = useNavigate();
+  // near other useState hooks
+const [pendingMove, setPendingMove] = useState<{ jobID: string; status: JobStatus } | null>(null);
+
+
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   const statusColumns: { status: JobStatus; label: string; color: string }[] = [
@@ -33,6 +37,10 @@ const JobTracker = () => {
   //    setUserJobs(userJobs);
   // },[ userJobs])
 
+
+  useEffect(() => {
+  if (!showJobModal) setPendingMove(null);
+}, [showJobModal]);
   const handleEditJob = async (jobData: Partial<Job>) => {
     if (!editingJob) return;
 
@@ -189,26 +197,26 @@ const handleDragStart = (e: React.DragEvent, job: Job) => {
   // Replace your current handleDrop with this:
 const handleDrop = (e: React.DragEvent, status: JobStatus) => {
   e.preventDefault();
-  console.log(status);
-
-  // Be tolerant of either key
   const jobID = e.dataTransfer.getData('jobID') || e.dataTransfer.getData('jobId');
-  console.log(jobID);
-
   if (!jobID) return;
 
-  // Look up the job to know its current/source status
-  const job = userJobs?.find(j => j.jobID === jobID);
+  const job = userJobs?.find((j) => j.jobID === jobID);
+  if (!job) return;
 
-  // If dragged OUT of 'saved' to anything EXCEPT 'deleted', open the JobModal
-  if (job && job.currentStatus === 'saved' && status !== 'deleted' && status !== 'saved') {
+  // Gate only when moving out of "saved" to a real status (not deleted/saved)
+  if (job.currentStatus === 'saved' && status !== 'deleted' && status !== 'saved') {
     setSelectedJob(job);
-    setShowJobModal(true);   // <-- prompts user to upload optimized resume
+    setPendingMove({ jobID, status });
+    setShowJobModal(true);        // ⬅️ open modal
+    return;                       // ⛔ do NOT move yet
   }
 
-  // Preserve existing behavior: still update the status
+  // Normal moves (non-gated)
   onUpdateJobStatus(jobID, status, userDetails);
 };
+
+
+
 
   // Robust timestamp extractor for "en-IN" strings like "14/08/2025, 10:15:30 am"
   const tsFromUpdatedAt = (val: unknown): number => {
@@ -352,7 +360,32 @@ const handleDrop = (e: React.DragEvent, status: JobStatus) => {
 
       </div>
       {showJobModal && <Suspense fallback={<LoadingScreen />}>
-        <JobModal setShowJobModal={setShowJobModal} showJobModal={showJobModal} jobDetails={selectedJob}  />
+        <JobModal
+      setShowJobModal={setShowJobModal}
+      showJobModal={showJobModal}
+      jobDetails={selectedJob}
+      initialSection={
+        pendingMove && selectedJob && pendingMove.jobID === selectedJob.jobID
+          ? "attachments"
+          : undefined
+      }
+      onAutoCheckDone={(exists) => {
+        // If local check says "resume exists", allow the move immediately
+        if (exists && pendingMove && selectedJob && pendingMove.jobID === selectedJob.jobID) {
+          onUpdateJobStatus(pendingMove.jobID, pendingMove.status, userDetails);
+          setPendingMove(null);
+          setShowJobModal(false);
+        }
+      }}
+      onResumeUploaded={() => {
+        // If the user uploads now, allow the move
+        if (pendingMove && selectedJob && pendingMove.jobID === selectedJob.jobID) {
+          onUpdateJobStatus(pendingMove.jobID, pendingMove.status, userDetails);
+          setPendingMove(null);
+          setShowJobModal(false);
+        }
+      }}
+    />
       </Suspense>}
       {/* Job Form Modal */}
       {(showJobForm || editingJob) && (

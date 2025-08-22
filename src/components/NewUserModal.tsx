@@ -1,6 +1,8 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useMemo, useState, useEffect } from "react";
 import { UserContext } from "../state_management/UserContext";
 import { CarTaxiFront } from "lucide-react";
+// NewUserModal.tsx
+import { useUserProfile , setProfileFromApi} from "../state_management/ProfileContext"; // ⬅️ adjust path if needed
 
 /** ---------- STEPS ---------- */
 const STEPS = [
@@ -8,6 +10,24 @@ const STEPS = [
   { key: "preferences", title: "Preferences & Experience", blurb: "Share your target roles, salary, and locations." },
   { key: "links", title: "Links, Documents & Consent", blurb: "Add URLs, upload documents, and confirm consent." },
 ] as const;
+
+type ModalSection =
+  | "personal"
+  | "education"
+  | "professional"
+  | "preferences"
+  | "links"
+  | "compliance";
+
+const sectionToStep: Record<ModalSection, number> = {
+  personal: 0,      // Personal & Education page
+  education: 0,     // (same step as personal)
+  professional: 1,  // Preferences & Experience page
+  preferences: 1,
+  links: 2,         // Links, Documents & Consent page
+  compliance: 2,
+};
+
 
 type FormData = {
   firstName: string;
@@ -38,6 +58,9 @@ type FormData = {
   resumeUrl?: string;
   confirmAccuracy: boolean;
   agreeTos: boolean;
+   expectedSalaryNarrative: string; // free text
+  ssnNumber: string;               // digits only (we'll keep 0–9)
+  availabilityNote: string;
 };
 
 const initialData: FormData = {
@@ -67,6 +90,9 @@ const initialData: FormData = {
   resumeUrl: "",
   confirmAccuracy: false,
   agreeTos: false,
+   expectedSalaryNarrative: '', // free text
+  ssnNumber: '',               // digits only (we'll keep 0–9)
+  availabilityNote: '',
 };
 
 const VISA_OPTIONS = ["CPT", "F1", "F1 OPT", "F1 STEM OPT", "H1B", "Green Card", "U.S. Citizen", "Other"];
@@ -232,13 +258,91 @@ function FileInput({
 }
 
 /** ---------- Main ---------- */
-export default function NewUserModal({ setUserProfileFormVisibility }: { setUserProfileFormVisibility: any }) {
-  const [stepIndex, setStepIndex] = useState(0);
+export default function NewUserModal({ setUserProfileFormVisibility, mode = 'create',startSection = 'personal' }: { setUserProfileFormVisibility: (v: boolean) => void;
+  mode?: "create" | "edit";
+  startSection?: "personal" | "education" | "professional" | "preferences" | "links" | "compliance";}) {
+const [stepIndex, setStepIndex] = useState<number>(() => sectionToStep[startSection] ?? 0);
+    // at the top of NewUserModal
+const EDIT_PASSCODE = import.meta.env.VITE_EDIT_PASSCODE || "2025"; // fallback for dev
+
+const [showPasscode, setShowPasscode] = useState(false);
+const [passcode, setPasscode] = useState("");
+const [passErr, setPassErr] = useState("");
+
   const [data, setData] = useState<FormData>({ ...initialData });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const isLast = stepIndex === STEPS.length - 1;
   const ctx = useContext(UserContext);
   const set = (patch: Partial<FormData>) => setData((d) => ({ ...d, ...patch }));
+  const { setProfileFromApi /* or setProfile if you prefer bypassing normalize */ } = useUserProfile();
+  // at top: import React, { useContext, useMemo, useState, useEffect } from "react";
+// ...
+const { userProfile: ctxProfile } = useUserProfile();
+
+function addrToString(addr: any): string {
+  if (!addr) return "";
+  if (typeof addr === "string") return addr;
+  const street   = addr.street ?? "";
+  const city     = addr.city ?? "";
+  const state    = addr.state ?? "";
+  const zip      = addr.zip ?? addr.zipCode ?? "";
+  // omit country in the single-line field, add if you want:
+  return [street, city, state, zip].filter(Boolean).join(", ");
+}
+const arrToLine = (v: any) =>
+  Array.isArray(v) ? v.join("; ") : (typeof v === "string" ? v : "");
+
+const toMonth = (v?: string) => (v ? v.slice(0, 7) : "");   // YYYY-MM
+const toDate  = (v?: string) => (v ? v.slice(0, 10) : "");  // YYYY-MM-DD
+
+useEffect(() => {
+  if (mode !== "edit") return;
+
+  // Prefer context; fall back to localStorage userAuth.userProfile
+  const ls = (() => {
+    try { return JSON.parse(localStorage.getItem("userAuth") || "{}"); }
+    catch { return {}; }
+  })();
+  const p: any = ctxProfile ?? ls?.userProfile;
+  if (!p) return;
+
+  setData((prev) => ({
+    ...prev,
+    // Step 0 — personal & education
+    firstName: p.firstName ?? "",
+    lastName: p.lastName ?? "",
+    contactNumber: p.contactNumber ?? "",
+    dob: toDate(p.dob),
+    bachelorsUniDegree: p.bachelorsUniDegree ?? "",
+    bachelorsGradMonthYear: toMonth(p.bachelorsGradMonthYear),
+    mastersUniDegree: p.mastersUniDegree ?? "",
+    mastersGradMonthYear: toMonth(p.mastersGradMonthYear),
+    visaStatus: p.visaStatus ?? "",
+    visaExpiry: toDate(p.visaExpiry),
+    address: addrToString(p.address),
+
+    // Step 1 — preferences & experience (form expects single lines)
+    preferredRoles: arrToLine(p.preferredRoles),
+    experienceLevel: p.experienceLevel ?? "",
+    expectedSalaryRange: p.expectedSalaryRange ?? "",
+    preferredLocations: arrToLine(p.preferredLocations),
+    targetCompanies: arrToLine(p.targetCompanies),
+    reasonForLeaving: p.reasonForLeaving ?? "",
+    expectedSalaryNarrative: p.expectedSalaryNarrative ?? "",
+    ssnNumber: p.ssnNumber ?? "",
+    availabilityNote: p.availabilityNote ?? "",
+
+    // Step 2 — links & docs
+    linkedinUrl: p.linkedinUrl ?? "",
+    githubUrl: p.githubUrl ?? "",
+    portfolioUrl: p.portfolioUrl ?? "",
+    coverLetterUrl: p.coverLetterUrl ?? "",
+    resumeUrl: p.resumeUrl ?? "",
+    confirmAccuracy: Boolean(p.confirmAccuracy),
+    agreeTos: Boolean(p.agreeTos),
+  }));
+}, [mode, ctxProfile]);
+
 
   const validateUrl = (v: string) => /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/.*)?$/i.test(v);
   const digitsOnly = (v: string) => v.replace(/\D/g, "");
@@ -287,16 +391,19 @@ export default function NewUserModal({ setUserProfileFormVisibility }: { setUser
   };
   const back = () => setStepIndex((i) => Math.max(i - 1, 0));
 
-  const handleSubmit = async () => {
-  // ...validation...
+  useEffect(() => {
+  setStepIndex(sectionToStep[startSection] ?? 0);
+}, [startSection]);
 
+
+  // replace your handleSubmit with this pair:
+const submitForm = async () => {
   try {
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
     const { coverLetterFile, resumeFile, ...payload } = data;
 
     const token = ctx?.token;
     const email = ctx?.userDetails?.email;
-    console.log(token, email)
     if (!token || !email) {
       throw new Error(JSON.stringify({ message: "Token or user details missing" }));
     }
@@ -305,16 +412,26 @@ export default function NewUserModal({ setUserProfileFormVisibility }: { setUser
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,          // ✅ send token in header
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ ...payload, email ,token, userDetails:ctx?.userDetails}), // ✅ flat body (no nested {payload})
+      body: JSON.stringify({ ...payload, email, token, userDetails: ctx?.userDetails }),
     });
 
-    const resJson = await res.json();              // ✅ await it
+    const resJson = await res.json();
+
+    // ✅ only persist when request is OK
     if (!res.ok) throw new Error(JSON.stringify(resJson));
 
-    // success UX
-    // toast(resJson.message);
+    // ✅ robustly pick the profile from common API shapes
+    const payloadFromApi =
+      resJson?.userProfile ??
+      resJson?.data?.userProfile ??
+      resJson?.data ??
+      resJson;
+
+    // ✅ this normalizes + persists to localStorage.userAuth.userProfile via context
+    setProfileFromApi(payloadFromApi);
+
     setUserProfileFormVisibility(false);
   } catch (err: any) {
     console.error(err);
@@ -322,6 +439,15 @@ export default function NewUserModal({ setUserProfileFormVisibility }: { setUser
     alert(msg || "Something went wrong while submitting. Please try again.");
   }
 };
+
+const handleSubmit = () => {
+  if (mode === "edit") {
+    const pin = window.prompt("Enter passcode to update profile:");
+    if (pin !== EDIT_PASSCODE) return alert("Incorrect passcode");
+  }
+  submitForm();
+};
+
 
 
   const page = useMemo(() => {
@@ -431,6 +557,38 @@ export default function NewUserModal({ setUserProfileFormVisibility }: { setUser
               </Select>
               <ErrorText>{errors.expectedSalaryRange}</ErrorText>
             </div>
+
+            <div>
+  <FieldLabel>Salary Note (optional)</FieldLabel>
+  <TextInput
+    placeholder="My expected salary range is $60,000–$76,000 annually, depending on overall compensation, benefits, and growth opportunities."
+    value={data.expectedSalaryNarrative}
+    onChange={(e) => set({ expectedSalaryNarrative: e.target.value })}
+  />
+  {/* no validation error; optional */}
+</div>
+
+<div>
+  <FieldLabel>SSN Number (optional)</FieldLabel>
+  <TextInput
+    inputMode="numeric"
+    maxLength={9}
+    placeholder="9 digits"
+    value={data.ssnNumber}
+    onChange={(e) => set({ ssnNumber: digitsOnly(e.target.value).slice(0, 9) })}
+  />
+  {/* Tip: consider masking/encrypting SSN on the server */}
+</div>
+
+<div className="sm:col-span-2">
+  <FieldLabel>Availability to Join (optional)</FieldLabel>
+  <TextInput
+    placeholder="I am available to join within two weeks of receiving an offer."
+    value={data.availabilityNote}
+    onChange={(e) => set({ availabilityNote: e.target.value })}
+  />
+</div>
+
 
             <div className="sm:col-span-2">
               <FieldLabel>Preferred Job Locations</FieldLabel>
@@ -550,6 +708,10 @@ export default function NewUserModal({ setUserProfileFormVisibility }: { setUser
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-4 py-3">
           <button
+            
+            disabled={
+    !JSON.parse(localStorage.getItem('userAuth') || '{}')?.userProfile?.email?.length
+  }
             onClick={() => setUserProfileFormVisibility(false)}
             className="inline-flex items-center rounded-xl px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
           >

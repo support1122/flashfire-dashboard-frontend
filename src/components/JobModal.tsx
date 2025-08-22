@@ -18,7 +18,7 @@ import LoadingScreen from "./LoadingScreen";
 import { getTimeAgo } from "../utils/getTimeAgo.ts";
 import { UserContext } from "../state_management/UserContext";
 import { useUserJobs } from "../state_management/UserJobs.tsx"; // ⬅️ NEW
-
+import { hasOptimizedResumeLocal } from "../utils/hasOptimizedResumeLocal.ts";
 const AttachmentsModal = lazy(() => import("./AttachmentsModal"));
 
 /* ---------- ENV ---------- */
@@ -128,14 +128,21 @@ type Sections = "details" | "link" | "description" | "attachments" | "timeline";
 export default function JobModal({
   setShowJobModal,
   jobDetails,
+  initialSection,            // ⬅️ NEW (optional)
+  onResumeUploaded, 
+  onAutoCheckDone,
 }: {
   setShowJobModal: (v: boolean) => void;
   jobDetails: any;
+  initialSection?: Sections;                         // ⬅️ NEW
+  onResumeUploaded?: (url?: string) => void; 
+  onAutoCheckDone?: (exists: boolean) => void;
 }) {
   const ctx = useContext(UserContext);
   const token = ctx?.token ?? null;
   const setData = ctx?.setData ?? null;
   const currentUser = ctx?.userDetails ?? {};
+  
 
   // NEW (paste-to-upload buffer)
   const [pastedImages, setPastedImages] = useState<File[]>([]);
@@ -147,7 +154,7 @@ export default function JobModal({
 
   const [attachmentsModalActiveStatus, setAttachmentsModalActiveStatus] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<Sections>("details");
+const [activeSection, setActiveSection] = useState<Sections>(initialSection ?? "details");
 
   // local image grid
   const [attachments, setAttachments] = useState<string[]>(() => jobDetails?.attachments || []);
@@ -162,33 +169,54 @@ export default function JobModal({
   const [recentDocUrl, setRecentDocUrl] = useState<string | null>(null);
 
   // --- helper: compute whether resume exists for this job (localStorage) ---
-  const computeHasResumeForJob = () => {
-    try {
-      const auth = JSON.parse(localStorage.getItem("userAuth") || "{}");
-
-      // Prefer array at userDetails (as you asked): userAuth.userDetails.filter(...)
-      let arr: any[] = Array.isArray(auth?.userDetails) ? auth.userDetails : [];
-
-      // fallback: sometimes resumes live at userDetails.optimizedResumes
-      if (!arr.length && Array.isArray(auth?.userDetails?.optimizedResumes)) {
-        arr = auth.userDetails.optimizedResumes;
-      }
-
-      const currentId = jobDetails?.jobID;
-      return Array.isArray(arr) && arr.some((item) => (item?.jobID ?? item?.jobId) === currentId);
-    } catch {
-      return false;
-    }
-  };
-
-  const [hasResumeForJob, setHasResumeForJob] = useState<boolean>(computeHasResumeForJob());
-
   useEffect(() => {
-    // Re-check if job changes or context changes
-    setHasResumeForJob(computeHasResumeForJob());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobDetails?.jobID, ctx?.userDetails]);
+  if (initialSection) setActiveSection(initialSection);
+}, [initialSection]);
+useEffect(() => {
+  // Only when opened due to a drag-move (attachments tab)
+  if (initialSection !== "attachments") return;
 
+  const exists = hasOptimizedResumeLocal(jobDetails?.jobID, jobDetails?.companyName);
+
+  // Update UI hint inside modal
+  setHasResumeForJob(exists);
+
+  // Tell the parent (JobTracker) the result so it can move or not
+  onAutoCheckDone?.(exists);
+
+  // If not exists, we just keep the modal open on attachments so user can upload
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [initialSection, jobDetails?.jobID, jobDetails?.companyName]);
+
+
+  // const computeHasResumeForJob = () => {
+  //   try {
+  //     const auth = JSON.parse(localStorage.getItem("userAuth") || "{}");
+
+  //     // Prefer array at userDetails (as you asked): userAuth.userDetails.filter(...)
+  //     let arr: any[] = Array.isArray(auth?.userDetails) ? auth.userDetails : [];
+
+  //     // fallback: sometimes resumes live at userDetails.optimizedResumes
+  //     if (!arr.length && Array.isArray(auth?.userDetails?.optimizedResumes)) {
+  //       arr = auth.userDetails.optimizedResumes;
+  //     }
+
+  //     const currentId = jobDetails?.jobID;
+  //     return Array.isArray(arr) && arr.some((item) => (item?.jobID ?? item?.jobId) === currentId);
+  //   } catch {
+  //     return false;
+  //   }
+  // };
+
+  const [hasResumeForJob, setHasResumeForJob] = useState<boolean>(() =>
+  hasOptimizedResumeLocal(jobDetails?.jobID, jobDetails?.companyName)
+);
+
+// Always keep it in sync when job or local user changes
+useEffect(() => {
+  setHasResumeForJob(hasOptimizedResumeLocal(jobDetails?.jobID, jobDetails?.companyName));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [jobDetails?.jobID, jobDetails?.companyName, ctx?.userDetails]);
   // NEW: capture images from Ctrl+V
   const handlePasteImages = (e: React.ClipboardEvent<HTMLDivElement>) => {
     setPasteError(null);
@@ -382,6 +410,7 @@ export default function JobModal({
 
       setRecentDocUrl(url);
       setHasResumeForJob(true); // 🔒 flip UI immediately
+      onResumeUploaded?.(url);        
       e.target.value = "";
     } catch (e: any) {
       setDocError(e.message || "Upload failed");
@@ -404,7 +433,19 @@ export default function JobModal({
         return (
           <div className="space-y-4">
             {/* Card 1: Company + Upload/Uploaded */}
-            <div className="bg-white rounded-lg flex justify-between border border-gray-200 p-4">
+<div className="bg-white rounded-lg border border-gray-200 p-4">
+  <div className="text-sm font-medium text-gray-600 mb-2">Company Name</div>
+  <div className="flex items-center gap-3">
+    <img
+      src={`https://www.google.com/s2/favicons?domain=${jobDetails.companyName}.com&sz=64`}
+      alt="Company Logo"
+      className="w-[40px] h-[40px]"
+    />
+    <p className="text-lg font-semibold text-gray-900">{jobDetails.companyName}</p>
+  </div>
+</div>
+
+            {/* <div className="bg-white rounded-lg flex justify-between border border-gray-200 p-4">
               <p className="text-lg flex flex-col justify-start items-center font-semibold text-gray-900">
                 <h4 className="text-sm font-medium text-gray-600 mb-6">Company Name</h4>
                 <img
@@ -463,7 +504,7 @@ export default function JobModal({
                   </>
                 )}
               </div>
-            </div>
+            </div> */}
 
             {/* Card 2: Added On */}
             <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -555,6 +596,57 @@ export default function JobModal({
               <div className="flex items-center justify-between mb-4">
                 <h4 className="text-lg font-semibold text-gray-900">Resume / Attachments</h4>
               </div>
+              {/* Attachments → Optimized Resume uploader (moved here)  */}
+<div className="mb-6 bg-white rounded-lg border border-blue-200 p-4">
+  <div className="flex items-center mb-3">
+    <UploadIcon className="w-4 h-4 text-blue-600 mr-2" />
+    <h4 className="text-sm font-semibold text-blue-700">
+      Add Optimized Resume (PDF/DOC/DOCX)
+    </h4>
+  </div>
+
+  {hasResumeForJob ? (
+    <div className="mt-1 flex items-center gap-2 text-sm text-green-700">
+      <Check className="w-4 h-4" />
+      <span>Resume already uploaded for this job</span>
+    </div>
+  ) : (
+    <>
+      {/* hidden input (reuses existing ref + handler) */}
+      <input
+        ref={docInputRef}
+        type="file"
+        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        onChange={handleDocFileChange}
+        className="hidden"
+      />
+
+      <button
+        onClick={handleChooseDoc}
+        disabled={isUploadingDoc}
+        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-50"
+      >
+        {isUploadingDoc ? (
+          <Loader2 className="animate-spin w-4 h-4" />
+        ) : (
+          <UploadIcon className="w-4 h-4" />
+        )}
+        {isUploadingDoc ? "Uploading..." : "Add Optimized Resume"}
+      </button>
+
+      {recentDocUrl && (
+        <div className="mt-3 flex items-center gap-2 text-sm text-green-700">
+          <Check className="w-4 h-4" />
+          <a href={recentDocUrl} target="_blank" rel="noreferrer" className="underline">
+            Document added — Open/Download
+          </a>
+        </div>
+      )}
+      {docError && <p className="mt-2 text-sm text-red-600">{docError}</p>}
+    </>
+  )}
+</div>
+
 
               {/* ---- Paste Images (Ctrl+V) ---- */}
               <div className="mb-6 rounded-lg border border-orange-200 p-4">

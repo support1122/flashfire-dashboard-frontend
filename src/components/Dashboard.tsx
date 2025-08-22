@@ -8,7 +8,7 @@ import LoadingScreen from './LoadingScreen.tsx';
 import { calculateDashboardStats } from '../utils/storage.ts';
 // import NewUserModal from './NewUserModal.tsx'
 
-const Dashboard: React.FC = () => {
+const Dashboard: React.FC = ({setUserProfileFormVisibility}) => {
   const context = useContext(UserContext);
   const navigate = useNavigate();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -49,6 +49,12 @@ const Dashboard: React.FC = () => {
     if (!token || !userDetails) {
       navigate('/login');
       return;
+    }
+     const raw = localStorage.getItem('userAuth');
+    
+    const auth = JSON.parse(raw);
+    if(auth.userProfile?.email?.length == 0 ||auth.userProfile == null ){
+      setUserProfileFormVisibility(true);
     }
     FetchAllJobs(token, userDetails);
   }, [token, userDetails]);

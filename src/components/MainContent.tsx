@@ -36,7 +36,7 @@ export default function MainContent() {
         </Suspense> 
         <main>
           {userProfileFormVisibility && <NewUserModal setUserProfileFormVisibility={setUserProfileFormVisibility} />}
-          {activeTab === 'dashboard' && <Suspense fallback={<LoadingScreen />}><Dashboard /></Suspense>}
+          {activeTab === 'dashboard' && <Suspense fallback={<LoadingScreen />}><Dashboard setUserProfileFormVisibility={setUserProfileFormVisibility}/></Suspense>}
           
           
           {activeTab === 'jobs' && (

@@ -3,6 +3,7 @@ import React, { useState, useContext, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle,TrendingUp, Users, Award, Clock, Cross, X } from "lucide-react";
 import { UserContext } from "../state_management/UserContext";
+import { useUserProfile } from "../state_management/ProfileContext";
 // import {userP}
 // import { GoogleLogin } from '@react-oauth/google';
 
@@ -10,7 +11,7 @@ interface LoginResponse {
   message: string;
   token?: string;
   userDetails?: any; 
-  // userProfile?:any;
+  userProfile?:any;
 }
 
 
@@ -25,7 +26,7 @@ export default function LoginPage({activeTab, onTabChange}: {activeTab: string, 
 
   const navigate = useNavigate();
   const { setData } = useContext(UserContext);
-
+  const { setProfileFromApi } = useUserProfile();
   const validate = () => {
     const errs: { email?: string; password?: string } = {};
     if (!email) errs.email = "Email is required";
@@ -94,7 +95,8 @@ const statsData = [
 
       if (data?.message === "Login Sucess..!") {
         setData({ userDetails: data?.userDetails, token: data?.token });
-        localStorage.setItem("userAuth", JSON.stringify({ token: data?.token, userDetails: data?.userDetails }));
+        setProfileFromApi(data.userProfile);
+        localStorage.setItem("userAuth", JSON.stringify({ token: data?.token, userDetails: data?.userDetails ,userProfile : data?.userProfile}));
         navigate('/'); // Switch to dashboard tab
       } else {
         setData({});

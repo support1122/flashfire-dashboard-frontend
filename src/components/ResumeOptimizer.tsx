@@ -61,9 +61,21 @@ export default function DocumentUpload() {
     }
   };
 
-  const writeAuth = (updatedUserAuth: any) => {
-    localStorage.setItem("userAuth", JSON.stringify(updatedUserAuth));
+  // Merge into existing userAuth: replace userDetails, keep/refresh token, preserve other keys
+const writeAuth = (serverUser: any, token?: string) => {
+  const existingRaw = localStorage.getItem("userAuth");
+  const existing = existingRaw ? JSON.parse(existingRaw) : {};
+  const finalToken = token || existing?.token || "";
+
+  const updated = {
+    ...existing,             // keep any other fields living in userAuth
+    userDetails: serverUser, // replace with latest server copy
+    token: finalToken,       // prefer provided token, else keep old
   };
+
+  localStorage.setItem("userAuth", JSON.stringify(updated));
+};
+
 
   const uploadToCloudinary = async (file: File) => {
     const isPdf = file.type === "application/pdf";
@@ -170,12 +182,12 @@ export default function DocumentUpload() {
         resumeLink: uploadedURL, // base resume (no metadata)
       };
 
-      const backendData = await persistToBackend(payload);
-      const serverUser = backendData.userDetails || parsed.userDetails;
+     const backendData = await persistToBackend(payload);
+const serverUser = backendData.userDetails || parsed.userDetails;
 
-      // Persist and hydrate from server
-      const updatedUserAuth = { ...parsed, userDetails: serverUser };
-      writeAuth(updatedUserAuth);
+// Persist and hydrate from server (merge style)
+writeAuth(serverUser, parsed.token);
+
 
       setBaseResume(serverUser.resumeLink || uploadedURL);
       setOptimizedList(Array.isArray(serverUser.optimizedResumes) ? serverUser.optimizedResumes : []);
@@ -224,10 +236,11 @@ export default function DocumentUpload() {
       }
 
       const backendData = await persistToBackend(payload);
-      const serverUser = backendData.userDetails || parsed.userDetails;
+const serverUser = backendData.userDetails || parsed.userDetails;
 
-      const updatedUserAuth = { ...parsed, userDetails: serverUser };
-      writeAuth(updatedUserAuth);
+// Persist and hydrate from server (merge style)
+writeAuth(serverUser, parsed.token);
+
 
       setBaseResume(serverUser.resumeLink || baseResume);
       setOptimizedList(Array.isArray(serverUser.optimizedResumes) ? serverUser.optimizedResumes : []);

@@ -61,7 +61,7 @@ const JobCard: React.FC<JobCardProps> = ({
           >
             <Edit3 className="w-4 h-4" />
           </button> */}
-          <button
+          {/* <button
             // disabled
             onClick={(e) => {
               e.stopPropagation();
@@ -71,7 +71,7 @@ const JobCard: React.FC<JobCardProps> = ({
             title="Delete"
           >
             <Trash2 className="w-4 h-4" />
-          </button>
+          </button> */}
         </div>
       </div>
     </div>

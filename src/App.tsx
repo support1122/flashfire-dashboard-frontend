@@ -9,6 +9,9 @@ import MainContent from './components/MainContent.tsx';
 
 import { UserJobsProvider } from './state_management/UserJobs.tsx';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { UserProfileProvider } from './state_management/ProfileContext.tsx';
+import ProfilePage from './components/Profile.tsx';
+import Navigation from './components/Navigation.tsx';
 
 function App() {
   useEffect(() => {
@@ -23,18 +26,29 @@ function App() {
       <Router>
         <Routes>
           {/* Public routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<UserProfileProvider><Login /></UserProfileProvider>} />
+          <Route path="/register" element={<UserProfileProvider><Register /></UserProfileProvider>} />
 
           {/* Routes that require UserJobsProvider */}
           <Route
             path="/"
             element={
               <UserJobsProvider>
-                <MainContent />
+                <UserProfileProvider>
+                  <MainContent />
+                </UserProfileProvider>                
               </UserJobsProvider>
             }
           />
+          <Route path='/profile' element={
+                                           <UserJobsProvider>
+                                            <UserProfileProvider>
+                                              {/* <Navigation /> */}
+                                              <ProfilePage />
+                                            </UserProfileProvider>                
+                                          </UserJobsProvider>
+                                          } />
+
         </Routes>
       </Router>
     </GoogleOAuthProvider>

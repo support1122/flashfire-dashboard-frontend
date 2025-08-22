@@ -80,7 +80,7 @@ const Register = () => {
 
     if (data?.message === 'User registered') {
       setData({ userDetails: data.userDetails, token: data.token });
-      localStorage.setItem("userAuth", JSON.stringify({ token: data.token, userDetails: data.userDetails }));
+      // localStorage.setItem("userAuth", JSON.stringify({ token: data.token, userDetails: data.userDetails }));
       setFormData({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' });
       setErrors({});  
       navigate('/');

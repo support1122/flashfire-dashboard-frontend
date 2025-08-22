@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useContext, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Home, Briefcase, FileText, User, LogOut, ChevronDown, Edit2Icon } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Home, Briefcase, FileText, User, LogOut, ChevronDown, Edit2Icon, User2Icon } from 'lucide-react';
 import { UserContext } from '../state_management/UserContext.tsx';
+import { useUserProfile } from "../state_management/ProfileContext";
 
 interface NavigationProps {
   activeTab: string;
@@ -24,6 +25,8 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
   const [user, setUser] = useState(userDetails?.name || '');
   const [profileDropDown, setProfileDropDown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { userProfile } = useUserProfile();
+  const hasProfile = !!userProfile?.email;
 
   const tabs: TabItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
@@ -126,16 +129,17 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
                     <div className="absolute -top-2 right-8 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
                     
                     {/* User Header */}
+                    <Link to="/profile" target="_blank" rel="noopener noreferrer">
                     <div className="flex items-center space-x-4 pb-6 border-b border-gray-100">
                       <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg">
                         <User className="w-7 h-7 text-white" />
                       </div>
                       <div className="flex-1">
                         <p className="text-lg font-bold text-gray-900">{user}</p>
-                        <p className="text-sm text-gray-500">Account Details</p>
+                        <p className="text-sm text-gray-500 underline">View Profile</p>
                       </div>
                     </div>
-                    
+                    </Link>
                     {/* User Details */}
                     <div className="py-6 space-y-4">
                       <div>
@@ -147,12 +151,16 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
                         </p>
                       </div>
                        {/* <div className='flex justify-between'> */}
-                        <div className='w-fit'onClick={()=>setUserProfileFormVisibility(true)}>
-                      
-                        <div className="hover:cursor-pointer inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-200 text-amber-700 border-2 border-amber-200">
-                          <Edit2Icon className='h-3 w-3 m-2' /> Edit/ Setup Profile
-                        </div>
-                      </div>
+                       {!hasProfile && (
+  <div className="w-fit" onClick={() => setUserProfileFormVisibility(true)}>
+    <div className="hover:cursor-pointer inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-200 text-amber-700 border-2 border-amber-200">
+      <Edit2Icon className="h-3 w-3 m-2" /> Edit/ Setup Profile
+    </div>
+  </div>
+)}
+                      {/* <Link to="/profile" target="_blank" rel="noopener noreferrer">
+  <h1><User2Icon /></h1>
+</Link> */}
                      
                       <div>
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
