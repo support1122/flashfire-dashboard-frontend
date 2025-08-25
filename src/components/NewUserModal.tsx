@@ -360,7 +360,8 @@ const toDate  = (v?: string) => (v ? v.slice(0, 10) : "");  // YYYY-MM-DD
 
 const handleSuccessClose = () => {
   setShowSuccessPopup(false);
-  onProfileComplete?.();
+  setUserProfileFormVisibility(false); // Close the modal
+  onProfileComplete?.(); // Call the callback if provided
 };
 
 useEffect(() => {

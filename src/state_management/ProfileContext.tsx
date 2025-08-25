@@ -199,9 +199,9 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       'mastersUniDegree', 'mastersGradMonthYear',
       'visaStatus', 'address',
       'preferredRoles', 'experienceLevel', 'expectedSalaryRange',
-      'preferredLocations', 'targetCompanies', 'reasonForLeaving',
-      'linkedinUrl', 'githubUrl', 'portfolioUrl'
-      // Note: coverLetterUrl and resumeUrl are optional
+      'preferredLocations', 'targetCompanies',
+      'linkedinUrl'
+      // Note: reasonForLeaving, githubUrl, portfolioUrl, coverLetterUrl and resumeUrl are optional
     ];
 
     return requiredFields.every(field => {
