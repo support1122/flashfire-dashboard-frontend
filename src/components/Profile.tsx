@@ -107,31 +107,38 @@ function FileUploadRow({
 }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const ctx = useContext(UserContext);
 
-  const uploadToCloudinary = async (file: File): Promise<string> => {
-    const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-    const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_CLOUD_PRESET_PDF || import.meta.env.VITE_CLOUDINARY_CLOUD_PRESET;
+  const uploadFileToBackend = async (file: File): Promise<string> => {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
+    const token = ctx?.token;
+    const email = ctx?.userDetails?.email;
 
-    if (!CLOUD_NAME || !UPLOAD_PRESET) {
-      throw new Error("Cloudinary configuration missing");
+    if (!token || !email) {
+      throw new Error("Authentication required");
     }
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", UPLOAD_PRESET);
-    formData.append("folder", "flashfire-profiles");
+    formData.append("email", email);
+    formData.append("token", token);
+    formData.append("userDetails", JSON.stringify(ctx?.userDetails));
 
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, {
+    const response = await fetch(`${API_BASE_URL}/upload-profile-file`, {
       method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
       body: formData,
     });
 
     if (!response.ok) {
-      throw new Error("Upload failed");
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Upload failed");
     }
 
     const data = await response.json();
-    return data.secure_url;
+    return data.secure_url || data.url;
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,7 +149,7 @@ function FileUploadRow({
     setUploadError(null);
 
     try {
-      const uploadedUrl = await uploadToCloudinary(file);
+      const uploadedUrl = await uploadFileToBackend(file);
       onFileChange(uploadedUrl);
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Upload failed");
