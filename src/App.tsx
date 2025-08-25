@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
@@ -12,6 +12,29 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { UserProfileProvider } from './state_management/ProfileContext.tsx';
 import ProfilePage from './components/Profile.tsx';
 import Navigation from './components/Navigation.tsx';
+import NewUserModal from './components/NewUserModal.tsx';
+
+// Component to handle Profile page with proper navigation
+function ProfileWithNavigation() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navigation 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+        setUserProfileFormVisibility={setUserProfileFormVisibility} 
+      />
+      <ProfilePage />
+      {userProfileFormVisibility && (
+        <NewUserModal 
+          setUserProfileFormVisibility={setUserProfileFormVisibility} 
+        />
+      )}
+    </div>
+  );
+}
 
 function App() {
   useEffect(() => {
@@ -43,8 +66,7 @@ function App() {
           <Route path='/profile' element={
                                            <UserJobsProvider>
                                             <UserProfileProvider>
-                                              {/* <Navigation /> */}
-                                              <ProfilePage />
+                                              <ProfileWithNavigation />
                                             </UserProfileProvider>                
                                           </UserJobsProvider>
                                           } />
