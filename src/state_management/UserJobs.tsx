@@ -32,22 +32,23 @@ export const UserJobsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const fetchJobs = async () => {
     setLoading(true);
-    // const VITE_API_BASE_URL=import.meta.env.VITE_API_BASE_URL;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/alljobs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, userDetails })
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/getalljobs`, {
+        method: 'GET',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
       });
       const data = await res.json();
-      console.log(data)
+      console.log('Fetched jobs:', data);
       if(data?.message =='Token or user details missing' || data?.message == 'Token or user details missing' || data?.message == 'Invalid token or expired') {
         navigate('/login');
         return;
       }
       setUserJobs(data?.allJobs || []);
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching jobs:', err);
     } finally {
       setLoading(false);
     }

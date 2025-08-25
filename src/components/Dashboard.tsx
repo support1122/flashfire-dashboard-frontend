@@ -29,10 +29,12 @@ const Dashboard: React.FC = ({setUserProfileFormVisibility}) => {
   async function FetchAllJobs(localToken, localUserDetails) {
     try {
       setLoadingDetails(true);
-      const res = await fetch(`${API_BASE_URL}/api/alljobs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: localToken, userDetails: localUserDetails }),
+      const res = await fetch(`${API_BASE_URL}/getalljobs`, {
+        method: 'GET',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localToken}`
+        }
       });
       const data = await res.json();
       if (res.ok) {
