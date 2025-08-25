@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useContext } from "react";
-import { Pencil, Link as LinkIcon, FileText, CreditCard, GraduationCap, Building2, Save, X, ArrowLeft, Upload } from "lucide-react";
+import { Link as LinkIcon, FileText, CreditCard, GraduationCap, Building2, ArrowLeft } from "lucide-react";
 import { useUserProfile, UserProfile } from "../state_management/ProfileContext";
 import { UserContext } from "../state_management/UserContext";
 import { Link } from "react-router-dom";
@@ -40,8 +40,8 @@ function InfoRow({
   onValueChange?: (value: string) => void;
 }) {
   return (
-    <div className="flex items-center py-2">
-      <div className="w-1/3 text-sm text-gray-700 font-medium">{title}</div>
+    <div className="flex items-center py-4 border-b border-gray-100 last:border-b-0">
+      <div className="w-1/3 text-sm font-semibold text-gray-700">{title}</div>
       <div className="w-2/3">
         {isEditing ? (
           <input
@@ -61,173 +61,36 @@ function InfoRow({
   );
 }
 
-function TextAreaRow({ 
-  title, 
-  value, 
-  isEditing = false, 
-  onValueChange = () => {} 
-}: { 
-  title: string; 
-  value?: string;
-  isEditing?: boolean;
-  onValueChange?: (value: string) => void;
-}) {
-  return (
-    <div className="flex items-start py-2">
-      <div className="w-1/3 text-sm text-gray-700 font-medium pt-2">{title}</div>
-      <div className="w-2/3">
-        {isEditing ? (
-          <textarea
-            value={value || ""}
-            onChange={(e) => onValueChange(e.target.value)}
-            className="w-full text-sm border border-gray-300 px-2 py-1 focus:border-blue-500 focus:outline-none"
-            rows={3}
-            placeholder={`Enter ${title.toLowerCase()}`}
-          />
-        ) : (
-          <div className="text-sm text-gray-900 min-h-[60px]">
-            {value ? value : <Placeholder />}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function FileUploadRow({ 
   title, 
-  currentFile, 
-  isEditing = false, 
-  onFileChange = () => {} 
+  currentFile
 }: { 
   title: string; 
   currentFile?: string;
-  isEditing?: boolean;
-  onFileChange?: (file: string) => void;
 }) {
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-
-  const uploadToCloudinary = async (file: File): Promise<string> => {
-    const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-    const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_CLOUD_PRESET_PDF || import.meta.env.VITE_CLOUDINARY_CLOUD_PRESET;
-
-    if (!CLOUD_NAME || !UPLOAD_PRESET) {
-      throw new Error("Cloudinary configuration missing");
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", UPLOAD_PRESET);
-    formData.append("folder", "flashfire-profiles");
-
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error("Upload failed");
-    }
-
-    const data = await response.json();
-    return data.secure_url;
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    setUploadError(null);
-
-    try {
-      const uploadedUrl = await uploadToCloudinary(file);
-      onFileChange(uploadedUrl);
-    } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "Upload failed");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   return (
-    <div className="flex items-start py-2">
-      <div className="w-1/3 text-sm text-gray-700 font-medium pt-2">{title}</div>
+    <div className="flex items-start py-4 border-b border-gray-100 last:border-b-0">
+      <div className="w-1/3 text-sm font-semibold text-gray-700 pt-2">{title}</div>
       <div className="w-2/3">
-        {isEditing ? (
-          <div className="space-y-2">
-            {currentFile && (
-              <a className="text-blue-600 underline text-sm inline-block" href={currentFile} target="_blank" rel="noreferrer">
-                View Current File
-              </a>
-            )}
-            <div className="relative">
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx"
-                onChange={handleFileChange}
-                disabled={isUploading}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer disabled:opacity-50"
-              />
-              {isUploading && (
-                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
-                  <div className="text-sm text-gray-600">Uploading...</div>
-                </div>
-              )}
-            </div>
-            {uploadError && (
-              <div className="text-red-600 text-sm">{uploadError}</div>
-            )}
-          </div>
+        {currentFile ? (
+          <a className="text-blue-600 underline text-sm" href={currentFile} target="_blank" rel="noreferrer">
+            View File
+          </a>
         ) : (
-          <div>
-            {currentFile ? (
-              <a className="text-blue-600 underline text-sm" href={currentFile} target="_blank" rel="noreferrer">
-                View File
-              </a>
-            ) : (
-              <span className="text-gray-400 italic text-sm">No file uploaded</span>
-            )}
-          </div>
+          <span className="text-gray-400 italic text-sm">No file uploaded</span>
         )}
       </div>
     </div>
   );
 }
 
-function Card({ children, title, onEdit, isEditing, onSave, onCancel }: CardProps) {
+function Card({ children, title }: CardProps) {
   return (
-    <div className="bg-white p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-bold text-gray-900">{title}</h3>
-        {isEditing ? (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onSave}
-              className="inline-flex items-center gap-2 bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
-            >
-              <Save size={16} /> Save Changes
-            </button>
-            <button
-              onClick={onCancel}
-              className="inline-flex items-center gap-2 border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              <X size={16} /> Cancel
-            </button>
-          </div>
-        ) : (
-          onEdit && (
-            <button
-              onClick={onEdit}
-              className="inline-flex items-center gap-2 bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-            >
-              <Pencil size={16} /> Edit
-            </button>
-          )
-        )}
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+      <div className="mb-8">
+        <h3 className="text-xl font-bold text-gray-900">{title}</h3>
       </div>
-      <div className="space-y-1">
+      <div className="space-y-6">
         {children}
       </div>
     </div>
@@ -244,64 +107,14 @@ export default function ProfilePage({
 }: {
   onEdit?: (sectionKey?: SectionKey) => void;
 }) {
-  const { userProfile, updateProfile } = useUserProfile();
+  const { userProfile } = useUserProfile();
   const [active, setActive] = useState<SectionKey>("personal");
-  const [editingSection, setEditingSection] = useState<SectionKey | null>(null);
-  const [editData, setEditData] = useState<Partial<UserProfile>>({});
   const ctx = useContext(UserContext);
 
   const data = userProfile ?? ({} as UserProfile);
 
-  const handleEditClick = (section: SectionKey) => {
-    setEditingSection(section);
-    setEditData(data);
-  };
-
   const handleSectionChange = (section: SectionKey) => {
-    if (editingSection !== null) {
-      alert("Please save or cancel your changes before switching sections.");
-      return;
-    }
     setActive(section);
-  };
-
-  const handleSave = async () => {
-    try {
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
-      const token = ctx?.token;
-      const email = ctx?.userDetails?.email;
-
-      if (!token || !email) {
-        throw new Error("Token or user details missing");
-      }
-
-      const res = await fetch(`${API_BASE_URL}/setprofile`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ ...editData, email, token, userDetails: ctx?.userDetails }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update profile");
-      }
-
-      const resJson = await res.json();
-      updateProfile(editData);
-      setEditingSection(null);
-      setEditData({});
-    } catch (error: any) {
-      console.error("Profile update error:", error);
-      alert(error.message || "Failed to update profile");
-    }
-  };
-
-  const handleCancel = () => {
-    setEditingSection(null);
-    setEditData({});
   };
 
   const fullName = useMemo(() => {
@@ -350,24 +163,24 @@ export default function ProfilePage({
       </div>
 
       {/* Layout */}
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[300px,1fr] gap-8">
+      <div className="mx-auto max-w-7xl px-6 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px,1fr] gap-12">
           {/* Sidebar */}
           <aside className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-fit">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Profile Sections</h2>
-            <div className="space-y-2">
+            <h2 className="text-lg font-semibold text-gray-900 mb-6">Profile Sections</h2>
+            <div className="space-y-3">
               {SECTIONS.map(({ key, label, icon: Icon }) => {
                 const isActive = key === active;
                 return (
                   <button
                     key={key}
                     onClick={() => handleSectionChange(key)}
-                    disabled={editingSection !== null}
+                    disabled={false} // Removed editingSection !== null
                     className={[
                       "flex w-full items-center gap-4 rounded-lg px-4 py-3 text-left text-sm font-medium transition-all duration-200",
                       isActive
                         ? "bg-blue-600 text-white shadow-sm"
-                        : editingSection !== null
+                        : false // Removed editingSection !== null
                         ? "text-gray-400 cursor-not-allowed"
                         : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
                     ].join(" ")}
@@ -381,156 +194,94 @@ export default function ProfilePage({
           </aside>
 
           {/* Main content */}
-          <main className="space-y-6">
+          <main className="space-y-8">
             {emptyState && (
-              <Card title="No Profile Found" onEdit={onEdit ? () => onEdit(active) : undefined}>
+              <Card title="No Profile Found">
                 <p className="text-sm text-gray-600">We couldn't find your profile yet. Please complete your details using the form to populate this page.</p>
               </Card>
             )}
 
             {!emptyState && active === "personal" && (
-              <Card 
-                title="Personal Details" 
-                onEdit={() => handleEditClick("personal")}
-                isEditing={editingSection === "personal"}
-                onSave={handleSave}
-                onCancel={handleCancel}
-              >
+              <Card title="Personal Details">
                 <InfoRow 
                   title="First Name" 
-                  value={editingSection === "personal" ? editData.firstName : data.firstName}
-                  isEditing={editingSection === "personal"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, firstName: value }))}
+                  value={data.firstName}
                 />
                 <InfoRow 
                   title="Last Name" 
-                  value={editingSection === "personal" ? editData.lastName : data.lastName}
-                  isEditing={editingSection === "personal"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, lastName: value }))}
+                  value={data.lastName}
                 />
                 <InfoRow 
                   title="Contact Number" 
-                  value={editingSection === "personal" ? editData.contactNumber : data.contactNumber}
-                  isEditing={editingSection === "personal"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, contactNumber: value }))}
+                  value={data.contactNumber}
                 />
                 <InfoRow 
-                  title="Date of Birth" 
-                  value={editingSection === "personal" ? editData.dob : data.dob}
-                  isEditing={editingSection === "personal"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, dob: value }))}
+                  title="Date of Birth"
+                  value={data.dob ? new Date(data.dob).toLocaleDateString() : undefined}
                 />
-                <TextAreaRow 
+                <InfoRow 
                   title="Address" 
-                  value={editingSection === "personal" ? editData.address : data.address}
-                  isEditing={editingSection === "personal"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, address: value }))}
+                  value={data.address}
                 />
                 <InfoRow 
                   title="Visa Status" 
-                  value={editingSection === "personal" ? editData.visaStatus : data.visaStatus}
-                  isEditing={editingSection === "personal"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, visaStatus: value }))}
-                />
-                <InfoRow 
-                  title="Visa Expiry" 
-                  value={editingSection === "personal" ? editData.visaExpiry : data.visaExpiry}
-                  isEditing={editingSection === "personal"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, visaExpiry: value }))}
+                  value={data.visaStatus}
                 />
               </Card>
             )}
 
             {!emptyState && active === "education" && (
-              <Card 
-                title="Education" 
-                onEdit={() => handleEditClick("education")}
-                isEditing={editingSection === "education"}
-                onSave={handleSave}
-                onCancel={handleCancel}
-              >
+              <Card title="Education">
                 <InfoRow 
                   title="Bachelor's (University • Degree • Duration)" 
-                  value={editingSection === "education" ? editData.bachelorsUniDegree : data.bachelorsUniDegree}
-                  isEditing={editingSection === "education"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, bachelorsUniDegree: value }))}
+                  value={data.bachelorsUniDegree}
                 />
                 <InfoRow 
                   title="Bachelor's Grad (MM-YYYY)" 
-                  value={editingSection === "education" ? editData.bachelorsGradMonthYear : data.bachelorsGradMonthYear}
-                  isEditing={editingSection === "education"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, bachelorsGradMonthYear: value }))}
+                  value={data.bachelorsGradMonthYear ? new Date(data.bachelorsGradMonthYear).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit' }) : undefined}
                 />
                 <InfoRow 
                   title="Master's (University • Degree • Duration)" 
-                  value={editingSection === "education" ? editData.mastersUniDegree : data.mastersUniDegree}
-                  isEditing={editingSection === "education"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, mastersUniDegree: value }))}
+                  value={data.mastersUniDegree}
                 />
                 <InfoRow 
                   title="Master's Grad (MM-YYYY)" 
-                  value={editingSection === "education" ? editData.mastersGradMonthYear : data.mastersGradMonthYear}
-                  isEditing={editingSection === "education"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, mastersGradMonthYear: value }))}
+                  value={data.mastersGradMonthYear ? new Date(data.mastersGradMonthYear).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit' }) : undefined}
                 />
               </Card>
             )}
 
             {!emptyState && active === "professional" && (
-              <Card 
-                title="Professional" 
-                onEdit={() => handleEditClick("professional")}
-                isEditing={editingSection === "professional"}
-                onSave={handleSave}
-                onCancel={handleCancel}
-              >
+              <Card title="Professional">
                 <InfoRow 
                   title="Preferred Roles" 
-                  value={editingSection === "professional" ? joinArr(editData.preferredRoles) : joinArr(data.preferredRoles)}
-                  isEditing={editingSection === "professional"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, preferredRoles: value.split(',').map(s => s.trim()) }))}
+                  value={joinArr(data.preferredRoles)}
                 />
                 <InfoRow 
                   title="Experience Level" 
-                  value={editingSection === "professional" ? editData.experienceLevel : data.experienceLevel}
-                  isEditing={editingSection === "professional"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, experienceLevel: value }))}
+                  value={data.experienceLevel}
                 />
                 <InfoRow 
                   title="Expected Base Salary" 
-                  value={editingSection === "professional" ? editData.expectedSalaryRange : data.expectedSalaryRange}
-                  isEditing={editingSection === "professional"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, expectedSalaryRange: value }))}
+                  value={data.expectedSalaryRange}
                 />
                 <InfoRow 
                   title="Preferred Locations" 
-                  value={editingSection === "professional" ? joinArr(editData.preferredLocations) : joinArr(data.preferredLocations)}
-                  isEditing={editingSection === "professional"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, preferredLocations: value.split(',').map(s => s.trim()) }))}
+                  value={joinArr(data.preferredLocations)}
                 />
                 <InfoRow 
                   title="Target Companies" 
-                  value={editingSection === "professional" ? joinArr(editData.targetCompanies) : joinArr(data.targetCompanies)}
-                  isEditing={editingSection === "professional"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, targetCompanies: value.split(',').map(s => s.trim()) }))}
+                  value={joinArr(data.targetCompanies)}
                 />
-                <TextAreaRow 
+                <InfoRow 
                   title="Reason for Leaving" 
-                  value={editingSection === "professional" ? editData.reasonForLeaving : data.reasonForLeaving}
-                  isEditing={editingSection === "professional"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, reasonForLeaving: value }))}
+                  value={data.reasonForLeaving}
                 />
               </Card>
             )}
 
             {!emptyState && active === "preferences" && (
-              <Card 
-                title="Preferences" 
-                onEdit={() => handleEditClick("preferences")}
-                isEditing={editingSection === "preferences"}
-                onSave={handleSave}
-                onCancel={handleCancel}
-              >
+              <Card title="Preferences">
                 <div className="text-sm text-gray-600">
                   <p>Use this section for any future preference fields you want to surface on the profile page.</p>
                 </div>
@@ -538,83 +289,67 @@ export default function ProfilePage({
             )}
 
             {!emptyState && active === "links" && (
-              <Card 
-                title="Links & Documents" 
-                onEdit={() => handleEditClick("links")}
-                isEditing={editingSection === "links"}
-                onSave={handleSave}
-                onCancel={handleCancel}
-              >
+              <Card title="Links & Documents">
                 <InfoRow
                   title="LinkedIn"
-                  value={editingSection === "links" ? editData.linkedinUrl : (data.linkedinUrl ? (
+                  value={data.linkedinUrl ? (
                     <a className="text-blue-600 underline" href={data.linkedinUrl} target="_blank" rel="noreferrer">
                       {data.linkedinUrl}
                     </a>
-                  ) : undefined)}
-                  isEditing={editingSection === "links"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, linkedinUrl: value }))}
+                  ) : undefined}
                 />
                 <InfoRow
                   title="GitHub"
-                  value={editingSection === "links" ? editData.githubUrl : (data.githubUrl ? (
+                  value={data.githubUrl ? (
                     <a className="text-blue-600 underline" href={data.githubUrl} target="_blank" rel="noreferrer">
                       {data.githubUrl}
                     </a>
-                  ) : undefined)}
-                  isEditing={editingSection === "links"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, githubUrl: value }))}
+                  ) : undefined}
                 />
                 <InfoRow
                   title="Portfolio"
-                  value={editingSection === "links" ? editData.portfolioUrl : (data.portfolioUrl ? (
+                  value={data.portfolioUrl ? (
                     <a className="text-blue-600 underline" href={data.portfolioUrl} target="_blank" rel="noreferrer">
                       {data.portfolioUrl}
                     </a>
-                  ) : undefined)}
-                  isEditing={editingSection === "links"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, portfolioUrl: value }))}
+                  ) : undefined}
                 />
                 <FileUploadRow
                   title="Resume"
                   currentFile={data.resumeUrl}
-                  isEditing={editingSection === "links"}
-                  onFileChange={(file) => setEditData(prev => ({ ...prev, resumeUrl: file }))}
                 />
                 <FileUploadRow
                   title="Cover Letter"
                   currentFile={data.coverLetterUrl}
-                  isEditing={editingSection === "links"}
-                  onFileChange={(file) => setEditData(prev => ({ ...prev, coverLetterUrl: file }))}
                 />
                 <FileUploadRow
                   title="Portfolio File"
                   currentFile={data.portfolioFileUrl}
-                  isEditing={editingSection === "links"}
-                  onFileChange={(file) => setEditData(prev => ({ ...prev, portfolioFileUrl: file }))}
                 />
               </Card>
             )}
 
             {!emptyState && active === "compliance" && (
-              <Card 
-                title="Compliance" 
-                onEdit={() => handleEditClick("compliance")}
-                isEditing={editingSection === "compliance"}
-                onSave={handleSave}
-                onCancel={handleCancel}
-              >
+              <Card title="Compliance">
                 <InfoRow 
-                  title="Confirmed Accuracy" 
-                  value={editingSection === "compliance" ? (editData.confirmAccuracy ? "Yes" : "No") : (data.confirmAccuracy ? "Yes" : "No")}
-                  isEditing={editingSection === "compliance"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, confirmAccuracy: value === "Yes" }))}
+                  title="SSN Number" 
+                  value={data.ssnNumber}
                 />
                 <InfoRow 
-                  title="Agreed ToS" 
-                  value={editingSection === "compliance" ? (editData.agreeTos ? "Yes" : "No") : (data.agreeTos ? "Yes" : "No")}
-                  isEditing={editingSection === "compliance"}
-                  onValueChange={(value) => setEditData(prev => ({ ...prev, agreeTos: value === "Yes" }))}
+                  title="Expected Salary Narrative" 
+                  value={data.expectedSalaryNarrative}
+                />
+                <InfoRow 
+                  title="Availability Note" 
+                  value={data.availabilityNote}
+                />
+                <InfoRow 
+                  title="Confirm Accuracy" 
+                  value={data.confirmAccuracy ? "Yes" : "No"}
+                />
+                <InfoRow 
+                  title="Agree to Terms" 
+                  value={data.agreeTos ? "Yes" : "No"}
                 />
               </Card>
             )}
