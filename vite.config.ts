@@ -27,6 +27,12 @@ export default defineConfig(({ command, mode }) => {
         },
       },
       chunkSizeWarningLimit: 1000,
+      terserOptions: {
+        compress: {
+          drop_console: isProduction,
+          drop_debugger: isProduction,
+        },
+      },
     },
     server: {
       port: 3000,
