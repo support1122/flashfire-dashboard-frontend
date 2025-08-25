@@ -75,7 +75,9 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { userDetails, token } = useContext(UserContext);
+  const context = useContext(UserContext);
+  const userDetails = context?.userDetails;
+  const token = context?.token;
   const navigate = useNavigate();
   const [isEditMode, setIsEditMode] = useState(false);
   const [images, setImages] = useState<File[]>([]);
@@ -225,9 +227,12 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
           return;
         }
 
-        // 3) If ok (or other non-403), proceed to upload images and persist attachments in background
-        //    Whether the form has already closed or not, this runs quietly.
-        if (ok) {
+        // 3) If ok, sync with server response and proceed to upload images
+        if (ok && body?.NewJobList) {
+          // Update local state with server response
+          setUserJobs(body.NewJobList);
+          
+          // Proceed to upload images and persist attachments in background
           (async () => {
             try {
               const uploadedUrls = await uploadImagesToCloudinary();
@@ -239,14 +244,19 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
                   urls: uploadedUrls,
                 });
               }
-              // Optional: fetch final list from server if your POST returns NewJobList
-              // If your POST body has NewJobList, you could sync here instead.
             } catch (err) {
               console.error("[background attachments persist] failed:", err);
             } finally {
               previews.forEach((u) => URL.revokeObjectURL(u));
             }
           })();
+        } else {
+          // If backend request failed, revert the optimistic update
+          console.error("Backend request failed:", body);
+          setUserJobs((prev) => prev.filter(job => job.jobID !== optimisticId));
+          clearTimeout(closeTimer);
+          setIsSubmitting(false);
+          setError("Failed to save job. Please try again.");
         }
       } catch (err) {
         // Network or unexpected error: if the form hasn't closed yet, let the gate close it.
