@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
-/** PUT /api/jobs  (action: "edit") */
+/** PUT /updatechanges  (action: "edit") */
 async function persistAttachmentsToJobPUT({
   jobID,
   userDetails,
@@ -18,7 +18,7 @@ async function persistAttachmentsToJobPUT({
   token?: string | null;
   urls: string[];
 }) {
-  const res = await fetch(`${API_BASE_URL}/api/jobs`, {
+  const res = await fetch(`${API_BASE_URL}/updatechanges`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -46,7 +46,7 @@ async function createJobPOSTQuick({
   userDetails: any;
   token?: string | null;
 }) {
-  const res = await fetch(`${API_BASE_URL}/api/jobs`, {
+  const res = await fetch(`${API_BASE_URL}/addjob`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ jobDetails, userDetails, token }),

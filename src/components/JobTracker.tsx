@@ -51,7 +51,7 @@ const [pendingMove, setPendingMove] = useState<{ jobID: string; status: JobStatu
         userID: userDetails?.email,
       };
 
-      const response = await fetch(`${API_BASE_URL}/api/jobs`, { //${API_BASE_URL}
+      const response = await fetch(`${API_BASE_URL}/updatechanges`, { //${API_BASE_URL}
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -92,7 +92,7 @@ const [pendingMove, setPendingMove] = useState<{ jobID: string; status: JobStatu
         userID: userDetails.email, // Include user details
       };
 
-      const saveJobsToDb = await fetch(`${API_BASE_URL}/api/jobs`, { //${API_BASE_URL}
+      const saveJobsToDb = await fetch(`${API_BASE_URL}/addjob`, { //${API_BASE_URL}
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -143,7 +143,7 @@ const handleDragStart = (e: React.DragEvent, job: Job) => {
       if(Code !== import.meta.env.VITE_JOB_DELETION_CODE)
         return;
       else{
-          const response = await fetch(`${API_BASE_URL}/api/jobs`, { //${API_BASE_URL}
+          const response = await fetch(`${API_BASE_URL}/updatechanges`, { //${API_BASE_URL}
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -164,7 +164,7 @@ const handleDragStart = (e: React.DragEvent, job: Job) => {
 
   const onUpdateJobStatus = async (jobID, status, userDetails)=> {
     try {
-      let reqToServer = await fetch(`${API_BASE_URL}/api/jobs`, {  //${API_BASE_URL}
+      let reqToServer = await fetch(`${API_BASE_URL}/updatechanges`, {  //${API_BASE_URL}
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -33,7 +33,7 @@ const DOC_UPLOAD_PRESET =
   IMG_UPLOAD_PRESET;
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
-const JOB_UPDATE_ENDPOINT = `${API_BASE}/api/jobs`;
+const JOB_UPDATE_ENDPOINT = `${API_BASE}/updatechanges`;
 const PLAN_ENDPOINT = `${API_BASE}/api/plans/select`;
 
 /* ---------- Cloudinary uploader (unsigned) ---------- */
