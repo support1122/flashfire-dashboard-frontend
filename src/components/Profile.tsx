@@ -349,7 +349,6 @@ export default function ProfilePage({
               <div>
                 <p className="text-xs uppercase tracking-widest text-gray-500 font-semibold">Professional Profile</p>
                 <h1 className="mt-2 text-3xl font-bold text-gray-900">{fullName}</h1>
-                <p className="mt-1 text-gray-600 text-lg">{joinArr(data.preferredRoles) || "Add your target role"}</p>
               </div>
             </div>
           </div>
