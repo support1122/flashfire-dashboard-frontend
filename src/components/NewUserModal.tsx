@@ -16,7 +16,7 @@ type ModalSection =
   | "professional"
   | "preferences"
   | "links"
-  | "compliance";
+  | "terms";
 
 const sectionToStep: Record<ModalSection, number> = {
   personal: 0,      // Personal & Education page
@@ -24,7 +24,7 @@ const sectionToStep: Record<ModalSection, number> = {
   professional: 1,  // Preferences & Experience page
   preferences: 1,
   links: 2,         // Links, Documents & Consent page
-  compliance: 2,
+  terms: 2,
 };
 
 
@@ -478,6 +478,11 @@ useEffect(() => {
         e.portfolioUrl = "Valid portfolio URL required";
       }
 
+      // Resume - required
+      if (!data.resumeUrl?.trim()) {
+        e.resumeUrl = "Resume upload is required";
+      }
+
       if (!data.confirmAccuracy) e.confirmAccuracy = "You must confirm accuracy";
       if (!data.agreeTos) e.agreeTos = "You must agree to the Terms";
     }
@@ -837,10 +842,10 @@ const handleSubmit = () => {
                   />
                   <ErrorText>{errors.coverLetterUrl}</ErrorText>
                 </div>
-                <div>
+                <div className="sm:col-span-2">
                   <FileInput
-                    label="Resume (Optional)"
-                    required={false}
+                    label="Resume"
+                    required={true}
                     file={data.resumeFile ?? null}
                     onFileChange={(f) => set({ resumeFile: f })}
                     onUploaded={(url) => set({ resumeUrl: url })}
@@ -879,8 +884,8 @@ const handleSubmit = () => {
                   />
                   <label htmlFor="tos" className="text-sm text-gray-800 leading-relaxed">
                     I agree to the Terms of Service and Privacy Policy of FlashFire, and the conditions listed at
-                    <a className="ml-1 underline decoration-blue-600 decoration-2 underline-offset-2 hover:text-blue-600" href="https://www.flashfirejobs.com" target="_blank" rel="noreferrer">
-                      www.flashfirejobs.com
+                    <a className="ml-1 underline decoration-blue-600 decoration-2 underline-offset-2 hover:text-blue-600" href="https://www.flashfirejobs.com/termsofservice" target="_blank" rel="noreferrer">
+                      www.flashfirejobs.com/termsofservice
                     </a>
                     .
                     <span className="ml-1 text-red-500">*</span>

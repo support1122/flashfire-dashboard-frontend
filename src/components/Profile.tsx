@@ -10,7 +10,7 @@ const SECTIONS = [
   { key: "professional", label: "Professional", icon: Building2 },
   { key: "preferences", label: "Preferences", icon: FileText },
   { key: "links", label: "Links & Docs", icon: LinkIcon },
-  { key: "compliance", label: "Compliance", icon: FileText },
+  { key: "compliance", label: "Terms & Accuracy", icon: FileText },
 ] as const;
 
 type SectionKey = typeof SECTIONS[number]["key"];
@@ -274,6 +274,13 @@ export default function ProfilePage({
 
   const handleSave = async () => {
     try {
+      // Require hardcoded key for saving
+      const userKey = prompt("Enter the edit key to save changes:");
+      if (userKey !== "flashfire2025") {
+        alert("Incorrect edit key. Changes not saved.");
+        return;
+      }
+
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
       const token = ctx?.token;
       const email = ctx?.userDetails?.email;
@@ -300,6 +307,7 @@ export default function ProfilePage({
       updateProfile(editData);
       setEditingSection(null);
       setEditData({});
+      alert("Profile updated successfully!");
     } catch (error: any) {
       console.error("Profile update error:", error);
       alert(error.message || "Failed to update profile");
@@ -598,7 +606,7 @@ export default function ProfilePage({
 
             {!emptyState && active === "compliance" && (
               <Card 
-                title="Compliance" 
+                title="Terms & Accuracy" 
                 onEdit={() => handleEditClick("compliance")}
                 isEditing={editingSection === "compliance"}
                 onSave={handleSave}
