@@ -1,4 +1,4 @@
-import jwt_decode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 interface DecodedToken {
   email: string;
@@ -12,7 +12,7 @@ export class TokenManager {
 
   static isTokenExpired(token: string): boolean {
     try {
-      const decoded = jwt_decode<DecodedToken>(token);
+      const decoded = jwtDecode<DecodedToken>(token);
       const currentTime = Date.now() / 1000;
       return decoded.exp < currentTime;
     } catch (error) {
@@ -23,7 +23,7 @@ export class TokenManager {
 
   static isTokenExpiringSoon(token: string): boolean {
     try {
-      const decoded = jwt_decode<DecodedToken>(token);
+      const decoded = jwtDecode<DecodedToken>(token);
       const currentTime = Date.now();
       const expiryTime = decoded.exp * 1000;
       return (expiryTime - currentTime) < this.TOKEN_REFRESH_THRESHOLD;
