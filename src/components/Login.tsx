@@ -43,7 +43,7 @@ const statsData = [
   },
   {
     value: "50K+",
-    label: "Users Hired",
+    label: "Application's sent",
     icon: <Users className="w-5 h-5 text-purple-400" />,
   },
   {
@@ -285,3 +285,4 @@ const statsData = [
 );
 
 }
+
