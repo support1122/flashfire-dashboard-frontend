@@ -50,7 +50,7 @@ function App() {
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<UserProfileProvider><Login /></UserProfileProvider>} />
-          <Route path="/abcdef123" element={<UserProfileProvider><Register /></UserProfileProvider>} />
+          <Route path="/coreops" element={<UserProfileProvider><Register /></UserProfileProvider>} />
 
           {/* Routes that require UserJobsProvider */}
           <Route
