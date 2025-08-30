@@ -1,4 +1,4 @@
-import { ArrowLeftCircle, DownloadCloud } from "lucide-react";
+import { ArrowLeftCircle, DownloadCloud, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
 type PendingType = "optimized" | "coverLetter" | null;
@@ -40,6 +40,11 @@ export default function DocumentUpload() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [metadata, setMetadata] = useState({ jobRole: "", companyName: "", jobLink: "" });
+
+  // Delete functionality state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<Entry | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Preview state
   const [previewMode, setPreviewMode] = useState<boolean>(true); // true = show iframe; false = list/upload (table)
@@ -108,6 +113,89 @@ const writeAuth = (serverUser: any, token?: string) => {
     });
     if (!res.ok) throw new Error("Backend save failed");
     return res.json(); // -> { userDetails: {..., resumeLink, optimizedResumes, coverLetters } }
+  };
+
+  const deleteFromBackend = async (item: Entry) => {
+    const parsed = readAuth();
+    if (!parsed) return;
+
+    const payload: any = {
+      token: parsed.token,
+      userDetails: parsed.userDetails,
+      resumeLink: baseResume,
+    };
+
+    // Remove the item from the appropriate list
+    if (activeTab === "optimized") {
+      const updatedOptimizedList = optimizedList.filter((opt: Entry) => 
+        opt.jobRole !== item.jobRole || 
+        opt.companyName !== item.companyName || 
+        opt.url !== item.url
+      );
+      payload.optimizedResumes = updatedOptimizedList;
+    } else if (activeTab === "cover") {
+      const updatedCoverList = coverList.filter((cover: Entry) => 
+        cover.jobRole !== item.jobRole || 
+        cover.companyName !== item.companyName || 
+        cover.url !== item.url
+      );
+      payload.coverLetters = updatedCoverList;
+    }
+
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/plans/select`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    
+    if (!res.ok) throw new Error("Backend delete failed");
+    return res.json();
+  };
+
+  const handleDelete = async (item: Entry) => {
+    setItemToDelete(item);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      // Delete from backend
+      const backendData = await deleteFromBackend(itemToDelete);
+      
+      // Update local state
+      if (activeTab === "optimized") {
+        setOptimizedList((prev: Entry[]) => prev.filter((opt: Entry) => 
+          opt.jobRole !== itemToDelete.jobRole || 
+          opt.companyName !== itemToDelete.companyName || 
+          opt.url !== itemToDelete.url
+        ));
+      } else if (activeTab === "cover") {
+        setCoverList((prev: Entry[]) => prev.filter((cover: Entry) => 
+          cover.jobRole !== itemToDelete.jobRole || 
+          cover.companyName !== itemToDelete.companyName || 
+          cover.url !== itemToDelete.url
+        ));
+      }
+
+      // Update user auth context
+      const parsed = readAuth();
+      if (parsed && backendData?.userDetails) {
+        const updatedUserAuth = { ...parsed, userDetails: backendData.userDetails };
+        writeAuth(updatedUserAuth);
+      }
+
+      alert("✅ Document deleted successfully!");
+    } catch (error) {
+      console.error("Delete failed:", error);
+      alert("❌ Failed to delete document. Please try again.");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+    }
   };
 
   // ---- initialization (hydrate from userAuth) ----
@@ -317,7 +405,7 @@ writeAuth(serverUser, parsed.token);
                   '--'
                 )}
               </div>              
-              <div className="col-span-1 flex justify-end">
+              <div className="col-span-1 flex justify-end space-x-2">
                 <a
                   href={toRawPdfUrl(it.url) || it.url}
                   target="_blank"
@@ -328,6 +416,18 @@ writeAuth(serverUser, parsed.token);
                 >
                   <DownloadIcon />
                 </a>
+                {category !== "Base" && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(it);
+                    }}
+                    className="text-gray-700 hover:text-red-600"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                )}
               </div>
             </li>
           ))}
@@ -661,6 +761,64 @@ writeAuth(serverUser, parsed.token);
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-red-600">Delete Document</h2>
+              <button
+                type="button"
+                className="text-gray-500 hover:text-gray-800"
+                onClick={() => {
+                  if (!isDeleting) {
+                    setShowDeleteModal(false);
+                    setItemToDelete(null);
+                  }
+                }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-700 mb-2">
+                Are you sure you want to delete this document?
+              </p>
+              <p className="text-sm text-gray-600 font-medium">
+                {itemToDelete?.jobRole} at {itemToDelete?.companyName}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                This action cannot be undone. The document will be removed from both the portal and the database.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button 
+                type="button" 
+                disabled={isDeleting} 
+                onClick={confirmDelete} 
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded w-1/2 disabled:opacity-50"
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setItemToDelete(null);
+                }}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded w-1/2 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
