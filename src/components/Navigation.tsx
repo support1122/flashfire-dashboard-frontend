@@ -130,7 +130,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
                     <div className="absolute -top-2 right-8 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
                     
                     {/* User Header */}
-                    <Link to="/profile">
+                    <Link to="/profile" target="_blank" rel="noopener noreferrer">
                     <div className="flex items-center space-x-4 pb-6 border-b border-gray-100">
                       <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg">
                         <User className="w-7 h-7 text-white" />
