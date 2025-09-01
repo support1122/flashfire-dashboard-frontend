@@ -13,8 +13,11 @@ export interface UserProfile {
   // Education
   bachelorsUniDegree: string;
   bachelorsGradMonthYear: string; // ISO (YYYY-MM)
+  bachelorsGPA: string; // GPA field for bachelor's degree
   mastersUniDegree: string;
   mastersGradMonthYear: string; // ISO (YYYY-MM)
+  mastersGPA: string; // GPA field for master's degree
+  transcriptUrl: string; // URL for uploaded transcript
 
   // Immigration
   visaStatus:
@@ -162,8 +165,11 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       dob: payload.dob ? new Date(payload.dob).toISOString() : "",
       bachelorsUniDegree: payload.bachelorsUniDegree || "",
       bachelorsGradMonthYear: payload.bachelorsGradMonthYear ? new Date(payload.bachelorsGradMonthYear).toISOString() : "",
+      bachelorsGPA: payload.bachelorsGPA || "",
       mastersUniDegree: payload.mastersUniDegree || "",
       mastersGradMonthYear: payload.mastersGradMonthYear ? new Date(payload.mastersGradMonthYear).toISOString() : "",
+      mastersGPA: payload.mastersGPA || "",
+      transcriptUrl: payload.transcriptUrl || "",
       visaStatus: payload.visaStatus || "Other",
       address: payload.address || "",
       preferredRoles: Array.isArray(payload.preferredRoles) ? payload.preferredRoles : [],

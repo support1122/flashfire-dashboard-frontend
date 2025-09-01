@@ -490,6 +490,12 @@ export default function ProfilePage({
                   onValueChange={(value) => setEditData(prev => ({ ...prev, bachelorsGradMonthYear: value }))}
                 />
                 <InfoRow 
+                  title="Bachelor's GPA" 
+                  value={editingSection === "education" ? editData.bachelorsGPA : data.bachelorsGPA}
+                  isEditing={editingSection === "education"}
+                  onValueChange={(value) => setEditData(prev => ({ ...prev, bachelorsGPA: value }))}
+                />
+                <InfoRow 
                   title="Master's (University • Degree • Duration)" 
                   value={editingSection === "education" ? editData.mastersUniDegree : data.mastersUniDegree}
                   isEditing={editingSection === "education"}
@@ -501,6 +507,28 @@ export default function ProfilePage({
                   isEditing={editingSection === "education"}
                   onValueChange={(value) => setEditData(prev => ({ ...prev, mastersGradMonthYear: value }))}
                 />
+                <InfoRow 
+                  title="Master's GPA" 
+                  value={editingSection === "education" ? editData.mastersGPA : data.mastersGPA}
+                  isEditing={editingSection === "education"}
+                  onValueChange={(value) => setEditData(prev => ({ ...prev, mastersGPA: value }))}
+                />
+                {data.transcriptUrl && (
+                  <div className="flex items-center py-4 border-b border-gray-100 last:border-b-0">
+                    <div className="w-1/3 text-sm font-semibold text-gray-700">Transcript</div>
+                    <div className="w-2/3">
+                      <a 
+                        href={data.transcriptUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:text-blue-800 underline flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        View Transcript
+                      </a>
+                    </div>
+                  </div>
+                )}
               </Card>
             )}
 
@@ -734,10 +762,10 @@ export default function ProfilePage({
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span className="text-sm font-semibold text-blue-800">Secure Access Information</span>
+                    <span className="text-sm font-semibold text-blue-800">Account Credentials</span>
                   </div>
                   <p className="text-sm text-blue-700">
-                    These credentials provide secure access to your dashboard. The password is standardized across all accounts for security purposes.
+                    These are the credentials which you can use while applying in different portals.
                   </p>
                 </div>
                 

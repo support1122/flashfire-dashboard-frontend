@@ -35,8 +35,10 @@ type FormData = {
   dob: string;
   bachelorsUniDegree: string;
   bachelorsGradMonthYear: string;
+  bachelorsGPA: string;
   mastersUniDegree: string;
   mastersGradMonthYear: string;
+  mastersGPA: string;
   visaStatus: string;
   visaExpiry: string;
   address: string;
@@ -52,9 +54,11 @@ type FormData = {
   // Files (for UI only)
   coverLetterFile?: File | null;
   resumeFile?: File | null;
+  transcriptFile?: File | null;
   // Cloudinary URLs (THIS is what we persist/send)
   coverLetterUrl?: string;
   resumeUrl?: string;
+  transcriptUrl?: string;
   confirmAccuracy: boolean;
   agreeTos: boolean;
    expectedSalaryNarrative: string; // free text
@@ -70,8 +74,10 @@ const initialData: FormData = {
   dob: "",
   bachelorsUniDegree: "",
   bachelorsGradMonthYear: "",
+  bachelorsGPA: "",
   mastersUniDegree: "",
   mastersGradMonthYear: "",
+  mastersGPA: "",
   visaStatus: "",
   visaExpiry: "",
   address: "",
@@ -86,8 +92,10 @@ const initialData: FormData = {
   portfolioUrl: "",
   coverLetterFile: null,
   resumeFile: null,
+  transcriptFile: null,
   coverLetterUrl: "",
   resumeUrl: "",
+  transcriptUrl: "",
   confirmAccuracy: false,
   agreeTos: false,
    expectedSalaryNarrative: '', // free text
@@ -184,7 +192,7 @@ function ErrorText({ children }: { children?: React.ReactNode }) {
 }
 
 /** ---------- Local file upload ---------- */
-async function uploadFileLocally(file: File, fileType: 'resume' | 'coverLetter') {
+async function uploadFileLocally(file: File, fileType: 'resume' | 'coverLetter' | 'transcript') {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
   
   // Get token and user details from localStorage
@@ -273,7 +281,7 @@ function FileInput({
             setUploading(true);
             try {
               // Determine file type based on label
-              const fileType = label.toLowerCase().includes('resume') ? 'resume' : 'coverLetter';
+              const fileType = label.toLowerCase().includes('resume') ? 'resume' : label.toLowerCase().includes('transcript') ? 'transcript' : 'coverLetter';
               const url = await uploadFileLocally(f, fileType);
               onUploaded(url);
             } catch (err: any) {
@@ -388,8 +396,10 @@ useEffect(() => {
     dob: toDate(p.dob),
     bachelorsUniDegree: p.bachelorsUniDegree ?? "",
     bachelorsGradMonthYear: toMonth(p.bachelorsGradMonthYear),
+    bachelorsGPA: p.bachelorsGPA ?? "",
     mastersUniDegree: p.mastersUniDegree ?? "",
     mastersGradMonthYear: toMonth(p.mastersGradMonthYear),
+    mastersGPA: p.mastersGPA ?? "",
     visaStatus: p.visaStatus ?? "",
     visaExpiry: toDate(p.visaExpiry),
     address: addrToString(p.address),
@@ -411,6 +421,7 @@ useEffect(() => {
     portfolioUrl: p.portfolioUrl ?? "",
     coverLetterUrl: p.coverLetterUrl ?? "",
     resumeUrl: p.resumeUrl ?? "",
+    transcriptUrl: p.transcriptUrl ?? "",
     confirmAccuracy: Boolean(p.confirmAccuracy),
     agreeTos: Boolean(p.agreeTos),
   }));
@@ -507,7 +518,7 @@ useEffect(() => {
 const submitForm = async () => {
   try {
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
-    const { coverLetterFile, resumeFile, ...payload } = data;
+    const { coverLetterFile, resumeFile, transcriptFile, ...payload } = data;
 
     // Get token from context or localStorage as fallback
     const token = ctx?.token || JSON.parse(localStorage.getItem('userAuth') || '{}')?.token;
@@ -612,6 +623,16 @@ const handleSubmit = () => {
                     <TextInput type="month" placeholder="Select graduation month and year" value={data.bachelorsGradMonthYear} onChange={(e) => set({ bachelorsGradMonthYear: e.target.value })} />
                     <ErrorText>{errors.bachelorsGradMonthYear}</ErrorText>
                   </div>
+                  <div>
+                    <FieldLabel>Bachelor's GPA</FieldLabel>
+                    <TextInput 
+                      type="text" 
+                      placeholder="Enter your GPA (e.g., 3.8)" 
+                      value={data.bachelorsGPA} 
+                      onChange={(e) => set({ bachelorsGPA: e.target.value })} 
+                    />
+                    <ErrorText>{errors.bachelorsGPA}</ErrorText>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <div className="sm:col-span-2">
@@ -623,6 +644,16 @@ const handleSubmit = () => {
                     <FieldLabel>Master's Graduation Month & Year</FieldLabel>
                     <TextInput type="month" placeholder="Select graduation month and year" value={data.mastersGradMonthYear} onChange={(e) => set({ mastersGradMonthYear: e.target.value })} />
                     <ErrorText>{errors.mastersGradMonthYear}</ErrorText>
+                  </div>
+                  <div>
+                    <FieldLabel>Master's GPA</FieldLabel>
+                    <TextInput 
+                      type="text" 
+                      placeholder="Enter your GPA (e.g., 3.9)" 
+                      value={data.mastersGPA} 
+                      onChange={(e) => set({ mastersGPA: e.target.value })} 
+                    />
+                    <ErrorText>{errors.mastersGPA}</ErrorText>
                   </div>
                 </div>
               </div>
@@ -865,6 +896,16 @@ const handleSubmit = () => {
                     onUploaded={(url) => set({ resumeUrl: url })}
                   />
                   <ErrorText>{errors.resumeUrl}</ErrorText>
+                </div>
+                <div className="sm:col-span-2">
+                  <FileInput
+                    label="Transcript (Optional)"
+                    required={false}
+                    file={data.transcriptFile ?? null}
+                    onFileChange={(f) => set({ transcriptFile: f })}
+                    onUploaded={(url) => set({ transcriptUrl: url })}
+                  />
+                  <ErrorText>{errors.transcriptUrl}</ErrorText>
                 </div>
               </div>
             </div>

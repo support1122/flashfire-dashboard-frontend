@@ -5,7 +5,7 @@ export const FILE_UPLOAD_CONFIG = {
   allowedTypes: ['application/pdf', 'image/jpeg', 'image/png']
 };
 
-export async function uploadFileLocally(file: File, fileType: 'resume' | 'coverLetter'): Promise<string> {
+export async function uploadFileLocally(file: File, fileType: 'resume' | 'coverLetter' | 'transcript'): Promise<string> {
   // Convert file to base64
   const base64 = await fileToBase64(file);
   
