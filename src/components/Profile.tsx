@@ -783,7 +783,6 @@ export default function ProfilePage({
                   <ul className="text-sm text-gray-600 space-y-1">
                     <li>• Password is standardized across all dashboard accounts</li>
                     <li>• Keep these credentials secure and do not share with unauthorized personnel</li>
-                    <li>• Contact support if you need to reset your credentials</li>
                   </ul>
                 </div>
               </Card>
