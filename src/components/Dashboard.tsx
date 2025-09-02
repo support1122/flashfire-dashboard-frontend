@@ -338,7 +338,14 @@ const Dashboard: React.FC = ({setUserProfileFormVisibility}) => {
         const date = new Date(job.updatedAt);
         const displayDate = isNaN(date.getTime())
           ? 'Invalid Date'
-          : date.toLocaleDateString();
+          : date.toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            });
 
         return (
           <div
