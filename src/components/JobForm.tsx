@@ -169,7 +169,8 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
     if (!isEditMode) {
       const optimisticId = Date.now().toString();
       // const nowIN = new Date().toLocaleString("en-US", { hour12: true, timeZone: "Asia/Kolkata" });
-      const nowIN = new Date().toISOString();
+      // const nowIN = new Date().toISOString();
+      const nowIN = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata", });
 
       const optimisticJob = {
         jobID: optimisticId,
