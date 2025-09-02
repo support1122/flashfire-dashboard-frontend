@@ -8,7 +8,8 @@ export function getTimeAgo(dateString: string): string {
       if (isNaN(parsedDate.getTime())) return "Added now";
       
       const now = new Date();
-      const diffMs = now.getTime() - parsedDate.getTime();
+      // const diffMs = now.getTime() - parsedDate.getTime();
+      let diffMs = now.getTime() - parsedDate.getTime();
       
       if (diffMs < 0) diffMs = 0; // Clamp future dates to "now"
       
@@ -108,3 +109,4 @@ function to24HourParts(timeStr: string): { h: number; m: number; s: number } | n
 
   return { h: hour, m: minute, s: second };
 }
+
