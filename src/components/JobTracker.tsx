@@ -240,13 +240,19 @@ const handleDrop = (e: React.DragEvent, status: JobStatus) => {
 
 
 
-  // Robust timestamp extractor for "en-IN" strings like "14/08/2025, 10:15:30 am"
+  // Robust timestamp extractor for ISO 8601 strings like "2025-08-29T16:56:36.079Z"
   const tsFromUpdatedAt = (val: unknown): number => {
     if (!val) return 0;
 
     if (val instanceof Date) return val.getTime();
     if (typeof val === "string") {
-      // Expected formats: "dd/mm/yyyy, hh:mm:ss am/pm" or "dd/mm/yyyy, hh:mm am/pm"
+      // Handle ISO 8601 format: "2025-08-29T16:56:36.079Z"
+      if (val.includes('T') && (val.includes('Z') || val.includes('+') || val.includes('-'))) {
+        const date = new Date(val);
+        return isNaN(date.getTime()) ? 0 : date.getTime();
+      }
+      
+      // Handle legacy localized format: "dd/mm/yyyy, hh:mm:ss am/pm" (fallback)
       const parts = val.split(",").map((s) => s.trim());
       if (parts.length !== 2) return 0;
 
