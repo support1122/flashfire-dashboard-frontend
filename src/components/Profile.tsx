@@ -75,8 +75,8 @@ function TextAreaRow({
   onValueChange?: (value: string) => void;
 }) {
   return (
-    <div className="flex items-start py-4 border-b border-gray-100 last:border-b-0">
-      <div className="w-1/3 text-sm font-semibold text-gray-700 pt-2">{title}</div>
+    <div className={isEditing ? "flex items-start py-4 border-b border-gray-100 last:border-b-0" : "flex items-center py-4 border-b border-gray-100 last:border-b-0"}>
+      <div className={isEditing ? "w-1/3 text-sm font-semibold text-gray-700 pt-2" : "w-1/3 text-sm font-semibold text-gray-700"}>{title}</div>
       <div className="w-2/3">
         {isEditing ? (
           <textarea
@@ -87,7 +87,7 @@ function TextAreaRow({
             placeholder={`Enter ${title.toLowerCase()}`}
           />
         ) : (
-          <div className="text-sm text-gray-900 min-h-[60px]">
+          <div className="text-sm text-gray-900 truncate">
             {value ? value : <Placeholder />}
           </div>
         )}
@@ -177,7 +177,7 @@ function FileUploadRow({
                 accept=".pdf,.doc,.docx"
                 onChange={handleFileChange}
                 disabled={isUploading}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer disabled:opacity-50"
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-blue-50 file:text-orange-700 hover:file:bg-blue-100 cursor-pointer disabled:opacity-50"
               />
               {isUploading && (
                 <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
@@ -229,14 +229,14 @@ function Card({ children, title, onEdit, isEditing, onSave, onCancel }: CardProp
           onEdit && (
             <button
               onClick={onEdit}
-              className="inline-flex items-center gap-2 bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-600 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 rounded-lg transition-opacity"
             >
               <Pencil size={16} /> Edit
             </button>
           )
         )}
       </div>
-      <div className="space-y-6">
+      <div>
         {children}
       </div>
     </div>
@@ -400,7 +400,7 @@ export default function ProfilePage({
                     className={[
                       "flex w-full items-center gap-4 rounded-lg px-4 py-3 text-left text-sm font-medium transition-all duration-200",
                       isActive
-                        ? "bg-blue-600 text-white shadow-sm"
+                        ? "bg-gradient-to-r from-orange-500 to-rose-600 text-white shadow-sm"
                         : editingSection !== null
                         ? "text-gray-400 cursor-not-allowed"
                         : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
