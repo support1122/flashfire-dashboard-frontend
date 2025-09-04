@@ -115,7 +115,7 @@ function Header({ stepIndex }: { stepIndex: number }) {
   const percent = ((stepIndex + 1) / STEPS.length) * 100;
   return (
     <div className="relative overflow-hidden rounded-t-2xl">
-      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 text-white">
+      <div className="bg-gradient-to-r from-orange-500 to-rose-600 p-8 text-white">
         <div className="flex items-center justify-between">
           <div>
             <p className="uppercase tracking-widest text-xs font-semibold text-white/90 mb-2">FlashFire — Client Onboarding</p>
@@ -130,7 +130,7 @@ function Header({ stepIndex }: { stepIndex: number }) {
         </div>
       </div>
       <div className="h-2 w-full bg-gray-100">
-        <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500 ease-out" style={{ width: `${percent}%` }} />
+        <div className="h-full bg-gradient-to-r from-orange-500 to-rose-600 transition-all duration-500 ease-out" style={{ width: `${percent}%` }} />
       </div>
     </div>
   );
@@ -150,7 +150,7 @@ function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
       {...props}
       className={[
         "w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-500",
-        "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200",
+        "focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all duration-200",
         "hover:border-gray-400",
         props.className ?? "",
       ].join(" ")}
@@ -164,7 +164,7 @@ function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
       {...props}
       className={[
         "w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-500",
-        "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200",
+        "focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all duration-200",
         "hover:border-gray-400 resize-none",
         props.className ?? "",
       ].join(" ")}
@@ -178,7 +178,7 @@ function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
       {...props}
       className={[
         "w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900",
-        "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all duration-200",
+        "focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all duration-200",
         "hover:border-gray-400 cursor-pointer",
         props.className ?? "",
       ].join(" ")}
@@ -261,7 +261,7 @@ function FileInput({
       <div className="relative">
         <input
           type="file"
-          className="block w-full cursor-pointer rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-6 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-white hover:file:bg-blue-700 transition-all duration-200 hover:border-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          className="block w-full cursor-pointer rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-6 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-gradient-to-r file:from-orange-500 file:to-rose-600 file:px-4 file:py-2 file:text-white hover:file:opacity-90 transition-all duration-200 hover:border-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
           accept=".pdf,.doc,.docx,.txt"
           onChange={async (e) => {
             const f = e.currentTarget.files?.[0] ?? null;
@@ -308,7 +308,7 @@ function FileInput({
             </span>
           )}
           {uploading && (
-            <span className="flex items-center gap-1 text-blue-600">
+            <span className="flex items-center gap-1 text-orange-600">
               <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -918,7 +918,7 @@ const handleSubmit = () => {
                   <input
                     id="confirm"
                     type="checkbox"
-                    className="mt-1 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="mt-1 h-5 w-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                     checked={data.confirmAccuracy}
                     onChange={(e) => set({ confirmAccuracy: e.target.checked })}
                   />
@@ -933,13 +933,13 @@ const handleSubmit = () => {
                   <input
                     id="tos"
                     type="checkbox"
-                    className="mt-1 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="mt-1 h-5 w-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                     checked={data.agreeTos}
                     onChange={(e) => set({ agreeTos: e.target.checked })}
                   />
                   <label htmlFor="tos" className="text-sm text-gray-800 leading-relaxed">
                     I agree to the Terms of Service and Privacy Policy of FlashFire, and the conditions listed at
-                    <a className="ml-1 underline decoration-blue-600 decoration-2 underline-offset-2 hover:text-blue-600" href="https://www.flashfirejobs.com/termsofservice" target="_blank" rel="noreferrer">
+                    <a className="ml-1 underline decoration-orange-600 decoration-2 underline-offset-2 hover:text-orange-600" href="https://www.flashfirejobs.com/termsofservice" target="_blank" rel="noreferrer">
                       www.flashfirejobs.com/termsofservice
                     </a>
                     .
@@ -982,14 +982,14 @@ const handleSubmit = () => {
             {!isLast ? (
               <button
                 onClick={next}
-                className="inline-flex items-center rounded-lg bg-blue-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors duration-200"
+                className="inline-flex items-center rounded-lg bg-gradient-to-r from-orange-500 to-rose-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity duration-200"
               >
                 Next
               </button>
             ) : (
               <button
                 onClick={handleSubmit}
-                className="inline-flex items-center rounded-lg bg-blue-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors duration-200"
+                className="inline-flex items-center rounded-lg bg-gradient-to-r from-orange-500 to-rose-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity duration-200"
               >
                 Submit
               </button>
@@ -1027,7 +1027,7 @@ function SuccessPopup({ onClose }: { onClose: () => void }) {
           {/* OK Button */}
           <button
             onClick={onClose}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 shadow-sm"
+            className="w-full bg-gradient-to-r from-orange-500 to-rose-600 hover:opacity-90 text-white font-semibold py-3 px-6 rounded-lg transition-opacity duration-200 shadow-sm"
           >
             Continue to Dashboard
           </button>
