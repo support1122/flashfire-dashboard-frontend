@@ -19,6 +19,8 @@ const JobTracker = () => {
   const { userJobs, setUserJobs, loading } = useUserJobs();
   const {userDetails, token, setData} = useContext(UserContext);
   const navigate = useNavigate();
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
+
   // near other useState hooks
 const [pendingMove, setPendingMove] = useState<{ jobID: string; status: JobStatus } | null>(null);
 
@@ -36,6 +38,20 @@ const [pendingMove, setPendingMove] = useState<{ jobID: string; status: JobStatu
   // useEffect(()=>{
   //    setUserJobs(userJobs);
   // },[ userJobs])
+useEffect(() => {
+  if (searchQuery.trim() === '') {
+    setFilteredJobs([]);
+    return;
+  }
+
+  const matches = userJobs.filter(
+    (job) =>
+      job.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.companyName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  setFilteredJobs(matches);
+}, [searchQuery, userJobs]);
 
 
   useEffect(() => {
@@ -303,7 +319,7 @@ const handleDrop = (e: React.DragEvent, status: JobStatus) => {
 )} */}
         <div className="mt-4 sm:mt-0 flex items-center justify-center gap-4 w-full">
           {/* Search Input */}
-          <div className="relative">
+<div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
@@ -312,6 +328,26 @@ const handleDrop = (e: React.DragEvent, status: JobStatus) => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
+            {/* Suggestion Box */}
+  {filteredJobs.length > 0 && (
+    <div className="absolute top-full mt-2 w-full bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+      {filteredJobs.map((job) => (
+        <div
+          key={job.jobID}
+          onClick={() => {
+            setSelectedJob(job);
+            setShowJobModal(true);
+            setSearchQuery(''); // Clear after selection
+            setFilteredJobs([]); // Hide box
+          }}
+          className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-none"
+        >
+          <p className="font-semibold text-gray-900">{job.jobTitle}</p>
+          <p className="text-sm text-gray-500">{job.companyName}</p>
+        </div>
+      ))}
+    </div>
+  )}
           </div>
 
           {/* Add Job Button */}
