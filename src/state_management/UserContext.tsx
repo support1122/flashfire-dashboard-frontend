@@ -2,6 +2,7 @@
 
 import React, { useState, createContext, useEffect } from "react";
 import { TokenManager } from "../utils/tokenManager";
+import { toastUtils, toastMessages } from "../utils/toast";
 
 type UserContextType = {
   userDetails: any;
@@ -83,6 +84,7 @@ const logout = () => {
   setUserDetails({});
   setToken(null);
   TokenManager.clearStoredToken();
+  toastUtils.success(toastMessages.logoutSuccess);
 };
 
 // Auto token refresh effect

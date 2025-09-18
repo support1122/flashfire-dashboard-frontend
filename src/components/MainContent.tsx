@@ -7,10 +7,11 @@ const Dashboard = lazy(()=>import('./Dashboard'))
 // import JobTracker from './JobTracker';
 const JobTracker = lazy(()=>import('./JobTracker'))
 // import ResumeOptimizer from './ResumeOptimizer';
-const ResumeOptimizer = lazy(()=>import('./ResumeOptimizer'))
+const ResumeOptimizer = lazy(()=>import('./ResumeOptimizer1'))
 import { UserContext } from '../state_management/UserContext';
 import LoadingScreen from './LoadingScreen';
 import NewUserModal from './NewUserModal';
+import { useOperationsStore } from "../state_management/Operations";
 // import {BaseResume} from '../types/index'
 
 
@@ -21,9 +22,11 @@ export default function MainContent() {
   const [baseResume, setBaseResume] = useState(null);
   const {userDetails, token} = useContext(UserContext);
   const navigate = useNavigate();
+  const { role } = useOperationsStore();
   useEffect(()=>{
-  if(!token || token.length==0  ){
-    navigate('/login');
+  if ((!token || token.length == 0) && role != "operations") {
+      console.log("navigating to login");
+      navigate("/login");
   }
   },[])
   

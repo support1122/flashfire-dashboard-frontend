@@ -3,56 +3,92 @@ import { X, Copy } from "lucide-react";
 import { Job, JobStatus } from "../types";
 import { UserContext } from "../state_management/UserContext";
 import { useNavigate } from "react-router-dom";
+import { useOperationsStore } from "../state_management/Operations";
+import { toastUtils, toastMessages } from "../utils/toast";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 /** PUT /updatechanges  (action: "edit") */
 async function persistAttachmentsToJobPUT({
-  jobID,
-  userDetails,
-  token,
-  urls,
+    jobID,
+    userDetails,
+    token,
+    urls,
+    role,
 }: {
-  jobID: string;
-  userDetails: any; // must include { email }
-  token?: string | null;
-  urls: string[];
+    jobID: string;
+    userDetails: any; // must include { email }
+    token?: string | null;
+    urls: string[];
+    role?: string;
 }) {
-  const res = await fetch(`${API_BASE_URL}/updatechanges`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "edit",
-      jobID,
-      userDetails,
-      token,
-      attachmentUrls: urls, // backend uses $addToSet $each
-    }),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json?.message || "Failed to update attachments");
-  return json as { message: string; updatedJobs?: any[] };
+  if (role === "operations") {
+        const res = await fetch(`${API_BASE_URL}/operations/jobs`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                action: "edit",
+                jobID,
+                userDetails,
+                attachmentUrls: urls, // backend uses $addToSet $each
+            }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok)
+            throw new Error(json?.message || "Failed to update attachments");
+        return json as { message: string; updatedJobs?: any[] };
+    } else {
+      const res = await fetch(`${API_BASE_URL}/updatechanges`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+              action: "edit",
+              jobID,
+              userDetails,
+              token,
+              attachmentUrls: urls, // backend uses $addToSet $each
+          }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok)
+          throw new Error(json?.message || "Failed to update attachments");
+      return json as { message: string; updatedJobs?: any[] };
+    }
+    
 }
 
 /** Lightweight POST used to quickly detect 403 duplicate.
  *  Returns status + body without throwing on non-2xx.
  */
 async function createJobPOSTQuick({
-  jobDetails,
-  userDetails,
-  token,
+    jobDetails,
+    userDetails,
+    token,
+    role,
 }: {
-  jobDetails: any;
-  userDetails: any;
-  token?: string | null;
+    jobDetails: any;
+    userDetails: any;
+    token?: string | null;
+    role?: string;
 }) {
-  const res = await fetch(`${API_BASE_URL}/addjob`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jobDetails, userDetails, token }),
-  });
-  const body = await res.json().catch(() => ({}));
-  return { status: res.status, ok: res.ok, body };
+  if (role === "operations") {
+        const res = await fetch(`${API_BASE_URL}/operations/jobs`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jobDetails, userDetails }),
+        });
+        const body = await res.json().catch(() => ({}));
+        return { status: res.status, ok: res.ok, body };
+    } else {
+      const res = await fetch(`${API_BASE_URL}/addjob`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobDetails, userDetails, token }),
+      });
+      const body = await res.json().catch(() => ({}));
+      return { status: res.status, ok: res.ok, body };
+    }
+    
 }
 
 interface JobFormProps {
@@ -82,6 +118,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
   const [isEditMode, setIsEditMode] = useState(false);
   const [images, setImages] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  const role = useOperationsStore((state) => state.role);
 
   // preload form if editing
   useEffect(() => {
@@ -159,11 +196,13 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
 
     if (!isEditMode && (!formData.jobTitle.trim() || !formData.companyName.trim())) {
       setError("Job Title and Company Name are required.");
+      toastUtils.error(toastMessages.validationError);
       return;
     }
 
     setIsSubmitting(true);
     setError(null);
+    const loadingToast = toastUtils.loading(toastMessages.savingJob);
 
     // ---------- CREATE MODE ----------
     if (!isEditMode) {
@@ -191,6 +230,8 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
       const closeTimer = setTimeout(() => {
         // optimistic UI add (top) then close
         setUserJobs((prev) => [optimisticJob, ...(prev || [])]);
+        toastUtils.dismissToast(loadingToast);
+        toastUtils.success(toastMessages.jobAdded);
         onSuccess?.();
         onCancel();
         setIsSubmitting(false);
@@ -211,11 +252,18 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
           // attachments intentionally omitted for speed
         };
 
-        const { status, ok, body } = await createJobPOSTQuick({ jobDetails, userDetails, token });
+        const { status, ok, body } = await createJobPOSTQuick({
+            jobDetails,
+            userDetails,
+            token,
+            role,
+        });
 
         // If duplicate within 1s -> keep form open and show the message
         if (status === 403 || body?.message === "Job Already Exist !") {
           clearTimeout(closeTimer);
+          toastUtils.dismissToast(loadingToast);
+          toastUtils.error(body.message || "Job already exists!");
           setIsSubmitting(false);
           setError(body.message);
           return;
@@ -237,6 +285,8 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
           }
           
           console.log('Token refresh failed, clearing storage and redirecting to login');
+          toastUtils.dismissToast(loadingToast);
+          toastUtils.error(toastMessages.unauthorizedError);
           localStorage.clear();
           navigate("/login");
           return;
@@ -253,10 +303,11 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
               const uploadedUrls = await uploadImagesToCloudinary();
               if (uploadedUrls.length) {
                 await persistAttachmentsToJobPUT({
-                  jobID: optimisticId,
-                  userDetails,
-                  token,
-                  urls: uploadedUrls,
+                    jobID: optimisticId,
+                    userDetails,
+                    token,
+                    urls: uploadedUrls,
+                    role,
                 });
               }
             } catch (err) {
@@ -270,12 +321,18 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
           console.error("Backend request failed:", body);
           setUserJobs((prev) => prev.filter(job => job.jobID !== optimisticId));
           clearTimeout(closeTimer);
+          toastUtils.dismissToast(loadingToast);
+          toastUtils.error(toastMessages.jobError);
           setIsSubmitting(false);
           setError("Failed to save job. Please try again.");
         }
       } catch (err) {
         // Network or unexpected error: if the form hasn't closed yet, let the gate close it.
         console.error("[create quick] error:", err);
+        if (!closed) {
+          toastUtils.dismissToast(loadingToast);
+          toastUtils.error(toastMessages.networkError);
+        }
       }
 
       return; // end create mode
@@ -284,6 +341,8 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
     // ---------- EDIT MODE (unchanged: immediate close; background persist) ----------
     if (isEditMode && job) {
       // close immediately
+      toastUtils.dismissToast(loadingToast);
+      toastUtils.success(toastMessages.jobUpdated);
       onSuccess?.();
       onCancel();
       setIsSubmitting(false);
@@ -294,10 +353,11 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
           const uploadedUrls = await uploadImagesToCloudinary();
           if (uploadedUrls.length) {
             const resp = await persistAttachmentsToJobPUT({
-              jobID: job.jobID,
-              userDetails,
-              token,
-              urls: uploadedUrls,
+                jobID: job.jobID,
+                userDetails,
+                token,
+                urls: uploadedUrls,
+                role,
             });
             if (resp?.updatedJobs) setUserJobs(resp.updatedJobs);
           }

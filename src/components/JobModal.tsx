@@ -12,6 +12,7 @@ import {
   Upload as UploadIcon,
   Check,
   Loader2,
+  GitCommit,
 } from "lucide-react";
 import { useRef, useState, Suspense, lazy, useContext, useEffect } from "react";
 import LoadingScreen from "./LoadingScreen";
@@ -20,6 +21,12 @@ import { UserContext } from "../state_management/UserContext";
 import { useUserJobs } from "../state_management/UserJobs.tsx"; // ⬅️ NEW
 import { hasOptimizedResumeLocal } from "../utils/hasOptimizedResumeLocal.ts";
 const AttachmentsModal = lazy(() => import("./AttachmentsModal"));
+import ResumeChangesComparison from "./ResumeChangesComparison.tsx";
+import { useOperationsStore } from "../state_management/Operations.ts";
+import { useResumeStore } from "./AiOprimizer/store/useResumeStore.ts";
+import { toastUtils, toastMessages } from "../utils/toast";
+import { getOptimizedResumeUrl, getOptimizedResumeTitle } from "../utils/getOptimizedResumeUrl";
+
 
 /* ---------- ENV ---------- */
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "";
@@ -58,32 +65,55 @@ async function uploadToCloudinary(
 
 /* ---------- Persist new image URLs into JobModel.attachments[] ---------- */
 async function persistAttachmentsToJob({
-  jobID,
-  userEmail,
-  urls,
-  token,
-}: {
-  jobID: string;
-  userEmail: string;
-  urls: string[];
-  token: string | null;
-}) {
-  const payload = {
-    action: "edit",
     jobID,
-    userDetails: { email: userEmail },
-    attachmentUrls: urls,
+    userEmail,
+    urls,
     token,
-  };
+    role,
+}: {
+    jobID: string;
+    userEmail: string;
+    urls: string[];
+    token: string | null;
+    role?: string;
+}) {
+  if (role == "operations") {
+    const payload = {
+        action: "edit",
+        jobID,
+        userDetails: { email: userEmail },
+        attachmentUrls: urls,
+    };
 
-  const res = await fetch(JOB_UPDATE_ENDPOINT, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+    const res = await fetch(`${API_BASE}/operations/jobs`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
 
-  if (!res.ok) throw new Error((await res.text()) || "Failed to persist attachments");
-  return res.json() as Promise<{ message?: string; updatedJobs?: any[] }>;
+    if (!res.ok)
+        throw new Error((await res.text()) || "Failed to persist attachments");
+    return res.json() as Promise<{ message?: string; updatedJobs?: any[] }>;
+  }
+  else{
+    const payload = {
+        action: "edit",
+        jobID,
+        userDetails: { email: userEmail },
+        attachmentUrls: urls,
+        token,
+    };
+
+    const res = await fetch(JOB_UPDATE_ENDPOINT, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok)
+        throw new Error((await res.text()) || "Failed to persist attachments");
+    return res.json() as Promise<{ message?: string; updatedJobs?: any[] }>;
+  }
+    
 }
 
 /* ---------- Persist optimized resume to UserModel via PlanSelect ---------- */
@@ -91,39 +121,86 @@ async function persistOptimizedResumeToUser({
   token,
   userEmail,
   entry,
+  role,
 }: {
   token: string | null;
   userEmail: string;
+  role?: string;
   entry: { url: string; companyName?: string; jobRole?: string; jobId?: string; jobLink?: string };
 }) {
-  const payload = {
-    token,
-    userDetails: { email: userEmail },
-    optimizedResumeEntry: {
-      url: entry.url,
-      companyName: entry.companyName ?? "",
-      jobRole: entry.jobRole ?? "",
-      jobId: entry.jobId ?? "",
-      jobLink: entry.jobLink ?? "",
-    },
-  };
+  if (role == "operations") {
+        const payload = {
+            userDetails: { email: userEmail },
+            optimizedResumeEntry: {
+                url: entry.url,
+                companyName: entry.companyName ?? "",
+                jobRole: entry.jobRole ?? "",
+                jobId: entry.jobId ?? "",
+                jobLink: entry.jobLink ?? "",
+            },
+        };
 
-  const res = await fetch(PLAN_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+        const res = await fetch(`${API_BASE}/operations/plans/select`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
 
-  const text = await res.text();
-  let json: any = {};
-  try {
-    json = text ? JSON.parse(text) : {};
-  } catch {}
-  if (!res.ok) throw new Error((json && json.message) || text || "Failed to save optimized resume");
-  return json as { message?: string; userDetails?: any };
+        const text = await res.text();
+        let json: any = {};
+        try {
+            json = text ? JSON.parse(text) : {};
+        } catch { }
+        if (!res.ok)
+            throw new Error(
+                (json && json.message) ||
+                text ||
+                "Failed to save optimized resume"
+            );
+        return json as { message?: string; userDetails?: any };
+    }
+    else {
+      const payload = {
+          token,
+          userDetails: { email: userEmail },
+          optimizedResumeEntry: {
+              url: entry.url,
+              companyName: entry.companyName ?? "",
+              jobRole: entry.jobRole ?? "",
+              jobId: entry.jobId ?? "",
+              jobLink: entry.jobLink ?? "",
+          },
+      };
+
+      const res = await fetch(PLAN_ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+      });
+
+      const text = await res.text();
+      let json: any = {};
+      try {
+          json = text ? JSON.parse(text) : {};
+      } catch {}
+      if (!res.ok)
+          throw new Error(
+              (json && json.message) ||
+                  text ||
+                  "Failed to save optimized resume"
+          );
+      return json as { message?: string; userDetails?: any };
+    }
+  
 }
 
-type Sections = "details" | "link" | "description" | "attachments" | "timeline";
+type Sections =
+    | "details"
+    | "link"
+    | "description"
+    | "attachments"
+    | "timeline"
+    | "changes";
 
 export default function JobModal({
   setShowJobModal,
@@ -142,6 +219,8 @@ export default function JobModal({
   const token = ctx?.token ?? null;
   const setData = ctx?.setData ?? null;
   const currentUser = ctx?.userDetails ?? {};
+  
+const { role } = useOperationsStore();
   
 
   // NEW (paste-to-upload buffer)
@@ -263,10 +342,11 @@ useEffect(() => {
 
         // persist to backend
         const resp = await persistAttachmentsToJob({
-          jobID,
-          userEmail,
-          urls,
-          token,
+            jobID,
+            userEmail,
+            urls,
+            token,
+            role,
         });
 
         // sync from server list
@@ -288,7 +368,14 @@ useEffect(() => {
     }
   };
 
-  const copyToClipboard = (text: string) => navigator.clipboard.writeText(text);
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toastUtils.success("Link copied to clipboard!");
+    } catch (error) {
+      toastUtils.error("Failed to copy link");
+    }
+  };
 
   /* ---------- Upload handlers (kept; not used in paste flow) ---------- */
   const handleImgUpload = async () => {
@@ -320,10 +407,11 @@ useEffect(() => {
       setAttachments((prev) => [url, ...prev]);
 
       const resp = await persistAttachmentsToJob({
-        jobID,
-        userEmail,
-        urls: [url],
-        token,
+          jobID,
+          userEmail,
+          urls: [url],
+          token,
+          role,
       });
 
       if (resp?.updatedJobs) {
@@ -380,15 +468,16 @@ useEffect(() => {
 
       // 2) persist to user (PlanSelect + LocalTokenValidator)
       const resp = await persistOptimizedResumeToUser({
-        token,
-        userEmail,
-        entry: {
-          url,
-          companyName: jobDetails?.companyName,
-          jobRole: jobDetails?.jobTitle,
-          jobId: jobDetails?.jobID,
-          jobLink: jobDetails?.joblink,
-        },
+          token,
+          userEmail,
+          entry: {
+              url,
+              companyName: jobDetails?.companyName,
+              jobRole: jobDetails?.jobTitle,
+              jobId: jobDetails?.jobID,
+              jobLink: jobDetails?.joblink,
+          },
+          role,
       });
 
       // 3) UPDATE CONTEXT + LOCALSTORAGE with server user details
@@ -418,37 +507,75 @@ useEffect(() => {
       setIsUploadingDoc(false);
     }
   };
+  const { setJobDescription } = useResumeStore();
 
   const sections = [
-    { id: "details", label: "Job Details", icon: FileText, color: "bg-blue-50 text-blue-700 border-blue-200" },
-    { id: "link", label: "Job Link", icon: Link, color: "bg-green-50 text-green-700 border-green-200" },
-    { id: "description", label: "Job Description", icon: Briefcase, color: "bg-purple-50 text-purple-700 border-purple-200" },
-    { id: "attachments", label: "Resume / Attachments", icon: User, color: "bg-orange-50 text-orange-700 border-orange-200" },
-    { id: "timeline", label: "Application Timeline", icon: TimerIcon, color: "bg-brown-800 text-orange-700 border-orange-200" },
+      {
+          id: "details",
+          label: "Job Details",
+          icon: FileText,
+          color: "bg-blue-50 text-blue-700 border-blue-200",
+      },
+      {
+          id: "link",
+          label: "Job Link",
+          icon: Link,
+          color: "bg-green-50 text-green-700 border-green-200",
+      },
+      {
+          id: "description",
+          label: "Job Description",
+          icon: Briefcase,
+          color: "bg-purple-50 text-purple-700 border-purple-200",
+      },
+      {
+          id: "attachments",
+          label: "Resume / Attachments",
+          icon: User,
+          color: "bg-orange-50 text-orange-700 border-orange-200",
+      },
+      {
+          id: "timeline",
+          label: "Application Timeline",
+          icon: TimerIcon,
+          color: "bg-brown-800 text-orange-700 border-orange-200",
+      },
+      {
+          id: "changes",
+          label: "Changes Made",
+          icon: GitCommit,
+          color: "bg-brown-800 text-orange-700 border-orange-200",
+      },
   ] as const;
 
   const renderContent = () => {
     switch (activeSection) {
-      case "details":
-        return (
-          <div className="space-y-4">
-            {/* Card 1: Company + Upload/Uploaded */}
-<div className="bg-white rounded-lg border border-gray-200 p-4">
-  <div className="text-sm font-medium text-gray-600 mb-2">Company Name</div>
-  <div className="flex items-center gap-3">
-         <img
-       src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(jobDetails.companyName)}.com&sz=64`}
-       alt="Company Logo"
-       className="w-[40px] h-[40px]"
-       onError={(e) => {
-         e.currentTarget.style.display = 'none';
-       }}
-     />
-    <p className="text-lg font-semibold text-gray-900">{jobDetails.companyName}</p>
-  </div>
-</div>
+        case "details":
+            return (
+                <div className="space-y-4">
+                    {/* Card 1: Company + Upload/Uploaded */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-4">
+                        <div className="text-sm font-medium text-gray-600 mb-2">
+                            Company Name
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <img
+                                src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(
+                                    jobDetails.companyName
+                                )}.com&sz=64`}
+                                alt="Company Logo"
+                                className="w-[40px] h-[40px]"
+                                onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                }}
+                            />
+                            <p className="text-lg font-semibold text-gray-900">
+                                {jobDetails.companyName}
+                            </p>
+                        </div>
+                    </div>
 
-            {/* <div className="bg-white rounded-lg flex justify-between border border-gray-200 p-4">
+                    {/* <div className="bg-white rounded-lg flex justify-between border border-gray-200 p-4">
               <p className="text-lg flex flex-col justify-start items-center font-semibold text-gray-900">
                 <h4 className="text-sm font-medium text-gray-600 mb-6">Company Name</h4>
                 <img
@@ -468,9 +595,37 @@ useEffect(() => {
                 </div>
 
                 {hasResumeForJob ? (
-                  <div className="mt-1 flex items-center gap-2 text-sm text-green-700">
-                    <Check className="w-4 h-4" />
-                    <span>Resume already uploaded for this job</span>
+                  <div className="mt-1 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-green-700">
+                        <Check className="w-4 h-4" />
+                        <span>Resume already uploaded for this job</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const resumeUrl = getOptimizedResumeUrl(jobDetails?.jobID, jobDetails?.companyName);
+                          const resumeTitle = getOptimizedResumeTitle(jobDetails?.jobID, jobDetails?.companyName);
+                          if (resumeUrl) {
+                            window.open(resumeUrl, '_blank');
+                            toastUtils.success(resumeTitle ? `Opening "${resumeTitle}" in new tab...` : "Opening resume in new tab...");
+                          } else {
+                            toastUtils.error("Resume URL not found");
+                          }
+                        }}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Visit Resume
+                      </button>
+                    </div>
+                    {(() => {
+                      const resumeTitle = getOptimizedResumeTitle(jobDetails?.jobID, jobDetails?.companyName);
+                      return resumeTitle ? (
+                        <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded border">
+                          <strong>Resume:</strong> {resumeTitle}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 ) : (
                   <>
@@ -509,365 +664,568 @@ useEffect(() => {
               </div>
             </div> */}
 
-            {/* Card 2: Added On */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center mb-2">
-                <Calendar className="w-4 h-4 text-gray-500 mr-2" />
-                <span className="text-sm font-medium text-gray-600">Added On</span>
-              </div>
-              <p className="text-lg font-semibold text-gray-900">
-                {jobDetails.createdAt ? getTimeAgo(jobDetails.dateAdded) : "N/A"}
-              </p>
-            </div>
-
-            {/* Card 3: Position */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center mb-2">
-                <Briefcase className="w-4 h-4 text-gray-500 mr-2" />
-                <span className="text-sm font-medium text-gray-600">Position</span>
-              </div>
-              <p className="text-lg font-semibold text-gray-900">{jobDetails.jobTitle}</p>
-            </div>
-
-            {/* Card 4: Candidate */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center mb-2">
-                <User className="w-4 h-4 text-gray-500 mr-2" />
-                <span className="text-sm font-medium text-gray-600">Candidate</span>
-              </div>
-              <p className="text-lg font-semibold text-gray-900">
-                {currentUser?.email || jobDetails.userID}
-              </p>
-            </div>
-          </div>
-        );
-
-      case "link":
-        return (
-          <div className="space-y-4">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-gray-900">Job Application Link</h4>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => copyToClipboard(jobDetails.joblink)}
-                    className="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                  >
-                    <Copy className="w-4 h-4 mr-1" />
-                    Copy
-                  </button>
-                  <a
-                    href={jobDetails.joblink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-1" />
-                    Open
-                  </a>
-                </div>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300">
-                <code className="text-sm text-gray-700 break-all font-mono">{jobDetails.joblink}</code>
-              </div>
-            </div>
-          </div>
-        );
-
-      case "description":
-        return (
-          <div className="space-y-4">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Job Description</h4>
-              <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-                {jobDetails?.jobDescription ? (
-                  <div className="text-sm text-gray-700 leading-relaxed job-description-html"
-                        
-                                dangerouslySetInnerHTML={{
-                                    __html: jobDetails.jobDescription,
-                                }}
-                            ></div>
-                ) : (
-                  <p className="text-gray-500 italic text-sm">No job description available.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-
-      case "attachments":
-        return (
-          <div className="space-y-4">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-gray-900">Resume / Attachments</h4>
-              </div>
-              {/* Attachments → Optimized Resume uploader (moved here)  */}
-<div className="mb-6 bg-white rounded-lg border border-blue-200 p-4">
-  <div className="flex items-center mb-3">
-    <UploadIcon className="w-4 h-4 text-blue-600 mr-2" />
-    <h4 className="text-sm font-semibold text-blue-700">
-      Add Optimized Resume (PDF/DOC/DOCX)
-    </h4>
-  </div>
-
-  {hasResumeForJob ? (
-    <div className="mt-1 flex items-center gap-2 text-sm text-green-700">
-      <Check className="w-4 h-4" />
-      <span>Resume already uploaded for this job</span>
-    </div>
-  ) : (
-    <>
-      {/* hidden input (reuses existing ref + handler) */}
-      <input
-        ref={docInputRef}
-        type="file"
-        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        onChange={handleDocFileChange}
-        className="hidden"
-      />
-
-      <button
-        onClick={handleChooseDoc}
-        disabled={isUploadingDoc}
-        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-50"
-      >
-        {isUploadingDoc ? (
-          <Loader2 className="animate-spin w-4 h-4" />
-        ) : (
-          <UploadIcon className="w-4 h-4" />
-        )}
-        {isUploadingDoc ? "Uploading..." : "Add Optimized Resume"}
-      </button>
-
-      {recentDocUrl && (
-        <div className="mt-3 flex items-center gap-2 text-sm text-green-700">
-          <Check className="w-4 h-4" />
-          <a href={recentDocUrl} target="_blank" rel="noreferrer" className="underline">
-            Document added — Open/Download
-          </a>
-        </div>
-      )}
-      {docError && <p className="mt-2 text-sm text-red-600">{docError}</p>}
-    </>
-  )}
-</div>
-
-
-              {/* ---- Paste Images (Ctrl+V) ---- */}
-              <div className="mb-6 rounded-lg border border-orange-200 p-4">
-                <div className="flex items-center mb-3">
-                  <UploadIcon className="w-4 h-4 text-orange-600 mr-2" />
-                  <h4 className="text-sm font-semibold text-orange-700">
-                    Paste Images (Ctrl+V) — PNG/JPG/WEBP
-                  </h4>
-                </div>
-
-                <div
-                  onPaste={handlePasteImages}
-                  className="border-2 border-dashed border-orange-400/70 rounded-lg p-4 min-h-[96px] flex items-center justify-center bg-orange-50"
-                >
-                  {pastedPreviews.length ? (
-                    <div className="w-full">
-                      <div className="flex flex-wrap gap-2">
-                        {pastedPreviews.map((src, idx) => (
-                          <img
-                            key={idx}
-                            src={src}
-                            alt={`pasted-${idx}`}
-                            className="w-20 h-20 object-cover rounded-md border"
-                          />
-                        ))}
-                      </div>
-
-                      <div className="mt-3 flex gap-2">
-                        <button
-                          onClick={uploadPastedImages}
-                          disabled={isUploadingPasted}
-                          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-600 text-white disabled:opacity-50"
-                        >
-                          {isUploadingPasted ? (
-                            <Loader2 className="animate-spin w-4 h-4" />
-                          ) : (
-                            <UploadIcon className="w-4 h-4" />
-                          )}
-                          {isUploadingPasted ? "Uploading..." : "Upload pasted images"}
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            pastedPreviews.forEach((u) => URL.revokeObjectURL(u));
-                            setPastedPreviews([]);
-                            setPastedImages([]);
-                          }}
-                          disabled={isUploadingPasted}
-                          className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-gray-600 text-sm flex items-center">
-                      <Copy className="w-4 h-4 mr-2" /> Copy an image and press{" "}
-                      <span className="mx-1 font-semibold">Ctrl+V</span> here
-                    </p>
-                  )}
-                </div>
-
-                {pasteError && <p className="mt-2 text-sm text-red-600">{pasteError}</p>}
-              </div>
-
-              {/* Image Grid */}
-              {attachments?.length ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {attachments.map((item, index) => (
-                    <div
-                      key={`${item}-${index}`}
-                      className="relative group cursor-pointer bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-300 transition-all duration-200"
-                      onClick={() => {
-                        setSelectedImage(item);
-                        setAttachmentsModalActiveStatus(true);
-                      }}
-                    >
-                      <img
-                        src={item}
-                        alt={`Attachment ${index + 1}`}
-                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-200"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 flex items-center justify-center">
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          <div className="bg-white rounded-full p-2 shadow-lg">
-                            <ArrowRight className="w-5 h-5 text-gray-700" />
-                          </div>
+                    {/* Card 2: Added On */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-4">
+                        <div className="flex items-center mb-2">
+                            <Calendar className="w-4 h-4 text-gray-500 mr-2" />
+                            <span className="text-sm font-medium text-gray-600">
+                                Added On
+                            </span>
                         </div>
-                      </div>
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-3">
-                        <p className="text-white text-sm font-medium">Attachment {index + 1}</p>
-                      </div>
+                        <p className="text-lg font-semibold text-gray-900">
+                            {jobDetails.createdAt
+                                ? getTimeAgo(jobDetails.dateAdded)
+                                : "N/A"}
+                        </p>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                  <User className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <h3 className="text-gray-500 font-medium mb-1">No attachments yet</h3>
-                  <p className="text-gray-400 text-sm">Paste images above to see them here.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        );
 
-      case "timeline":
-        return (
-          <div className="space-y-4">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">📈 Application Timeline</h4>
-              {jobDetails?.timeline?.length > 0 ? (
-                <ol className="relative border-s border-gray-200">
-                  {jobDetails.timeline.map((event: string, idx: number) => (
-                    <li key={idx} className="mb-10 ms-6">
-                      <span className="absolute flex items-center justify-center w-6 h-6 bg-purple-100 rounded-full -start-3 ring-8 ring-white">
-                        <svg className="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 00-1.414 0L10 10.586 6.707 7.293A1 1 0 105.293 8.707l4 4a1 1 0 001.414 0l6-6a1 1 0 000-1.414z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </span>
-                      <h3 className="flex items-center mb-1 text-md font-semibold text-purple-800">
-                        {event}
-                      </h3>
-                      <p className="text-sm text-gray-500">Step {idx + 1}</p>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <div className="text-gray-500 italic">No timeline available.</div>
-              )}
-            </div>
-          </div>
-        );
+                    {/* Card 3: Position */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-4">
+                        <div className="flex items-center mb-2">
+                            <Briefcase className="w-4 h-4 text-gray-500 mr-2" />
+                            <span className="text-sm font-medium text-gray-600">
+                                Position
+                            </span>
+                        </div>
+                        <p className="text-lg font-semibold text-gray-900">
+                            {jobDetails.jobTitle}
+                        </p>
+                    </div>
 
-      default:
-        return null;
+                    {/* Card 4: Candidate */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-4">
+                        <div className="flex items-center mb-2">
+                            <User className="w-4 h-4 text-gray-500 mr-2" />
+                            <span className="text-sm font-medium text-gray-600">
+                                Candidate
+                            </span>
+                        </div>
+                        <p className="text-lg font-semibold text-gray-900">
+                            {currentUser?.email || jobDetails.userID}
+                        </p>
+                    </div>
+                </div>
+            );
+
+        case "link":
+            return (
+                <div className="space-y-4">
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-lg font-semibold text-gray-900">
+                                Job Application Link
+                            </h4>
+                            <div className="flex space-x-2">
+                                <button
+                                    onClick={() =>
+                                        copyToClipboard(jobDetails.joblink)
+                                    }
+                                    className="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                                >
+                                    <Copy className="w-4 h-4 mr-1" />
+                                    Copy
+                                </button>
+                                <a
+                                    href={jobDetails.joblink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                >
+                                    <ExternalLink className="w-4 h-4 mr-1" />
+                                    Open
+                                </a>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300">
+                            <code className="text-sm text-gray-700 break-all font-mono">
+                                {jobDetails.joblink}
+                            </code>
+                        </div>
+                    </div>
+                </div>
+            );
+
+        case "description":
+            return (
+                <div className="space-y-4">
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                            Job Description
+                        </h4>
+                        <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+                            {jobDetails?.jobDescription ? (
+                                <div
+                                    className="text-sm text-gray-700 leading-relaxed job-description-html"
+                                    // Correctly render the HTML from the backend
+                                    dangerouslySetInnerHTML={{
+                                        __html: jobDetails.jobDescription,
+                                    }}
+                                ></div>
+                            ) : (
+                                <p className="text-gray-500 italic text-sm">
+                                    No job description available.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+
+        case "attachments":
+            return (
+                <div className="space-y-4">
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-lg font-semibold text-gray-900">
+                                Resume / Attachments
+                            </h4>
+                        </div>
+                        {/* Attachments → Optimized Resume uploader (moved here)  */}
+                        <div className="mb-6 bg-white rounded-lg border border-blue-200 p-4">
+                            <div className="flex items-center mb-3">
+                                <UploadIcon className="w-4 h-4 text-blue-600 mr-2" />
+                                <h4 className="text-sm font-semibold text-blue-700">
+                                    Add Optimized Resume (PDF/DOC/DOCX)
+                                </h4>
+                            </div>
+
+                            {hasResumeForJob ? (
+                                <div className="mt-1 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-sm text-green-700">
+                                            <Check className="w-4 h-4" />
+                                            <span>
+                                                Resume already uploaded for this
+                                                job
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                const resumeUrl =
+                                                    getOptimizedResumeUrl(
+                                                        jobDetails?.jobID,
+                                                        jobDetails?.companyName
+                                                    );
+                                                const resumeTitle =
+                                                    getOptimizedResumeTitle(
+                                                        jobDetails?.jobID,
+                                                        jobDetails?.companyName
+                                                    );
+                                                if (resumeUrl) {
+                                                    window.open(
+                                                        resumeUrl,
+                                                        "_blank"
+                                                    );
+                                                    toastUtils.success(
+                                                        resumeTitle
+                                                            ? `Opening "${resumeTitle}" in new tab...`
+                                                            : "Opening resume in new tab..."
+                                                    );
+                                                } else {
+                                                    toastUtils.error(
+                                                        "Resume URL not found"
+                                                    );
+                                                }
+                                            }}
+                                            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                        >
+                                            <ExternalLink className="w-3 h-3" />
+                                            Visit Resume
+                                        </button>
+                                    </div>
+                                    {(() => {
+                                        const resumeTitle =
+                                            getOptimizedResumeTitle(
+                                                jobDetails?.jobID,
+                                                jobDetails?.companyName
+                                            );
+                                        return resumeTitle ? (
+                                            <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded border">
+                                                <strong>Resume:</strong>{" "}
+                                                {resumeTitle}
+                                            </div>
+                                        ) : null;
+                                    })()}
+                                </div>
+                            ) : (
+                                <>
+                                    {/* hidden input (reuses existing ref + handler) */}
+                                    <input
+                                        ref={docInputRef}
+                                        type="file"
+                                        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                        onChange={handleDocFileChange}
+                                        className="hidden"
+                                    />
+
+                                    <button
+                                        onClick={handleChooseDoc}
+                                        disabled={isUploadingDoc}
+                                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-50"
+                                    >
+                                        {isUploadingDoc ? (
+                                            <Loader2 className="animate-spin w-4 h-4" />
+                                        ) : (
+                                            <UploadIcon className="w-4 h-4" />
+                                        )}
+                                        {isUploadingDoc
+                                            ? "Uploading..."
+                                            : "Add Optimized Resume"}
+                                    </button>
+
+                                    {recentDocUrl && (
+                                        <div className="mt-3 flex items-center gap-2 text-sm text-green-700">
+                                            <Check className="w-4 h-4" />
+                                            <a
+                                                href={recentDocUrl}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="underline"
+                                            >
+                                                Document added — Open/Download
+                                            </a>
+                                        </div>
+                                    )}
+                                    {docError && (
+                                        <p className="mt-2 text-sm text-red-600">
+                                            {docError}
+                                        </p>
+                                    )}
+                                </>
+                            )}
+                        </div>
+
+                        {/* ---- Paste Images (Ctrl+V) ---- */}
+                        <div className="mb-6 rounded-lg border border-orange-200 p-4">
+                            <div className="flex items-center mb-3">
+                                <UploadIcon className="w-4 h-4 text-orange-600 mr-2" />
+                                <h4 className="text-sm font-semibold text-orange-700">
+                                    Paste Images (Ctrl+V) — PNG/JPG/WEBP
+                                </h4>
+                            </div>
+
+                            <div
+                                onPaste={handlePasteImages}
+                                className="border-2 border-dashed border-orange-400/70 rounded-lg p-4 min-h-[96px] flex items-center justify-center bg-orange-50"
+                            >
+                                {pastedPreviews.length ? (
+                                    <div className="w-full">
+                                        <div className="flex flex-wrap gap-2">
+                                            {pastedPreviews.map((src, idx) => (
+                                                <img
+                                                    key={idx}
+                                                    src={src}
+                                                    alt={`pasted-${idx}`}
+                                                    className="w-20 h-20 object-cover rounded-md border"
+                                                />
+                                            ))}
+                                        </div>
+
+                                        <div className="mt-3 flex gap-2">
+                                            <button
+                                                onClick={uploadPastedImages}
+                                                disabled={isUploadingPasted}
+                                                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-600 text-white disabled:opacity-50"
+                                            >
+                                                {isUploadingPasted ? (
+                                                    <Loader2 className="animate-spin w-4 h-4" />
+                                                ) : (
+                                                    <UploadIcon className="w-4 h-4" />
+                                                )}
+                                                {isUploadingPasted
+                                                    ? "Uploading..."
+                                                    : "Upload pasted images"}
+                                            </button>
+
+                                            <button
+                                                onClick={() => {
+                                                    pastedPreviews.forEach(
+                                                        (u) =>
+                                                            URL.revokeObjectURL(
+                                                                u
+                                                            )
+                                                    );
+                                                    setPastedPreviews([]);
+                                                    setPastedImages([]);
+                                                }}
+                                                disabled={isUploadingPasted}
+                                                className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                                            >
+                                                Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-600 text-sm flex items-center">
+                                        <Copy className="w-4 h-4 mr-2" /> Copy
+                                        an image and press{" "}
+                                        <span className="mx-1 font-semibold">
+                                            Ctrl+V
+                                        </span>{" "}
+                                        here
+                                    </p>
+                                )}
+                            </div>
+
+                            {pasteError && (
+                                <p className="mt-2 text-sm text-red-600">
+                                    {pasteError}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Image Grid */}
+                        {attachments?.length ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {attachments.map((item, index) => (
+                                    <div
+                                        key={`${item}-${index}`}
+                                        className="relative group cursor-pointer bg-gray-50 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-300 transition-all duration-200"
+                                        onClick={() => {
+                                            setSelectedImage(item);
+                                            setAttachmentsModalActiveStatus(
+                                                true
+                                            );
+                                        }}
+                                    >
+                                        <img
+                                            src={item}
+                                            alt={`Attachment ${index + 1}`}
+                                            className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-200"
+                                        />
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 flex items-center justify-center">
+                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                                <div className="bg-white rounded-full p-2 shadow-lg">
+                                                    <ArrowRight className="w-5 h-5 text-gray-700" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-3">
+                                            <p className="text-white text-sm font-medium">
+                                                Attachment {index + 1}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                                <User className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                                <h3 className="text-gray-500 font-medium mb-1">
+                                    No attachments yet
+                                </h3>
+                                <p className="text-gray-400 text-sm">
+                                    Paste images above to see them here.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+
+        case "timeline":
+            return (
+                <div className="space-y-4">
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                            📈 Application Timeline
+                        </h4>
+                        {jobDetails?.timeline?.length > 0 ? (
+                            <ol className="relative border-s border-gray-200">
+                                {jobDetails.timeline.map(
+                                    (event: string, idx: number) => (
+                                        <li key={idx} className="mb-10 ms-6">
+                                            <span className="absolute flex items-center justify-center w-6 h-6 bg-purple-100 rounded-full -start-3 ring-8 ring-white">
+                                                <svg
+                                                    className="w-3 h-3 text-purple-600"
+                                                    fill="currentColor"
+                                                    viewBox="0 0 20 20"
+                                                >
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M16.707 5.293a1 1 0 00-1.414 0L10 10.586 6.707 7.293A1 1 0 105.293 8.707l4 4a1 1 0 001.414 0l6-6a1 1 0 000-1.414z"
+                                                        clipRule="evenodd"
+                                                    />
+                                                </svg>
+                                            </span>
+                                            <h3 className="flex items-center mb-1 text-md font-semibold text-purple-800">
+                                                {event}
+                                            </h3>
+                                            <p className="text-sm text-gray-500">
+                                                Step {idx + 1}
+                                            </p>
+                                        </li>
+                                    )
+                                )}
+                            </ol>
+                        ) : (
+                            <div className="text-gray-500 italic">
+                                No timeline available.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+
+        case "changes":
+            return (
+                <div className="space-y-4">
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                            Changes Made
+                        </h4>
+                        {hasResumeForJob && jobDetails?.changesMade ? (
+                            <ResumeChangesComparison
+                                changesMade={jobDetails.changesMade}
+                            />
+                        ) : (
+                            <div className="text-gray-500 italic">
+                                No changes available, please optimize your
+                                resume.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+
+        default:
+            return null;
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
-      <div className="relative w-full max-w-6xl h-[90vh] bg-white rounded-xl shadow-xl flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="w-full bg-gradient-to-r from-orange-600 to-red-500 text-white p-4 z-10">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <FileText className="w-6 h-6 mr-3" />
-              <div>
-                <h1 className="text-xl font-bold">📄 FlashFire Jobs</h1>
-                <p className="text-orange-100 text-sm">
-                  {jobDetails.jobTitle} at {jobDetails.companyName}
-                </p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4">
+          <div className="relative w-full max-w-6xl h-[90vh] bg-white rounded-xl shadow-xl flex flex-col overflow-hidden">
+              {/* Header */}
+              <div className="w-full bg-gradient-to-r from-orange-600 to-red-500 text-white p-4 z-10">
+                  <div className="flex justify-between items-center">
+                      <div className="flex items-center">
+                          <FileText className="w-6 h-6 mr-3" />
+                          <div>
+                              <h1 className="text-xl font-bold">
+                                  📄 FlashFire Jobs
+                              </h1>
+                              <p className="text-orange-100 text-sm">
+                                  {jobDetails.jobTitle} at{" "}
+                                  {jobDetails.companyName}
+                              </p>
+                          </div>
+                      </div>
+                      {role == "operations" ? (
+                          <button
+                              onClick={() => {
+                                  setJobDescription(jobDetails.jobDescription);
+                                  window.open(
+                                      `/optimize/${jobDetails._id}`,
+                                      "_blank"
+                                  );
+                              }}
+                              className="hover:bg-orange-900 hover:bg-opacity-20 p-2 rounded-full transition-colors bg-orange-700"
+                          >
+                              Optimize resume
+                          </button>
+                      ) : null}
+                      <button
+                          onClick={() => setShowJobModal(false)}
+                          className="hover:bg-white hover:bg-opacity-20 p-2 rounded-full transition-colors"
+                      >
+                          <X className="w-6 h-6" />
+                      </button>
+                  </div>
               </div>
-            </div>
-            <button
-              onClick={() => setShowJobModal(false)}
-              className="hover:bg-white hover:bg-opacity-20 p-2 rounded-full transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
+
+              {/* Body */}
+              <div className="flex flex-1 overflow-hidden">
+                  {/* Sidebar */}
+                  <div className="w-56 bg-gray-50 border-r border-gray-200 py-6 px-3">
+                      <nav className="space-y-2">
+                          {[
+                              {
+                                  id: "details",
+                                  label: "Job Details",
+                                  icon: FileText,
+                                  color: "bg-blue-50 text-blue-700 border-blue-200",
+                              },
+                              {
+                                  id: "link",
+                                  label: "Job Link",
+                                  icon: Link,
+                                  color: "bg-green-50 text-green-700 border-green-200",
+                              },
+                              {
+                                  id: "description",
+                                  label: "Job Description",
+                                  icon: Briefcase,
+                                  color: "bg-purple-50 text-purple-700 border-purple-200",
+                              },
+                              {
+                                  id: "attachments",
+                                  label: "Resume / Attachments",
+                                  icon: User,
+                                  color: "bg-orange-50 text-orange-700 border-orange-200",
+                              },
+                              {
+                                  id: "timeline",
+                                  label: "Application Timeline",
+                                  icon: TimerIcon,
+                                  color: "bg-brown-800 text-orange-700 border-orange-200",
+                              },
+                              {
+                                  id: "changes",
+                                  label: "Changes Made",
+                                  icon: GitCommit,
+                                  color: "bg-brown-800 text-red-700 border-orange-300",
+                              },
+                          ].map((section: any) => {
+                              const Icon = section.icon;
+                              const isActive = activeSection === section.id;
+                              return (
+                                  <button
+                                      key={section.id}
+                                      onClick={() =>
+                                          setActiveSection(section.id)
+                                      }
+                                      className={`w-full flex items-center px-3 py-2 text-left rounded-lg transition-all duration-200 text-sm ${
+                                          isActive
+                                              ? `${section.color} border shadow-sm`
+                                              : "text-gray-700 hover:bg-white hover:shadow-sm border border-transparent"
+                                      }`}
+                                  >
+                                      <Icon
+                                          className={`w-5 h-5 mr-2 ${
+                                              isActive ? "" : "text-gray-500"
+                                          }`}
+                                      />
+                                      <span className="font-medium">
+                                          {section.label}
+                                      </span>
+                                      {isActive && (
+                                          <ArrowRight className="w-4 h-4 ml-auto" />
+                                      )}
+                                  </button>
+                              );
+                          })}
+                      </nav>
+                  </div>
+
+                  {/* Main Content */}
+                  <div className="flex-1 overflow-y-auto p-6">
+                      {renderContent()}
+                  </div>
+              </div>
+
+              {/* Image Lightbox */}
+              {attachmentsModalActiveStatus && (
+                  <Suspense fallback={<LoadingScreen />}>
+                      <AttachmentsModal
+                          imageLink={selectedImage}
+                          setAttachmentsModalActiveStatus={
+                              setAttachmentsModalActiveStatus
+                          }
+                      />
+                  </Suspense>
+              )}
           </div>
-        </div>
-
-        {/* Body */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar */}
-          <div className="w-56 bg-gray-50 border-r border-gray-200 py-6 px-3">
-            <nav className="space-y-2">
-              {[
-                { id: "details", label: "Job Details", icon: FileText, color: "bg-blue-50 text-blue-700 border-blue-200" },
-                { id: "link", label: "Job Link", icon: Link, color: "bg-green-50 text-green-700 border-green-200" },
-                { id: "description", label: "Job Description", icon: Briefcase, color: "bg-purple-50 text-purple-700 border-purple-200" },
-                { id: "attachments", label: "Resume / Attachments", icon: User, color: "bg-orange-50 text-orange-700 border-orange-200" },
-                { id: "timeline", label: "Application Timeline", icon: TimerIcon, color: "bg-brown-800 text-orange-700 border-orange-200" },
-              ].map((section: any) => {
-                const Icon = section.icon;
-                const isActive = activeSection === section.id;
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center px-3 py-2 text-left rounded-lg transition-all duration-200 text-sm ${
-                      isActive
-                        ? `${section.color} border shadow-sm`
-                        : "text-gray-700 hover:bg-white hover:shadow-sm border border-transparent"
-                    }`}
-                  >
-                    <Icon className={`w-5 h-5 mr-2 ${isActive ? "" : "text-gray-500"}`} />
-                    <span className="font-medium">{section.label}</span>
-                    {isActive && <ArrowRight className="w-4 h-4 ml-auto" />}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Main Content */}
-          <div className="flex-1 overflow-y-auto p-6">{renderContent()}</div>
-        </div>
-
-        {/* Image Lightbox */}
-        {attachmentsModalActiveStatus && (
-          <Suspense fallback={<LoadingScreen />}>
-            <AttachmentsModal
-              imageLink={selectedImage}
-              setAttachmentsModalActiveStatus={setAttachmentsModalActiveStatus}
-            />
-          </Suspense>
-        )}
       </div>
-    </div>
   );
 }
-

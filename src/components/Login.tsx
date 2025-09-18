@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle,TrendingUp, Users, Award, Clock, Cross, X } from "lucide-react";
 import { UserContext } from "../state_management/UserContext";
 import { useUserProfile } from "../state_management/ProfileContext";
+import { useOperationsStore } from "../state_management/Operations";
+import { toastUtils, toastMessages } from "../utils/toast";
 // import {userP}
 // import { GoogleLogin } from '@react-oauth/google';
 
@@ -12,6 +14,7 @@ interface LoginResponse {
   token?: string;
   userDetails?: any; 
   userProfile?:any;
+  user?: any;
 }
 
 
@@ -25,6 +28,8 @@ export default function LoginPage({activeTab, onTabChange}: {activeTab: string, 
   const [response, setResponse] = useState<LoginResponse | null>(null);
 
   const navigate = useNavigate();
+  const { setName, setEmailOperations, setRole, setManagedUsers } =
+      useOperationsStore();
   const { setData } = useContext(UserContext);
   const { setProfileFromApi } = useUserProfile();
   const validate = () => {
@@ -43,7 +48,7 @@ const statsData = [
   },
   {
     value: "50K+",
-    label: "Application's Applied",
+    label: "Users Hired",
     icon: <Users className="w-5 h-5 text-purple-400" />,
   },
   {
@@ -78,31 +83,74 @@ const statsData = [
     e.preventDefault();
     const errs = validate();
     setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
+    if (Object.keys(errs).length > 0) {
+      toastUtils.error(toastMessages.validationError);
+      return;
+    }
 
     setIsLoading(true);
+    const loadingToast = toastUtils.loading(toastMessages.loggingIn);
+    
     try {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const loginEndpoint = email.toLowerCase().includes("@flashfirehq")
+      ? "/operations/login"
+      : "/login";
 
-  const res = await fetch(`${API_BASE_URL}/login`, { //${API_BASE_URL}
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+  const res = await fetch(`${API_BASE_URL}${loginEndpoint}`, {
+      //${API_BASE_URL}
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
   });
 
-      const data: LoginResponse = await res.json();
-      setResponse(data);
+  if (loginEndpoint == "/operations/login") {
+                const data: LoginResponse = await res.json();
+                setResponse(data);
+                if (data?.message === "Login successful") {
+                    setName(data.user.name);
+                    setEmailOperations(data.user.email);
+                    setRole(data.user.role);
+                    setManagedUsers(data.user.managedUsers);
+                    toastUtils.dismissToast(loadingToast);
+                    toastUtils.success("Welcome to Operations Dashboard!");
+                    navigate("/manage");
+                } else {
+                    toastUtils.dismissToast(loadingToast);
+                    toastUtils.error(data?.message || toastMessages.loginError);
+                }
+            } else {
+              const data: LoginResponse = await res.json();
+              setResponse(data);
 
-      if (data?.message === "Login Success..!") {
-        setData({ userDetails: data?.userDetails, token: data?.token });
-        setProfileFromApi(data.userProfile);
-        localStorage.setItem("userAuth", JSON.stringify({ token: data?.token, userDetails: data?.userDetails ,userProfile : data?.userProfile}));
-        navigate('/'); // Switch to dashboard tab
-      } else {
-        setData({});
-      }
+              if (data?.message === "Login Success..!") {
+                  setData({
+                      userDetails: data?.userDetails,
+                      token: data?.token,
+                  });
+                  setProfileFromApi(data.userProfile);
+                  localStorage.setItem(
+                      "userAuth",
+                      JSON.stringify({
+                          token: data?.token,
+                          userDetails: data?.userDetails,
+                          userProfile: data?.userProfile,
+                      })
+                  );
+                  toastUtils.dismissToast(loadingToast);
+                  toastUtils.success(toastMessages.loginSuccess);
+                  navigate("/"); // Switch to dashboard tab
+              } else {
+                  setData({});
+                  toastUtils.dismissToast(loadingToast);
+                  toastUtils.error(data?.message || toastMessages.loginError);
+              }
+            }
+      
     } catch (err) {
       console.error(err);
+      toastUtils.dismissToast(loadingToast);
+      toastUtils.error(toastMessages.networkError);
     } finally {
       setIsLoading(false);
     }
@@ -285,4 +333,3 @@ const statsData = [
 );
 
 }
-

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Mail, Lock, User, Eye, EyeOff, CheckCircle, CreditCard } from 'lucide-react';
+import { toastUtils, toastMessages } from '../utils/toast';
 // import { GoogleLogin } from '@react-oauth/google';
 
 
@@ -69,9 +70,13 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      toastUtils.error(toastMessages.validationError);
+      return;
+    }
     
     setIsLoading(true);
+    const loadingToast = toastUtils.loading("Creating your account...");
     let name = formData.firstName + formData.lastName;
     // Simulate API call
      try {
@@ -90,10 +95,14 @@ const Register = () => {
     setResponse(data);
 
     if (data?.message === 'User registered successfully') {
+      toastUtils.dismissToast(loadingToast);
+      toastUtils.success("Account created successfully! Please login to continue.");
       setFormData({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '', planType: 'Free Trial' });
       setErrors({});  
       navigate('/login');
     } else {
+      toastUtils.dismissToast(loadingToast);
+      toastUtils.error(data?.message || "Registration failed. Please try again.");
       setResponse(data);
     }
 
@@ -102,6 +111,8 @@ const Register = () => {
     // setPassword('');
   } catch (error) {
     console.log("Registration failed:", error);
+    toastUtils.dismissToast(loadingToast);
+    toastUtils.error(toastMessages.networkError);
     setResponse({ message: 'Registration failed. Please try again.' });
   } finally {
     setIsLoading(false);
