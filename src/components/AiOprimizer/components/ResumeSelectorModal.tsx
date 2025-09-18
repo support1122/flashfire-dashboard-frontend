@@ -59,6 +59,9 @@ export default function ResumeSelectorModal({
                 if (version == 1) {
                     url = `${apiUrl}/api/resumes/v1`;
                 }
+                if( version == 2 ){
+                    url = `${apiUrl}/api/resumes/v2`;
+                }
 
                 const res = await fetch(url);
                 const data = await res.json();
