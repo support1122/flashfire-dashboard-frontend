@@ -77,6 +77,7 @@ const Dashboard: React.FC = ({ setUserProfileFormVisibility }) => {
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${localToken}`,
                     },
+                    user: {email : localUserDetails.email},
                     body: JSON.stringify({ email: localUserDetails.email }),
                 });
                 const data = await res.json();
