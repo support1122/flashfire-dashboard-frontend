@@ -61,7 +61,7 @@ const emptyInitialData: ResumeData = {
             additionalInfo: "",
         },
     ],
-    publications: [],
+    publications: [],  
 };
 
 // Function to get initial data, checking for last selected resume first
@@ -74,7 +74,7 @@ export const getInitialData = (): ResumeData => {
             const lastSelectedResume = parsed.state?.lastSelectedResume;
             const lastSelectedResumeId = parsed.state?.lastSelectedResumeId;
             const currentResumeData = parsed.state?.resumeData;
-
+            
             console.log("🔍 Checking localStorage for last selected resume:", {
                 hasStoredData: !!storedData,
                 hasLastSelectedResume: !!lastSelectedResume,
@@ -83,7 +83,7 @@ export const getInitialData = (): ResumeData => {
                 lastSelectedResumeName: lastSelectedResume?.personalInfo?.name || "No name",
                 currentResumeDataName: currentResumeData?.personalInfo?.name || "No name"
             });
-
+            
             // Check both lastSelectedResume and current resumeData
             if (lastSelectedResume && lastSelectedResumeId) {
                 console.log("✅ Loading last selected resume as initial data:", lastSelectedResumeId, lastSelectedResume.personalInfo?.name);
@@ -96,7 +96,7 @@ export const getInitialData = (): ResumeData => {
     } catch (error) {
         console.error("❌ Error loading last selected resume from localStorage:", error);
     }
-
+    
     console.log("❌ No last selected resume found, using empty initial data");
     // Return empty initial data if no stored resume found
     return emptyInitialData;

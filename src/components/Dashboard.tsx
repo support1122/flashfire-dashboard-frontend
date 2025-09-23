@@ -21,6 +21,7 @@ import { useOperationsStore } from "../state_management/Operations.ts";
 import ReferralModal from "./ReferralModal.tsx";
 import ReferralButton from "./ReferralButton.tsx";
 import { generateReferralIdentifier } from "../utils/generateUsername.ts";
+import { useJobs } from "../hooks/useJobs";
 
 const Dashboard: React.FC = ({ setUserProfileFormVisibility }) => {
     const context = useContext(UserContext);
@@ -36,92 +37,52 @@ const Dashboard: React.FC = ({ setUserProfileFormVisibility }) => {
 
     const { token, userDetails, setData } = context;
     const { userJobs, setUserJobs, loading } = useUserJobs();
-    const [loadingDetails, setLoadingDetails] = useState(false);
     const [showProfileModal, setShowProfileModal] = useState(false);
     const { role } = useOperationsStore();
     // Referral Modal State
     const [isReferralModalOpen, setIsReferralModalOpen] = useState(false);
 
-    async function FetchAllJobs(localToken: string, localUserDetails: any) {
-        if (role == "operations") {
-            console.log("local storage email : ", localUserDetails.email);
-            try {
-                setLoadingDetails(true);
-                const res = await fetch(
-                    `${API_BASE_URL}/operations/getalljobs`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${localToken}`,
-                        },
-                        body: JSON.stringify({ email: localUserDetails.email }),
-                    }
-                );
-                const data = await res.json();
-                setLoadingDetails(false);
-                if (res.ok) {
-                    setUserJobs(data?.allJobs);
-                } else {
-                    alert("something is really wrong");
-                }
-            } catch (error) {
-                console.log("error while initial fetch data", error);
-            }
-        } else {
-            try {
-                setLoadingDetails(true);
-                const res = await fetch(`${API_BASE_URL}/getalljobs`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${localToken}`,
-                    },
-                    user: {email : localUserDetails.email},
-                    body: JSON.stringify({ email: localUserDetails.email }),
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    setUserJobs(data?.allJobs);
-                } else if (
-                    data.message === "invalid token please login again" ||
-                    data.message === "Invalid token or expired"
-                ) {
-                    console.log("Token invalid, attempting refresh...");
+    // Use React Query for jobs data
+    const isOperations = role === "operations";
+    const { 
+        data: jobsData, 
+        isLoading: jobsLoading, 
+        error: jobsError,
+        refetch: refetchJobs 
+    } = useJobs(token, userDetails?.email, isOperations);
 
-                    // Try to refresh token
-                    if (context?.refreshToken) {
-                        const refreshSuccess = await context.refreshToken();
+    // Update userJobs when React Query data changes
+    useEffect(() => {
+        if (jobsData?.allJobs) {
+            setUserJobs(jobsData.allJobs);
+        }
+    }, [jobsData, setUserJobs]);
+
+    // Handle authentication errors from React Query
+    useEffect(() => {
+        if (jobsError) {
+            console.log("Jobs fetch error:", jobsError);
+            if (jobsError.status === 401 || jobsError.status === 403) {
+                console.log("Token invalid, attempting refresh...");
+                
+                if (context?.refreshToken) {
+                    context.refreshToken().then((refreshSuccess) => {
                         if (refreshSuccess) {
-                            // Retry the request with new token
-                            console.log(
-                                "Token refreshed, retrying job fetch..."
-                            );
-                            setTimeout(
-                                () =>
-                                    FetchAllJobs(
-                                        context.token,
-                                        context.userDetails
-                                    ),
-                                100
-                            );
-                            return;
+                            console.log("Token refreshed, retrying job fetch...");
+                            refetchJobs();
+                        } else {
+                            console.log("Token refresh failed, redirecting to login");
+                            localStorage.clear();
+                            navigate("/login");
                         }
-                    }
-
-                    console.log(
-                        "Token refresh failed, clearing storage and redirecting to login"
-                    );
+                    });
+                } else {
                     localStorage.clear();
                     navigate("/login");
                 }
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoadingDetails(false);
             }
         }
-    }
+    }, [jobsError, context, refetchJobs, navigate]);
 
     useEffect(() => {
         if (!token || !userDetails) {
@@ -144,7 +105,7 @@ const Dashboard: React.FC = ({ setUserProfileFormVisibility }) => {
             setShowProfileModal(false);
         }
 
-        FetchAllJobs(token, userDetails);
+        // Jobs will be fetched automatically by React Query
     }, [token, userDetails, isProfileComplete]);
     const stats = calculateDashboardStats(userJobs);
     console.log("stats = ", stats);
@@ -274,7 +235,7 @@ const Dashboard: React.FC = ({ setUserProfileFormVisibility }) => {
             : 0;
     // alert(successRate)
 
-    if (loadingDetails) {
+    if (jobsLoading) {
         return <LoadingScreen />;
     }
     return (

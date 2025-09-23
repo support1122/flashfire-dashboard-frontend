@@ -5,6 +5,8 @@ import { UserContext } from "../state_management/UserContext";
 import { useNavigate } from "react-router-dom";
 import { useOperationsStore } from "../state_management/Operations";
 import { toastUtils, toastMessages } from "../utils/toast";
+import { useCreateJob, useUpdateJob } from "../hooks/useJobs";
+import { useOperationsCreateJob, useOperationsUpdateJob } from "../hooks/useOperations";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -80,7 +82,7 @@ async function createJobPOSTQuick({
         const body = await res.json().catch(() => ({}));
         return { status: res.status, ok: res.ok, body };
     } else {
-      const res = await fetch(`${API_BASE_URL}/addjob`, {
+      const res = await fetch(`${API_BASE_URL}/operations/jobs`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ jobDetails, userDetails, token }),
@@ -109,7 +111,6 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
     status: "saved" as JobStatus,
   });
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const context = useContext(UserContext);
   const userDetails = context?.userDetails;
@@ -119,6 +120,12 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
   const [images, setImages] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const role = useOperationsStore((state) => state.role);
+  
+  // React Query mutations
+  const createJobMutation = useCreateJob();
+  const updateJobMutation = useUpdateJob();
+  const operationsCreateJobMutation = useOperationsCreateJob();
+  const operationsUpdateJobMutation = useOperationsUpdateJob();
 
   // preload form if editing
   useEffect(() => {
@@ -200,48 +207,13 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
       return;
     }
 
-    setIsSubmitting(true);
     setError(null);
     const loadingToast = toastUtils.loading(toastMessages.savingJob);
 
     // ---------- CREATE MODE ----------
     if (!isEditMode) {
-      const optimisticId = Date.now().toString();
-      // const nowIN = new Date().toLocaleString("en-US", { hour12: true, timeZone: "Asia/Kolkata" });
-      const nowIN = new Date().toISOString();
-
-      const optimisticJob = {
-        jobID: optimisticId,
-        jobTitle: formData.jobTitle,
-        companyName: formData.companyName,
-        jobDescription: formData.jobDescription,
-        joblink: formData.joblink,
-        dateAdded: new Date().toLocaleString("en-US"),
-        currentStatus: formData.status,
-        userID: userDetails.email,
-        attachments: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: nowIN, // so it sorts to the top immediately
-      };
-
-      let closed = false;
-
-      // 1) Arm a 1s gate: if no 403 by then, close form + optimistic update
-      const closeTimer = setTimeout(() => {
-        // optimistic UI add (top) then close
-        setUserJobs((prev) => [optimisticJob, ...(prev || [])]);
-        toastUtils.dismissToast(loadingToast);
-        toastUtils.success(toastMessages.jobAdded);
-        onSuccess?.();
-        onCancel();
-        setIsSubmitting(false);
-        closed = true;
-      }, 2500);
-
       try {
-        // 2) Immediately POST minimal payload (no attachments) to quickly detect duplicate
         const jobDetails = {
-          jobID: optimisticId,
           jobTitle: formData.jobTitle,
           companyName: formData.companyName,
           jobDescription: formData.jobDescription,
@@ -249,92 +221,65 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
           dateAdded: formData.dateAdded,
           currentStatus: formData.status,
           userID: userDetails.email,
-          // attachments intentionally omitted for speed
         };
 
-        const { status, ok, body } = await createJobPOSTQuick({
-            jobDetails,
-            userDetails,
-            token,
-            role,
-        });
-
-        // If duplicate within 1s -> keep form open and show the message
-        if (status === 403 || body?.message === "Job Already Exist !") {
-          clearTimeout(closeTimer);
-          toastUtils.dismissToast(loadingToast);
-          toastUtils.error(body.message || "Job already exists!");
-          setIsSubmitting(false);
-          setError(body.message);
-          return;
+        let result;
+        if (role === "operations") {
+          // Use operations API for operations users
+          result = await operationsCreateJobMutation.mutateAsync({ 
+            jobDetails, 
+            userDetails 
+          });
+        } else {
+          // Use regular API for normal users
+          result = await createJobMutation.mutateAsync({ 
+            token: token!, 
+            jobData: jobDetails,
+            userDetails: { email: userDetails.email }
+          });
         }
 
-        // If token invalid, try refresh first
-        if (body?.message === "invalid token please login again" || body?.message === "Invalid token or expired") {
-          console.log('Token invalid, attempting refresh...');
-          
-          // Try to refresh token
-          if (context?.refreshToken) {
-            const refreshSuccess = await context.refreshToken();
-            if (refreshSuccess) {
-              // Retry the request with new token
-              console.log('Token refreshed, retrying job creation...');
-              setTimeout(() => handleAddJob(e), 100);
-              return;
+        toastUtils.dismissToast(loadingToast);
+        toastUtils.success(toastMessages.jobAdded);
+        onSuccess?.();
+        onCancel();
+
+        // Upload images in background
+        (async () => {
+          try {
+            const uploadedUrls = await uploadImagesToCloudinary();
+            if (uploadedUrls.length && result?.jobID) {
+              await persistAttachmentsToJobPUT({
+                jobID: result.jobID,
+                userDetails,
+                token,
+                urls: uploadedUrls,
+                role,
+              });
             }
+          } catch (err) {
+            console.error("[background attachments persist] failed:", err);
+          } finally {
+            previews.forEach((u) => URL.revokeObjectURL(u));
           }
-          
-          console.log('Token refresh failed, clearing storage and redirecting to login');
-          toastUtils.dismissToast(loadingToast);
+        })();
+
+      } catch (err: any) {
+        console.error("[create job] error:", err);
+        toastUtils.dismissToast(loadingToast);
+        
+        if (err?.message === "Job Already Exist !") {
+          toastUtils.error("Job already exists!");
+          setError("Job already exists!");
+        } else if (err?.status === 401 || err?.status === 403) {
           toastUtils.error(toastMessages.unauthorizedError);
           localStorage.clear();
           navigate("/login");
-          return;
-        }
-
-        // 3) If ok, sync with server response and proceed to upload images
-        if (ok && body?.NewJobList) {
-          // Update local state with server response
-          setUserJobs(body.NewJobList);
-          
-          // Proceed to upload images and persist attachments in background
-          (async () => {
-            try {
-              const uploadedUrls = await uploadImagesToCloudinary();
-              if (uploadedUrls.length) {
-                await persistAttachmentsToJobPUT({
-                    jobID: optimisticId,
-                    userDetails,
-                    token,
-                    urls: uploadedUrls,
-                    role,
-                });
-              }
-            } catch (err) {
-              console.error("[background attachments persist] failed:", err);
-            } finally {
-              previews.forEach((u) => URL.revokeObjectURL(u));
-            }
-          })();
         } else {
-          // If backend request failed, revert the optimistic update
-          console.error("Backend request failed:", body);
-          setUserJobs((prev) => prev.filter(job => job.jobID !== optimisticId));
-          clearTimeout(closeTimer);
-          toastUtils.dismissToast(loadingToast);
-          toastUtils.error(toastMessages.jobError);
-          setIsSubmitting(false);
+          toastUtils.error(toastMessages.networkError);
           setError("Failed to save job. Please try again.");
         }
-      } catch (err) {
-        // Network or unexpected error: if the form hasn't closed yet, let the gate close it.
-        console.error("[create quick] error:", err);
-        if (!closed) {
-          toastUtils.dismissToast(loadingToast);
-          toastUtils.error(toastMessages.networkError);
-        }
       }
-
       return; // end create mode
     }
 
@@ -472,10 +417,18 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
           </button>
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={
+              createJobMutation.isPending || 
+              updateJobMutation.isPending ||
+              operationsCreateJobMutation.isPending ||
+              operationsUpdateJobMutation.isPending
+            }
             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
           >
-            {isSubmitting ? "Saving..." : isEditMode ? "Update Job" : "Add Job"}
+            {(createJobMutation.isPending || 
+              updateJobMutation.isPending ||
+              operationsCreateJobMutation.isPending ||
+              operationsUpdateJobMutation.isPending) ? "Saving..." : isEditMode ? "Update Job" : "Add Job"}
           </button>
         </div>
       </form>

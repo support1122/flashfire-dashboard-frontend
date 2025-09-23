@@ -3,6 +3,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { UserContext } from './UserContext.tsx';
 import { useNavigate } from 'react-router-dom';
 import { useOperationsStore } from "./Operations.ts";
+import { useJobs } from '../hooks/useJobs';
 
 type Job = any;
 
@@ -24,101 +25,52 @@ export const useUserJobs = () => {
 
 export const UserJobsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [userJobs, setUserJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
   const context = useContext(UserContext);
   const navigate = useNavigate();
   
   const userDetails = context?.userDetails;
   const token = context?.token;
-  useEffect(() => {
-      fetchJobs();
-  }, []);
-  useEffect(() => {
-    if (token && userDetails) {
-      fetchJobs();
-    }
-  }, [token, userDetails]);
   const { role } = useOperationsStore();
+  
+  // Use React Query for jobs data
+  const isOperations = role === "operations";
+  const { 
+    data: jobsData, 
+    isLoading: loading, 
+    error: jobsError,
+    refetch: refetchJobs 
+  } = useJobs(token, userDetails?.email, isOperations);
 
-  const fetchJobs = async () => {
-    // if (!token || !userDetails) {
-    //   console.log('No token or userDetails available');
-    //   return;
-    // }
-    console.log("Role is ", role);
-    setLoading(true);
-    try {
-      console.log("Fetching jobs...", userDetails.email);
-      if (role == "operations") {
-        const res = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL}/operations/alljobs`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: userDetails.email }),
-            }
-        );
-        const data = await res.json();
-        console.log("got job data", data);
-        setUserJobs(data?.allJobs || []);
-      } else {
-        console.log("Fetching jobs with token:", token);
-        console.log(
-            "API URL:",
-            `${import.meta.env.VITE_API_BASE_URL}/getalljobs`
-        );
-
-        const res = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL}/getalljobs`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ email: userDetails.email }),
-            }
-        );
-
-        console.log("Response status:", res.status);
-        console.log("Response headers:", res.headers);
-
-        const data = await res.json();
-        console.log("Fetched jobs response:", data);
-
-        if (
-            data?.message == "Token or user details missing" ||
-            data?.message == "Token or user details missing" ||
-            data?.message == "Invalid token or expired"
-        ) {
-            console.log("Authentication failed, attempting token refresh...");
-
-            // Try to refresh token
-            if (context?.refreshToken) {
-                const refreshSuccess = await context.refreshToken();
-                if (refreshSuccess) {
-                    // Retry the request with new token
-                    console.log("Token refreshed, retrying job fetch...");
-                    setTimeout(() => fetchJobs(), 100);
-                    return;
-                }
-            }
-
-            console.log("Token refresh failed, redirecting to login");
-            navigate("/login");
-            return;
-        }
-
-        console.log("Setting userJobs:", data?.allJobs);
-        setUserJobs(data?.allJobs || []);
-      }
-      
-    } catch (err) {
-      console.error('Error fetching jobs:', err);
-    } finally {
-      setLoading(false);
+  // Update userJobs when React Query data changes
+  useEffect(() => {
+    if (jobsData?.allJobs) {
+      setUserJobs(jobsData.allJobs);
     }
-  };
+  }, [jobsData]);
+
+  // Handle authentication errors from React Query
+  useEffect(() => {
+    if (jobsError) {
+      console.log("Jobs fetch error:", jobsError);
+      if (jobsError.status === 401 || jobsError.status === 403) {
+        console.log("Authentication failed, attempting token refresh...");
+        
+        if (context?.refreshToken) {
+          context.refreshToken().then((refreshSuccess) => {
+            if (refreshSuccess) {
+              console.log("Token refreshed, retrying job fetch...");
+              refetchJobs();
+            } else {
+              console.log("Token refresh failed, redirecting to login");
+              navigate("/login");
+            }
+          });
+        } else {
+          navigate("/login");
+        }
+      }
+    }
+  }, [jobsError, context, refetchJobs, navigate]);
 
   return (
     <UserJobsContext.Provider value={{ userJobs, setUserJobs, loading }}>

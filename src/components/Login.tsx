@@ -6,6 +6,7 @@ import { UserContext } from "../state_management/UserContext";
 import { useUserProfile } from "../state_management/ProfileContext";
 import { useOperationsStore } from "../state_management/Operations";
 import { toastUtils, toastMessages } from "../utils/toast";
+import { useLogin } from "../hooks/useAuth";
 // import {userP}
 // import { GoogleLogin } from '@react-oauth/google';
 
@@ -23,7 +24,6 @@ export default function LoginPage({activeTab, onTabChange}: {activeTab: string, 
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [response, setResponse] = useState<LoginResponse | null>(null);
 
@@ -32,6 +32,8 @@ export default function LoginPage({activeTab, onTabChange}: {activeTab: string, 
       useOperationsStore();
   const { setData } = useContext(UserContext);
   const { setProfileFromApi } = useUserProfile();
+  
+  const loginMutation = useLogin();
   const validate = () => {
     const errs: { email?: string; password?: string } = {};
     if (!email) errs.email = "Email is required";
@@ -88,71 +90,55 @@ const statsData = [
       return;
     }
 
-    setIsLoading(true);
     const loadingToast = toastUtils.loading(toastMessages.loggingIn);
     
     try {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-  const loginEndpoint = email.toLowerCase().includes("@flashfirehq")
-      ? "/operations/login"
-      : "/login";
-
-  const res = await fetch(`${API_BASE_URL}${loginEndpoint}`, {
-      //${API_BASE_URL}
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-  });
-
-  if (loginEndpoint == "/operations/login") {
-                const data: LoginResponse = await res.json();
-                setResponse(data);
-                if (data?.message === "Login successful") {
-                    setName(data.user.name);
-                    setEmailOperations(data.user.email);
-                    setRole(data.user.role);
-                    setManagedUsers(data.user.managedUsers);
-                    toastUtils.dismissToast(loadingToast);
-                    toastUtils.success("Welcome to Operations Dashboard!");
-                    navigate("/manage");
-                } else {
-                    toastUtils.dismissToast(loadingToast);
-                    toastUtils.error(data?.message || toastMessages.loginError);
-                }
-            } else {
-              const data: LoginResponse = await res.json();
-              setResponse(data);
-
-              if (data?.message === "Login Success..!") {
-                  setData({
-                      userDetails: data?.userDetails,
-                      token: data?.token,
-                  });
-                  setProfileFromApi(data.userProfile);
-                  localStorage.setItem(
-                      "userAuth",
-                      JSON.stringify({
-                          token: data?.token,
-                          userDetails: data?.userDetails,
-                          userProfile: data?.userProfile,
-                      })
-                  );
-                  toastUtils.dismissToast(loadingToast);
-                  toastUtils.success(toastMessages.loginSuccess);
-                  navigate("/"); // Switch to dashboard tab
-              } else {
-                  setData({});
-                  toastUtils.dismissToast(loadingToast);
-                  toastUtils.error(data?.message || toastMessages.loginError);
-              }
-            }
+      const data = await loginMutation.mutateAsync({ email, password });
+      setResponse(data);
       
-    } catch (err) {
+      const isOperationsLogin = email.toLowerCase().includes("@flashfirehq");
+      
+      if (isOperationsLogin) {
+        if (data?.message === "Login successful") {
+          setName(data.user.name);
+          setEmailOperations(data.user.email);
+          setRole(data.user.role);
+          setManagedUsers(data.user.managedUsers);
+          toastUtils.dismissToast(loadingToast);
+          toastUtils.success("Welcome to Operations Dashboard!");
+          navigate("/manage");
+        } else {
+          toastUtils.dismissToast(loadingToast);
+          toastUtils.error(data?.message || toastMessages.loginError);
+        }
+      } else {
+        if (data?.message === "Login Success..!") {
+          setData({
+            userDetails: data?.userDetails,
+            token: data?.token,
+          });
+          setProfileFromApi(data.userProfile);
+          localStorage.setItem(
+            "userAuth",
+            JSON.stringify({
+              token: data?.token,
+              userDetails: data?.userDetails,
+              userProfile: data?.userProfile,
+            })
+          );
+          toastUtils.dismissToast(loadingToast);
+          toastUtils.success(toastMessages.loginSuccess);
+          navigate("/");
+        } else {
+          setData({});
+          toastUtils.dismissToast(loadingToast);
+          toastUtils.error(data?.message || toastMessages.loginError);
+        }
+      }
+    } catch (err: any) {
       console.error(err);
       toastUtils.dismissToast(loadingToast);
-      toastUtils.error(toastMessages.networkError);
-    } finally {
-      setIsLoading(false);
+      toastUtils.error(err?.message || toastMessages.networkError);
     }
   };
 
@@ -298,10 +284,10 @@ const statsData = [
           {/* Submit */}
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={loginMutation.isPending}
             className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 rounded-lg text-base flex justify-center items-center gap-2 hover:scale-[1.02] transition"
           >
-            {isLoading ? (
+            {loginMutation.isPending ? (
               <span className="animate-spin border-b-2 border-white w-5 h-5 rounded-full"></span>
             ) : (
               <>

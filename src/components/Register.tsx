@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Mail, Lock, User, Eye, EyeOff, CheckCircle, CreditCard } from 'lucide-react';
 import { toastUtils, toastMessages } from '../utils/toast';
+import { useRegister } from '../hooks/useAuth';
 // import { GoogleLogin } from '@react-oauth/google';
 
 
@@ -18,9 +19,11 @@ const Register = () => {
   let [response, setResponse] = useState<{message?: string}>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
+  
+  // React Query mutation
+  const registerMutation = useRegister();
   
   // Plan options
   const planOptions = [
@@ -75,48 +78,30 @@ const Register = () => {
       return;
     }
     
-    setIsLoading(true);
     const loadingToast = toastUtils.loading("Creating your account...");
-    let name = formData.firstName + formData.lastName;
-    // Simulate API call
-     try {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-    console.log("API_BASE_URL:", API_BASE_URL);
-    // console.log(name, mail, password);
-      
-    const res = await fetch(`${API_BASE_URL}/coreops`, {  //${API_BASE_URL}
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
-
-    const data = await res.json();
-    console.log(data.message)
-    setResponse(data);
-
-    if (data?.message === 'User registered successfully') {
-      toastUtils.dismissToast(loadingToast);
-      toastUtils.success("Account created successfully! Please login to continue.");
-      setFormData({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '', planType: 'Free Trial' });
-      setErrors({});  
-      navigate('/login');
-    } else {
-      toastUtils.dismissToast(loadingToast);
-      toastUtils.error(data?.message || "Registration failed. Please try again.");
+    
+    try {
+      const data = await registerMutation.mutateAsync(formData);
+      console.log(data.message);
       setResponse(data);
-    }
 
-    // setName('');
-    // setMail('');
-    // setPassword('');
-  } catch (error) {
-    console.log("Registration failed:", error);
-    toastUtils.dismissToast(loadingToast);
-    toastUtils.error(toastMessages.networkError);
-    setResponse({ message: 'Registration failed. Please try again.' });
-  } finally {
-    setIsLoading(false);
-  }
+      if (data?.message === 'User registered successfully') {
+        toastUtils.dismissToast(loadingToast);
+        toastUtils.success("Account created successfully! Please login to continue.");
+        setFormData({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '', planType: 'Free Trial' });
+        setErrors({});  
+        navigate('/login');
+      } else {
+        toastUtils.dismissToast(loadingToast);
+        toastUtils.error(data?.message || "Registration failed. Please try again.");
+        setResponse(data);
+      }
+    } catch (error: any) {
+      console.log("Registration failed:", error);
+      toastUtils.dismissToast(loadingToast);
+      toastUtils.error(error?.message || toastMessages.networkError);
+      setResponse({ message: 'Registration failed. Please try again.' });
+    }
 }
 
   // Handle Google sign-in
@@ -384,10 +369,10 @@ const Register = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={registerMutation.isPending}
                 className="group w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-2.5 px-4 rounded-xl font-semibold hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 mt-4"
               >
-                {isLoading ? (
+                {registerMutation.isPending ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                 ) : (
                   <>

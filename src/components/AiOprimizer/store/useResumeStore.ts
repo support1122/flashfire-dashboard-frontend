@@ -49,7 +49,7 @@ interface ResumeStore {
      setLastSelectedResume: (data: ResumeDataType, resumeId: string) => void;
      clearLastSelectedResume: () => void;
      loadLastSelectedResume: () => boolean;
-
+     
      // Debug function to manually check and fix localStorage
      debugLocalStorage: () => void;
 }
@@ -62,209 +62,209 @@ export const useResumeStore = create<ResumeStore>()(
                return {
                     resumeData: initialResumeData,
                     baseResume: initialResumeData,
-                    showLeadership: false,
-                    showProjects: false, // Will be set based on database check
-                    showSummary: false, // Will be set based on database check
-                    isSaved: false,
-                    jobDescription: "",
-                    isOptimizing: false,
-                    optimizedData: null,
-                    currentView: "editor",
-                    showChanges: false,
-                    changedFields: new Set(),
-                    showPublications: false,
+               showLeadership: false,
+               showProjects: false, // Will be set based on database check
+               showSummary: false, // Will be set based on database check
+               isSaved: false,
+               jobDescription: "",
+               isOptimizing: false,
+               optimizedData: null,
+               currentView: "editor",
+               showChanges: false,
+               changedFields: new Set(),
+               showPublications: false,
 
-                    // Persistent resume selection
-                    lastSelectedResume: null,
-                    lastSelectedResumeId: null,
+               // Persistent resume selection
+               lastSelectedResume: null,
+               lastSelectedResumeId: null,
 
-                    setShowPublications: (value) => set({ showPublications: value }),
-                    setResumeData: (data) => set({ resumeData: data }),
-                    setBaseResume: (data) => set({ baseResume: data }),
-                    setShowLeadership: (value) => set({ showLeadership: value }),
-                    setShowProjects: (value) => set({ showProjects: value }),
-                    setShowSummary: (value) => set({ showSummary: value }),
-                    setIsSaved: (value) => set({ isSaved: value }),
-                    setJobDescription: (value) => set({ jobDescription: value }),
-                    setIsOptimizing: (value) => set({ isOptimizing: value }),
-                    setOptimizedData: (data) =>
-                         set((state) => ({
-                              optimizedData:
-                                   typeof data === "function"
-                                        ? data(state.optimizedData)
-                                        : data,
-                         })),
-                    setCurrentView: (view) => set({ currentView: view }),
-                    setShowChanges: (value) => set({ showChanges: value }),
-                    setChangedFields: (fields) => set({ changedFields: fields }),
+               setShowPublications: (value) => set({ showPublications: value }),
+               setResumeData: (data) => set({ resumeData: data }),
+               setBaseResume: (data) => set({ baseResume: data }),
+               setShowLeadership: (value) => set({ showLeadership: value }),
+               setShowProjects: (value) => set({ showProjects: value }),
+               setShowSummary: (value) => set({ showSummary: value }),
+               setIsSaved: (value) => set({ isSaved: value }),
+               setJobDescription: (value) => set({ jobDescription: value }),
+               setIsOptimizing: (value) => set({ isOptimizing: value }),
+               setOptimizedData: (data) =>
+                    set((state) => ({
+                         optimizedData:
+                              typeof data === "function"
+                                   ? data(state.optimizedData)
+                                   : data,
+                    })),
+               setCurrentView: (view) => set({ currentView: view }),
+               setShowChanges: (value) => set({ showChanges: value }),
+               setChangedFields: (fields) => set({ changedFields: fields }),
 
-                    resetStore: () => {
-                         const initialResumeData = getInitialData();
-                         set({
-                              resumeData: initialResumeData,
-                              baseResume: initialResumeData,
-                              showLeadership: true,
-                              showProjects: false, // Will be set based on database check
-                              showSummary: false, // Will be set based on database check
-                              isSaved: false,
-                              showPublications: false,
-                              jobDescription: "",
-                              isOptimizing: false,
-                              optimizedData: null,
-                              currentView: "editor",
-                              showChanges: false,
-                              changedFields: new Set(),
-                              // Note: We intentionally don't reset lastSelectedResume and lastSelectedResumeId
-                              // to maintain persistence across sessions
-                         });
-                    },
+                resetStore: () => {
+                     const initialResumeData = getInitialData();
+                     set({
+                          resumeData: initialResumeData,
+                          baseResume: initialResumeData,
+                         showLeadership: true,
+                         showProjects: false, // Will be set based on database check
+                         showSummary: false, // Will be set based on database check
+                         isSaved: false,
+                         showPublications: false,
+                         jobDescription: "",
+                         isOptimizing: false,
+                         optimizedData: null,
+                         currentView: "editor",
+                         showChanges: false,
+                         changedFields: new Set(),
+                         // Note: We intentionally don't reset lastSelectedResume and lastSelectedResumeId
+                         // to maintain persistence across sessions
+                     });
+                },
 
-                    // Persistent resume selection actions
-                    setLastSelectedResume: (data, resumeId) => {
-                         console.log("🔵 STORING RESUME DATA:", resumeId);
-                         console.log("🔵 Resume name:", data.personalInfo?.name);
-                         console.log("🔵 Resume title:", data.personalInfo?.title);
-                         console.log("🔵 Full personalInfo:", data.personalInfo);
-
-                         set({
-                              lastSelectedResume: data,
-                              lastSelectedResumeId: resumeId,
-                              resumeData: data,
-                              baseResume: data
-                         });
-
-                         // IMMEDIATELY update localStorage manually to ensure persistence
-                         // Use multiple attempts to ensure the data is stored
-                         const updateLocalStorage = () => {
-                              try {
-                                   const currentStorage = localStorage.getItem("resume-storage");
-                                   if (currentStorage) {
-                                        const parsed = JSON.parse(currentStorage);
-                                        console.log("🔵 Before update - localStorage had:", parsed.state?.resumeData?.personalInfo?.name || "No name");
-
-                                        // Update the localStorage directly
-                                        parsed.state.lastSelectedResume = data;
-                                        parsed.state.lastSelectedResumeId = resumeId;
-                                        parsed.state.resumeData = data;
-                                        parsed.state.baseResume = data;
-
-                                        localStorage.setItem("resume-storage", JSON.stringify(parsed));
-
-                                        // Verify the update
-                                        const verifyStorage = localStorage.getItem("resume-storage");
-                                        const verifyParsed = verifyStorage ? JSON.parse(verifyStorage) : null;
-                                        console.log("🔵 After update - localStorage now has:", verifyParsed.state?.resumeData?.personalInfo?.name || "No name");
-                                        console.log("✅ localStorage updated immediately with resume data");
-                                   } else {
-                                        // Create new storage entry if none exists
-                                        const newStorage = {
-                                             state: {
-                                                  resumeData: data,
-                                                  baseResume: data,
-                                                  showLeadership: false,
-                                                  showProjects: false,
-                                                  showSummary: false,
-                                                  isSaved: false,
-                                                  jobDescription: "",
-                                                  isOptimizing: false,
-                                                  optimizedData: null,
-                                                  currentView: "editor",
-                                                  showChanges: false,
-                                                  changedFields: [],
-                                                  showPublications: false,
-                                                  lastSelectedResume: data,
-                                                  lastSelectedResumeId: resumeId
-                                             },
-                                             version: 0
-                                        };
-                                        localStorage.setItem("resume-storage", JSON.stringify(newStorage));
-                                        console.log("✅ Created new localStorage entry with resume data");
-                                   }
-                              } catch (error) {
-                                   console.error("❌ Error updating localStorage:", error);
-                              }
-                         };
-
-                         // Update immediately
-                         updateLocalStorage();
-
-                         // Update again after a short delay to override any Zustand persist middleware
-                         setTimeout(() => {
-                              console.log("🔄 Re-updating localStorage to override Zustand persist...");
-                              updateLocalStorage();
-                         }, 50);
-
-                         console.log("Resume data stored successfully");
-                    },
-
-                    clearLastSelectedResume: () => {
-                         set({
-                              lastSelectedResume: null,
-                              lastSelectedResumeId: null
-                         });
-
-                         // IMMEDIATELY clear from localStorage as well
+               // Persistent resume selection actions
+               setLastSelectedResume: (data, resumeId) => {
+                    console.log("🔵 STORING RESUME DATA:", resumeId);
+                    console.log("🔵 Resume name:", data.personalInfo?.name);
+                    console.log("🔵 Resume title:", data.personalInfo?.title);
+                    console.log("🔵 Full personalInfo:", data.personalInfo);
+                    
+                    set({
+                         lastSelectedResume: data,
+                         lastSelectedResumeId: resumeId,
+                         resumeData: data,
+                         baseResume: data
+                    });
+                    
+                    // IMMEDIATELY update localStorage manually to ensure persistence
+                    // Use multiple attempts to ensure the data is stored
+                    const updateLocalStorage = () => {
                          try {
                               const currentStorage = localStorage.getItem("resume-storage");
                               if (currentStorage) {
                                    const parsed = JSON.parse(currentStorage);
-                                   parsed.state.lastSelectedResume = null;
-                                   parsed.state.lastSelectedResumeId = null;
+                                   console.log("🔵 Before update - localStorage had:", parsed.state?.resumeData?.personalInfo?.name || "No name");
+                                   
+                                   // Update the localStorage directly
+                                   parsed.state.lastSelectedResume = data;
+                                   parsed.state.lastSelectedResumeId = resumeId;
+                                   parsed.state.resumeData = data;
+                                   parsed.state.baseResume = data;
+                                   
                                    localStorage.setItem("resume-storage", JSON.stringify(parsed));
-                                   console.log("✅ localStorage cleared of last selected resume");
+                                   
+                                   // Verify the update
+                                   const verifyStorage = localStorage.getItem("resume-storage");
+                                   const verifyParsed = verifyStorage ? JSON.parse(verifyStorage) : null;
+                                   console.log("🔵 After update - localStorage now has:", verifyParsed.state?.resumeData?.personalInfo?.name || "No name");
+                                   console.log("✅ localStorage updated immediately with resume data");
+                              } else {
+                                   // Create new storage entry if none exists
+                                   const newStorage = {
+                                        state: {
+                                             resumeData: data,
+                                             baseResume: data,
+                                             showLeadership: false,
+                                             showProjects: false,
+                                             showSummary: false,
+                                             isSaved: false,
+                                             jobDescription: "",
+                                             isOptimizing: false,
+                                             optimizedData: null,
+                                             currentView: "editor",
+                                             showChanges: false,
+                                             changedFields: [],
+                                             showPublications: false,
+                                             lastSelectedResume: data,
+                                             lastSelectedResumeId: resumeId
+                                        },
+                                        version: 0
+                                   };
+                                   localStorage.setItem("resume-storage", JSON.stringify(newStorage));
+                                   console.log("✅ Created new localStorage entry with resume data");
                               }
                          } catch (error) {
-                              console.error("❌ Error clearing localStorage:", error);
+                              console.error("❌ Error updating localStorage:", error);
                          }
-                    },
+                    };
+                    
+                    // Update immediately
+                    updateLocalStorage();
+                    
+                    // Update again after a short delay to override any Zustand persist middleware
+                    setTimeout(() => {
+                         console.log("🔄 Re-updating localStorage to override Zustand persist...");
+                         updateLocalStorage();
+                    }, 50);
+                    
+                    console.log("Resume data stored successfully");
+               },
 
-                    loadLastSelectedResume: () => {
-                         const state = get();
-                         console.log("loadLastSelectedResume called. Current state:", {
-                              lastSelectedResume: state.lastSelectedResume,
-                              lastSelectedResumeId: state.lastSelectedResumeId,
-                              hasResumeData: !!state.lastSelectedResume,
-                              hasResumeId: !!state.lastSelectedResumeId
+               clearLastSelectedResume: () => {
+                    set({
+                         lastSelectedResume: null,
+                         lastSelectedResumeId: null
+                    });
+                    
+                    // IMMEDIATELY clear from localStorage as well
+                    try {
+                         const currentStorage = localStorage.getItem("resume-storage");
+                         if (currentStorage) {
+                              const parsed = JSON.parse(currentStorage);
+                              parsed.state.lastSelectedResume = null;
+                              parsed.state.lastSelectedResumeId = null;
+                              localStorage.setItem("resume-storage", JSON.stringify(parsed));
+                              console.log("✅ localStorage cleared of last selected resume");
+                         }
+                    } catch (error) {
+                         console.error("❌ Error clearing localStorage:", error);
+                    }
+               },
+
+               loadLastSelectedResume: () => {
+                    const state = get();
+                    console.log("loadLastSelectedResume called. Current state:", {
+                        lastSelectedResume: state.lastSelectedResume,
+                        lastSelectedResumeId: state.lastSelectedResumeId,
+                        hasResumeData: !!state.lastSelectedResume,
+                        hasResumeId: !!state.lastSelectedResumeId
+                    });
+                    
+                    if (state.lastSelectedResume && state.lastSelectedResumeId) {
+                         console.log("Loading last selected resume:", state.lastSelectedResumeId, state.lastSelectedResume);
+                         set({
+                              resumeData: state.lastSelectedResume,
+                              baseResume: state.lastSelectedResume
                          });
-
-                         if (state.lastSelectedResume && state.lastSelectedResumeId) {
-                              console.log("Loading last selected resume:", state.lastSelectedResumeId, state.lastSelectedResume);
-                              set({
-                                   resumeData: state.lastSelectedResume,
-                                   baseResume: state.lastSelectedResume
-                              });
-                              return true; // Indicates resume was loaded
-                         }
-                         console.log("No last selected resume found to load");
-                         return false; // No resume to load
-                    },
-
-                    debugLocalStorage: () => {
-                         console.log("=== DEBUG LOCALSTORAGE ===");
-                         const storedData = localStorage.getItem("resume-storage");
-                         if (storedData) {
-                              const parsed = JSON.parse(storedData);
-                              console.log("Current localStorage state:", {
-                                   hasLastSelectedResume: !!parsed.state?.lastSelectedResume,
-                                   hasLastSelectedResumeId: !!parsed.state?.lastSelectedResumeId,
-                                   lastSelectedResumeId: parsed.state?.lastSelectedResumeId,
-                                   hasResumeData: !!parsed.state?.resumeData,
-                                   resumeDataName: parsed.state?.resumeData?.personalInfo?.name || "No name"
-                              });
-                         } else {
-                              console.log("No resume-storage found in localStorage");
-                         }
-
-                         const currentState = get();
-                         console.log("Current store state:", {
-                              hasLastSelectedResume: !!currentState.lastSelectedResume,
-                              hasLastSelectedResumeId: !!currentState.lastSelectedResumeId,
-                              lastSelectedResumeId: currentState.lastSelectedResumeId,
-                              hasResumeData: !!currentState.resumeData,
-                              resumeDataName: currentState.resumeData?.personalInfo?.name || "No name"
-                         });
-                         console.log("=== END DEBUG ===");
-                    },
+                         return true; // Indicates resume was loaded
+                    }
+                     console.log("No last selected resume found to load");
+                     return false; // No resume to load
+                },
+                
+                debugLocalStorage: () => {
+                     console.log("=== DEBUG LOCALSTORAGE ===");
+                     const storedData = localStorage.getItem("resume-storage");
+                     if (storedData) {
+                          const parsed = JSON.parse(storedData);
+                          console.log("Current localStorage state:", {
+                               hasLastSelectedResume: !!parsed.state?.lastSelectedResume,
+                               hasLastSelectedResumeId: !!parsed.state?.lastSelectedResumeId,
+                               lastSelectedResumeId: parsed.state?.lastSelectedResumeId,
+                               hasResumeData: !!parsed.state?.resumeData,
+                               resumeDataName: parsed.state?.resumeData?.personalInfo?.name || "No name"
+                          });
+                     } else {
+                          console.log("No resume-storage found in localStorage");
+                     }
+                     
+                     const currentState = get();
+                     console.log("Current store state:", {
+                          hasLastSelectedResume: !!currentState.lastSelectedResume,
+                          hasLastSelectedResumeId: !!currentState.lastSelectedResumeId,
+                          lastSelectedResumeId: currentState.lastSelectedResumeId,
+                          hasResumeData: !!currentState.resumeData,
+                          resumeDataName: currentState.resumeData?.personalInfo?.name || "No name"
+                     });
+                     console.log("=== END DEBUG ===");
+                },
                };
           },
           {
@@ -307,7 +307,7 @@ export const useResumeStore = create<ResumeStore>()(
                               showPublications: state.showPublications
                          });
                          state.changedFields = new Set(state.changedFields || []);
-
+                         
                          // Ensure boolean values are properly set (fix undefined issues)
                          if (typeof state.showPublications !== 'boolean') {
                               state.showPublications = false;
@@ -321,7 +321,7 @@ export const useResumeStore = create<ResumeStore>()(
                          if (typeof state.showSummary !== 'boolean') {
                               state.showSummary = false;
                          }
-
+                         
                          // If we have stored resume data, load it immediately
                          if (state.lastSelectedResume && state.lastSelectedResumeId) {
                               console.log("Auto-loading stored resume data during rehydration");

@@ -3,6 +3,9 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import { Toaster } from 'react-hot-toast';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { queryClient } from './lib/queryClient';
 
 import Login from './components/Login';
 import Register from './components/Register';
@@ -48,46 +51,47 @@ function App() {
   }, []);
 
   return (
-      <GoogleOAuthProvider
-          clientId={import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID}
-      >
-          <Toaster
-            position="top-left"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: '#363636',
-                color: '#fff',
-                borderRadius: '8px',
-                fontSize: '14px',
-                padding: '12px 16px',
-              },
-              success: {
-                style: {
-                  background: '#10B981',
-                },
-                iconTheme: {
-                  primary: '#fff',
-                  secondary: '#10B981',
-                },
-              },
-              error: {
-                style: {
-                  background: '#EF4444',
-                },
-                iconTheme: {
-                  primary: '#fff',
-                  secondary: '#EF4444',
-                },
-              },
-              loading: {
-                style: {
-                  background: '#3B82F6',
-                },
-              },
-            }}
-          />
-          <Router>
+      <QueryClientProvider client={queryClient}>
+          <GoogleOAuthProvider
+              clientId={import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID}
+          >
+              <Toaster
+                position="top-left"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: '#363636',
+                    color: '#fff',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    padding: '12px 16px',
+                  },
+                  success: {
+                    style: {
+                      background: '#10B981',
+                    },
+                    iconTheme: {
+                      primary: '#fff',
+                      secondary: '#10B981',
+                    },
+                  },
+                  error: {
+                    style: {
+                      background: '#EF4444',
+                    },
+                    iconTheme: {
+                      primary: '#fff',
+                      secondary: '#EF4444',
+                    },
+                  },
+                  loading: {
+                    style: {
+                      background: '#3B82F6',
+                    },
+                  },
+                }}
+              />
+              <Router>
               <Routes>
                   {/* Public routes */}
                   <Route
@@ -155,8 +159,10 @@ function App() {
                       }
                   />
               </Routes>
-          </Router>
-      </GoogleOAuthProvider>
+              </Router>
+              <ReactQueryDevtools initialIsOpen={false} />
+          </GoogleOAuthProvider>
+      </QueryClientProvider>
   );
 }
 
