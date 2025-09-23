@@ -29,6 +29,8 @@ import {
     getOptimizedResumeUrl,
     getOptimizedResumeTitle,
 } from "../utils/getOptimizedResumeUrl";
+import { useJobDescription } from "../hooks/useJobDescription";
+import JobDescriptionLoader from "./JobDescriptionLoader";
 
 /* ---------- ENV ---------- */
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "";
@@ -247,6 +249,12 @@ export default function JobModal({
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [activeSection, setActiveSection] = useState<Sections>(
         initialSection ?? "details"
+    );
+
+    // Lazy load job description only when description section is active
+    const { data: jobDescriptionData, isLoading: isDescriptionLoading, error: descriptionError } = useJobDescription(
+        jobDetails?._id, 
+        activeSection === 'description' // Only fetch when description section is active
     );
 
     // local image grid
@@ -557,7 +565,7 @@ export default function JobModal({
             setIsUploadingDoc(false);
         }
     };
-    const { setJobDescription } = useResumeStore();
+    // const { setJobDescription } = useResumeStore(); // No longer needed - JD fetched from URL
 
     // Lock background scroll while modal is open
     useEffect(() => {
@@ -823,12 +831,21 @@ export default function JobModal({
                                 Job Description
                             </h4>
                             <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-                                {jobDetails?.jobDescription ? (
+                                {isDescriptionLoading ? (
+                                    <div className="flex items-center justify-center py-8">
+                                        <JobDescriptionLoader size="md" />
+                                        <span className="ml-2 text-sm text-gray-600">Loading job description...</span>
+                                    </div>
+                                ) : descriptionError ? (
+                                    <p className="text-red-500 italic text-sm">
+                                        Failed to load job description. Please try again.
+                                    </p>
+                                ) : jobDescriptionData?.jobDescription ? (
                                     <div
                                         className="text-sm text-gray-700 leading-relaxed job-description-html"
                                         // Correctly render the HTML from the backend
                                         dangerouslySetInnerHTML={{
-                                            __html: jobDetails.jobDescription,
+                                            __html: jobDescriptionData.jobDescription,
                                         }}
                                     ></div>
                                 ) : (
@@ -1196,6 +1213,7 @@ export default function JobModal({
                         {role == "operations" ? (
                             <button
                                 onClick={() => {
+                                    // Open optimizer in new tab - job description will be fetched automatically from URL
                                     window.open(
                                         `/optimize/${jobDetails._id}?view=editor`,
                                         "_blank"

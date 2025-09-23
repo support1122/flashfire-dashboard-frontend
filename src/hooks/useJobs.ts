@@ -1,87 +1,70 @@
-// import { useState, useEffect } from 'react';
-// import { Job, JobStatus } from '../types';
-// import { saveJobs, loadJobs } from '../utils/storage';
-// import { checkForDuplicateJob, DuplicateCheckResult } from '../utils/duplicateDetection';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { jobsApi } from '../services/api';
 
-// export function useJobs(userId?: string) {
-//   const [jobs, setJobs] = useState<Job[]>([]);
-//   const [isLoading, setIsLoading] = useState(true);
+export const useJobs = (token: string, email: string, isOperations = false) => {
+  return useQuery({
+    queryKey: ['jobs', email, isOperations],
+    queryFn: () => jobsApi.getAllJobs(token, email, isOperations),
+    enabled: !!(email && (isOperations || token)), // For operations, only need email; for regular users, need both token and email
+    staleTime: 2 * 60 * 1000, // 2 minutes for jobs data
+  });
+};
 
-//   useEffect(() => {
-//     const loadedJobs = loadJobs(userId);
-//     setJobs(loadedJobs);
-//     setIsLoading(false);
-//   }, [userId]);
+export const useCreateJob = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ token, jobData, userDetails }: { token: string; jobData: any; userDetails: any }) =>
+      jobsApi.createJob(token, jobData, userDetails),
+    onSuccess: (data, variables) => {
+      // Invalidate jobs queries to refetch updated data
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    },
+  });
+};
 
-//   useEffect(() => {
-//     if (!isLoading && userId) {
-//       saveJobs(jobs, userId);
-//     }
-//   }, [jobs, isLoading, userId]);
+export const useUpdateJob = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ 
+      token, 
+      jobId, 
+      jobData 
+    }: { 
+      token: string; 
+      jobId: string; 
+      jobData: any 
+    }) => jobsApi.updateJob(token, jobId, jobData),
+    onSuccess: (data, variables) => {
+      // Invalidate jobs queries to refetch updated data
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    },
+  });
+};
 
-//   const addJob = (jobData: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>): { success: boolean; job?: Job; duplicateCheck: DuplicateCheckResult } => {
-//     // Check for duplicates
-//     const duplicateCheck = checkForDuplicateJob(jobData, jobs);
-    
-//     if (duplicateCheck.isDuplicate) {
-//       return { success: false, duplicateCheck };
-//     }
+export const useDeleteJob = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ token, jobId }: { token: string; jobId: string }) =>
+      jobsApi.deleteJob(token, jobId),
+    onSuccess: (data, variables) => {
+      // Invalidate jobs queries to refetch updated data
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    },
+  });
+};
 
-//     const newJob: Job = {
-//       ...jobData,
-//       id: `job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-//       userId,
-//       createdAt: new Date().toISOString(),
-//       updatedAt: new Date().toISOString(),
-//     };
-    
-//     setJobs(prev => [...prev, newJob]);
-//     return { success: true, job: newJob, duplicateCheck };
-//   };
-
-//   const addMultipleJobs = (newJobs: Job[]) => {
-//     const jobsWithUserId = newJobs.map(job => ({ ...job, userId }));
-//     setJobs(prev => [...prev, ...jobsWithUserId]);
-//   };
-
-//   const updateJob = (id: string, updates: Partial<Job>) => {
-//     setJobs(prev => prev.map(job => 
-//       job.id === id 
-//         ? { ...job, ...updates, updatedAt: new Date().toISOString() }
-//         : job
-//     ));
-//   };
-
-//   const deleteJob = (id: string) => {
-//     setJobs(prev => prev.filter(job => job.id !== id));
-//   };
-
-//   const updateJobStatus = (id: string, status: JobStatus) => {
-//     updateJob(id, { status });
-//   };
-
-//   const getJobsByStatus = (status: JobStatus) => {
-//     return jobs.filter(job => job.status === status);
-//   };
-
-//   const searchJobs = (query: string) => {
-//     const lowerQuery = query.toLowerCase();
-//     return jobs.filter(job => 
-//       job.title.toLowerCase().includes(lowerQuery) ||
-//       job.company.toLowerCase().includes(lowerQuery) ||
-//       job.description.toLowerCase().includes(lowerQuery)
-//     );
-//   };
-
-//   return {
-//     jobs,
-//     isLoading,
-//     addJob,
-//     addMultipleJobs,
-//     updateJob,
-//     deleteJob,
-//     updateJobStatus,
-//     getJobsByStatus,
-//     searchJobs,
-//   };
-// }
+export const useBulkImportJobs = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ token, jobs }: { token: string; jobs: any[] }) =>
+      jobsApi.bulkImportJobs(token, jobs),
+    onSuccess: (data, variables) => {
+      // Invalidate jobs queries to refetch updated data
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    },
+  });
+};
