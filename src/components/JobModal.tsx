@@ -618,12 +618,12 @@ export default function JobModal({
             icon: TimerIcon,
             color: "bg-brown-800 text-orange-700 border-orange-200",
         },
-        {
-            id: "changes",
-            label: "Changes Made",
-            icon: GitCommit,
-            color: "bg-brown-800 text-orange-700 border-orange-200",
-        },
+//         {
+//             id: "changes",
+//             label: "Changes Made",
+//             icon: GitCommit,
+//             color: "bg-brown-800 text-orange-700 border-orange-200",
+//         },
     ] as const;
 
     const renderContent = () => {
@@ -1210,7 +1210,7 @@ export default function JobModal({
                                 </p>
                             </div>
                         </div>
-                        {role == "operations" ? (
+<!--                         {role == "operations" ? (
                             <button
                                 onClick={() => {
                                     // Open optimizer in new tab - job description will be fetched automatically from URL
@@ -1223,7 +1223,7 @@ export default function JobModal({
                             >
                                 Optimize resume
                             </button>
-                        ) : null}
+                        ) : null} -->
                         <button
                             onClick={() => setShowJobModal(false)}
                             className="hover:bg-white hover:bg-opacity-20 p-2 rounded-full transition-colors"
@@ -1269,12 +1269,12 @@ export default function JobModal({
                                     icon: TimerIcon,
                                     color: "bg-brown-800 text-orange-700 border-orange-200",
                                 },
-                                {
-                                    id: "changes",
-                                    label: "Changes Made",
-                                    icon: GitCommit,
-                                    color: "bg-brown-800 text-red-700 border-orange-300",
-                                },
+//                                 {
+//                                     id: "changes",
+//                                     label: "Changes Made",
+//                                     icon: GitCommit,
+//                                     color: "bg-brown-800 text-red-700 border-orange-300",
+//                                 },
                             ].map((section: any) => {
                                 const Icon = section.icon;
                                 const isActive = activeSection === section.id;

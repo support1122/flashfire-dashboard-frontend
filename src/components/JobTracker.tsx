@@ -14,18 +14,18 @@ const JobModal = lazy(() => import("./JobModal.tsx"));
 const JOBS_PER_PAGE = 30;
 
 const JobTracker = () => {
-    const [showJobForm, setShowJobForm] = useState(false);
-    const [editingJob, setEditingJob] = useState<Job | null>(null);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [showJobModal, setShowJobModal] = useState(false);
-    const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-    const { userJobs, setUserJobs, loading } = useUserJobs();
-    const { userDetails, token, setData } = useContext(UserContext);
-    const navigate = useNavigate();
-    const [pendingMove, setPendingMove] = useState<{
-        jobID: string;
-        status: JobStatus;
-    } | null>(null);
+  const [showJobForm, setShowJobForm] = useState(false);
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showJobModal, setShowJobModal] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const { userJobs, setUserJobs, loading } = useUserJobs();
+  const {userDetails, token, setData} = useContext(UserContext);
+  const navigate = useNavigate();
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
+
+  // near other useState hooks
+const [pendingMove, setPendingMove] = useState<{ jobID: string; status: JobStatus } | null>(null);
 
     const [columnPages, setColumnPages] = useState<{
         [key in JobStatus]?: number;
@@ -36,39 +36,34 @@ const JobTracker = () => {
 
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-    const statusColumns: { status: JobStatus; label: string; color: string }[] =
-        [
-            {
-                status: "saved",
-                label: "Saved",
-                color: "bg-gray-50 border-gray-200",
-            },
-            {
-                status: "applied",
-                label: "Applied",
-                color: "bg-blue-50 border-blue-200",
-            },
-            {
-                status: "interviewing",
-                label: "Interviewing",
-                color: "bg-amber-50 border-amber-200",
-            },
-            {
-                status: "offer",
-                label: "Offers",
-                color: "bg-green-50 border-green-200",
-            },
-            {
-                status: "rejected",
-                label: "Rejected",
-                color: "bg-red-50 border-red-200",
-            },
-            {
-                status: "deleted",
-                label: "Removed",
-                color: "bg-red-500/50 border-red-100",
-            },
-        ];
+  const statusColumns: { status: JobStatus; label: string; color: string }[] = [
+    { status: 'saved', label: 'Saved', color: 'bg-gray-50 border-gray-200' },
+    { status: 'applied', label: 'Applied', color: 'bg-blue-50 border-blue-200' },
+    { status: 'interviewing', label: 'Interviewing', color: 'bg-amber-50 border-amber-200' },
+    { status: 'offer', label: 'Offers', color: 'bg-green-50 border-green-200' },
+    { status: 'rejected', label: 'Rejected', color: 'bg-red-50 border-red-200' },
+    { status: 'deleted', label: 'Removed', color: 'bg-red-500/50 border-red-100' }
+  ];
+  // useEffect(()=>{
+  //    setUserJobs(userJobs);
+  // },[ userJobs])
+
+useEffect(() => {
+  if (searchQuery.trim() === '') {
+    setFilteredJobs([]);
+    return;
+  }
+
+  const matches = userJobs.filter(
+    (job) =>
+      job.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.companyName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  setFilteredJobs(matches);
+}, [searchQuery, userJobs]);
+
+
 
     useEffect(() => {
         if (!showJobModal) setPendingMove(null);
@@ -179,24 +174,37 @@ const JobTracker = () => {
                 body: JSON.stringify({ jobDetails, userDetails, token }),
             });
 
-            const responseFromServer = await saveJobsToDb.json();
-            console.log(responseFromServer);
+      const responseFromServer = await saveJobsToDb.json();
+      console.log(responseFromServer);
+      setUserJobs(responseFromServer.NewJobList);
+      setShowJobForm(false);
+      if (responseFromServer.message == 'Job Added Succesfully') {
+        setJobsData(responseFromServer.NewJobList);
+        return;
+      }
+      if (onSuccess) onSuccess();
+      onCancel(); // close modal
+    } catch (err) {
+      console.log(err);
+      setError("Failed to save job. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
-            if (responseFromServer.message === "Job Added Succesfully") {
-                setUserJobs(responseFromServer.NewJobList);
-            }
-        } catch (err) {
-            console.error("Failed to save job. Please try again.", err);
-        } finally {
-            setShowJobForm(false); // Close the form regardless of outcome
-        }
-    };
+  // const handleDragStart = (e: React.DragEvent, job: Job) => {
+  //   e.dataTransfer.setData('jobId', job.jobID);
+  // };
 
-    const handleDragStart = (e: React.DragEvent, job: Job) => {
-        e.dataTransfer.setData("jobID", job.jobID);
-        e.dataTransfer.setData("jobId", job.jobID);
-        e.dataTransfer.setData("sourceStatus", job.currentStatus);
-    };
+  // Replace your current handleDragStart with this:
+const handleDragStart = (e: React.DragEvent, job: Job) => {
+  // Keep backward compatibility with any existing reads
+  e.dataTransfer.setData('jobID', job.jobID);   // <-- new (capital D)
+  e.dataTransfer.setData('jobId', job.jobID);   // existing key some code may rely on
+  // Optional: source status for future-proofing (not strictly needed)
+  e.dataTransfer.setData('sourceStatus', job.currentStatus);
+};
+
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
@@ -362,19 +370,47 @@ const JobTracker = () => {
         const job = userJobs?.find((j) => j.jobID === jobID);
         if (!job) return;
 
-        if (
-            job.currentStatus?.toLowerCase().startsWith("saved") &&
-            !status.toLowerCase().startsWith("deleted") &&
-            !status.toLowerCase().startsWith("saved")
-        ) {
-            setSelectedJob(job);
-            setPendingMove({ jobID, status });
-            setShowJobModal(true);
-            return;
-        }
+  // Gate only when moving out of "saved" to a real status (not deleted/saved)
+  if (job.currentStatus === 'saved' && status !== 'deleted' && status !== 'saved') {
+    setSelectedJob(job);
+    setPendingMove({ jobID, status });
+    setShowJobModal(true);
+    return;
+  }
 
-        onUpdateJobStatus(jobID, status, userDetails);
-    };
+  // ✅ Optimistic UI update
+  setUserJobs((prevJobs) =>
+    prevJobs.map((j) =>
+      j.jobID === jobID ? { ...j, currentStatus: status, updatedAt: new Date().toString() } : j
+    )
+  );
+
+  // Then update server in background
+  onUpdateJobStatus(jobID, status, userDetails);
+};
+
+
+
+  // Replace your current handleDrop with this:
+// const handleDrop = (e: React.DragEvent, status: JobStatus) => {
+//   e.preventDefault();
+//   const jobID = e.dataTransfer.getData('jobID') || e.dataTransfer.getData('jobId');
+//   if (!jobID) return;
+
+//   const job = userJobs?.find((j) => j.jobID === jobID);
+//   if (!job) return;
+
+//   // Gate only when moving out of "saved" to a real status (not deleted/saved)
+//   if (job.currentStatus === 'saved' && status !== 'deleted' && status !== 'saved') {
+//     setSelectedJob(job);
+//     setPendingMove({ jobID, status });
+//     setShowJobModal(true);        // ⬅️ open modal
+//     return;                       // ⛔ do NOT move yet
+//   }
+
+//   // Normal moves (non-gated)
+//   onUpdateJobStatus(jobID, status, userDetails);
+// };
 
     const tsFromUpdatedAt = (val: unknown): number => {
         if (!val) return 0;
@@ -408,7 +444,6 @@ const JobTracker = () => {
         const t = new Date(val as any).getTime();
         return isNaN(t) ? 0 : t;
     };
-
     const updateColumnPage = (status: JobStatus, page: number) => {
         setColumnPages((prev) => ({ ...prev, [status]: page }));
     };
@@ -424,37 +459,56 @@ const JobTracker = () => {
         return Math.ceil(jobs.length / JOBS_PER_PAGE);
     };
 
-    return (
-        <div className="px-4 sm:px-2 lg:px-1 py-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-                <div className="flex flex-col justify-around items-start w-full ml-10">
-                    <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                        Job Tracker
-                    </h2>
-                    <p className="text-gray-600">
-                        Track your job applications and manage your career
-                        pipeline
-                    </p>
-                </div>
-                <div className="mt-4 sm:mt-0 flex items-center justify-center gap-4 w-full">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search jobs..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                    </div>
-                    <button
-                        onClick={() => setShowJobForm(true)}
-                        className="whitespace-nowrap bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:scale-105"
-                    >
-                        Add Jobs
-                    </button>
-                </div>
-            </div>
+  return (
+    <div className="px-4 sm:px-2 lg:px-1 py-4">
+      <div className="flex flex-row sm:flex-row sm:items-center sm:justify-between mb-8">
+        <div className='flex flex-col justify-around items-start w-full ml-10'>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Job Tracker</h2>
+          <p className="text-gray-600 ">Track your job applications and manage your career pipeline</p>
+        </div>
+       
+        <div className="mt-4 sm:mt-0 flex items-center justify-center gap-4 w-full">
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search jobs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+            {filteredJobs.length > 0 && (
+    <div className="absolute top-full mt-2 w-full bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+      {filteredJobs.map((job) => (
+        <div
+          key={job.jobID}
+          onClick={() => {
+            setSelectedJob(job);
+            setShowJobModal(true);
+            setSearchQuery(''); // Clear after selection
+            setFilteredJobs([]); // Hide box
+          }}
+          className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-none"
+        >
+          <p className="font-semibold text-gray-900">{job.jobTitle}</p>
+          <p className="text-sm text-gray-500">{job.companyName}</p>
+        </div>
+      ))}
+    </div>
+  )}
+          </div>
+
+          {/* Add Job Button */}
+          <button
+            onClick={() => setShowJobForm(true)}
+            className="whitespace-nowrap bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:scale-105"
+          >
+            Add Jobs
+          </button>
+        </div>
+
+      </div>
 
             <div className="flex gap-2 justify-evenly w-full">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-1 m-4 w-full">
