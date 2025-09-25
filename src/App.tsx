@@ -12,23 +12,16 @@ import { UserJobsProvider } from './state_management/UserJobs.tsx';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { UserProfileProvider } from './state_management/ProfileContext.tsx';
 import ProfilePage from './components/Profile.tsx';
-import Navigation from './components/Navigation.tsx';
 import NewUserModal from './components/NewUserModal.tsx';
 import ManagePage from './components/Operations/Manage.tsx';
 import Optimizer from './components/AiOprimizer/Optimizer.tsx';
 
 // Component to handle Profile page with proper navigation
 function ProfileWithNavigation() {
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab} 
-        setUserProfileFormVisibility={setUserProfileFormVisibility} 
-      />
       <ProfilePage />
       {userProfileFormVisibility && (
         <NewUserModal 

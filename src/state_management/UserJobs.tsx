@@ -86,17 +86,17 @@ export const UserJobsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             `${import.meta.env.VITE_API_BASE_URL}/getalljobs`
         );
 
-        const res = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL}/getalljobs`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ email: userDetails.email }),
-            }
-        );
+       const res = await fetch(
+  `${import.meta.env.VITE_API_BASE_URL}/getalljobs?email=${encodeURIComponent(userDetails?.email)}`,
+  {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+
 
         console.log("Response status:", res.status);
         console.log("Response headers:", res.headers);

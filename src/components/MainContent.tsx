@@ -12,13 +12,24 @@ import { UserContext } from '../state_management/UserContext';
 import LoadingScreen from './LoadingScreen';
 import NewUserModal from './NewUserModal';
 import { useOperationsStore } from "../state_management/Operations";
+import { useUserProfile } from '../state_management/ProfileContext';
 // import {BaseResume} from '../types/index'
 
 
 export default function MainContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showPDFUploader, setShowPDFUploader] = useState(false);
-  const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
+const { userProfile } = useUserProfile();
+
+const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(() => {
+  // Show the form only if no profile exists
+  // console.log(userProfileFormVisibility)
+  if(userProfile == null){
+    return true;
+  }else
+    return false;
+});
+
   const [baseResume, setBaseResume] = useState(null);
   const {userDetails, token} = useContext(UserContext);
   const navigate = useNavigate();

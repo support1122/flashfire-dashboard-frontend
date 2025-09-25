@@ -99,7 +99,7 @@ function safeParse<T = any>(raw: string | null): T | null {
 function persist(profile: UserProfile | null) {
   if (typeof window === "undefined") return;
   try {
-    const existing = safeParse(localStorage.getItem(STORAGE_KEY)) || {};
+    const existing = safeParse(localStorage.getItem(STORAGE_KEY)).userProfile || {};
     if (profile) {
       existing.userProfile = profile;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
