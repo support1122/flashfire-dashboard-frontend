@@ -13,12 +13,25 @@ import LoadingScreen from './LoadingScreen';
 import NewUserModal from './NewUserModal';
 import { useOperationsStore } from "../state_management/Operations";
 // import {BaseResume} from '../types/index'
+import { useUserProfile } from '../state_management/ProfileContext';
 
 
 export default function MainContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showPDFUploader, setShowPDFUploader] = useState(false);
-  const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
+  const { userProfile } = useUserProfile();
+// const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
+const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
+const [welcomeShown, setWelcomeShown] = useState(()=>{
+    return localStorage.getItem("welcomeShown")? true: false
+  });
+useEffect(() => {
+  if (!userProfile) setUserProfileFormVisibility(true);
+  else setUserProfileFormVisibility(false);
+  console.log(userProfile)
+}, [userProfile]);
+
+// console.log(userProfileFormVisibility,'vfcd')
   const [baseResume, setBaseResume] = useState(null);
   const {userDetails, token} = useContext(UserContext);
   const navigate = useNavigate();
@@ -38,8 +51,8 @@ export default function MainContent() {
         <Navigation activeTab={activeTab} onTabChange={setActiveTab} setUserProfileFormVisibility={setUserProfileFormVisibility} />
         </Suspense> 
         <main>
-          {userProfileFormVisibility && <NewUserModal setUserProfileFormVisibility={setUserProfileFormVisibility} />}
-          {activeTab === 'dashboard' && <Suspense fallback={<LoadingScreen />}><Dashboard setUserProfileFormVisibility={setUserProfileFormVisibility}/></Suspense>}
+          {userProfileFormVisibility && <NewUserModal setWelcomeShown={setWelcomeShown} setUserProfileFormVisibility={setUserProfileFormVisibility} />}
+          {activeTab === 'dashboard' && <Suspense fallback={<LoadingScreen />}><Dashboard setWelcomeShown={setWelcomeShown} welcomeShown={welcomeShown} userProfileFormVisibility={userProfileFormVisibility} setUserProfileFormVisibility={setUserProfileFormVisibility}/></Suspense>}
           
           
           {activeTab === 'jobs' && (
@@ -82,5 +95,4 @@ export default function MainContent() {
       </div>
   )
 }
-
 
