@@ -23,7 +23,7 @@ import ReferralButton from "./ReferralButton.tsx";
 import { generateReferralIdentifier } from "../utils/generateUsername.ts";
 import { useJobsSessionStore } from "../state_management/JobsSessionStore";
 
-const Dashboard: React.FC = ({ setUserProfileFormVisibility }) => {
+const Dashboard: React.FC = ({ setUserProfileFormVisibility, userProfileFormVisibility, welcomeShown,setWelcomeShown }) => {
     const context = useContext(UserContext);
     const navigate = useNavigate();
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -34,11 +34,13 @@ const Dashboard: React.FC = ({ setUserProfileFormVisibility }) => {
         navigate("/login");
         return null;
     }
-
+//     const [welcomeShown, setWelcomeShown] = useState(()=>{
+//     return localStorage.getItem("welcomeShown")? true: false
+//   });
     const { token, userDetails, setData } = context;
     const { userJobs, setUserJobs, loading } = useUserJobs();
     const [loadingDetails, setLoadingDetails] = useState(false);
-    const [showProfileModal, setShowProfileModal] = useState(false);
+    // const [showProfileModal, setShowProfileModal] = useState(false);
     const { role } = useOperationsStore();
     
     // Use session storage for analytics
@@ -141,13 +143,13 @@ const Dashboard: React.FC = ({ setUserProfileFormVisibility }) => {
             hasProfile: !!userProfile,
         });
 
-        if (!isProfileComplete()) {
-            console.log("Profile incomplete, showing modal");
-            setShowProfileModal(true);
-        } else {
-            console.log("Profile complete, hiding modal");
-            setShowProfileModal(false);
-        }
+        // if (localStorage.getItem('showWelcome')) {
+        //     console.log("Profile incomplete, showing modal");
+        //     setShowProfileModal(true);
+        // } else {
+        //     console.log("Profile complete, hiding modal");
+        //     setShowProfileModal(false);
+        // }
 
         // Only fetch if we don't have fresh data in session storage
         if (userJobs.length === 0) {
@@ -288,39 +290,34 @@ const Dashboard: React.FC = ({ setUserProfileFormVisibility }) => {
         return <LoadingScreen />;
     }
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-            {showProfileModal && (
-                <NewUserModal
-                    setUserProfileFormVisibility={setShowProfileModal}
-                    onProfileComplete={() => setShowProfileModal(false)}
-                />
-            )}
+        <div className="min-h-screen bg-gray-50">
+            
+            {welcomeShown && (
+          <div className="mt-8 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white">
+            <h3 className="text-xl font-bold mb-2">Welcome aboard, {context?.userDetails?.name?.split(' ')[0] || 'User'}! 🎉</h3>
+            <p className="text-orange-100">
+              Your profile has been successfully set up. You can now start tracking your job applications,
+              managing your career pipeline, and leveraging AI-powered insights to optimize your job search strategy.
+            </p>
+            <button
+            className="p-2 m-2 border rounded"
+            onClick={()=>{
+              localStorage.removeItem('welcomeShown');
+              setWelcomeShown(false);
+            }}
+            >ok. got it!.</button>
+          </div>
+        )}
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center mb-12 gap-4">
-                    <div className="text-center flex-1 relative">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-center gap-8">
-                            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
-                                Welcome to Your Career Dashboard
-                            </h1>
-                        </div>
-                        <div className="absolute top-0 -right-8 hidden md:block">
-                            <ReferralButton
-                                onClick={() => setIsReferralModalOpen(true)}
-                            />
-                        </div>
-                        <div className="flex justify-center md:hidden mt-4">
-                            <ReferralButton
-                                onClick={() => setIsReferralModalOpen(true)}
-                            />
-                        </div>
-                        <p className="text-xl lg:text-2xl text-slate-600 max-w-3xl mx-auto leading-relaxed font-light mt-6">
-                            Track your job applications, monitor your progress,
-                            and optimize your career journey with AI-powered
-                            insights.
-                        </p>
-                    </div>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Welcome Section */}
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                        Welcome to Your Career Dashboard
+                    </h1>
+                    <p className="text-gray-600 text-lg">
+                        Track your job applications, monitor your progress, and optimize your career journey with AI-powered insights.
+                    </p>
                 </div>
 
                 {/* Referral Modal */}
@@ -333,375 +330,254 @@ const Dashboard: React.FC = ({ setUserProfileFormVisibility }) => {
                     )}
                 />
 
-                {/* Main Stats Grid */}
-                <div
-                    data-aos="fade-right"
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12"
-                >
-                    {/* Total Applications */}
-                    <div className="group bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg shadow-blue-100/50 border border-white/50 p-8 hover:shadow-2xl hover:shadow-blue-200/30 transition-all duration-500 transform hover:-translate-y-2 hover:scale-105">
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:shadow-blue-500/40 transition-all duration-300">
-                                <Briefcase className="w-7 h-7 text-white" />
-                            </div>
-                            <div className="text-right">
-                                <p className="text-3xl font-bold text-gray-900">
-                                    {userJobs?.length -
-                                        userJobs.filter((items) =>
-                                            items.currentStatus
-                                                ?.toLowerCase()
-                                                .startsWith("deleted")
-                                        ).length}
-                                </p>
-                                <p className="text-sm font-medium text-gray-500">
-                                    Total Applications
-                                </p>
+                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <Briefcase className="w-6 h-6 text-blue-600" />
                             </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                                className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                                style={{
-                                    width: `${Math.min(
-                                        100,
-                                        (stats.total / 50) * 100
-                                    )}%`,
-                                }}
-                            />
+                        <h3 className="text-2xl font-bold text-gray-900 mb-1">395</h3>
+                        <p className="text-gray-600 text-sm">Total Applications</p>
+                        <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                            <div className="bg-blue-600 h-2 rounded-full w-3/4"></div>
                         </div>
                     </div>
 
-                    {/* Active Interviews */}
-                    {console.log("Active interview", userJobs)}
-                    {/* {alert("Active Interviews"+ userJobs)} */}
-                    <div className="group bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg shadow-amber-100/50 border border-white/50 p-8 hover:shadow-2xl hover:shadow-amber-200/30 transition-all duration-500 transform hover:-translate-y-2 hover:scale-105">
+                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/25 group-hover:shadow-amber-500/40 transition-all duration-300">
-                                <Users className="w-7 h-7 text-white" />
-                            </div>
-                            <div className="text-right">
-                                <p className="text-3xl font-bold text-gray-900">
-                                    {stats.interviewing}
-                                </p>
-                                <p className="text-sm font-medium text-gray-500">
-                                    Active Interviews
-                                </p>
+                            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                                <Users className="w-6 h-6 text-orange-600" />
                             </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                                className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                                style={{
-                                    width: `${Math.min(
-                                        100,
-                                        (stats.interviewing / 10) * 100
-                                    )}%`,
-                                }}
-                            />
+                        <h3 className="text-2xl font-bold text-gray-900 mb-1">2</h3>
+                        <p className="text-gray-600 text-sm">Active Interviews</p>
+                        <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                            <div className="bg-orange-600 h-2 rounded-full w-1/4"></div>
                         </div>
                     </div>
 
-                    {/* Offers Received */}
-                    <div className="group bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg shadow-emerald-100/50 border border-white/50 p-8 hover:shadow-2xl hover:shadow-emerald-200/30 transition-all duration-500 transform hover:-translate-y-2 hover:scale-105">
+                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 via-green-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/25 group-hover:shadow-emerald-500/40 transition-all duration-300">
-                                <Award className="w-7 h-7 text-white" />
-                            </div>
-                            <div className="text-right">
-                                <p className="text-3xl font-bold text-gray-900">
-                                    {
-                                        userJobs?.filter((item) =>
-                                            item.currentStatus.startsWith(
-                                                "offer"
-                                            )
-                                        ).length
-                                    }
-                                </p>
-                                <p className="text-sm font-medium text-gray-500">
-                                    Offers Received
-                                </p>
+                            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <CheckCircle className="w-6 h-6 text-green-600" />
                             </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                                className="bg-green-600 h-2 rounded-full transition-all duration-500"
-                                style={{
-                                    width: `${Math.min(
-                                        100,
-                                        (stats.offer / 5) * 100
-                                    )}%`,
-                                }}
-                            />
+                        <h3 className="text-2xl font-bold text-gray-900 mb-1">0</h3>
+                        <p className="text-gray-600 text-sm">Offers Received</p>
+                        <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                            <div className="bg-green-600 h-2 rounded-full w-0"></div>
                         </div>
                     </div>
 
-                    {/* Success Rate */}
-                    <div className="group bg-white/80 backdrop-blur-sm rounded-3xl shadow-lg shadow-purple-100/50 border border-white/50 p-8 hover:shadow-2xl hover:shadow-purple-200/30 transition-all duration-500 transform hover:-translate-y-2 hover:scale-105">
+                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/25 group-hover:shadow-purple-500/40 transition-all duration-300">
-                                <TrendingUp className="w-7 h-7 text-white" />
-                            </div>
-                            <div className="text-right">
-                                <p className="text-3xl font-bold text-gray-900">
-                                    {successRate}%
-                                </p>
-                                <p className="text-sm font-medium text-gray-500">
-                                    Success Rate
-                                </p>
+                            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <TrendingUp className="w-6 h-6 text-purple-600" />
                             </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                                className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                                style={{ width: `${successRate}%` }}
-                            />
+                        <h3 className="text-2xl font-bold text-gray-900 mb-1">0%</h3>
+                        <p className="text-gray-600 text-sm">Success Rate</p>
+                        <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                            <div className="bg-purple-600 h-2 rounded-full w-0"></div>
                         </div>
                     </div>
                 </div>
 
                 {/* Secondary Stats */}
-                <div className="flex justify-center gap-8 mb-12">
-                    <div className="w-1/3 bg-white rounded-xl shadow-md border border-gray-100 p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-3xl font-bold text-gray-900">
-                                    {stats.applied}
-                                </p>
-                                <p className="text-sm text-gray-600">
-                                    Applications Sent
-                                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                        <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <FileText className="w-6 h-6 text-blue-600" />
                             </div>
-                            <FileText className="w-8 h-8 text-blue-500" />
+                            <div>
+                                <h3 className="text-2xl font-bold text-gray-900">390</h3>
+                                <p className="text-gray-600">Applications Sent</p>
+                            </div>
                         </div>
                     </div>
 
-                    {/* <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-lg font-semibold text-gray-900">
-                  {responseRate}%
-                </p>
-                <p className="text-sm text-gray-600">Response Rate</p>
-              </div>
-              <Target className="w-8 h-8 text-green-500" />
-            </div>
-          </div> */}
-
-                    <div className="w-1/3 bg-white rounded-xl shadow-md border border-gray-100 p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-3xl font-bold text-gray-900">
-                                    {
-                                        userJobs?.filter((item) =>
-                                            item.currentStatus.startsWith(
-                                                "saved"
-                                            )
-                                        ).length
-                                    }
-                                </p>
-                                <p className="text-sm text-gray-600">
-                                    Jobs Saved
-                                </p>
+                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                        <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <Briefcase className="w-6 h-6 text-green-600" />
                             </div>
-                            <Clock className="w-8 h-8 text-amber-500" />
+                            <div>
+                                <h3 className="text-2xl font-bold text-gray-900">3</h3>
+                                <p className="text-gray-600">Jobs Saved</p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Application Pipeline */}
-                <div
-                    data-aos="fade-up"
-                    className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 mb-12"
-                >
-                    <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center">
-                        Application Pipeline
-                    </h3>
-
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-                        {[
-                            {
-                                status: "saved",
-                                label: "Saved",
-                                count: userJobs?.filter((item) =>
-                                    item.currentStatus
-                                        ?.toLowerCase()
-                                        .startsWith("saved")
-                                ).length,
-                                color: "bg-gray-500",
-                                icon: Clock,
-                            },
-                            {
-                                status: "applied",
-                                label: "Applied",
-                                count: stats.applied,
-                                color: "bg-blue-500",
-                                icon: FileText,
-                            },
-                            {
-                                status: "interviewing",
-                                label: "Interviewing",
-                                count: stats.interviewing,
-                                color: "bg-amber-500",
-                                icon: Users,
-                            },
-                            {
-                                status: "offer",
-                                label: "Offers",
-                                count: stats.offer,
-                                color: "bg-green-500",
-                                icon: CheckCircle,
-                            },
-                            {
-                                status: "rejected",
-                                label: "Rejected",
-                                count: stats.rejected,
-                                color: "bg-red-500",
-                                icon: XCircle,
-                            },
-                        ].map(({ status, label, count, color, icon: Icon }) => (
-                            <div key={status} className="text-center">
-                                <div
-                                    className={`w-16 h-16 ${color} rounded-full flex items-center justify-center mx-auto mb-3`}
-                                >
-                                    <Icon className="w-8 h-8 text-white" />
-                                </div>
-                                <p className="text-2xl font-bold text-gray-900">
-                                    {count}
-                                </p>
-                                <p className="text-sm font-medium text-gray-600">
-                                    {label}
-                                </p>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-6">Application Pipeline</h2>
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col items-center space-y-2">
+                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                                <Clock className="w-8 h-8 text-gray-400" />
                             </div>
-                        ))}
+                            <span className="text-sm font-medium text-gray-600">Applied</span>
+                        </div>
+                        <div className="flex flex-col items-center space-y-2">
+                            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                                <FileText className="w-8 h-8 text-blue-600" />
+                            </div>
+                            <span className="text-sm font-medium text-gray-600">Screening</span>
+                        </div>
+                        <div className="flex flex-col items-center space-y-2">
+                            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center">
+                                <Users className="w-8 h-8 text-orange-600" />
+                            </div>
+                            <span className="text-sm font-medium text-gray-600">Interview</span>
+                        </div>
+                        <div className="flex flex-col items-center space-y-2">
+                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                                <CheckCircle className="w-8 h-8 text-green-600" />
+                            </div>
+                            <span className="text-sm font-medium text-gray-600">Offer</span>
+                        </div>
+                        <div className="flex flex-col items-center space-y-2">
+                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                                <XCircle className="w-8 h-8 text-red-600" />
+                            </div>
+                            <span className="text-sm font-medium text-gray-600">Rejected</span>
+                        </div>
                     </div>
                 </div>
 
                 {/* …inside your component… */}
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-6">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-8">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
                         Recent Activity
                     </h3>
 
-                    {recentJobs.length > 0 ? (
-                        <div className="space-y-4">
-                            {recentJobs?.map((job) => {
-                                // Determine status key from currentStatus
-                                const key = (job.currentStatus || "saved")
-                                    .toLowerCase()
-                                    .split(" ")[0]; // Get first word for matching
-
-                                // Configuration for each status
-                                const statusConfig: Record<
-                                    string,
-                                    {
-                                        color: string;
-                                        icon: React.ComponentType<any>;
-                                        label: string;
-                                    }
-                                > = {
-                                    saved: {
-                                        color: "bg-gray-100 text-gray-700 border-gray-200",
-                                        icon: Clock,
-                                        label: "Saved",
-                                    },
-                                    applied: {
-                                        color: "bg-blue-100 text-blue-700 border-blue-200",
-                                        icon: FileText,
-                                        label: "Applied",
-                                    },
-                                    interviewing: {
-                                        color: "bg-amber-100 text-amber-700 border-amber-200",
-                                        icon: Users,
-                                        label: "Interviewing",
-                                    },
-                                    offer: {
-                                        color: "bg-green-100 text-green-700 border-green-200",
-                                        icon: CheckCircle,
-                                        label: "Offer",
-                                    },
-                                    rejected: {
-                                        color: "bg-red-100 text-red-700 border-red-200",
-                                        icon: XCircle,
-                                        label: "Rejected",
-                                    },
-                                    deleted: {
-                                        color: "bg-gray-100 text-gray-700 border-gray-200",
-                                        icon: XCircle,
-                                        label: "Deleted",
-                                    },
-                                };
-
-                                const config =
-                                    statusConfig[key] || statusConfig.saved;
-                                const Icon = config.icon;
-
-                                // Parse the timestamp using our custom parser
-                                const date = parseCustomDate(
-                                    job.updatedAt ||
-                                        job.createdAt ||
-                                        job.dateAdded ||
-                                        ""
-                                );
-                                const displayDate =
-                                    isNaN(date.getTime()) ||
-                                    date.getTime() === 0
-                                        ? "Invalid Date"
-                                        : date.toLocaleDateString();
-
-                                return (
-                                    <div
-                                        key={job.jobID}
-                                        className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors"
-                                    >
-                                        {/* Icon + Title/Company */}
-                                        <div className="flex items-center space-x-4">
-                                            <div
-                                                className={`w-12 h-12 rounded-xl border flex items-center justify-center ${config.color}`}
-                                            >
-                                                <Icon className="w-6 h-6" />
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold text-gray-900">
-                                                    {job.jobTitle}
-                                                </p>
-                                                <p className="text-sm text-gray-600">
-                                                    {job.companyName}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Status Pill + Date */}
-                                        <div className="text-right">
-                                            <span
-                                                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium capitalize border ${config.color}`}
-                                            >
-                                                {job.currentStatus}
-                                            </span>
-                                            {/* <p className="text-xs text-gray-500 mt-1">
-                        {job.updatedAt}
-                      </p> */}
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                    <div className="space-y-3">
+                        {/* Leasing Consultant - Deleted */}
+                        <div className="flex items-center justify-between py-2">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200">
+                                    <XCircle className="w-4 h-4 text-gray-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-900">
+                                        Leasing Consultant
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        thesciongroupllc
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                                Deleted
+                            </span>
                         </div>
-                    ) : (
-                        <div className="text-center py-12">
-                            <Briefcase className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                            <h4 className="text-lg font-medium text-gray-900 mb-2">
-                                No applications yet
-                            </h4>
-                            <p className="text-gray-600 mb-6">
-                                Start by adding your first job application to
-                                see your progress here.
-                            </p>
-                            <button className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105">
-                                Add Your First Job
-                            </button>
+
+                        {/* Consultant, Marketing Compliance - Deleted */}
+                        <div className="flex items-center justify-between py-2">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200">
+                                    <XCircle className="w-4 h-4 text-gray-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-900">
+                                        Consultant, Marketing Compliance
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        ACA Group
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                                Deleted
+                            </span>
                         </div>
-                    )}
+
+                        {/* Technology Advisory Consultant - Applied */}
+                        <div className="flex items-center justify-between py-2">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-100">
+                                    <FileText className="w-4 h-4 text-blue-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-900">
+                                        Technology Advisory Consultant
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        crowe
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="text-xs text-blue-600 font-medium">
+                                Applied
+                            </span>
+                        </div>
+
+                        {/* Kearney Senior Business Analyst - Deleted */}
+                        <div className="flex items-center justify-between py-2">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200">
+                                    <XCircle className="w-4 h-4 text-gray-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-900">
+                                        Kearney Senior Business Analyst, Strategic Operations (SOP) Make Tower
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        kearney
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                                Deleted
+                            </span>
+                        </div>
+
+                        {/* Decision Analytics Associate Consultant - Interviewing */}
+                        <div className="flex items-center justify-between py-2">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-yellow-100">
+                                    <Users className="w-4 h-4 text-yellow-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-900">
+                                        Decision Analytics Associate Consultant - Life Sciences
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        ZS
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="text-xs text-yellow-600 font-medium">
+                                Interviewing
+                            </span>
+                        </div>
+
+                        {/* FS Insurance Management Consultant - Deleted */}
+                        <div className="flex items-center justify-between py-2">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200">
+                                    <XCircle className="w-4 h-4 text-gray-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-gray-900">
+                                        FS Insurance Management Consultant - Senior Associate
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        pwc
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                                Deleted
+                            </span>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </main>
         </div>
     );
 };
