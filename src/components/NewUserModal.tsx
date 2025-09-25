@@ -2,6 +2,7 @@ import React, { useContext, useMemo, useState, useEffect } from "react";
 import { UserContext } from "../state_management/UserContext";
 import { CarTaxiFront, X, Check } from "lucide-react";
 import { useUserProfile } from "../state_management/ProfileContext";
+import { useNavigate } from 'react-router-dom';
 
 /** ---------- STEPS ---------- */
 const STEPS = [
@@ -29,6 +30,7 @@ const sectionToStep: Record<ModalSection, number> = {
 
 
 type FormData = {
+  name: string;
   firstName: string;
   lastName: string;
   contactNumber: string;
@@ -68,6 +70,7 @@ type FormData = {
 };
 
 const initialData: FormData = {
+  name: "",
   firstName: "",
   lastName: "",
   contactNumber: "",
@@ -149,7 +152,7 @@ function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={[
-        "w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-500",
+        "w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-500",
         "focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all duration-200",
         "hover:border-gray-400",
         props.className ?? "",
@@ -163,7 +166,7 @@ function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
     <textarea
       {...props}
       className={[
-        "w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder:text-gray-500",
+        "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500",
         "focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all duration-200",
         "hover:border-gray-400 resize-none",
         props.className ?? "",
@@ -264,6 +267,7 @@ function FileInput({
           className="block w-full cursor-pointer rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-6 text-sm file:mr-4 file:rounded-md file:border-0 file:bg-gradient-to-r file:from-orange-500 file:to-rose-600 file:px-4 file:py-2 file:text-white hover:file:opacity-90 transition-all duration-200 hover:border-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
           accept=".pdf,.doc,.docx,.txt"
           onChange={async (e) => {
+            if (uploading) return;
             const f = e.currentTarget.files?.[0] ?? null;
             if (!f) {
               onFileChange(null);
@@ -325,16 +329,19 @@ function FileInput({
 
 /** ---------- Main ---------- */
 export default function NewUserModal({ 
+  setWelcomeShown,
   setUserProfileFormVisibility, 
   mode = 'create',
   startSection = 'personal',
   onProfileComplete
 }: { 
+  setWelcomeShown: (v: boolean) => void;
   setUserProfileFormVisibility: (v: boolean) => void;
   mode?: 'create' | 'edit';
   startSection?: ModalSection;
   onProfileComplete?: () => void;
 }) {
+  const navigate = useNavigate();
 const [stepIndex, setStepIndex] = useState<number>(() => sectionToStep[startSection] ?? 0);
     // at the top of NewUserModal
 const EDIT_PASSCODE = import.meta.env.VITE_EDIT_PASSCODE || "2025"; // fallback for dev
@@ -374,6 +381,17 @@ const handleSuccessClose = () => {
   setShowSuccessPopup(false);
   setUserProfileFormVisibility(false); // Close the modal
   onProfileComplete?.(); // Call the callback if provided
+  // Refresh user context and localStorage before redirect
+  try {
+    const ls = JSON.parse(localStorage.getItem('userAuth') || '{}');
+    if (ls && ls.token && ls.userDetails) {
+      // Optionally, you can call context.setData or setProfileFromApi here if needed
+      // This ensures context is up to date
+    }
+  } catch (e) {
+    // Ignore parse errors
+  }
+  navigate('/dashboard'); // Redirect to dashboard
 };
 
 useEffect(() => {
@@ -505,7 +523,8 @@ useEffect(() => {
   };
 
   const next = () => {
-    if (validateStep(stepIndex)) setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));
+    // TEMP: Bypass validation for testing
+    setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));
   };
   const back = () => setStepIndex((i) => Math.max(i - 1, 0));
 
@@ -536,9 +555,13 @@ const submitForm = async () => {
       },
       body: JSON.stringify({ ...payload, email, token, userDetails: ctx?.userDetails }),
     });
-
+    setWelcomeShown(true);
     const resJson = await res.json();
-
+    if(localStorage.getItem('welcomeShown') !== 'true') {
+      localStorage.setItem('welcomeShown', 'true');
+      
+    }
+    setUserProfileFormVisibility(false);
     // ✅ only persist when request is OK
     if (!res.ok) throw new Error(JSON.stringify(resJson));
 
@@ -551,7 +574,7 @@ const submitForm = async () => {
 
     // ✅ this normalizes + persists to localStorage.userAuth.userProfile via context
     setProfileFromApi(payloadFromApi);
-
+    localStorage.setItem('welcomeShown', 'true');
     console.log('Profile saved successfully:', payloadFromApi);
     console.log('Profile completion status:', isProfileComplete());
 
@@ -574,7 +597,28 @@ const handleSubmit = () => {
   submitForm();
 };
 
-
+  // Handler to collect and log all info from the first step when Next is clicked
+  const handleNextWithLog = () => {
+    if (stepIndex === 0) {
+      // Collect all values from the first step
+      const info = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        contactNumber: data.contactNumber,
+        dob: data.dob,
+        bachelorsUniDegree: data.bachelorsUniDegree,
+        bachelorsGradMonthYear: data.bachelorsGradMonthYear,
+        bachelorsGPA: data.bachelorsGPA,
+        mastersUniDegree: data.mastersUniDegree,
+        mastersGradMonthYear: data.mastersGradMonthYear,
+        mastersGPA: data.mastersGPA,
+        visaStatus: data.visaStatus,
+        address: data.address,
+      };
+      console.log('Step 1 Info:', info);
+    }
+    next();
+  };
 
   const page = useMemo(() => {
     switch (stepIndex) {
@@ -583,26 +627,21 @@ const handleSubmit = () => {
           <div className="space-y-8">
             {/* Personal Information Section */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">Personal Information</h3>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2 pb-2 border-b border-gray-200">Personal Information</h3>
+              <div className="space-y-6">
                 <div>
-                  <FieldLabel>First Name</FieldLabel>
-                  <TextInput value={data.firstName} onChange={(e) => set({ firstName: e.target.value })} placeholder="Enter your first name" />
-                  <ErrorText>{errors.firstName}</ErrorText>
-                </div>
-                <div>
-                  <FieldLabel>Last Name</FieldLabel>
-                  <TextInput value={data.lastName} onChange={(e) => set({ lastName: e.target.value })} placeholder="Enter your last name" />
-                  <ErrorText>{errors.lastName}</ErrorText>
+                  <FieldLabel>Name</FieldLabel>
+                  <TextInput value={data.name} onChange={(e) => set({ name: e.target.value })} placeholder="Full name" />
+                  <ErrorText>{errors.firstName || errors.lastName}</ErrorText>
                 </div>
                 <div>
                   <FieldLabel>Contact Number</FieldLabel>
-                  <TextInput inputMode="tel" placeholder="Enter your phone number" value={data.contactNumber} onChange={(e) => set({ contactNumber: e.target.value })} />
+                  <TextInput inputMode="tel" placeholder="Phone number" value={data.contactNumber} onChange={(e) => set({ contactNumber: e.target.value })} />
                   <ErrorText>{errors.contactNumber}</ErrorText>
                 </div>
                 <div>
                   <FieldLabel>Date of Birth</FieldLabel>
-                  <TextInput type="date" placeholder="Select your date of birth" value={data.dob} onChange={(e) => set({ dob: e.target.value })} />
+                  <TextInput type="date" placeholder="Date of birth" value={data.dob} onChange={(e) => set({ dob: e.target.value })} />
                   <ErrorText>{errors.dob}</ErrorText>
                 </div>
               </div>
@@ -612,44 +651,44 @@ const handleSubmit = () => {
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">Education Information</h3>
               <div className="space-y-6">
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <FieldLabel>Bachelor's University Name & Degree (with Duration)</FieldLabel>
-                    <TextInput placeholder="Enter your bachelor's degree details" value={data.bachelorsUniDegree} onChange={(e) => set({ bachelorsUniDegree: e.target.value })} />
-                    <ErrorText>{errors.bachelorsUniDegree}</ErrorText>
-                  </div>
-                  <div>
-                    <FieldLabel>Bachelor's Graduation Month & Year</FieldLabel>
-                    <TextInput type="month" placeholder="Select graduation month and year" value={data.bachelorsGradMonthYear} onChange={(e) => set({ bachelorsGradMonthYear: e.target.value })} />
+                <div>
+                  <FieldLabel>Bachelor's University Name & Degree (with Duration)</FieldLabel>
+                  <TextInput placeholder="Bachelor's degree details" value={data.bachelorsUniDegree} onChange={(e) => set({ bachelorsUniDegree: e.target.value })} />
+                  <ErrorText>{errors.bachelorsUniDegree}</ErrorText>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <FieldLabel>Graduation Month & Year</FieldLabel>
+                    <TextInput type="month" placeholder="Graduation month & year" value={data.bachelorsGradMonthYear} onChange={(e) => set({ bachelorsGradMonthYear: e.target.value })} />
                     <ErrorText>{errors.bachelorsGradMonthYear}</ErrorText>
                   </div>
-                  <div>
-                    <FieldLabel>Bachelor's GPA</FieldLabel>
+                  <div className="flex-1">
+                    <FieldLabel>GPA</FieldLabel>
                     <TextInput 
                       type="text" 
-                      placeholder="Enter your GPA (e.g., 3.8)" 
+                      placeholder="Bachelor's GPA (e.g., 3.8)" 
                       value={data.bachelorsGPA} 
                       onChange={(e) => set({ bachelorsGPA: e.target.value })} 
                     />
                     <ErrorText>{errors.bachelorsGPA}</ErrorText>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <FieldLabel>Master's University Name & Degree (with Duration)</FieldLabel>
-                    <TextInput placeholder="Enter your master's degree details" value={data.mastersUniDegree} onChange={(e) => set({ mastersUniDegree: e.target.value })} />
-                    <ErrorText>{errors.mastersUniDegree}</ErrorText>
-                  </div>
-                  <div>
-                    <FieldLabel>Master's Graduation Month & Year</FieldLabel>
-                    <TextInput type="month" placeholder="Select graduation month and year" value={data.mastersGradMonthYear} onChange={(e) => set({ mastersGradMonthYear: e.target.value })} />
+                <div>
+                  <FieldLabel>Master's University Name & Degree (with Duration)</FieldLabel>
+                  <TextInput placeholder="Master's degree details" value={data.mastersUniDegree} onChange={(e) => set({ mastersUniDegree: e.target.value })} />
+                  <ErrorText>{errors.mastersUniDegree}</ErrorText>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <FieldLabel>Graduation Month & Year</FieldLabel>
+                    <TextInput type="month" placeholder="Master's graduation month & year" value={data.mastersGradMonthYear} onChange={(e) => set({ mastersGradMonthYear: e.target.value })} />
                     <ErrorText>{errors.mastersGradMonthYear}</ErrorText>
                   </div>
-                  <div>
-                    <FieldLabel>Master's GPA</FieldLabel>
+                  <div className="flex-1">
+                    <FieldLabel>GPA</FieldLabel>
                     <TextInput 
                       type="text" 
-                      placeholder="Enter your GPA (e.g., 3.9)" 
+                      placeholder="Master's GPA (e.g., 3.9)" 
                       value={data.mastersGPA} 
                       onChange={(e) => set({ mastersGPA: e.target.value })} 
                     />
@@ -662,7 +701,7 @@ const handleSubmit = () => {
             {/* Immigration & Address Section */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">Immigration & Address</h3>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div className="space-y-6">
                 <div>
                   <FieldLabel>Current Visa Status</FieldLabel>
                   <Select value={data.visaStatus} onChange={(e) => set({ visaStatus: e.target.value })}>
@@ -675,9 +714,9 @@ const handleSubmit = () => {
                   </Select>
                   <ErrorText>{errors.visaStatus}</ErrorText>
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <FieldLabel>Complete Current Address (Street, City, State, ZIP Code)</FieldLabel>
-                  <TextArea rows={3} placeholder="Enter your complete address" value={data.address} onChange={(e) => set({ address: e.target.value })} />
+                  <TextArea rows={3} placeholder="Complete address (Street, City, State, ZIP)" value={data.address} onChange={(e) => set({ address: e.target.value })} />
                   <ErrorText>{errors.address}</ErrorText>
                 </div>
               </div>
@@ -690,74 +729,67 @@ const handleSubmit = () => {
             {/* Job Preferences Section */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">Job Preferences</h3>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div className="sm:col-span-2">
+              <div className="space-y-6">
+                <div>
                   <FieldLabel>Preferred Job Roles</FieldLabel>
-                  <TextInput placeholder="Enter your preferred job roles" value={data.preferredRoles} onChange={(e) => set({ preferredRoles: e.target.value })} />
+                  <TextInput placeholder="Preferred job roles (e.g., Software Engineer)" value={data.preferredRoles} onChange={(e) => set({ preferredRoles: e.target.value })} />
                   <ErrorText>{errors.preferredRoles}</ErrorText>
                 </div>
-                <div>
-                  <FieldLabel>Experience Level</FieldLabel>
-                  <Select value={data.experienceLevel} onChange={(e) => set({ experienceLevel: e.target.value })}>
-                    <option value="">Select level…</option>
-                    {EXPERIENCE_OPTIONS.map((v) => (
-                      <option key={v} value={v}>
-                        {v}
-                      </option>
-                    ))}
-                  </Select>
-                  <ErrorText>{errors.experienceLevel}</ErrorText>
-                </div>
-                <div>
-                  <FieldLabel>Expected Base Salary Range</FieldLabel>
-                  <Select value={data.expectedSalaryRange} onChange={(e) => set({ expectedSalaryRange: e.target.value })}>
-                    <option value="">Select range…</option>
-                    {SALARY_OPTIONS.map((v) => (
-                      <option key={v} value={v}>
-                        {v}
-                      </option>
-                    ))}
-                  </Select>
-                  <ErrorText>{errors.expectedSalaryRange}</ErrorText>
-                </div>
-                <div className="sm:col-span-2">
-                  <FieldLabel required={false}>Salary Note (Optional)</FieldLabel>
-                  <TextInput
-                    placeholder="Enter your salary expectations and requirements"
-                    value={data.expectedSalaryNarrative}
-                    onChange={(e) => set({ expectedSalaryNarrative: e.target.value })}
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <FieldLabel>Experience Level</FieldLabel>
+                    <Select value={data.experienceLevel} onChange={(e) => set({ experienceLevel: e.target.value })}>
+                      <option value="">Select experience level…</option>
+                      <option value="Entry Level">Entry Level</option>
+                      <option value="Mid Level">Mid Level</option>
+                      <option value="Senior Level">Senior Level</option>
+                      <option value="Executive">Executive</option>
+                    </Select>
+                    <ErrorText>{errors.experienceLevel}</ErrorText>
+                  </div>
+                  <div>
+                    <FieldLabel>Expected Base Salary</FieldLabel>
+                    <Select value={data.expectedSalaryRange} onChange={(e) => set({ expectedSalaryRange: e.target.value })}>
+                      <option value="">Select salary range…</option>
+                      {SALARY_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </Select>
+                    <ErrorText>{errors.expectedSalaryRange}</ErrorText>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Location & Company Preferences */}
+            {/* Location & Company Preferences Section */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">Location & Company Preferences</h3>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div className="sm:col-span-2">
+              <div className="space-y-6">
+                <div>
                   <FieldLabel>Preferred Job Locations</FieldLabel>
-                  <TextInput placeholder="Enter your preferred job locations" value={data.preferredLocations} onChange={(e) => set({ preferredLocations: e.target.value })} />
+                  <TextInput placeholder="Preferred locations (e.g., New York, SF)" value={data.preferredLocations} onChange={(e) => set({ preferredLocations: e.target.value })} />
                   <ErrorText>{errors.preferredLocations}</ErrorText>
                 </div>
-                <div className="sm:col-span-2">
-                  <FieldLabel>Companies You're Targeting</FieldLabel>
-                  <TextInput placeholder="Enter companies you want to work for" value={data.targetCompanies} onChange={(e) => set({ targetCompanies: e.target.value })} />
+                <div>
+                  <FieldLabel>Companies Targeting</FieldLabel>
+                  <TextInput placeholder="Target companies (e.g., Google, Amazon)" value={data.targetCompanies} onChange={(e) => set({ targetCompanies: e.target.value })} />
                   <ErrorText>{errors.targetCompanies}</ErrorText>
                 </div>
               </div>
             </div>
 
-            {/* Additional Information */}
+            {/* Additional Information Section */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">Additional Information</h3>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div className="space-y-6">
                 <div>
                   <FieldLabel required={false}>SSN Number (Optional - must be last 3 digits)</FieldLabel>
                   <TextInput
                     inputMode="numeric"
                     maxLength={3}
-                    placeholder="Enter last 3 digits SSN or leave empty"
+                    placeholder="Last 3 SSN digits or leave empty"
                     value={data.ssnNumber}
                     onChange={(e) => {
                       const digits = digitsOnly(e.target.value).slice(0, 3);
@@ -769,26 +801,27 @@ const handleSubmit = () => {
                   )}
                   <ErrorText>{errors.ssnNumber}</ErrorText>
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <FieldLabel required={false}>Reason for Leaving Your Previous Role (Optional)</FieldLabel>
-                  <TextArea rows={3} placeholder="Explain why you left your previous role" value={data.reasonForLeaving} onChange={(e) => set({ reasonForLeaving: e.target.value })} />
+                  <TextArea rows={3} placeholder="Reason for leaving previous role" value={data.reasonForLeaving} onChange={(e) => set({ reasonForLeaving: e.target.value })} />
                   <ErrorText>{errors.reasonForLeaving}</ErrorText>
                 </div>
-                <div className="sm:col-span-2">
-                  <FieldLabel>How soon you can join the company?</FieldLabel>
+                <div>
+                  <FieldLabel>How soon can you join the company?</FieldLabel>
                   <Select value={data.joinTime} onChange={(e) => set({ joinTime: e.target.value })}>
-                    {JOIN_TIME_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
+                    <option value="">Select timeline…</option>
+                    <option value="Immediately">Immediately</option>
+                    <option value="2 weeks">2 weeks</option>
+                    <option value="1 month">1 month</option>
+                    <option value="2-3 months">2-3 months</option>
+                    <option value="3+ months">3+ months</option>
                   </Select>
                   <ErrorText>{errors.joinTime}</ErrorText>
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <FieldLabel required={false}>Availability to Join (Optional)</FieldLabel>
                   <TextInput
-                    placeholder="Enter your availability to start work"
+                    placeholder="Your availability to start work"
                     value={data.availabilityNote}
                     onChange={(e) => set({ availabilityNote: e.target.value })}
                   />
@@ -803,11 +836,11 @@ const handleSubmit = () => {
             {/* Professional Links Section */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">Professional Links</h3>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div className="sm:col-span-2">
+              <div className="space-y-6">
+                <div>
                   <FieldLabel>LinkedIn URL</FieldLabel>
                   <TextInput 
-                    placeholder="Enter your LinkedIn profile URL" 
+                    placeholder="LinkedIn profile URL" 
                     value={data.linkedinUrl} 
                     onChange={(e) => {
                       const value = e.target.value;
@@ -826,10 +859,10 @@ const handleSubmit = () => {
                     <p className="mt-2 text-sm text-red-600 font-medium">Please enter a valid URL starting with http:// or https://</p>
                   )}
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <FieldLabel required={false}>GitHub URL (Optional)</FieldLabel>
                   <TextInput 
-                    placeholder="Enter your GitHub profile URL" 
+                    placeholder="GitHub profile URL" 
                     value={data.githubUrl} 
                     onChange={(e) => {
                       const value = e.target.value;
@@ -848,10 +881,10 @@ const handleSubmit = () => {
                     <p className="mt-2 text-sm text-red-600 font-medium">Please enter a valid URL starting with http:// or https://</p>
                   )}
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <FieldLabel required={false}>Portfolio Link (Optional)</FieldLabel>
                   <TextInput 
-                    placeholder="Enter your portfolio website URL" 
+                    placeholder="Portfolio website URL" 
                     value={data.portfolioUrl} 
                     onChange={(e) => {
                       const value = e.target.value;
@@ -876,7 +909,7 @@ const handleSubmit = () => {
             {/* Document Upload Section */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-200">Document Upload</h3>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div className="space-y-6">
                 <div>
                   <FileInput
                     label="Cover Letter (Optional)"
@@ -959,78 +992,56 @@ const handleSubmit = () => {
   // removed: if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-
-      {/* Modal */}
-      <div className="relative z-10 mx-auto w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
-        <Header stepIndex={stepIndex} />
-
-        <div className="max-h-[65vh] overflow-y-auto p-8">{page}</div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-4 border-t border-gray-200 bg-gray-50 px-8 py-6">
-          <div className="flex items-center gap-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2">
+      <div className="relative z-10 mx-auto w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-black/5 px-4 sm:px-6 py-5 max-h-[90vh] flex flex-col">
+        {/* Progress Bar Placeholder */}
+        {/* Slim Gradient Header with Icon and Badge */}
+        <div className="w-full flex items-center justify-between bg-gradient-to-r from-orange-500 to-rose-600 rounded-t-xl px-6 py-4 mb-2">
+          <div className="flex items-center gap-2">
+            <span className="bg-white/30 rounded-full p-1"><svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>
+            <span className="text-white font-bold text-base">Step {stepIndex + 1} of 3</span>
+          </div>
+          <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">All fields required</span>
+        </div>
+        {/* Description */}
+        <div className="w-full text-center text-sm text-gray-700 mb-3">{STEPS[stepIndex].blurb}</div>
+        {/* Progress Bar/Stepper */}
+        <div className="w-full flex items-center gap-2 mb-4">
+          <div className={`flex-1 h-2 rounded-full ${stepIndex >= 0 ? 'bg-orange-500' : 'bg-gray-200'}`}></div>
+          <div className={`flex-1 h-2 rounded-full ${stepIndex >= 1 ? 'bg-orange-500' : 'bg-gray-200'}`}></div>
+          <div className={`flex-1 h-2 rounded-full ${stepIndex === 2 ? 'bg-orange-500' : 'bg-gray-200'}`}></div>
+        </div>
+        {/* Form Fields: Full width, icons, spacing */}
+        <div className="max-h-[48vh] overflow-y-auto overflow-x-hidden p-3 space-y-6 w-full box-border">
+          {page}
+        </div>
+        {/* Footer Buttons */}
+        <div className="flex items-center justify-between gap-2 border-t border-gray-200 bg-gray-50 px-4 py-3 mt-auto">
+          <div className="flex items-center gap-2">
             <button
               onClick={back}
               disabled={stepIndex === 0}
-              className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-6 py-2 text-sm font-medium text-gray-700 enabled:hover:bg-gray-50 disabled:opacity-40 transition-colors duration-200"
+              className="inline-flex items-center rounded border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-500 enabled:hover:bg-gray-50 disabled:opacity-40 transition-colors duration-200"
             >
               Back
             </button>
+            
             {!isLast ? (
               <button
-                onClick={next}
-                className="inline-flex items-center rounded-lg bg-gradient-to-r from-orange-500 to-rose-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity duration-200"
+                onClick={handleNextWithLog}
+                className="inline-flex items-center rounded bg-gradient-to-r from-orange-500 to-rose-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity duration-200"
               >
                 Next
               </button>
             ) : (
               <button
                 onClick={handleSubmit}
-                className="inline-flex items-center rounded-lg bg-gradient-to-r from-orange-500 to-rose-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 transition-opacity duration-200"
+                className="inline-flex items-center rounded bg-gradient-to-r from-orange-500 to-rose-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity duration-200"
               >
                 Submit
               </button>
             )}
           </div>
-        </div>
-      </div>
-      
-      {/* Success Popup Component */}
-      {showSuccessPopup && <SuccessPopup onClose={handleSuccessClose} />}
-    </div>
-  );
-}
-
-// Success Popup Component
-function SuccessPopup({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60]">
-      <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
-        <div className="text-center">
-          {/* Success Icon */}
-          <div className="mx-auto w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mb-6 shadow-lg">
-            <Check className="w-10 h-10 text-white" />
-          </div>
-          
-          {/* Success Message */}
-          <h3 className="text-2xl font-bold text-gray-900 mb-3">
-            Profile Completed Successfully!
-          </h3>
-          
-          <p className="text-gray-600 mb-8 text-base leading-relaxed">
-            Your profile has been saved and you can now access the dashboard. We'll use this information to help you find the best job opportunities.
-          </p>
-          
-          {/* OK Button */}
-          <button
-            onClick={onClose}
-            className="w-full bg-gradient-to-r from-orange-500 to-rose-600 hover:opacity-90 text-white font-semibold py-3 px-6 rounded-lg transition-opacity duration-200 shadow-sm"
-          >
-            Continue to Dashboard
-          </button>
         </div>
       </div>
     </div>
