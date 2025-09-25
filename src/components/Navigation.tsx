@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useContext, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, Briefcase, FileText, User, LogOut, ChevronDown, Edit2Icon, User2Icon } from 'lucide-react';
+import { Home, Briefcase, FileText, User, LogOut, ChevronDown, Edit2Icon, User2Icon, Gift } from 'lucide-react';
 import { UserContext } from '../state_management/UserContext.tsx';
 import { useUserProfile } from "../state_management/ProfileContext";
 import { useOperationsStore } from "../state_management/Operations.ts";
@@ -78,79 +78,73 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
   };
 
   return (
-      <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm bg-white/95">
-          <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-              <div className="flex justify-between items-center h-20">
-                  {/* Enhanced Logo Section */}
-                  <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg">
-                              {/* <FileText className="w-7 h-7 text-white" /> */}
-                              <img
-                                  src="./Logo.png"
-                                  alt=""
-                                  className="rounded-xl"
-                              />
-                          </div>
-                          <div>
-                              <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                                  FLASHFIRE
-                              </h1>
-                              <p className="text-xs text-gray-500 font-medium -mt-1">
-                                  Complete Workflow Optimization
-                              </p>
-                          </div>
-                      </div>
+    <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm bg-white/95">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
+        <div className="flex justify-between items-center h-20">
+          
+          {/* Enhanced Logo Section */}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg">
+                {/* <FileText className="w-7 h-7 text-white" /> */}
+                <img src="./Logo.png" alt="" className='rounded-xl' />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                  FLASHFIRE
+                </h1>
+                <p className="text-xs text-gray-500 font-medium -mt-1">Complete Workflow Optimization</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Enhanced Navigation Tabs */}
+          <div className="flex items-center space-x-8">
+            <div className="flex space-x-2">
+              {tabs.map(({ id, label, icon: Icon }) => (
+                <Link
+                  key={id}
+                  to="/"
+                  onClick={() => onTabChange(id)}
+                  className={`flex items-center space-x-3 px-6 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 ${
+                    activeTab === id
+                      ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="hidden sm:block">{label}</span>
+                </Link>
+              ))}
+            </div>
+            
+            {/* Refer & Earn Button */}
+            <div className="relative">
+              <button className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl">
+                <Gift className="w-5 h-5" />
+                <span className="hidden sm:block">Refer & Earn</span>
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+                  NEW
+                </span>
+              </button>
+            </div>
+            
+            {/* Enhanced User Profile Section */}
+            {user ? (
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setProfileDropDown(!profileDropDown)}
+                  className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-gray-50 transition-all duration-200 group border border-gray-200 hover:border-gray-300"
+                >
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-md">
+                    <User className="w-5 h-5 text-white" />
                   </div>
-
-                  {/* Enhanced Navigation Tabs */}
-                  <div className="flex items-center space-x-8">
-                      <div className="flex space-x-2">
-                          {tabs.map(({ id, label, icon: Icon }) => (
-                              <Link
-                                  key={id}
-                                  to="/"
-                                  onClick={() => onTabChange(id)}
-                                  className={`flex items-center space-x-3 px-6 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 ${
-                                      activeTab === id
-                                          ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg"
-                                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                                  }`}
-                              >
-                                  <Icon className="w-5 h-5" />
-                                  <span className="hidden sm:block">
-                                      {label}
-                                  </span>
-                              </Link>
-                          ))}
-                      </div>
-
-                      {/* Enhanced User Profile Section */}
-                      {user ? (
-                          <div className="relative" ref={dropdownRef}>
-                              <button
-                                  onClick={() =>
-                                      setProfileDropDown(!profileDropDown)
-                                  }
-                                  className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-gray-50 transition-all duration-200 group border border-gray-200 hover:border-gray-300"
-                              >
-                                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-md">
-                                      <User className="w-5 h-5 text-white" />
-                                  </div>
-                                  <div className="hidden md:block text-left">
-                                      <p className="text-sm font-semibold text-gray-700">
-                                          {user}
-                                      </p>
-                                      <p className="text-xs text-gray-500">
-                                          Account
-                                      </p>
-                                  </div>
-                                  <ChevronDown
-                                      className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
-                                          profileDropDown ? "rotate-180" : ""
-                                      }`}
-                                  />
-                              </button>
+                  <div className="hidden md:block text-left">
+                    <p className="text-sm font-semibold text-gray-700">{user}</p>
+                    <p className="text-xs text-gray-500">Account</p>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${profileDropDown ? 'rotate-180' : ''}`} />
+                </button>
 
                               {/* Enhanced Dropdown Menu */}
                               {profileDropDown && (
