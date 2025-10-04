@@ -523,8 +523,8 @@ const handleDragEnd = (e: React.DragEvent) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
         <div className="flex flex-col justify-around items-start w-full">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Job Tracker</h2>
-          <p className="text-gray-600">Track your job applications and manage your career pipeline</p>
+          <h2 className="text-4xl bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent font-bold mb-2">Job Tracker</h2>
+          <p className="text-blue-600 text-3x1 bg-gradient-to-r from-gray-500 via-blue-500 to-indigo-500  bg-clip-text text-transparent ">Track your job applications and manage your career pipeline</p>
         </div>
         <div className="mt-4 sm:mt-0 flex items-center justify-end gap-4 w-full">
           <div className="relative">
