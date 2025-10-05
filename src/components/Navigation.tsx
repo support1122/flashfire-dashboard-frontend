@@ -130,7 +130,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
                 
                 <div className="hidden md:block text-left relative z-10">
                   <p className="text-sm font-semibold text-foreground leading-none">{user}</p>
-                  <p className="text-xs text-orange-600 dark:text-orange-400 font-medium flex items-center gap-1 mt-1">
+                  <p className="text-xs text-orange-600  font-medium flex items-center gap-1 mt-1">
                     Account Settings
                   </p>
                 </div>
@@ -140,15 +140,15 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
               </button>
 
               {profileDropDown && (
-                <div className="absolute right-0 mt-3 w-96 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-border overflow-hidden z-50 backdrop-blur-none animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 mt-3 w-96 bg-white rounded-2xl shadow-2xl border border-border overflow-hidden z-50 backdrop-blur-none animate-in fade-in slide-in-from-top-2 duration-200">
                   <Link to="/profile" target="_blank" rel="noopener noreferrer">
-                    <div className="relative flex items-center gap-4 p-5 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 border-b border-border hover:from-orange-100 hover:to-red-100 dark:hover:from-orange-950/30 dark:hover:to-red-950/30 transition-all duration-300 group">
+                    <div className="relative flex items-center gap-4 p-5 bg-gradient-to-br from-orange-50 to-red-50 border-b border-border hover:from-orange-100 hover:to-red-100 transition-all duration-300 group">
                       {/* <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform duration-300">
                         <User className="w-7 h-7 text-white" />
                       </div> */}
                       <div className="flex-1 min-w-0">
                         <p className="text-base font-bold text-foreground truncate">{user}</p>
-                        <p className="text-sm text-orange-600 dark:text-orange-400 font-medium flex items-center gap-1 mt-0.5">
+                        <p className="text-sm text-orange-600  font-medium flex items-center gap-1 mt-0.5">
                           View profile
                           <span className="group-hover:translate-x-1 transition-transform duration-300">→</span>
                         </p>
@@ -157,11 +157,11 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
                   </Link>
 
                   {role !== "operations" && (
-                    <div className="p-5 space-y-5 bg-gradient-to-b from-transparent to-gray-50/50 dark:to-gray-800/20">
-                      <div className="space-y-2 p-4 rounded-xl bg-white dark:bg-gray-800/50 border border-border/50 hover:border-orange-500/30 transition-colors duration-300">
+                    <div className="p-5 space-y-5 bg-gradient-to-b from-transparent to-gray-50/50 ">
+                      <div className="space-y-2 p-4 rounded-xl bg-white  border border-border/50 hover:border-orange-500/30 transition-colors duration-300">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-                            <Mail className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                          <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                            <Mail className="w-4 h-4 text-orange-600 " />
                           </div>
                           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                             Email Address
@@ -180,10 +180,10 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
                         </button>
                       )}
 
-                      <div className="space-y-2 p-4 rounded-xl bg-white dark:bg-gray-800/50 border border-border/50 hover:border-orange-500/30 transition-colors duration-300">
+                      <div className="space-y-2 p-4 rounded-xl bg-white border border-border/50 hover:border-orange-500/30 transition-colors duration-300">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-                            <CreditCard className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                          <div className="w-8 h-8 bg-orange-100  rounded-lg flex items-center justify-center">
+                            <CreditCard className="w-4 h-4 text-orange-600 " />
                           </div>
                           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                             Current Plan
@@ -199,7 +199,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
                     </div>
                   )}
 
-                  <div className="border-t border-border p-3 bg-gray-50/50 dark:bg-gray-800/30">
+                  <div className="border-t border-border p-3 bg-gray-50/50 ">
                     {role === "operations" ? (
                       <button
                         onClick={handleSwitchUser}
