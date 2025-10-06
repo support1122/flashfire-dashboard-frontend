@@ -524,7 +524,7 @@ const handleDragEnd = (e: React.DragEvent) => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
         <div className="flex flex-col justify-around items-start w-full">
           <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent mb-3 leading-tight">Job Tracker</h2>
-          <p className="text-gray-600 text-3x1 bg-gradient-to-r from-gray-500 via-blue-500 to-indigo-500 bg-clip-text text-transparent ">Track your job applications and manage your career pipeline</p>
+          <p className="text-gray-600 text-3x1 ">Track your job applications and manage your career pipeline</p>
         </div>
         <div className="mt-4 sm:mt-0 flex items-center justify-end gap-4 w-full">
           <div className="relative">

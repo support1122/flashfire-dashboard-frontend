@@ -1,4 +1,4 @@
-"use client"
+
 
 import { Briefcase, FileText, TrendingUp, Users, CheckCircle, XCircle, Clock } from "lucide-react"
 import type React from "react"
@@ -247,13 +247,8 @@ const Dashboard: React.FC = () => {
         return <LoadingScreen />
     }
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative overflow-hidden">
-            {/* Background decorative elements */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl"></div>
-                <div className="absolute top-1/3 -left-20 w-72 h-72 bg-gradient-to-br from-purple-400/15 to-pink-400/15 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-20 right-1/4 w-64 h-64 bg-gradient-to-br from-cyan-400/15 to-blue-400/15 rounded-full blur-3xl"></div>
-            </div>
+        <div className="min-h-screen bg-white relative overflow-hidden">
+            
 
             {/* NewUserModal */}
             {showProfileModal && (
