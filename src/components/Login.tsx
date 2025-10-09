@@ -215,6 +215,7 @@ export default function LoginPage({
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="w-full m-1 mx-auto">
              <GoogleLogin
+             size="large"
               onSuccess={async (credentialResponse) => {
                     const loadingToast = toastUtils.loading(toastMessages.loggingIn)
                 const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/google-oauth`, {
