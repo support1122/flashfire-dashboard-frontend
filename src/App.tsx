@@ -20,7 +20,11 @@ import Optimizer from './components/AiOprimizer/Optimizer.tsx';
 // Component to handle Profile page with proper navigation
 function ProfileWithNavigation() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
+const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(() => {
+  const stored = localStorage.getItem('userAuth');
+  const parsed = stored ? JSON.parse(stored) : null;
+  return parsed?.userProfile ? false : true;
+});
 
   return (
     <div className="min-h-screen bg-gray-50">

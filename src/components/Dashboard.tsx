@@ -53,7 +53,7 @@ const Dashboard: React.FC = () => {
                 const res = await fetch(
                     `${API_BASE_URL}/operations/getalljobs`,
                     {
-                        method: "POST",
+                        method: "GET",
                         headers: {
                             "Content-Type": "application/json",
                             Authorization: `Bearer ${localToken}`,
@@ -156,13 +156,15 @@ const Dashboard: React.FC = () => {
             hasProfile: !!userProfile,
         });
 
-        if (!isProfileComplete()) {
-            console.log("Profile incomplete, showing modal");
-            setShowProfileModal(true);
-        } else {
-            console.log("Profile complete, hiding modal");
-            setShowProfileModal(false);
-        }
+        const userAuth = JSON.parse(localStorage.getItem("userAuth") || "{}");
+
+if (userAuth?.userProfile) {
+  console.log("Profile found, hiding modal");
+  setShowProfileModal(false);
+} else {
+  console.log("No profile found, showing modal");
+  setShowProfileModal(true);
+}
 
         // Only fetch if we don't have fresh data in session storage
         if (userJobs.length === 0) {
@@ -326,25 +328,24 @@ const Dashboard: React.FC = () => {
             )}
 
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Welcome Section */}
-                <div className="mb-8">
-                    <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                                Welcome to Your Career Dashboard
-                            </h1>
-                            <p className="text-gray-600 text-lg">
-                                Track your job applications, monitor your progress, and optimize your career journey with AI-powered insights.
-                            </p>
-                        </div>
-                        
-                        {/* Dashboard Manager Display */}
-                        <div className="ml-4">
-                            <DashboardManagerDisplay />
-                        </div>
-                    </div>
-                </div>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+  {/* Welcome Section */}
+  <div className="mb-8">
+    <div className="flex flex-col md:flex-row items-start justify-between gap-4 md:gap-0">
+      <div className="flex-1">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 text-center md:text-left">
+          Welcome to Your Career Dashboard
+        </h1>
+        <p className="text-gray-600 text-base sm:text-lg text-center md:text-left">
+          Track your job applications, monitor your progress, and optimize your career journey with AI-powered insights.
+        </p>
+      </div>
+      <div className="self-center md:self-auto">
+        <DashboardManagerDisplay />
+      </div>
+    </div>
+  </div>
+
 
                 {/* Zero jobs hint */}
                 {uniqueJobs.length === 0 && (
@@ -361,8 +362,10 @@ const Dashboard: React.FC = () => {
                 )}
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+<div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8 overflow-x-auto md:overflow-visible">
+
+<div className="bg-white rounded-lg sm:rounded-xl shadow p-4 sm:p-6 border border-gray-200 min-w-[160px]">
+
                         <div className="flex items-center justify-between mb-4">
                             <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                                 <Briefcase className="w-6 h-6 text-blue-600" />
@@ -472,7 +475,7 @@ const Dashboard: React.FC = () => {
                 {/* Application Pipeline */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h2 className="text-xl font-bold text-gray-900 mb-6">Application Pipeline</h2>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap">
                         <div className="flex flex-col items-center space-y-2">
                             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                                 <Clock className="w-8 h-8 text-gray-400" />
