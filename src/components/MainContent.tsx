@@ -185,11 +185,11 @@ const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false
 const [welcomeShown, setWelcomeShown] = useState(()=>{
     return localStorage.getItem("welcomeShown")? true: false
   });
-useEffect(() => {
-  if (!userProfile) setUserProfileFormVisibility(true);
-  else setUserProfileFormVisibility(false);
-  console.log(userProfile)
-}, [userProfile]);
+// useEffect(() => {
+//  if (JSON.parse(localStorage.getItem('userAuth')).userProfile!=null) {console.log(userProfileFormVisibility,JSON.parse(localStorage.getItem('userAuth')).userProfile);setUserProfileFormVisibility(true);}
+//   else setUserProfileFormVisibility(false);
+//   console.log(userProfile)
+// }, [userProfile]);
 
 // console.log(userProfileFormVisibility,'vfcd')
   

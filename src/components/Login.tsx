@@ -5,6 +5,7 @@ import { UserContext } from "../state_management/UserContext"
 import { useUserProfile } from "../state_management/ProfileContext"
 import { useOperationsStore } from "../state_management/Operations"
 import { toastUtils, toastMessages } from "../utils/toast"
+import { GoogleLogin } from '@react-oauth/google';
 
 interface LoginResponse {
   message: string
@@ -112,8 +113,9 @@ export default function LoginPage({
           setData({
             userDetails: data?.userDetails,
             token: data?.token,
+            userProfile : data?.userProfile
           })
-          setProfileFromApi(data.userProfile)
+          setProfileFromApi(data?.userProfile)
           localStorage.setItem(
             "userAuth",
             JSON.stringify({
@@ -211,6 +213,60 @@ export default function LoginPage({
 
           {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-6">
+            <div className="w-full m-1 mx-auto">
+             <GoogleLogin
+              onSuccess={async (credentialResponse) => {
+                    const loadingToast = toastUtils.loading(toastMessages.loggingIn)
+                const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/google-oauth`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ token: credentialResponse.credential })
+                });
+                const data = await res.json();
+                console.log(data,'-----------------------');
+                if(data?.user?.email?.includes("@flashfirehq")){
+                  setName(data.user.name)
+                  setEmailOperations(data.user.email)
+                  setRole(data.user.role)
+                  setManagedUsers(data.user.managedUsers)
+                  toastUtils.dismissToast(loadingToast)
+                  toastUtils.success("Welcome to Operations Dashboard!")
+                  navigate("/manage")
+
+                }
+                else{
+                  setData({
+                    userDetails: data?.userDetails,
+                    token: data?.token,
+                    userProfile : data?.userProfile
+                  })
+                  setProfileFromApi(data?.userProfile);
+                  localStorage.setItem(
+                    "userAuth",
+                    JSON.stringify({
+                      token: data?.token,
+                      userDetails: data?.userDetails,
+                      userProfile: data?.userProfile,
+                    }),
+                  )
+                  toastUtils.dismissToast(loadingToast)
+                  toastUtils.success(toastMessages.loginSuccess)
+                  navigate("/")
+                
+                // console.log(data)
+                // if (data.token) {
+                //   setData({ userDetails: data.userDetails, token: data.token, });
+                //   localStorage.setItem("userAuth",JSON.stringify({token : data?.token,userDetails : data?.userDetails}));
+
+                  navigate('/');
+                // } else {
+                //   setResponse({ message: data.message || 'Login failed' });
+                }
+  }}
+  onError={() => console.log("Login Failed")}
+  useOneTap
+/>
+            </div>
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
