@@ -905,6 +905,7 @@ export default function Login() {
          <div className="mb-5 w-full flex justify-center">
   <div className="w-full max-w-sm">
     <GoogleLogin
+    text="continue_with"
       size="large"
       theme="outline"
       width="100%"
