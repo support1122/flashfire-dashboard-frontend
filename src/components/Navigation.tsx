@@ -197,8 +197,9 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
         <div className="flex justify-between items-center h-20">
           
           {/* Enhanced Logo Section */}
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg">
+          <div className="flex items-center space-x-4 -translate-x-[45px] md:translate-x-0">
+
+            <div className="w-12 h-12 invisible sm:visible rounded-2xl flex items-center justify-center shadow-lg">
               {/* <FileText className="w-7 h-7 text-white" /> */}
               <img src="./Logo.png" alt="" className='rounded-xl' />
             </div>
@@ -211,14 +212,14 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
           </div>
           
           {/* Enhanced Navigation Tabs */}
-          <div className="flex items-center space-x-8">
-            <div className="flex space-x-2">
+          <div className="flex items-center sm:space-x-2 space-x-0 -translate-x-[30px] md:translate-x-0 p-1">
+            <div className="flex">
               {tabs.map(({ id, label, icon: Icon }) => (
                 <Link
                   key={id}
                   to="/"
                   onClick={() => onTabChange(id)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold transition-all duration-200 ${
+                  className={`flex items-center space-x-4 m-2 p-2 rounded-lg font-semibold transition-all duration-200 ${
                     activeTab === id
                       ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow'
                       : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
@@ -234,10 +235,10 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
             
             {/* Enhanced User Profile Section */}
             {user ? (
-              <div className="relative" ref={dropdownRef}>
+              <div className="relative m-2" ref={dropdownRef}>
                 <button
                   onClick={() => setProfileDropDown(!profileDropDown)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200 border border-gray-200"
+                  className="flex mr-2 p-3 items-center space-x-2 px-3 pl-3 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200 border border-gray-200"
                 >
                   <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center shadow">
                     <User className="w-4 h-4 text-white" />
@@ -363,6 +364,3 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
 };
 
 export default Navigation;
-
-
-
