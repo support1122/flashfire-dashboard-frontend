@@ -833,7 +833,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-gradient-to-br from-orange-50 via-white to-red-50">
       {/* LEFT PANEL (unchanged) */}
-      <div className="flex-1 flex flex-col justify-center px-6 md:px-12 lg:px-16 py-12 lg:py-16 relative border-b lg:border-b-0 lg:border-r border-gray-200">
+      <div className="flex-1 flex flex-col justify-center px-6  relative border-b lg:border-b-0 lg:border-r border-gray-200">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-1/4 -left-20 w-96 h-96 bg-orange-200/30 rounded-full blur-3xl"></div>
           <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-red-200/30 rounded-full blur-3xl"></div>
@@ -888,8 +888,8 @@ export default function Login() {
       </div>
 
       {/* RIGHT PANEL - Clean Card UI */}
-      <div className="w-full lg:w-[480px] xl:w-[560px] flex flex-col justify-center items-center px-6 md:px-10 py-10 bg-white">
-        <div className="w-full max-w-sm bg-white border border-gray-200 rounded-2xl shadow-md p-8">
+      <div className="w-full lg:w-[480px] xl:w-[560px] flex flex-col justify-center items-center px-6  py-10 bg-white">
+        <div className="w-full max-w-sm bg-white border border-gray-200 rounded-2xl shadow-md p-4">
           {/* Header */}
           <h2 className="text-2xl font-bold text-center text-gray-900 mb-6">Job Seeker Portal</h2>
 
