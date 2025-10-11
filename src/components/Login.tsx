@@ -903,14 +903,14 @@ export default function Login() {
 
           {/* Google Button */}
          <div className="mb-5 w-full flex justify-center">
-  <div className="w-full max-w-sm">
+  <div className="w-full ">
     <GoogleLogin
     text="continue_with"
       size="large"
       theme="outline"
-      width="100%"
+      width="315px"
       shape="rectangular"
-      logo_alignment="center"
+      logo_alignment="left"
       onSuccess={async (credentialResponse) => {
         const loadingToast = toastUtils.loading(toastMessages.loggingIn);
         const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/google-oauth`, {
