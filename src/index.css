@@ -1,3 +1,13 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+/* --- Fix Google Login Button Shrinking on Deploy --- */
+div[role="button"][data-testid="google-login-button"],
+div[role="button"][id*="google-login"],
+iframe[src*="accounts.google.com"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 280px !important;
+}
