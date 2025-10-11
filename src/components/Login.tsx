@@ -902,56 +902,61 @@ export default function Login() {
           </div>
 
           {/* Google Button */}
-          <div className="mb-5">
-            <GoogleLogin
-              size="large"
-              width="100%"
-              onSuccess={async (credentialResponse) => {
-                const loadingToast = toastUtils.loading(toastMessages.loggingIn);
-                const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/google-oauth`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ token: credentialResponse.credential }),
-                });
-                const data = await res.json();
-                if (data?.message === "User not found") {
-                  toastUtils.error(data?.message);
-                  toastUtils.dismissToast(loadingToast);
-                  return;
-                }
+         <div className="mb-5 w-full flex justify-center">
+  <div className="w-full max-w-sm">
+    <GoogleLogin
+      size="large"
+      theme="outline"
+      width="100%"
+      shape="rectangular"
+      logo_alignment="center"
+      onSuccess={async (credentialResponse) => {
+        const loadingToast = toastUtils.loading(toastMessages.loggingIn);
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/google-oauth`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: credentialResponse.credential }),
+        });
+        const data = await res.json();
+        if (data?.message === "User not found") {
+          toastUtils.error(data?.message);
+          toastUtils.dismissToast(loadingToast);
+          return;
+        }
 
-                if (data?.user?.email?.includes("@flashfirehq")) {
-                  setName(data.user.name);
-                  setEmailOperations(data.user.email);
-                  setRole(data.user.role);
-                  setManagedUsers(data.user.managedUsers);
-                  toastUtils.dismissToast(loadingToast);
-                  toastUtils.success("Welcome to Operations Dashboard!");
-                  navigate("/manage");
-                } else {
-                  setData({
-                    userDetails: data?.userDetails,
-                    token: data?.token,
-                    userProfile: data?.userProfile,
-                  });
-                  setProfileFromApi(data?.userProfile);
-                  localStorage.setItem(
-                    "userAuth",
-                    JSON.stringify({
-                      token: data?.token,
-                      userDetails: data?.userDetails,
-                      userProfile: data?.userProfile,
-                    })
-                  );
-                  toastUtils.dismissToast(loadingToast);
-                  toastUtils.success(toastMessages.loginSuccess);
-                  navigate("/");
-                }
-              }}
-              onError={() => console.log("Login Failed")}
-              useOneTap
-            />
-          </div>
+        if (data?.user?.email?.includes("@flashfirehq")) {
+          setName(data.user.name);
+          setEmailOperations(data.user.email);
+          setRole(data.user.role);
+          setManagedUsers(data.user.managedUsers);
+          toastUtils.dismissToast(loadingToast);
+          toastUtils.success("Welcome to Operations Dashboard!");
+          navigate("/manage");
+        } else {
+          setData({
+            userDetails: data?.userDetails,
+            token: data?.token,
+            userProfile: data?.userProfile,
+          });
+          setProfileFromApi(data?.userProfile);
+          localStorage.setItem(
+            "userAuth",
+            JSON.stringify({
+              token: data?.token,
+              userDetails: data?.userDetails,
+              userProfile: data?.userProfile,
+            })
+          );
+          toastUtils.dismissToast(loadingToast);
+          toastUtils.success(toastMessages.loginSuccess);
+          navigate("/");
+        }
+      }}
+      onError={() => console.log("Login Failed")}
+      useOneTap
+    />
+  </div>
+</div>
 
           {/* Divider */}
           <div className="flex items-center justify-center mb-4">
