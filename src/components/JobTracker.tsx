@@ -519,12 +519,12 @@ const handleDragEnd = (e: React.DragEvent) => {
     };
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-6 bg-gray-50 min-h-screen">
+    <div className="px-4 sm:px-6 lg:px-8 py-6  min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
         <div className="flex flex-col justify-around items-start w-full">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Job Tracker</h2>
-          <p className="text-gray-600">Track your job applications and manage your career pipeline</p>
+          <h2 className="text-4xl md:text-4xl font-extrabold text-zinc-900 mb-2 tracking-tight leading-[1.1]">Job Tracker</h2>
+          <p className="text-gray-600 text-3x1 ">Track your job applications and manage your career pipeline</p>
         </div>
         <div className="mt-4 sm:mt-0 flex items-center justify-end gap-4 w-full">
           <div className="relative">
@@ -534,7 +534,7 @@ const handleDragEnd = (e: React.DragEvent) => {
               placeholder="Search jobs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm"
+              className="pl-10 pr-4 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white shadow-sm"
             />
             {filteredJobs.length > 0 && (
     <div className="absolute top-full mt-2 w-full bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
@@ -558,7 +558,7 @@ const handleDragEnd = (e: React.DragEvent) => {
           </div>
           <button
             onClick={() => setShowJobForm(true)}
-            className="whitespace-nowrap bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-700 hover:to-purple-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
+            className="whitespace-nowrap bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
           >
             Add Jobs
           </button>

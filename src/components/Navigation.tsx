@@ -1,16 +1,28 @@
-import React, { useEffect, useRef, useContext, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Home, Briefcase, FileText, User, LogOut, ChevronDown, Edit2Icon, Building2, ChevronRight, Pencil, Save, X } from 'lucide-react';
-import { UserContext } from '../state_management/UserContext.tsx';
+import type React from "react";
+import { useEffect, useRef, useContext, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  Home,
+  Briefcase,
+  FileText,
+  User,
+  LogOut,
+  ChevronDown,
+  Edit2Icon,
+  Mail,
+  CreditCard,
+  Menu,
+  X,
+} from "lucide-react";
+import { UserContext } from "../state_management/UserContext.tsx";
 import { useUserProfile } from "../state_management/ProfileContext";
 import { useOperationsStore } from "../state_management/Operations.ts";
-import { toastUtils, toastMessages } from '../utils/toast';
+import { toastUtils, toastMessages } from "../utils/toast";
 
 interface NavigationProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  setUserProfileFormVisibility : any //React.Dispatch<React.SetStateAction<boolean>>;
-  
+  setUserProfileFormVisibility: any;
 }
 
 interface TabItem {
@@ -19,185 +31,99 @@ interface TabItem {
   icon: React.ElementType;
 }
 
-const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUserProfileFormVisibility }) => {
+const Navigation: React.FC<NavigationProps> = ({
+  activeTab,
+  onTabChange,
+  setUserProfileFormVisibility,
+}) => {
   const navigate = useNavigate();
-  let ctx = useContext(UserContext);
-  let userDetails = ctx?.userDetails;
-  const [user, setUser] = useState(userDetails?.name || '');
+  const ctx = useContext(UserContext);
+  const userDetails = ctx?.userDetails;
+  const [user, setUser] = useState(userDetails?.name || "");
   const [profileDropDown, setProfileDropDown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const { userProfile } = useUserProfile();
-    const { role } = useOperationsStore();
-  const hasProfile = !!userProfile?.email;
-  
-  // Dashboard Manager state - HIDDEN
-  // const [dashboardManagerDropdownOpen, setDashboardManagerDropdownOpen] = useState(false);
-  // const [editingName, setEditingName] = useState(false);
-  // const [editingContact, setEditingContact] = useState(false);
-  // const [dashboardManagerData, setDashboardManagerData] = useState({
-  //   dashboardManager: userProfile?.dashboardManager || "",
-  //   dashboardManagerContact: userProfile?.dashboardManagerContact || "",
-  // });
-  // const [tempData, setTempData] = useState({
-  //   dashboardManager: "",
-  //   dashboardManagerContact: "",
-  // });
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  // Sync dashboard manager data when userProfile changes - HIDDEN
-  // useEffect(() => {
-  //   if (userProfile) {
-  //     setDashboardManagerData({
-  //       dashboardManager: userProfile.dashboardManager || "",
-  //       dashboardManagerContact: userProfile.dashboardManagerContact || "",
-  //     });
-  //   }
-  // }, [userProfile]);
-  
+  // Refs
+  const desktopDropdownRef = useRef<HTMLDivElement>(null);   // desktop profile dropdown area
+  const mobileProfileRef = useRef<HTMLDivElement>(null);      // mobile profile dropdown container
+  const mobileMenuRef = useRef<HTMLDivElement>(null);         // mobile menu dropdown container
+
+  const { userProfile } = useUserProfile();
+  const { role } = useOperationsStore();
+  const hasProfile = !!userProfile?.email;
 
   const tabs: TabItem[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'jobs', label: 'Job Tracker', icon: Briefcase },
-    { id: 'optimizer', label: 'Documents', icon: FileText },
+    { id: "dashboard", label: "Dashboard", icon: Home },
+    { id: "jobs", label: "Job Tracker", icon: Briefcase },
+    { id: "optimizer", label: "Documents", icon: FileText },
   ];
 
   useEffect(() => {
-    setUser(userDetails?.name || '');
+    setUser(userDetails?.name || "");
   }, [userDetails]);
 
-  // Handle click outside dropdown
+  // CLICK-OUTSIDE: keep dropdowns open when clicking inside them or on triggers
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as HTMLElement;
+
+      const clickedInsideDesktop =
+        !!desktopDropdownRef.current &&
+        desktopDropdownRef.current.contains(target);
+
+      const clickedInsideMobileProfile =
+        !!mobileProfileRef.current &&
+        mobileProfileRef.current.contains(target);
+
+      const clickedInsideMobileMenu =
+        !!mobileMenuRef.current &&
+        mobileMenuRef.current.contains(target);
+
+      const clickedOnTrigger = !!target.closest("[data-nav-trigger]");
+
+      if (
+        !clickedInsideDesktop &&
+        !clickedInsideMobileProfile &&
+        !clickedInsideMobileMenu &&
+        !clickedOnTrigger
+      ) {
         setProfileDropDown(false);
+        setMenuOpen(false);
       }
     };
 
-    if (profileDropDown) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [profileDropDown]);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleSwitchUser = () => {
-      // localStorage.clear();
-      localStorage.removeItem("userAuth");
-      // setUser("");
-      toastUtils.success("Switching to operations view...");
-      navigate("/manage");
+    localStorage.removeItem("userAuth");
+    toastUtils.success("Switching to operations view...");
+    navigate("/manage");
   };
 
   const handleLogout = () => {
     localStorage.clear();
-    setUser('');
+    setUser("");
     toastUtils.success(toastMessages.logoutSuccess);
-    navigate('/login');
+    navigate("/login");
   };
 
-  const handleLogin = () => {
-    navigate('/login');
+  const handleLogin = () => navigate("/login");
+
+  const getInitials = (name: string) => {
+    if (!name) return "U";
+    const parts = name.trim().split(" ");
+    if (parts.length === 1) return parts[0][0].toUpperCase();
+    return `${parts[0][0].toUpperCase()}${parts[1][0].toUpperCase()}`;
   };
-
-  // Dashboard Manager functions - HIDDEN
-  // const handleEditName = () => {
-  //   setTempData(prev => ({ ...prev, dashboardManager: dashboardManagerData.dashboardManager }));
-  //   setEditingName(true);
-  // };
-
-  // const handleEditContact = () => {
-  //   setTempData(prev => ({ ...prev, dashboardManagerContact: dashboardManagerData.dashboardManagerContact }));
-  //   setEditingContact(true);
-  // };
-
-  // const handleSaveName = async () => {
-  //   try {
-  //     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-  //     const response = await fetch(`${API_BASE_URL}/setprofile`, {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         Authorization: `Bearer ${ctx?.token}`,
-  //       },
-  //       body: JSON.stringify({
-  //         dashboardManager: tempData.dashboardManager,
-  //         dashboardManagerContact: dashboardManagerData.dashboardManagerContact,
-  //         token: ctx?.token,
-  //         userDetails: userDetails,
-  //       }),
-  //     });
-
-  //     if (response.ok) {
-  //       setDashboardManagerData(prev => ({ ...prev, dashboardManager: tempData.dashboardManager }));
-  //       setEditingName(false);
-  //       toastUtils.success("Manager name saved successfully");
-  //       // Update the userProfile context
-  //       if (userProfile) {
-  //         userProfile.dashboardManager = tempData.dashboardManager;
-  //       }
-  //     } else {
-  //       console.error("Failed to save manager name");
-  //       toastUtils.error("Failed to save manager name");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error saving manager name:", error);
-  //     toastUtils.error("Error saving manager name");
-  //   }
-  // };
-
-  // const handleSaveContact = async () => {
-  //   try {
-  //     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-  //     const response = await fetch(`${API_BASE_URL}/setprofile`, {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         Authorization: `Bearer ${ctx?.token}`,
-  //       },
-  //       body: JSON.stringify({
-  //         dashboardManager: dashboardManagerData.dashboardManager,
-  //         dashboardManagerContact: tempData.dashboardManagerContact,
-  //         token: ctx?.token,
-  //         userDetails: userDetails,
-  //       }),
-  //     });
-
-  //     if (response.ok) {
-  //       setDashboardManagerData(prev => ({ ...prev, dashboardManagerContact: tempData.dashboardManagerContact }));
-  //       setEditingContact(false);
-  //       toastUtils.success("Contact number saved successfully");
-  //       // Update the userProfile context
-  //       if (userProfile) {
-  //         userProfile.dashboardManagerContact = tempData.dashboardManagerContact;
-  //       }
-  //     } else {
-  //       console.error("Failed to save contact number");
-  //       toastUtils.error("Failed to save contact number");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error saving contact number:", error);
-  //     toastUtils.error("Error saving contact number");
-  //   }
-  // };
-
-  // const handleCancelName = () => {
-  //   setEditingName(false);
-  //   setTempData(prev => ({ ...prev, dashboardManager: "" }));
-  // };
-
-  // const handleCancelContact = () => {
-  //   setEditingContact(false);
-  //   setTempData(prev => ({ ...prev, dashboardManagerContact: "" }));
-  // };
 
   return (
-    <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm bg-white/95">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-        <div className="flex justify-between items-center h-20">
-          
-          {/* Enhanced Logo Section */}
-          <div className="flex items-center space-x-4">
+    <nav className="bg-card border-b border-border sticky top-0 z-50 backdrop-blur-sm bg-card/95">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+           <div className="flex items-center space-x-4">
             <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg">
               {/* <FileText className="w-7 h-7 text-white" /> */}
               <img src="./Logo.png" alt="" className='rounded-xl' />
@@ -209,32 +135,71 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
               <p className="text-xs text-gray-500 font-medium -mt-1">Complete Workflow Optimization</p>
             </div>
           </div>
-          
-          {/* Enhanced Navigation Tabs */}
-          <div className="flex items-center space-x-8">
-            <div className="flex space-x-2">
-              {tabs.map(({ id, label, icon: Icon }) => (
-                <Link
-                  key={id}
-                  to="/"
-                  onClick={() => onTabChange(id)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-semibold transition-all duration-200 ${
-                    activeTab === id
-                      ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow'
-                      : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
+          {/* Desktop Tabs */}
+          <div className="hidden md:flex items-center gap-4">
+            {tabs.map(({ id, label, icon: Icon }) => (
+              <Link
+                key={id}
+                to="/"
+                onClick={() => onTabChange(id)}
+                className={`relative flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 overflow-hidden group ${
+                  activeTab === id
+                    ? "bg-gradient-to-r from-orange-500 to-red-500 text-white border shadow-md"
+                    : " text-gray-700 hover:text-gray-900 hover:bg-gray-200  hover:shadow hover:scale-[1.02] active:scale-[0.98]"
+                }`}
+              >
+                <Icon
+                  className={`w-4 h-4 relative z-10 ${
+                    activeTab === id ? "text-gray" : "group-hover:text-gray"
+                  }`}
+                />
+                <span
+                  className={`hidden sm:block relative z-10 ${
+                    activeTab === id ? "text-gray" : "group-hover:text-gray"
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
-                  <span className="hidden sm:block">{label}</span>
-                </Link>
-              ))}
+                  {label}
+                </span>
+              </Link>
+            ))}
+          </div>
+
+          {/* Right Section */}
+          <div className="flex items-center gap-3">
+            {/* Mobile Buttons */}
+            <div className="flex md:hidden items-center gap-2">
+              <button
+                data-nav-trigger
+                onClick={() => {
+                  setMenuOpen(!menuOpen);
+                  setProfileDropDown(false);
+                }}
+                className="p-2 rounded-md border border-border/50 hover:bg-orange-50 transition-all duration-200"
+              >
+                {menuOpen ? (
+                  <X className="w-5 h-5 text-gray-700" />
+                ) : (
+                  <Menu className="w-5 h-5 text-gray-700" />
+                )}
+              </button>
+
+              {user && (
+                <button
+                  data-nav-trigger
+                  onClick={() => {
+                    setProfileDropDown(!profileDropDown);
+                    setMenuOpen(false);
+                  }}
+                  className="w-9 h-9 rounded-full bg-gradient-to-r from-orange-500 to-red-500 flex items-center justify-center text-white font-bold text-sm shadow hover:opacity-90 transition-all"
+                >
+                  {getInitials(user)}
+                </button>
+              )}
             </div>
-            
-           
-            
-            {/* Enhanced User Profile Section */}
+
+            {/* Desktop Profile Section */}
             {user ? (
-              <div className="relative" ref={dropdownRef}>
+              <div className="relative hidden md:block" ref={desktopDropdownRef}>
                 <button
                   onClick={() => setProfileDropDown(!profileDropDown)}
                   className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200 border border-gray-200"
@@ -249,7 +214,6 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
                   <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${profileDropDown ? 'rotate-180' : ''}`} />
                 </button>
 
-                {/* Enhanced Dropdown Menu */}
                 {profileDropDown && (
                   <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 py-6 px-6 z-50">
                     {/* Arrow */}
@@ -357,12 +321,131 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, setUser
           </div>
         </div>
       </div>
-     
+
+      {/* Absolute Mobile Menu */}
+      {menuOpen && (
+        <div
+          ref={mobileMenuRef}
+          className="absolute top-16 right-3 w-48 bg-white rounded-xl shadow-lg border border-gray-200 z-50 animate-fade-in md:hidden"
+        >
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => {
+                onTabChange(id);
+                setMenuOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-5 py-3 text-sm font-medium text-left transition-all ${
+                activeTab === id
+                  ? "bg-gradient-to-r from-orange-100 to-red-100 text-gray-900"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Absolute Mobile Profile Dropdown */}
+      {profileDropDown && (
+        <div
+          ref={mobileProfileRef}
+          className="absolute top-16 right-3 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 animate-fade-in p-5 space-y-5 md:hidden"
+        >
+         <div className="absolute -top-2 right-8 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
+                    
+         <Link to="/profile" target="_blank" rel="noopener noreferrer">
+                    <div className="flex items-center space-x-4 pb-6 border-b border-gray-100">
+                      <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg">
+                        <User className="w-7 h-7 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-lg font-bold text-gray-900">{user}</p>
+                        <p className="text-sm text-gray-500 underline">View Profile</p>
+                      </div>
+                    </div>
+                    </Link>
+                    {/* User Details */}
+                    {role == "operations" ? null : (
+                      <div className="py-6 space-y-4">
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                            Email Address
+                          </p>
+                          <p className="text-sm text-gray-900 font-medium bg-gray-50 px-3 py-2 rounded-lg">
+                            {userDetails?.email}
+                          </p>
+                        </div>
+                        {/* <div className='flex justify-between'> */}
+                        {!hasProfile && (
+                          <div
+                            className="w-fit"
+                            onClick={() =>
+                              setUserProfileFormVisibility(
+                                true
+                              )
+                            }
+                          >
+                            <div className="hover:cursor-pointer inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-200 text-amber-700 border-2 border-amber-200">
+                              <Edit2Icon className="h-3 w-3 m-2" />{" "}
+                              Edit/ Setup Profile
+                            </div>
+                          </div>
+                        )}
+                        {/* <Link to="/profile" target="_blank" rel="noopener noreferrer">
+  <h1><User2Icon /></h1>
+</Link> */}
+
+                        {role == "operations" ? null : (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                              Current Plan
+                            </p>
+                            <div className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border-2 border-amber-200">
+                              <div className="w-2 h-2 bg-amber-500 rounded-full mr-3"></div>
+                              {userDetails?.planType ||
+                                "Free"}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Dashboard Manager Dropdown - HIDDEN */}
+                        {/* {role == "operations" ? null : (
+                          <div className="space-y-3">
+                            Dashboard Manager section is now hidden
+                          </div>
+                        )} */}
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    {role == "operations" ? (
+                      <div className="pt-6 border-t border-gray-100 space-y-2">
+                        <button
+                          onClick={handleSwitchUser}
+                          className="flex items-center space-x-3 w-full px-4 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>Switch Client</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="pt-6 border-t border-gray-100 space-y-2">
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center space-x-3 w-full px-4 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+      )}
     </nav>
   );
 };
 
 export default Navigation;
-
-
-
