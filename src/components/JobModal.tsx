@@ -685,15 +685,22 @@ useEffect(() => {
                             </div>
                             <div className="flex items-center gap-3">
                                 <img
-                                    src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(
-                                        jobDetails.companyName
-                                    )}.com&sz=64`}
-                                    alt="Company Logo"
-                                    className="w-[40px] h-[40px]"
-                                    onError={(e) => {
-                                        e.currentTarget.style.display = "none";
-                                    }}
-                                />
+  src={
+    job.companyLogo
+      ? job.companyLogo
+      : logoUrl
+      ? logoUrl
+      : `https://www.google.com/s2/favicons?domain=${encodeURIComponent(
+          job.companyName
+        )}.com&sz=64`
+  }
+  alt="Company Logo"
+  className="w-[20px] h-[20px] m-2"
+  onError={(e) => {
+    e.currentTarget.style.display = 'none';
+  }}
+/>
+
                                 <p className="text-lg font-semibold text-gray-900">
                                     {jobDetails.companyName}
                                 </p>
