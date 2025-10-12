@@ -137,14 +137,25 @@ const JobCard: React.FC<JobCardProps> = ({
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-gray-900 ">{job.jobTitle}</h4>
           <div className="flex items-center text-sm text-gray-600 mt-1">
-<img 
-  src={`https://www.google.com/s2/favicons?domain=${getCompanyDomain(job.companyName)}.com&sz=64`} 
-  alt="Company Logo" 
+
+            <img
+  src={
+    job.companyLogo
+      ? job.companyLogo
+      : logoUrl
+      ? logoUrl
+      : `https://www.google.com/s2/favicons?domain=${encodeURIComponent(
+          job.companyName
+        )}.com&sz=64`
+  }
+  alt="Company Logo"
+
   className="w-[20px] h-[20px] m-2"
   onError={(e) => {
     e.currentTarget.style.display = 'none';
   }}
 />
+
             <span className="">{job.companyName}</span> <hr />
           </div>
         </div>

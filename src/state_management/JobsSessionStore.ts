@@ -47,7 +47,7 @@ interface JobsSessionState {
 // Helper function to check if data is stale (older than 5 minutes)
 const isDataStale = (lastFetched: number | null): boolean => {
   if (!lastFetched) return true;
-  const fiveMinutes = 5 * 60 * 1000;
+  const fiveMinutes = 1000;
   return Date.now() - lastFetched > fiveMinutes;
 };
 
