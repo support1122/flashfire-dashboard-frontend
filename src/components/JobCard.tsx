@@ -86,6 +86,7 @@ const JobCard: React.FC<JobCardProps> = ({
         if (res.ok && res.headers.get("content-type")?.startsWith("image")) {
           setLogoUrl(testUrl);
           found = true;
+          return;
           break;
         }
       } catch {
@@ -94,27 +95,27 @@ const JobCard: React.FC<JobCardProps> = ({
     }
 
     // ✅ 3️⃣ Fallback to initials if nothing found
-    if (!found) {
-      const cleanName = job.companyName
-        .replace(/[^a-zA-Z0-9 ]/g, "")
-        .trim()
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((word) => word[0]?.toUpperCase() || "")
-        .join("");
+   // if (!found) {
+    //  const cleanName = job.companyName
+    //    .replace(/[^a-zA-Z0-9 ]/g, "")
+    //    .trim()
+    //    .split(/\s+/)
+    //    .slice(0, 2)
+    //    .map((word) => word[0]?.toUpperCase() || "")
+    //    .join("");
 
-      const svg = `data:image/svg+xml,${encodeURIComponent(`
-        <svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'>
-          <rect width='64' height='64' fill='#6666ff'/>
-          <text x='50%' y='50%' dy='.35em' font-size='28' text-anchor='middle' fill='white'>${cleanName}</text>
-        </svg>
-      `)}`;
-      setLogoUrl(svg);
-    }
+     // const svg = `data:image/svg+xml,${encodeURIComponent(`
+     //   <svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'>
+     //     <rect width='64' height='64' fill='#6666ff'/>
+      //    <text x='50%' y='50%' dy='.35em' font-size='28' text-anchor='middle' fill='white'>${cleanName}</text>
+      // </svg>
+     // `)}`;
+    //  setLogoUrl(svg);
+   // }
   };
 
   resolveLogo();
-}, [job?.companyName]);
+}, [job.companyName]);
 
   const handleClick = () => {
     setShowJobModal(true);

@@ -253,6 +253,7 @@ export default function JobModal({
     const [pastedPreviews, setPastedPreviews] = useState<string[]>([]);
     const [isUploadingPasted, setIsUploadingPasted] = useState(false);
     const [pasteError, setPasteError] = useState<string | null>(null);
+    const [logoUrl, setLogoUrl] = useState<string | null > ('');
 
     const { setUserJobs } = useUserJobs(); // ⬅️ NEW: global jobs updater
     const { getJobDescription, isJobDescriptionLoading, loadJobDescription } = useJobDescriptionLoader();
@@ -263,6 +264,61 @@ export default function JobModal({
     const [activeSection, setActiveSection] = useState<Sections>(
         initialSection ?? "details"
     );
+      useEffect(() => {
+  const resolveLogo = async () => {
+    if (!jobDetails?.companyName) return;
+
+    // ✅ 1️⃣ Normalize the company name
+    const base = jobDetails.companyName
+      .trim()
+      .toLowerCase()
+      // remove punctuation, commas, ampersands, parentheses
+      .replace(/[&,.()']/g, "")
+      // replace spaces and multiple dashes with a single dash
+      .replace(/\s+|_+/g, "-")
+      .replace(/-+/g, "-");
+
+    const tlds = ["com", "io", "ai", "co", "org", "in"];
+    let found = false;
+
+    // ✅ 2️⃣ Try each TLD with Google's favicon service
+    for (const tld of tlds) {
+      const testUrl = `https://www.google.com/s2/favicons?domain=${base}.${tld}&sz=64`;
+      try {
+        const res = await fetch(testUrl);
+        if (res.ok && res.headers.get("content-type")?.startsWith("image")) {
+          setLogoUrl(testUrl);
+          found = true;
+          break;
+        }
+      } catch {
+        // ignore network errors
+      }
+    }
+
+    // ✅ 3️⃣ Fallback to initials if nothing found
+    if (!found) {
+      const cleanName = job.companyName
+        .replace(/[^a-zA-Z0-9 ]/g, "")
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((word) => word[0]?.toUpperCase() || "")
+        .join("");
+
+      const svg = `data:image/svg+xml,${encodeURIComponent(`
+        <svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'>
+          <rect width='64' height='64' fill='#6666ff'/>
+          <text x='50%' y='50%' dy='.35em' font-size='28' text-anchor='middle' fill='white'>${cleanName}</text>
+        </svg>
+      `)}`;
+      setLogoUrl(svg);
+    }
+  };
+
+  resolveLogo();
+}, [jobDetails?.companyName]);
+
 
     // Load job description when modal opens
     useEffect(() => {
@@ -684,22 +740,23 @@ useEffect(() => {
                                 Company Name
                             </div>
                             <div className="flex items-center gap-3">
-                                <img
+                                            <img
   src={
-    job.companyLogo
-      ? job.companyLogo
+    jobDetails?.companyLogo
+      ? jobDetails?.companyLogo
       : logoUrl
       ? logoUrl
       : `https://www.google.com/s2/favicons?domain=${encodeURIComponent(
-          job.companyName
-        )}.com&sz=64`
+          jobDetails.companyName
+        )}.com&sz=128`
   }
   alt="Company Logo"
-  className="w-[20px] h-[20px] m-2"
+  className="w-[30px] h-[30px] m-2"
   onError={(e) => {
     e.currentTarget.style.display = 'none';
   }}
 />
+
 
                                 <p className="text-lg font-semibold text-gray-900">
                                     {jobDetails.companyName}
