@@ -724,7 +724,6 @@ interface LoginResponse {
 }
 
 const statsData = [
-<<<<<<< HEAD
   {
     value: "95%",
     label: "Success Rate",
