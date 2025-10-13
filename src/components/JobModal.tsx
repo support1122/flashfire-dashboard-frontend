@@ -302,7 +302,7 @@ export default function JobModal({
 
     // ✅ 3️⃣ Fallback to initials if nothing found
     if (!found) {
-      const cleanName = job.companyName
+      const cleanName = jobDetails?.companyName
         .replace(/[^a-zA-Z0-9 ]/g, "")
         .trim()
         .split(/\s+/)

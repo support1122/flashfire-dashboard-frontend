@@ -909,7 +909,7 @@ export default function Login() {
     text="continue_with"
       size="large"
       theme="outline"
-      width="315px"
+      width="400px"
       shape="rectangular"
       logo_alignment="left"
       onSuccess={async (credentialResponse) => {
@@ -969,7 +969,7 @@ export default function Login() {
 
           {/* Email */}
           <div className="mb-4">
-                        <p className='text-neutral-500 text-sm m-2 p-3 ' >Ener Your Credentials to Access Your Account .</p>
+                        <p className='text-neutral-500 text-sm m-2 p-3 ' >Enter Your Credentials to Access Your Account .</p>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
             <div className="relative">
               <Mail className="absolute left-3 top-3.5 text-gray-400 w-5 h-5" />
