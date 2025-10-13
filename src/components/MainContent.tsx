@@ -142,7 +142,7 @@ useEffect(() => {
       const response = await fetch(`${API_BASE_URL}/get-updated-user`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userDetails.email }),
+        body: JSON.stringify({ email: userDetails?.email }),
       });
 
       if (!response.ok) throw new Error("Failed to fetch updated user data");
