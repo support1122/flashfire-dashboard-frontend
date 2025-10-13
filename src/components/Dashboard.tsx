@@ -476,7 +476,7 @@ if (userAuth?.userProfile) {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h2 className="text-xl font-bold text-gray-900 mb-6">Application Pipeline</h2>
                     <div className="flex items-center justify-between flex-wrap">
-                        <div className="flex flex-col items-center space-y-2">
+                        <div className="flex flex-col gap-2 flex-wrap items-center space-y-2">
                             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                                 <Clock className="w-8 h-8 text-gray-400" />
                             </div>
