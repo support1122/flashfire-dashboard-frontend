@@ -833,7 +833,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-gradient-to-br from-orange-50 via-white to-red-50">
       {/* LEFT PANEL (unchanged) */}
-      <div className="flex-1 flex flex-col justify-center px-6  relative border-b lg:border-b-0 lg:border-r border-gray-200">
+      <div className="flex-1 flex flex-col justify-center px-6 ml-6 relative border-b lg:border-b-0 lg:border-r border-gray-200">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-1/4 -left-20 w-96 h-96 bg-orange-200/30 rounded-full blur-3xl"></div>
           <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-red-200/30 rounded-full blur-3xl"></div>
@@ -889,9 +889,9 @@ export default function Login() {
 
       {/* RIGHT PANEL - Clean Card UI */}
       <div className="w-full lg:w-[480px] xl:w-[560px] flex flex-col justify-center items-center px-6  py-10 bg-white">
-        <div className="w-full max-w-sm bg-white border border-gray-200 rounded-2xl shadow-md p-4">
+        <div className="w-full max-w-sm bg-white rounded-2xl p-4">
           {/* Header */}
-          <h2 className="text-2xl font-bold text-center text-gray-900 mb-6">Job Seeker Portal</h2>
+          {/*  <h2 className="text-2xl font-bold text-center text-gray-900 mb-6">Job Seeker Portal</h2>*/}
 
           {/* Tabs */}
           <div className="flex justify-center mb-6 border-b border-gray-200">
@@ -899,10 +899,12 @@ export default function Login() {
               Login
             </button>
             {/* <button className="px-4 py-2 text-gray-400">Sign Up</button> */}
+        
           </div>
 
           {/* Google Button */}
          <div className="mb-5 w-full flex justify-center">
+                    
   <div className="w-full ">
     <GoogleLogin
     text="continue_with"
@@ -968,6 +970,7 @@ export default function Login() {
 
           {/* Email */}
           <div className="mb-4">
+                        <p className='text-neutral-500 text-sm m-2 p-3 ' >Ener Your Credentials to Access Your Account .</p>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
             <div className="relative">
               <Mail className="absolute left-3 top-3.5 text-gray-400 w-5 h-5" />
@@ -1012,15 +1015,10 @@ export default function Login() {
           <button
             onClick={handleLogin}
             disabled={isLoading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-md transition"
+            className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-md transition"
           >
             {isLoading ? "Logging in..." : "Login"}
           </button>
-
-          {/* Footer Link */}
-          <p className="text-center text-sm text-blue-600 mt-6 cursor-pointer hover:underline">
-            Looking for the Coach Portal?
-          </p>
         </div>
       </div>
     </div>
