@@ -31,6 +31,7 @@ import {
     getOptimizedResumeUrl,
     getOptimizedResumeTitle,
 } from "../utils/getOptimizedResumeUrl";
+import { ResumePreview } from "./AiOprimizer/components/ResumePreview";
 
 /* ---------- ENV ---------- */
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "";
@@ -225,6 +226,7 @@ type Sections =
     | "link"
     | "description"
     | "attachments"
+    | "resume"
     | "timeline"
     | "changes";
 
@@ -260,6 +262,11 @@ export default function JobModal({
 
     const { setUserJobs } = useUserJobs(); // ⬅️ NEW: global jobs updater
     const { getJobDescription, isJobDescriptionLoading, loadJobDescription } = useJobDescriptionLoader();
+    
+    // Resume data state
+    const [resumeData, setResumeData] = useState<any>(null);
+    const [isLoadingResume, setIsLoadingResume] = useState(false);
+    const [resumeError, setResumeError] = useState<string | null>(null);
 
     const [attachmentsModalActiveStatus, setAttachmentsModalActiveStatus] =
         useState(false);
@@ -277,6 +284,95 @@ export default function JobModal({
             }
         }
     }, [jobDetails?.jobID, activeSection, getJobDescription, isJobDescriptionLoading, loadJobDescription]);
+
+    // Function to get cached resume data
+    const getCachedResumeData = (jobId: string) => {
+        try {
+            const cacheKey = `resume_${jobId}`;
+            const cached = sessionStorage.getItem(cacheKey);
+            if (cached) {
+                const { data, timestamp } = JSON.parse(cached);
+                // Cache for 24 hours (86400000 ms)
+                if (Date.now() - timestamp < 86400000) {
+                    return data;
+                }
+                // Remove expired cache
+                sessionStorage.removeItem(cacheKey);
+            }
+        } catch (error) {
+            console.error('Error reading cached resume data:', error);
+        }
+        return null;
+    };
+
+    // Function to cache resume data
+    const cacheResumeData = (jobId: string, data: any) => {
+        try {
+            const cacheKey = `resume_${jobId}`;
+            sessionStorage.setItem(cacheKey, JSON.stringify({
+                data,
+                timestamp: Date.now()
+            }));
+        } catch (error) {
+            console.error('Error caching resume data:', error);
+        }
+    };
+
+    // Function to load resume data
+    const loadResumeData = async () => {
+        if (!jobDetails?.jobID) return;
+        
+        // Check cache first
+        const cachedData = getCachedResumeData(jobDetails.jobID);
+        if (cachedData) {
+            setResumeData(cachedData);
+            return;
+        }
+        
+        setIsLoadingResume(true);
+        setResumeError(null);
+        
+        try {
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
+            const response = await fetch(`${API_BASE_URL}/getJobResume`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: jobDetails.jobID }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setResumeData(data.resume);
+                // Cache the data
+                cacheResumeData(jobDetails.jobID, data.resume);
+            } else {
+                const errorData = await response.json();
+                setResumeError(errorData.message || 'Failed to load resume data');
+            }
+        } catch (error) {
+            console.error('Error loading resume data:', error);
+            setResumeError('Failed to load resume data');
+        } finally {
+            setIsLoadingResume(false);
+        }
+    };
+
+    // Load resume data when resume tab is active
+    useEffect(() => {
+        if (activeSection === 'resume' && !resumeData && !isLoadingResume) {
+            // Check cache first
+            if (jobDetails?.jobID) {
+                const cachedData = getCachedResumeData(jobDetails.jobID);
+                if (cachedData) {
+                    setResumeData(cachedData);
+                } else {
+                    loadResumeData();
+                }
+            }
+        }
+    }, [activeSection, jobDetails?.jobID]);
 
     // Handle keyboard shortcuts for job description copy
     useEffect(() => {
@@ -1197,6 +1293,54 @@ useEffect(() => {
           </div>
         );
 
+            case "resume":
+                return (
+                    <div className="space-y-4">
+                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-lg font-semibold text-gray-900">
+                                    Optimized Resume Preview
+                                </h4>
+                            </div>
+
+                            {isLoadingResume ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="w-6 h-6 animate-spin text-blue-500 mr-2" />
+                                    <span className="text-gray-600">Loading resume data...</span>
+                                </div>
+                            ) : resumeError ? (
+                                <div className="text-center py-8">
+                                    <p className="text-red-600 mb-4">{resumeError}</p>
+                                    <button
+                                        onClick={loadResumeData}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                    >
+                                        Retry
+                                    </button>
+                                </div>
+                            ) : resumeData?.data ? (
+                                <div className="border rounded-lg p-4">
+                                    <ResumePreview
+                                        data={resumeData.data}
+                                        showSummary={resumeData.checkboxStates?.showSummary ?? true}
+                                        showProjects={resumeData.checkboxStates?.showProjects ?? false}
+                                        showLeadership={resumeData.checkboxStates?.showLeadership ?? false}
+                                        showChanges={false}
+                                        changedFields={new Set()}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <p className="text-gray-500 mb-4">No optimized resume available for this job.</p>
+                                    <p className="text-sm text-gray-400">
+                                        Resume will appear here after AI optimization is completed.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+
             case "timeline":
                 return (
                     <div className="space-y-4">
@@ -1369,6 +1513,12 @@ useEffect(() => {
                                     label: "Resume / Attachments",
                                     icon: User,
                                     color: "bg-orange-50 text-orange-700 border-orange-200",
+                                },
+                                {
+                                    id: "resume",
+                                    label: "Optimized Resume",
+                                    icon: FileText,
+                                    color: "bg-purple-50 text-purple-700 border-purple-200",
                                 },
                                 {
                                     id: "timeline",

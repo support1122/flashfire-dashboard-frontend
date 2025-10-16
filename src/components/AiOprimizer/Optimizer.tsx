@@ -1531,6 +1531,12 @@ function App() {
                     id: jobId,
                     startingContent: startingContent,
                     finalChanges: finalChanges,
+                    resumeData: optimizedData,
+                    checkboxStates: {
+                        showSummary: showSummary,
+                        showProjects: showProjects,
+                        showLeadership: showLeadership
+                    }
                 }),
             });
 

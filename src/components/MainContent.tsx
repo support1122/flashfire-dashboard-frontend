@@ -201,7 +201,10 @@ const [welcomeShown, setWelcomeShown] = useState(()=>{
         <Navigation activeTab={activeTab} onTabChange={setActiveTab} setUserProfileFormVisibility={setUserProfileFormVisibility} />
         </Suspense> 
         <main>
-          {userProfileFormVisibility && <NewUserModal setUserProfileFormVisibility={setUserProfileFormVisibility} />}
+          {userProfileFormVisibility && <NewUserModal setUserProfileFormVisibility={setUserProfileFormVisibility} onProfileComplete={() => {
+            console.log("Profile completed callback triggered in MainContent");
+            setUserProfileFormVisibility(false);
+          }} />}
           {activeTab === 'dashboard' && <Suspense fallback={<LoadingScreen />}><Dashboard setUserProfileFormVisibility={setUserProfileFormVisibility}/></Suspense>}
           
           

@@ -36,7 +36,11 @@ const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(() =>
       <ProfilePage />
       {userProfileFormVisibility && (
         <NewUserModal 
-          setUserProfileFormVisibility={setUserProfileFormVisibility} 
+          setUserProfileFormVisibility={setUserProfileFormVisibility}
+          onProfileComplete={() => {
+            console.log("Profile completed callback triggered in App");
+            setUserProfileFormVisibility(false);
+          }}
         />
       )}
     </div>

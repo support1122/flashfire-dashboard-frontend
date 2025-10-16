@@ -149,13 +149,6 @@ const Dashboard: React.FC = () => {
             hasProfile: !!userProfile,
         });
 
-        // Check if profile is complete
-        console.log("Dashboard - Profile completion check:", {
-            userProfile: userProfile,
-            isComplete: isProfileComplete(),
-            hasProfile: !!userProfile,
-        });
-
         if (!isProfileComplete()) {
             console.log("Profile incomplete, showing modal");
             setShowProfileModal(true);
@@ -168,7 +161,7 @@ const Dashboard: React.FC = () => {
         if (userJobs.length === 0) {
             FetchAllJobs(token, userDetails);
         }
-    }, [token, userDetails, isProfileComplete]);
+    }, [token, userDetails, userProfile]);
     
     // Use session storage stats instead of calculating from userJobs
     const stats = dashboardStats;
@@ -304,6 +297,10 @@ const Dashboard: React.FC = () => {
           setUserProfileFormVisibility={setShowProfileModal}
           mode="create"
           startSection="personal"
+          onProfileComplete={() => {
+            console.log("Profile completed callback triggered");
+            setShowProfileModal(false);
+          }}
         />
       )}
 
