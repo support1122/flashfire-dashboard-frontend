@@ -17,14 +17,14 @@ import NewUserModal from "./NewUserModal.tsx";
 import DashboardManagerDisplay from "./DashboardManagerDisplay.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
 import { useJobsSessionStore } from "../state_management/JobsSessionStore";
-import GuidePopup from "./GuidePopup.tsx";
+
 const JobForm = lazy(() => import("./JobForm"));
 
 const Dashboard: React.FC = () => {
-    const context = useContext(UserContext);
-    const navigate = useNavigate();
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-    const { userProfile } = useUserProfile();
+  const context = useContext(UserContext);
+  const navigate = useNavigate();
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const { userProfile } = useUserProfile();
 
   if (!context) {
     console.error("UserContext is null");
@@ -32,17 +32,17 @@ const Dashboard: React.FC = () => {
     return null;
   }
 
-    const { token, userDetails } = context;
-    const { userJobs, setUserJobs } = useUserJobs();
-    const [loadingDetails, setLoadingDetails] = useState(false);
-    const [showProfileModal, setShowProfileModal] = useState(false);
-    const [showJobForm, setShowJobForm] = useState(false);
-    const { role } = useOperationsStore();
-    
-    // Use session storage for analytics
-    const { getDashboardStats } = useJobsSessionStore();
-    const dashboardStats = getDashboardStats();
-    
+  const { token, userDetails } = context;
+  const { userJobs, setUserJobs } = useUserJobs();
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showJobForm, setShowJobForm] = useState(false);
+  const { role } = useOperationsStore();
+
+  // Use session storage for analytics
+  const { getDashboardStats } = useJobsSessionStore();
+  const dashboardStats = getDashboardStats();
+
 
   async function FetchAllJobs(localToken: string, localUserDetails: any) {
     if (role == "operations") {
@@ -123,20 +123,6 @@ const Dashboard: React.FC = () => {
       }
     }
   }
-   const handleExit = () => {
-    setShowGuide(false);
-    localStorage.setItem("dashboardGuideSeen", "true");
-  };
-
-  const handleNext = () => {
-    // Move to next page or show next message
-    setShowGuide(false);
-    localStorage.setItem("dashboardGuideSeen", "true");
-  };
-   useEffect(() => {
-    const isNewUser = !localStorage.getItem("dashboardGuideSeen");
-    if (isNewUser) setShowGuide(true);
-  }, []);
 
   useEffect(() => {
     if (!token || !userDetails) {
@@ -144,24 +130,24 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-        const hasProfileValue = sessionStorage.getItem('hasProfile');
-        
-        if (hasProfileValue === 'false') {
-            console.log("No profile - showing modal");
-            setShowProfileModal(true);
-        } else {
-            console.log("Has profile or not checked - not showing modal");
-            setShowProfileModal(false);
-        }
+    const hasProfileValue = sessionStorage.getItem('hasProfile');
 
-        if (userJobs.length === 0) {
-            FetchAllJobs(token, userDetails);
-        }
-    }, [token, userDetails]);
-    
-    // Use session storage stats instead of calculating from userJobs
-    const stats = dashboardStats;
-    console.log("stats from session storage = ", stats);
+    if (hasProfileValue === 'false') {
+      console.log("No profile - showing modal");
+      setShowProfileModal(true);
+    } else {
+      console.log("Has profile or not checked - not showing modal");
+      setShowProfileModal(false);
+    }
+
+    if (userJobs.length === 0) {
+      FetchAllJobs(token, userDetails);
+    }
+  }, [token, userDetails]);
+
+  // Use session storage stats instead of calculating from userJobs
+  const stats = dashboardStats;
+  console.log("stats from session storage = ", stats);
 
   // Helper function to parse dates in various formats
   const parseCustomDate = (dateString: string): Date => {
@@ -322,14 +308,7 @@ const Dashboard: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {showGuide && (
-                <GuidePopup
-                  title="Dashboard Overview"
-                  message="This is your main workspace where you can track job applications and insights."
-                  onExit={handleExit}
-                  onNext={handleNext}
-                />
-              )}
+
         {/* Welcome Section */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row items-start justify-between gap-4">
@@ -341,7 +320,9 @@ const Dashboard: React.FC = () => {
                 </span>
               </h1>
               <p className="text-base md:text-lg text-gray-600 leading-relaxed max-w-3xl">
-               Every role tracked. Every milestone celebrated. Your journey to success starts here
+
+                Every role tracked. Every milestone celebrated. Your journey to success starts here
+
               </p>
             </div>
 
