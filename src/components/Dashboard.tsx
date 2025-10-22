@@ -320,9 +320,7 @@ const Dashboard: React.FC = () => {
                 </span>
               </h1>
               <p className="text-base md:text-lg text-gray-600 leading-relaxed max-w-3xl">
-
-                Every role tracked. Every milestone celebrated. Your journey to success starts here
-
+                Every role tracked. Every milestone celebrated. Your journey to success starts here.
               </p>
             </div>
 
