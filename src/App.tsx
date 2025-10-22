@@ -1,7 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import AOS from 'aos';
-import 'aos/dist/aos.css';
 import { Toaster } from 'react-hot-toast';
 
 import Login from './components/Login';
@@ -20,11 +18,8 @@ import Optimizer from './components/AiOprimizer/Optimizer.tsx';
 // Component to handle Profile page with proper navigation
 function ProfileWithNavigation() {
   const [activeTab, setActiveTab] = useState('dashboard');
-const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(() => {
-  const stored = localStorage.getItem('userAuth');
-  const parsed = stored ? JSON.parse(stored) : null;
-  return parsed?.userProfile ? false : true;
-});
+  // Don't show modal on profile page - user explicitly navigated here to view/edit
+  const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -36,7 +31,11 @@ const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(() =>
       <ProfilePage />
       {userProfileFormVisibility && (
         <NewUserModal 
-          setUserProfileFormVisibility={setUserProfileFormVisibility} 
+          setUserProfileFormVisibility={setUserProfileFormVisibility}
+          onProfileComplete={() => {
+            console.log("Profile completed callback triggered in App");
+            setUserProfileFormVisibility(false);
+          }}
         />
       )}
     </div>
@@ -44,13 +43,6 @@ const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(() =>
 }
 
 function App() {
-  useEffect(() => {
-    AOS.init({
-      duration: 800,
-      once: true,
-    });
-  }, []);
-
   return (
       <GoogleOAuthProvider
           clientId={import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID}

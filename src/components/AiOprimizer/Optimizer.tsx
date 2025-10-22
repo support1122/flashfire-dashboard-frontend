@@ -1628,148 +1628,19 @@ function App() {
                     );
                 } else {
                     alert(
-                        'AI optimization complete! However, there was an issue saving to dashboard. You can manually save using the "Show changes in dashboard" button.'
+                        'AI optimization falled!. Please try again.'
                     );
                 }
             } else {
                 alert(
                     "AI optimization failed. Please try again or edit your resume content manually."
                 );
-                // Create meaningful sample optimized data for demonstration
-                const sampleOptimizedData = {
-                    ...resumeData,
-                    summary:
-                        "Strategic Product Manager with 3+ years of experience driving digital transformation initiatives and leading cross-functional product teams. Proven expertise in agile methodologies, data-driven decision making, and stakeholder management with quantifiable results including 35% increase in feature delivery velocity and 90% improvement in financial transparency. Specialized in SaaS product development, business intelligence analytics, and performance optimization strategies. Expert in leveraging cutting-edge technologies and market research to drive user adoption, retention, and revenue growth through innovative product solutions.",
-                    workExperience: [
-                        {
-                            ...resumeData.workExperience[0],
-                            responsibilities: [
-                                "Accelerated sprint velocity by 35% through implementation of advanced agile workflows, automated CI/CD pipelines, and cross-functional team optimization, delivering 45+ high-impact features per sprint while reducing engineering overhead by 100+ hours monthly.",
-                                "Enhanced job fulfillment accuracy from 83% to 90% by designing and implementing comprehensive validation workflows using business rules engines and automated QA processes, directly reducing revenue leakage by 40% and improving customer satisfaction metrics.",
-                                "Launched real-time business intelligence dashboards utilizing Power BI and advanced analytics tools, providing executive visibility into KPI performance and reducing project preparation cycles by 30% through automated reporting and predictive insights.",
-                                "Revolutionized SMB work order processing through intelligent automation and API integrations, cutting quote turnaround time from 3 days to 1.5 days while implementing ML-driven priority assignment systems that boosted lead conversion rates by 25%.",
-                                "Eliminated follow-up delays by 33% via deployment of real-time webhook notification systems and automated status tracking, saving 15+ man-hours weekly while enhancing CRM data quality and customer communication workflows.",
-                                "Orchestrated comprehensive UTM-tracked rebranding initiative across digital channels, leveraging Google Analytics and marketing automation platforms to drive 18% increase in brand engagement while reducing customer churn through targeted performance marketing and conversion optimization.",
-                            ],
-                        },
-                        {
-                            ...resumeData.workExperience[1],
-                            responsibilities: [
-                                "Managed end-to-end logistics coordination for 100+ university events using advanced project management methodologies and Excel-based resource allocation systems, achieving 22% improvement in service reliability and guest satisfaction through systematic process optimization.",
-                                "Implemented centralized incident management and feedback tracking system using automated ticketing platforms, achieving 95% issue resolution rate within 24-hour SLA while enhancing stakeholder communication across 5+ university departments through digital collaboration tools.",
-                                "Collaborated with culinary and procurement teams to deploy data-driven inventory management systems using supply chain optimization and demand forecasting algorithms, reducing per-event food waste by 30% through predictive analytics and sustainable resource management.",
-                            ],
-                        },
-                        {
-                            ...resumeData.workExperience[2],
-                            responsibilities: [
-                                "Architected and deployed comprehensive Finance Module featuring advanced fundraising capabilities, secure fund transfer mechanisms, and real-time expense tracking using modern fintech APIs and database architecture, achieving 90% improvement in financial transparency through automated reporting and audit trail systems.",
-                                "Executed extensive market analysis and competitive intelligence across 10+ industry leaders using business intelligence tools and advanced data mining techniques, conducting 50+ structured user interviews to develop data-driven business model that projected 40% increase in fundraising efficiency through conversion optimization.",
-                                "Developed advanced event management platform with sophisticated ticketing module utilizing e-commerce integration and payment processing systems, boosting operational efficiency by 50% while enabling real-time analytics, inventory management, and automated tracking for organizational events.",
-                                "Established and managed strategic partnership network of 10+ channel partners using systematic business development frameworks, expanding market reach to 5,000+ nonprofit organizations through digital marketing strategies and securing 150+ subscription commitments at product launch.",
-                                "Engineered hierarchical leadership module featuring six-tier access control system with role-based authentication, automated approval workflows, and compliance tracking capabilities, streamlining organizational decision-making through enterprise-grade security protocols and notification systems.",
-                            ],
-                        },
-                    ],
-                    skills: [
-                        {
-                            ...resumeData.skills[0],
-                            skills: "Product Development Lifecycle, Product Strategy & Roadmapping, Go-To-Market Strategy, Product Marketing, Market Research & Competitive Intelligence, User Research & Personas, Agile & Scrum Methodologies, Kanban & SAFe Framework, Lean Startup Methodology, Sprint Planning & Backlog Management, Risk Assessment & Mitigation, Cross-Functional Team Leadership, Stakeholder Management & Communication, Customer Journey Mapping, User Story Development, KPI/OKR Definition & Tracking, Product Analytics & Metrics, A/B Testing & Experimentation, Feature Prioritization Matrix, Product Launch Strategy, MVP Development & Validation",
-                        },
-                        {
-                            ...resumeData.skills[1],
-                            skills: "Jira Software & Advanced Configuration, Trello & Kanban Boards, Aha! Roadmapping, Notion Workspace Management, Confluence Documentation, Monday.com Project Management, Asana Task Management, Linear Issue Tracking, ClickUp Productivity Suite, Azure DevOps & CI/CD, GitHub & Version Control, GitLab Repository Management, Slack Advanced Features, Microsoft Teams Integration, Zoom Video Conferencing, Salesforce CRM & Automation, HubSpot CRM & Marketing, Advanced CRM Customization",
-                        },
-                        {
-                            ...resumeData.skills[2],
-                            skills: "Figma Advanced Prototyping, Miro Collaborative Whiteboarding, Adobe Creative Suite (Photoshop, Illustrator, XD), Sketch UI Design, Canva Design Automation, PowerPoint Advanced Presentations, Lucidchart Process Mapping, Microsoft Visio Diagramming, InVision Prototyping, Principle Animation, Framer Interactive Design, Advanced Wireframing, High-Fidelity Prototyping, UI/UX Design Principles, Design Thinking Methodology, User Research & Testing, Usability Testing & Optimization",
-                        },
-                        {
-                            ...resumeData.skills[3],
-                            skills: "Microsoft Excel Advanced Analytics, Google Analytics 4 & Universal, HubSpot Marketing Analytics, Power BI Dashboard Creation, Tableau Data Visualization, Mixpanel Product Analytics, Amplitude User Analytics, Google Data Studio Reporting, Advanced SQL Queries & Optimization, Data Visualization Best Practices, Business Intelligence Strategy, Statistical Analysis & Modeling, Predictive Analytics, Meta Business Manager, Facebook Analytics Advanced, LinkedIn Campaign Manager, Google Ads & PPC Management",
-                        },
-                        {
-                            ...resumeData.skills[4],
-                            skills: "Python Data Analysis & Automation, C/C++ Systems Programming, Java Enterprise Development, JavaScript ES6+ & Modern Frameworks, HTML5 Semantic Markup, CSS3 Advanced Styling & Grid, React.js & Hooks, Node.js & Express, SQL Database Design & Optimization, MySQL Administration, PostgreSQL Advanced Features, MongoDB NoSQL, REST API Design & Development, GraphQL Query Language, JSON/XML Data Processing, Git Version Control, Docker Containerization, AWS Cloud Services, Cloud Architecture Design, Bubble No-Code Platform, Automation & Scripting, Full-Stack Web Development",
-                        },
-                        {
-                            ...resumeData.skills[5],
-                            skills: "Strategic Business Planning, Business Development & Partnerships, Financial Modeling & Analysis, Budget Management & Forecasting, Vendor Relationship Management, Supply Chain Optimization, Operations Management & Efficiency, Process Improvement & Lean, Change Management Leadership, Team Leadership & Development, Performance Management Systems, Training Program Development, Organizational Development, Revenue Operations, Cost Optimization, Resource Allocation",
-                        },
-                        {
-                            ...resumeData.skills[6],
-                            skills: "PMP Project Management Certification, Risk Management & Insurance Planning Certified, Certified ScrumMaster (CSM), Agile Certified Practitioner, Lean Six Sigma Green Belt, PMBOK Framework Expert, ITIL Foundation Certified, Google Analytics Certified, HubSpot Inbound Marketing Certified, Facebook Blueprint Certified, Digital Marketing Institute Certified, Growth Hacking Certification, Customer Success Manager Certified, Product Management Certification",
-                        },
-                    ],
-                    education: [
-                        {
-                            ...resumeData.education[0],
-                            additionalInfo:
-                                "Dean's Master's Scholarship Recipient | GPA: 3.8/4.0 | Thesis: 'AI-Driven Product Development in Enterprise Systems' | Relevant Coursework: Advanced Systems Engineering, Operations Research & Optimization, Big Data Analytics & Machine Learning, Strategic Project Management, Technology Innovation & Entrepreneurship, Advanced Supply Chain Management, Quality Management & Six Sigma, Financial Engineering & Modeling, Leadership Psychology & Organizational Behavior, Digital Transformation Strategy",
-                        },
-                        {
-                            ...resumeData.education[1],
-                            additionalInfo:
-                                "Specialization: UX/UI Design & Human-Computer Interaction | GPA: 3.7/4.0 | Capstone Project: 'AI-Powered Mobile Application for Educational Technology' | Relevant Coursework: Advanced Data Structures & Algorithms, Software Engineering & Design Patterns, Advanced Database Management Systems, Full-Stack Web Development, Human-Computer Interaction & Usability, Object-Oriented Programming & Design, Computer Networks & Security, Operating Systems & Performance, Machine Learning & Deep Learning, Artificial Intelligence & Neural Networks, Mobile Application Development (iOS/Android), Cloud Computing & Distributed Systems",
-                        },
-                    ],
-                };
-
-                setOptimizedData(sampleOptimizedData);
-                setCurrentResumeView("optimized"); // Automatically switch to optimized view
                 
-                
-                const saveSuccess = await autoSaveChangesToDashboard(resumeData, sampleOptimizedData);
-                
-                if (saveSuccess) {
-                    alert(
-                        'Demo mode: AI optimization complete and changes saved to dashboard! Check the "Optimized Resume" tab to see and edit the enhanced content.'
-                    );
-                } else {
-                    alert(
-                        'Demo mode: AI optimization complete! However, there was an issue saving to dashboard. You can manually save using the "Show changes in dashboard" button.'
-                    );
-                }
             }
         } catch (error) {
             console.error("Error optimizing resume:", error);
-
-            // Fallback to demo data
-            const sampleOptimizedData = {
-                ...resumeData,
-                summary:
-                    "Strategic Product Manager with 3+ years of experience driving digital transformation and leading cross-functional teams. Proven track record of increasing feature delivery by 35%, improving operational efficiency, and launching scalable SaaS solutions. Expert in agile methodologies, product roadmapping, and stakeholder management with strong background in business intelligence and performance optimization. Specialized in leveraging data analytics and market research to drive user adoption, retention, and revenue growth.",
-                workExperience: resumeData.workExperience.map((exp) => ({
-                    ...exp,
-                    responsibilities: exp.responsibilities.map(
-                        (resp, respIndex) =>
-                            respIndex === 0
-                                ? `Enhanced version: ${resp
-                                      .replace("Boosted", "Accelerated")
-                                      .replace(
-                                          "by implementing",
-                                          "through strategic implementation of advanced"
-                                      )}`
-                                : resp
-                    ),
-                })),
-            };
-
-            setOptimizedData(sampleOptimizedData);
-            setCurrentResumeView("optimized"); // Automatically switch to optimized view
+            alert("Error optimizing resume: " + error);
             
-            
-            const saveSuccess = await autoSaveChangesToDashboard(resumeData, sampleOptimizedData);
-            
-            if (saveSuccess) {
-                alert(
-                    'AI optimization complete and changes saved to dashboard! Check the "Optimized Resume" tab to see and edit the enhanced content.'
-                );
-            } else {
-                alert(
-                    'AI optimization complete! However, there was an issue saving to dashboard. You can manually save using the "Show changes in dashboard" button.'
-                );
-            }
         } finally {
             setIsOptimizing(false);
         }

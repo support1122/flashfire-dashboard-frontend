@@ -23,7 +23,7 @@ import GuidePopup from "./GuidePopup";
 interface NavigationProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  setUserProfileFormVisibility: any;
+  setUserProfileFormVisibility?: any; // Optional now
 }
 
 interface TabItem {
@@ -108,6 +108,7 @@ const Navigation: React.FC<NavigationProps> = ({
 
   const handleLogout = () => {
     localStorage.clear();
+    sessionStorage.clear();
     setUser("");
     toastUtils.success(toastMessages.logoutSuccess);
     navigate("/login");
@@ -230,53 +231,55 @@ const Navigation: React.FC<NavigationProps> = ({
                     <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${profileDropDown ? 'rotate-180' : ''}`} />
                   </button>
 
-                  {profileDropDown && (
-                    <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 py-6 px-6 z-50">
-                      {/* Arrow */}
-                      <div className="absolute -top-2 right-8 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
-
-                      {/* User Header */}
-                      <Link to="/profile" target="_blank" rel="noopener noreferrer">
-                        <div className="flex items-center space-x-4 pb-6 border-b border-gray-100">
-                          <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg">
-                            <User className="w-7 h-7 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-lg font-bold text-gray-900">{user}</p>
-                            <p className="text-sm text-gray-500 underline">View Profile</p>
-                          </div>
+                {profileDropDown && (
+                  <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 py-6 px-6 z-50">
+                    {/* Arrow */}
+                    <div className="absolute -top-2 right-8 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
+                    
+                    {/* User Header */}
+                    <Link to="/profile" target="_blank" rel="noopener noreferrer">
+                    <div className="flex items-center space-x-4 pb-6 border-b border-gray-100">
+                      <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg">
+                        <User className="w-7 h-7 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-lg font-bold text-gray-900">{user}</p>
+                        <p className="text-sm text-gray-500 underline">View Profile</p>
+                      </div>
+                    </div>
+                    </Link>
+                    {/* User Details */}
+                    {role == "operations" ? null : (
+                      <div className="py-6 space-y-4">
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                            Email Address
+                          </p>
+                          <p className="text-sm text-gray-900 font-medium bg-gray-50 px-3 py-2 rounded-lg">
+                            {userDetails?.email}
+                          </p>
                         </div>
-                      </Link>
-                      {/* User Details */}
-                      {role == "operations" ? null : (
-                        <div className="py-6 space-y-4">
-                          <div>
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                              Email Address
-                            </p>
-                            <p className="text-sm text-gray-900 font-medium bg-gray-50 px-3 py-2 rounded-lg">
-                              {userDetails?.email}
-                            </p>
-                          </div>
-                          {/* <div className='flex justify-between'> */}
-                          {!hasProfile && (
-                            <div
-                              className="w-fit"
-                              onClick={() =>
-                                setUserProfileFormVisibility(
-                                  true
-                                )
+                        {/* <div className='flex justify-between'> */}
+                        {!hasProfile && (
+                          <div
+                            className="w-fit"
+                            onClick={() => {
+                              if (setUserProfileFormVisibility) {
+                                setUserProfileFormVisibility(true);
+                              } else {
+                                navigate('/profile');
                               }
-                            >
-                              <div className="hover:cursor-pointer inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-200 text-amber-700 border-2 border-amber-200">
-                                <Edit2Icon className="h-3 w-3 m-2" />{" "}
-                                Edit/ Setup Profile
-                              </div>
+                            }}
+                          >
+                            <div className="hover:cursor-pointer inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-200 text-amber-700 border-2 border-amber-200">
+                              <Edit2Icon className="h-3 w-3 m-2" />{" "}
+                              Edit/ Setup Profile
                             </div>
-                          )}
-                          {/* <Link to="/profile" target="_blank" rel="noopener noreferrer">
-                          <h1><User2Icon /></h1>
-                        </Link> */}
+                          </div>
+                        )}
+                        {/* <Link to="/profile" target="_blank" rel="noopener noreferrer">
+  <h1><User2Icon /></h1>
+</Link> */}
 
                           {role == "operations" ? null : (
                             <div>
@@ -363,53 +366,56 @@ const Navigation: React.FC<NavigationProps> = ({
           </div>
         )}
 
-        {/* Absolute Mobile Profile Dropdown */}
-        {profileDropDown && (
-          <div
-            ref={mobileProfileRef}
-            className="absolute top-16 right-3 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 animate-fade-in p-5 space-y-5 md:hidden"
-          >
-            <div className="absolute -top-2 right-8 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
-
-            <Link to="/profile" target="_blank" rel="noopener noreferrer">
-              <div className="flex items-center space-x-4 pb-6 border-b border-gray-100">
-                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg">
-                  <User className="w-7 h-7 text-white" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-lg font-bold text-gray-900">{user}</p>
-                  <p className="text-sm text-gray-500 underline">View Profile</p>
-                </div>
-              </div>
-            </Link>
-            {/* User Details */}
-            {role == "operations" ? null : (
-              <div className="py-6 space-y-4">
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                    Email Address
-                  </p>
-                  <p className="text-sm text-gray-900 font-medium bg-gray-50 px-3 py-2 rounded-lg">
-                    {userDetails?.email}
-                  </p>
-                </div>
-                {/* <div className='flex justify-between'> */}
-                {!hasProfile && (
-                  <div
-                    className="w-fit"
-                    onClick={() =>
-                      setUserProfileFormVisibility(
-                        true
-                      )
-                    }
-                  >
-                    <div className="hover:cursor-pointer inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-200 text-amber-700 border-2 border-amber-200">
-                      <Edit2Icon className="h-3 w-3 m-2" />{" "}
-                      Edit/ Setup Profile
+      {/* Absolute Mobile Profile Dropdown */}
+      {profileDropDown && (
+        <div
+          ref={mobileProfileRef}
+          className="absolute top-16 right-3 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 animate-fade-in p-5 space-y-5 md:hidden"
+        >
+         <div className="absolute -top-2 right-8 w-4 h-4 bg-white border-l border-t border-gray-200 transform rotate-45"></div>
+                    
+         <Link to="/profile" target="_blank" rel="noopener noreferrer">
+                    <div className="flex items-center space-x-4 pb-6 border-b border-gray-100">
+                      <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg">
+                        <User className="w-7 h-7 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-lg font-bold text-gray-900">{user}</p>
+                        <p className="text-sm text-gray-500 underline">View Profile</p>
+                      </div>
                     </div>
-                  </div>
-                )}
-                {/* <Link to="/profile" target="_blank" rel="noopener noreferrer">
+                    </Link>
+                    {/* User Details */}
+                    {role == "operations" ? null : (
+                      <div className="py-6 space-y-4">
+                        <div>
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                            Email Address
+                          </p>
+                          <p className="text-sm text-gray-900 font-medium bg-gray-50 px-3 py-2 rounded-lg">
+                            {userDetails?.email}
+                          </p>
+                        </div>
+                        {/* <div className='flex justify-between'> */}
+                        {!hasProfile && (
+                          <div
+                            className="w-fit"
+                            onClick={() => {
+                              // Navigate to profile page or trigger modal
+                              if (setUserProfileFormVisibility) {
+                                setUserProfileFormVisibility(true);
+                              } else {
+                                navigate('/profile');
+                              }
+                            }}
+                          >
+                            <div className="hover:cursor-pointer inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-200 text-amber-700 border-2 border-amber-200">
+                              <Edit2Icon className="h-3 w-3 m-2" />{" "}
+                              Edit/ Setup Profile
+                            </div>
+                          </div>
+                        )}
+                        {/* <Link to="/profile" target="_blank" rel="noopener noreferrer">
   <h1><User2Icon /></h1>
 </Link> */}
 

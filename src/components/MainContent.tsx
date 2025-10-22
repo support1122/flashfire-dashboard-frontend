@@ -99,37 +99,28 @@
 
 
 
-import React, { useState, useEffect, useContext, lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
-// import Navigation from './Navigation';
+import { useState, useEffect, useContext, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 const Navigation = lazy(()=>import('./Navigation'))
-// import Dashboard from './Dashboard';
 const Dashboard = lazy(()=>import('./Dashboard'))
-// import JobTracker from './JobTracker';
 const JobTracker = lazy(()=>import('./JobTracker'))
-// import ResumeOptimizer from './ResumeOptimizer';
 const ResumeOptimizer = lazy(()=>import('./ResumeOptimizer1'))
 import { UserContext } from '../state_management/UserContext';
 import LoadingScreen from './LoadingScreen';
-import NewUserModal from './NewUserModal';
 import { useOperationsStore } from "../state_management/Operations";
-import { useUserProfile } from '../state_management/ProfileContext';
-// import {BaseResume} from '../types/index'
-import { useUserJobs } from "../state_management/UserJobs.tsx";
 
 
 
 export default function MainContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [showPDFUploader, setShowPDFUploader] = useState(false);
-  // const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
-  const [baseResume, setBaseResume] = useState(null);
-  const {userDetails, token, setData} = useContext(UserContext);
-
+  const context = useContext(UserContext);
   const navigate = useNavigate();
   const { role } = useOperationsStore();
-    const { userJobs, setUserJobs } = useUserJobs();
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
+  
+  const userDetails = context?.userDetails;
+  const token = context?.token;
+  const setData = context?.setData;
   useEffect(()=>{
   if ((!token || token.length == 0) && role != "operations") {
       console.log("navigating to login");
@@ -163,10 +154,12 @@ useEffect(() => {
       localStorage.setItem("userAuth", JSON.stringify(updatedAuth));
 
       // 4️⃣ Sync with context
-      setData({
-        userDetails: updatedAuth.userDetails,
-        token: updatedAuth.token || token, // ensure token not lost
-      });
+      if (setData) {
+        setData({
+          userDetails: updatedAuth.userDetails,
+          token: updatedAuth.token || token, // ensure token not lost
+        });
+      }
 
       console.log("✅ userDetails updated successfully:", data);
     } catch (error) {
@@ -179,69 +172,29 @@ useEffect(() => {
 
 
 
-  const { userProfile } = useUserProfile();
-  // const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
-const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
-const [welcomeShown, setWelcomeShown] = useState(()=>{
-    return localStorage.getItem("welcomeShown")? true: false
-  });
-// useEffect(() => {
-//  if (JSON.parse(localStorage.getItem('userAuth')).userProfile!=null) {console.log(userProfileFormVisibility,JSON.parse(localStorage.getItem('userAuth')).userProfile);setUserProfileFormVisibility(true);}
-//   else setUserProfileFormVisibility(false);
-//   console.log(userProfile)
-// }, [userProfile]);
-
-// console.log(userProfileFormVisibility,'vfcd')
-  
-  
+  // Dashboard now manages its own profile modal
 
   return (
     <div className="min-h-screen bg-gray-50">
        <Suspense fallback={<LoadingScreen />}>
-        <Navigation activeTab={activeTab} onTabChange={setActiveTab} setUserProfileFormVisibility={setUserProfileFormVisibility} />
+        <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
         </Suspense> 
         <main>
-          {userProfileFormVisibility && <NewUserModal setUserProfileFormVisibility={setUserProfileFormVisibility} />}
-          {activeTab === 'dashboard' && <Suspense fallback={<LoadingScreen />}><Dashboard setUserProfileFormVisibility={setUserProfileFormVisibility}/></Suspense>}
-          
+          {/* Dashboard now manages its own profile modal */}
+          {activeTab === 'dashboard' && <Suspense fallback={<LoadingScreen />}><Dashboard /></Suspense>}
           
           {activeTab === 'jobs' && (
           <Suspense fallback={<LoadingScreen />}>  
-            <JobTracker
-              // jobs={jobs}
-              // baseResume={baseResume}
-              // optimizedResumes={optimizedResumes}
-              // onAddJob={addJob}
-              // onUpdateJob={updateJob}
-              // onDeleteJob={deleteJob}
-              // onUpdateJobStatus={updateJobStatus}
-              // onAddOptimizedResume={addOptimizedResume}
-              // onShowPDFUploader={() => setShowPDFUploader(true)}
-            />
+            <JobTracker />
           </Suspense>
           )}
 
           {activeTab === 'optimizer' && (
             <Suspense fallback={<LoadingScreen />}>
-            <ResumeOptimizer
-              baseResume={baseResume}
-              onShowPDFUploader={() => setShowPDFUploader(true)}
-            />
+            <ResumeOptimizer />
             </Suspense>
           )}
         </main>
-
-        {/* PDF Uploader Modal */}
-        {showPDFUploader && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <PDFUploader
-                onResumeUploaded={handleUploadPDFResume}
-                onCancel={() => setShowPDFUploader(false)}
-              />
-            </div>
-          </div>
-        )}
       </div>
   )
 }

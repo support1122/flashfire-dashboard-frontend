@@ -4,21 +4,13 @@ import { useUserProfile } from "../../state_management/ProfileContext";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "../../state_management/UserContext";
 
-// Type declaration for Vite env
-declare global {
-  interface ImportMeta {
-    env: {
-      VITE_API_BASE_URL: string;
-    };
-  }
-}
-
 interface LoginResponse {
     message: string;
     token?: string;
     user?: any;
     userDetails?: any;
     userProfile?: any;
+    hasProfile?: boolean;
 }
 
 export default function ManagedUsers() {
@@ -59,13 +51,14 @@ export default function ManagedUsers() {
             token: data?.token || "",
         });
         setProfileFromApi(data.userProfile);
-        // Store in userAuth so UserContext can find it
+        
+        sessionStorage.setItem('hasProfile', data?.hasProfile ? 'true' : 'false');
+        
         localStorage.setItem("userAuth", JSON.stringify({
             token: data?.token ?? "",
             userDetails: data?.userDetails ?? null,
             userProfile: data?.userProfile ?? null,
         }));
-        // Navigate to the client's dashboard instead of back to manage
         navigate("/");
        }
 
