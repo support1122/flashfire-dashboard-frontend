@@ -541,10 +541,7 @@ export default function Login() {
       <div className="w-full lg:w-[480px] xl:w-[560px] flex flex-col justify-center px-6 md:px-12 py-12 bg-gray-50">
         <div className="max-w-md mx-auto w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-7 md:p-8">
           {/* Header */}
-          <div className="mb-6">
-            <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Sign In</h3>
-            <p className="text-sm text-gray-600">Enter your credentials to access your account</p>
-          </div>
+         
 
           {/* Tabs */}
           <div className="flex justify-center mb-6 border-b border-gray-200">
