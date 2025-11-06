@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { UserContext } from './UserContext.tsx';
 import { useNavigate } from 'react-router-dom';
 import { useOperationsStore } from "./Operations.ts";
@@ -41,11 +41,17 @@ export const UserJobsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     loading: storeLoading 
   } = useJobsSessionStore();
   
+  const lastManualUpdateRef = React.useRef<number>(0);
+  
   // Always fetch fresh data in the background on mount or when user changes
   useEffect(() => {
     if (userDetails?.email) {
-      // Always fetch in background, regardless of cache status
-      fetchJobsInBackground();
+      // Add a small delay to avoid race conditions with recent updates
+      const timeoutId = setTimeout(() => {
+        fetchJobsInBackground();
+      }, 1000);
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [userDetails?.email, token, role]);
   
@@ -122,9 +128,14 @@ export const UserJobsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       }
       
-      // Store in session storage - this updates the UI automatically
-      console.log("💾 Updating session storage with fresh data");
-      setJobs(data?.allJobs || []);
+      // Store in session storage - but only if no recent manual update
+      const timeSinceLastUpdate = Date.now() - lastManualUpdateRef.current;
+      if (timeSinceLastUpdate > 2000) {
+        console.log("💾 Updating session storage with fresh data (no recent updates)");
+        setJobs(data?.allJobs || []);
+      } else {
+        console.log("⏸️ Skipping background fetch update - recent manual update detected");
+      }
       
     } catch (err) {
       console.error('❌ Error fetching jobs:', err);
@@ -134,13 +145,42 @@ export const UserJobsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Wrapper function to maintain compatibility with existing code
   const setUserJobs = (jobs: Job[] | ((prevJobs: Job[]) => Job[])) => {
-    if (typeof jobs === 'function') {
-      // Compute next jobs array from current store value, then set
-      const currentJobs = Array.isArray(userJobs) ? userJobs : [];
-      const nextJobs = jobs(currentJobs);
-      setJobs(nextJobs);
-    } else {
-      setJobs(jobs);
+    lastManualUpdateRef.current = Date.now();
+    
+    try {
+      if (typeof jobs === 'function') {
+        const currentJobs = Array.isArray(userJobs) ? userJobs : [];
+        const nextJobs = jobs(currentJobs);
+        setJobs(nextJobs);
+      } else {
+        setJobs(jobs);
+      }
+    } catch (error: any) {
+      if (error?.name === 'QuotaExceededError' || error?.message?.includes('quota')) {
+        console.warn('⚠️ Storage quota exceeded - clearing old jobs data and retrying');
+        try {
+          sessionStorage.removeItem('jobs-session-storage');
+          if (typeof jobs === 'function') {
+            const currentJobs = Array.isArray(userJobs) ? userJobs : [];
+            const nextJobs = jobs(currentJobs);
+            setJobs(nextJobs);
+          } else {
+            setJobs(jobs);
+          }
+        } catch (retryError) {
+          console.error('❌ Failed to update jobs even after clearing storage:', retryError);
+          if (typeof jobs === 'function') {
+            const currentJobs = Array.isArray(userJobs) ? userJobs : [];
+            const nextJobs = jobs(currentJobs);
+            setJobs(nextJobs);
+          } else {
+            setJobs(jobs);
+          }
+        }
+      } else {
+        // Re-throw non-quota errors
+        throw error;
+      }
     }
   };
 

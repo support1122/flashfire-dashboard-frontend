@@ -1,6 +1,72 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import { Job, JobStatus } from '../types';
+
+// Custom storage wrapper that handles quota errors gracefully
+const createSafeStorage = (): StateStorage => {
+  const storage = sessionStorage;
+  
+  return {
+    getItem: (name: string): string | null => {
+      try {
+        return storage.getItem(name);
+      } catch (error) {
+        console.warn('Error reading from storage:', error);
+        return null;
+      }
+    },
+    setItem: (name: string, value: string): void => {
+      try {
+        storage.setItem(name, value);
+      } catch (error: any) {
+        if (error?.name === 'QuotaExceededError' || error?.message?.includes('quota')) {
+          console.warn('⚠️ Storage quota exceeded - attempting to reduce data size');
+          try {
+           const data = JSON.parse(value);
+            
+            if (data?.state?.jobs && Array.isArray(data.state.jobs)) {
+              const limitedJobs = data.state.jobs.slice(0, 100);
+              const reducedData = {
+                ...data,
+                state: {
+                  ...data.state,
+                  jobs: limitedJobs,
+                },
+              };
+              storage.setItem(name, JSON.stringify(reducedData));
+              console.log('✅ Reduced jobs data size and saved successfully');
+            } else {
+              storage.removeItem(name);
+              const minimalData = {
+                state: {
+                  jobs: [],
+                  lastFetched: data?.state?.lastFetched || Date.now(),
+                  userEmail: data?.state?.userEmail || null,
+                },
+                version: data?.version || 0,
+              };
+              storage.setItem(name, JSON.stringify(minimalData));
+              console.log('✅ Saved minimal data after quota error');
+            }
+          } catch (retryError) {
+            console.error('❌ Failed to save to storage even after reducing size:', retryError);
+
+          }
+        } else {
+          // Re-throw non-quota errors
+          throw error;
+        }
+      }
+    },
+    removeItem: (name: string): void => {
+      try {
+        storage.removeItem(name);
+      } catch (error) {
+        console.warn('Error removing from storage:', error);
+      }
+    },
+  };
+};
 
 interface JobsSessionState {
   jobs: Job[];
@@ -310,14 +376,20 @@ export const useJobsSessionStore = create<JobsSessionState>()(
     }),
     {
       name: 'jobs-session-storage',
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => createSafeStorage()),
       // Only persist jobs, loading, lastFetched, and userEmail
       // Don't persist updatingJobs as it's temporary state
-      partialize: (state) => ({
-        jobs: state.jobs,
-        lastFetched: state.lastFetched,
-        userEmail: state.userEmail,
-      }),
+      partialize: (state) => {
+        const jobsToStore = Array.isArray(state.jobs) 
+          ? state.jobs.slice(0, 100) 
+          : [];
+        
+        return {
+          jobs: jobsToStore,
+          lastFetched: state.lastFetched,
+          userEmail: state.userEmail,
+        };
+      },
     }
   )
 );
