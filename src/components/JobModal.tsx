@@ -103,10 +103,21 @@ async function persistAttachmentsToJob({
             body: JSON.stringify(payload),
         });
 
-        if (!res.ok)
-            throw new Error(
-                (await res.text()) || "Failed to persist attachments"
-            );
+        if (!res.ok) {
+            let errorMessage = "Failed to persist attachments";
+            try {
+                const errorResponse = await res.json();
+                errorMessage = errorResponse.message || errorMessage;
+            } catch {
+                // If JSON parsing fails, try to get text
+                try {
+                    errorMessage = await res.text() || errorMessage;
+                } catch {
+                    errorMessage = `Server error: ${res.status} ${res.statusText}`;
+                }
+            }
+            throw new Error(errorMessage);
+        }
         return res.json() as Promise<{ message?: string; updatedJobs?: any[] }>;
     } else {
         const payload = {
@@ -123,10 +134,21 @@ async function persistAttachmentsToJob({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         });
-        if (!res.ok)
-            throw new Error(
-                (await res.text()) || "Failed to persist attachments"
-            );
+        if (!res.ok) {
+            let errorMessage = "Failed to persist attachments";
+            try {
+                const errorResponse = await res.json();
+                errorMessage = errorResponse.message || errorMessage;
+            } catch {
+                // If JSON parsing fails, try to get text
+                try {
+                    errorMessage = await res.text() || errorMessage;
+                } catch {
+                    errorMessage = `Server error: ${res.status} ${res.statusText}`;
+                }
+            }
+            throw new Error(errorMessage);
+        }
         return res.json() as Promise<{ message?: string; updatedJobs?: any[] }>;
     }
 }
@@ -625,7 +647,7 @@ useEffect(() => {
             setIsUploadingImg(false);
         }
     };
-    const sanitizeCompanyDomain = (name) => {
+    const sanitizeCompanyDomain = (name: string) => {
   if (!name) return "example.com";
 
   // Clean spaces and invalid characters
