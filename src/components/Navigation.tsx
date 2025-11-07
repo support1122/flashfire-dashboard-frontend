@@ -56,6 +56,7 @@ const Navigation: React.FC<NavigationProps> = ({
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "jobs", label: "Job Tracker", icon: Briefcase },
     { id: "optimizer", label: "Documents", icon: FileText },
+    ...(role === "operations" ? [{ id: "resume-optimizer", label: "Resume Optimizer", icon: FileText }] : []),
   ];
 
   useEffect(() => {

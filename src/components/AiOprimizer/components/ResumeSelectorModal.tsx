@@ -62,24 +62,65 @@ export default function ResumeSelectorModal({
 
         const fetchResumes = async () => {
             try {
-                let url = `${apiUrl}/api/resumes`; // default (all)
-
-                // For admin users, use specific version endpoints
-                if (isAdmin) {
-                    if (version == 1) url = `${apiUrl}/api/resumes/v1`;
-                    if (version == 2) url = `${apiUrl}/api/resumes/v2`;
-                } else {
-                    // Non-admin users see all non-hidden resumes routed correctly
-                    url = `${apiUrl}/api/resumes/all`;
-                }
-
                 const userRole = localStorage.getItem("role") || "";
-                const res = await fetch(url, {
-                    headers: { "user-role": userRole },
-                });
-                const data = await res.json();
-                setResumes(data);
-                setFilteredResumes(data);
+                
+                // If version is 0 or undefined, fetch ALL resumes from all versions
+                if (version === 0 || version === undefined) {
+                    const allResumes: any[] = [];
+                    
+                    const [resAll, resV1, resV2] = await Promise.all([
+                       fetch(`${apiUrl}/api/resumes/all`, {
+                            headers: { "user-role": userRole },
+                        }).catch(() => null),
+                         fetch(`${apiUrl}/api/resumes/v1`, {
+                            headers: { "user-role": userRole },
+                        }).catch(() => null),
+                         fetch(`${apiUrl}/api/resumes/v2`, {
+                            headers: { "user-role": userRole },
+                        }).catch(() => null),
+                    ]);
+
+                     if (resAll && resAll.ok) {
+                        const data = await resAll.json();
+                        if (Array.isArray(data)) {
+                            allResumes.push(...data.map((r: any) => ({ ...r, V: r.V || 0 })));
+                        }
+                    }
+
+                    if (resV1 && resV1.ok) {
+                        const data = await resV1.json();
+                        if (Array.isArray(data)) {
+                            allResumes.push(...data.map((r: any) => ({ ...r, V: 1 })));
+                        }
+                    }
+
+                    if (resV2 && resV2.ok) {
+                        const data = await resV2.json();
+                        if (Array.isArray(data)) {
+                            allResumes.push(...data.map((r: any) => ({ ...r, V: 2 })));
+                        }
+                    }
+
+                    setResumes(allResumes);
+                    setFilteredResumes(allResumes);
+                } else {
+                    // For specific version requests (admin users)
+                    let url = `${apiUrl}/api/resumes`; // default (all)
+
+                    if (isAdmin) {
+                        if (version == 1) url = `${apiUrl}/api/resumes/v1`;
+                        if (version == 2) url = `${apiUrl}/api/resumes/v2`;
+                    } else {
+                        url = `${apiUrl}/api/resumes/all`;
+                    }
+
+                    const res = await fetch(url, {
+                        headers: { "user-role": userRole },
+                    });
+                    const data = await res.json();
+                    setResumes(data);
+                    setFilteredResumes(data);
+                }
             } catch (err) {
                 console.error("Error fetching resumes:", err);
             }
@@ -220,6 +261,15 @@ export default function ResumeSelectorModal({
 
             // Common logic for both admin and non-admin after fetching resume
             setResumeId(selectedResumeId);
+
+            // Find the resume from the list to get its version (V property)
+            const listResume = resumes.find((r) => r._id === selectedResumeId);
+            const resumeVersion = listResume?.V !== undefined ? listResume.V : resumeData?.V || 0;
+            
+            // Add version to resume data if not present
+            if (resumeVersion !== undefined && resumeData) {
+                resumeData.V = resumeVersion;
+            }
 
             // Store the selected resume persistently for future use
             setLastSelectedResume(resumeData, selectedResumeId);
