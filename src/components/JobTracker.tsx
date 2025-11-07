@@ -710,8 +710,8 @@ const handleDragEnd = (e: React.DragEvent) => {
                                 })
                                 .sort(
                                     (a, b) =>
-                                        tsFromUpdatedAt(b.updatedAt) -
-                                        tsFromUpdatedAt(a.updatedAt)
+                                        tsFromUpdatedAt(a.dateAdded) -
+                                        tsFromUpdatedAt(b.dateAdded)
                                 )
                                 : [];
 
