@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { PersonalInfo } from "./AiOprimizer/components/PersonalInfo";
 import { Summary } from "./AiOprimizer/components/Summary";
 import { WorkExperience } from "./AiOprimizer/components/WorkExperience";
@@ -22,6 +22,8 @@ import { PreviewStore } from "./AiOprimizer/store/PreviewStore";
 import { Job } from "../types";
 import { Calendar } from "lucide-react";
 import { getTimeAgo } from "../utils/getTimeAgo";
+import { UserContext } from "../state_management/UserContext";
+import AssignResumeModal from "./Admin/AssignResumeModal";
 
 type ResumeDataType = typeof initialData;
 
@@ -78,6 +80,26 @@ export default function ResumeOptimizerDashboard() {
     const { getJobsByStatus } = useJobsSessionStore();
     const { versionV, setVersion } = PreviewStore();
     const { updateJob, refreshJobByMongoId } = useJobsSessionStore();
+    const ctx = useContext(UserContext);
+    const email = ctx?.userDetails?.email;
+    
+    // Check admin status multiple ways
+    const userType = ctx?.userDetails?.userType;
+    const userRole = localStorage.getItem('role');
+    const isAdmin = 
+        userType === "Admin" || 
+        userType === "Operations" || 
+        userType === "admin" ||
+        userType === "operations" ||
+        userRole === "admin" ||
+        userRole === "Admin" ||
+        userRole === "operations" ||
+        userRole === "Operations";
+    
+    // Debug log
+    useEffect(() => {
+        console.log("Admin check:", { userType, userRole, isAdmin, userDetails: ctx?.userDetails });
+    }, [userType, userRole, isAdmin, ctx?.userDetails]);
 
     const {
         resumeData,
@@ -105,9 +127,9 @@ export default function ResumeOptimizerDashboard() {
         setChangedFields,
         sectionOrder,
         setSectionOrder,
-        loadLastSelectedResume,
         showPublications,
         setShowPublications,
+        setLastSelectedResume,
     } = useResumeStore();
 
     const {
@@ -115,10 +137,12 @@ export default function ResumeOptimizerDashboard() {
         isEditingUnlocked,
         lockAllSections,
         checkAdminAndUnlock,
+        setResumeId,
     } = useResumeUnlockStore();
 
     const [selectedJob, setSelectedJob] = useState<Job | null>(null);
     const [showModal, setShowModal] = useState(false);
+    const [showAssignResumeModal, setShowAssignResumeModal] = useState(false);
     const [companyName, setCompanyName] = useState<string>("");
     const [jobTitle, setJobTitle] = useState<string>("");
     const [showOptimizeConfirmation, setShowOptimizeConfirmation] = useState(false);
@@ -141,12 +165,58 @@ export default function ResumeOptimizerDashboard() {
         );
     });
 
-    useEffect(() => {
-        const resumeLoaded = loadLastSelectedResume();
-        if (resumeLoaded) {
-            console.log("Loaded last selected resume");
+    // Load user's assigned resume by email
+    const loadUserResume = async () => {
+        if (!email) {
+            console.log("No email available to load resume");
+            return;
         }
-    }, [loadLastSelectedResume]);
+        
+        try {
+            console.log("🔄 Loading user resume for email:", email);
+            const response = await fetch(`${apiUrl}/api/resume-by-email`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+            });
+
+            if (response.ok) {
+                const resumeData = await response.json();
+                if (resumeData && resumeData.personalInfo) {
+                    console.log("✅ Resume data received:", resumeData);
+                    setResumeData(resumeData);
+                    setBaseResume(resumeData);
+                    checkLoadedResumeData(resumeData);
+                    if (resumeData.resumeId) {
+                        setResumeId(resumeData.resumeId);
+                        setLastSelectedResume(resumeData, resumeData.resumeId);
+                    }
+                    if (resumeData.V !== undefined) {
+                        setVersion(resumeData.V);
+                    }
+                    lockAllSections();
+                    checkAdminAndUnlock();
+                    console.log("✅ Loaded user's assigned resume successfully");
+                }
+            } else if (response.status === 404) {
+                console.log("ℹ️ No resume assigned to this user");
+            } else {
+                console.error("❌ Failed to load resume:", response.status, response.statusText);
+            }
+        } catch (error) {
+            console.error("❌ Error loading user resume:", error);
+        }
+    };
+
+    // Load resume when component mounts or email changes
+    useEffect(() => {
+        // Always try to load user's assigned resume when component mounts
+        // This ensures it loads every time the Resume Optimizer tab is clicked
+        if (email) {
+            console.log("🔄 Component mounted/email changed, loading user's assigned resume");
+            loadUserResume();
+        }
+    }, [email]); // Re-run when email changes or component mounts
 
     // Auto-unlock sections for operations users
     useEffect(() => {
@@ -863,6 +933,17 @@ export default function ResumeOptimizerDashboard() {
                                 </div>
 
                                 <div className="flex items-center space-x-4">
+                                    {/* Admin: Assign Resume Button - Only visible to admins */}
+                                    {isAdmin && (
+                                        <button
+                                            onClick={() => setShowAssignResumeModal(true)}
+                                            className="px-6 py-3 rounded-md text-base font-semibold transition-colors bg-green-600 text-white hover:bg-green-700 shadow-md"
+                                            title="Assign resume to a user"
+                                        >
+                                            Assign Resume
+                                        </button>
+                                    )}
+
                                     {/* All Resumes Button - Big button for all resumes */}
                                     <button
                                         onClick={() => {
@@ -940,6 +1021,20 @@ export default function ResumeOptimizerDashboard() {
                         }}
                         version={versionV}
                     />
+
+                    {isAdmin && (
+                        <AssignResumeModal
+                            open={showAssignResumeModal}
+                            onClose={() => setShowAssignResumeModal(false)}
+                            onAssignSuccess={() => {
+                                setShowAssignResumeModal(false);
+                                // Optionally reload the user's resume
+                                if (email) {
+                                    loadUserResume();
+                                }
+                            }}
+                        />
+                    )}
 
                     <div className="max-w-7xl mx-auto px-4 py-6">
                         {currentResumeView === "editor" ? (
