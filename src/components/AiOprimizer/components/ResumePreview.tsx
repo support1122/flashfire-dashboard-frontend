@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
+import { ResumeScalingModal } from "./ResumeScalingModal";
 
 interface ResumeData {
     personalInfo: {
@@ -84,6 +85,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
 }) => {
     const [scalingFactor, setScalingFactor] = useState(1);
     const [showWarningModal, setShowWarningModal] = useState(false);
+    const [showScalingModal, setShowScalingModal] = useState(false);
     const measureRef = useRef<HTMLDivElement>(null);
 
     // Enhanced print function with automatic settings
@@ -554,7 +556,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             style={{
                                 fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "2px",
+                                paddingBottom: "8px",
                                 marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
                                 letterSpacing: "-0.025em",
@@ -588,7 +590,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             style={{
                                 fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "2px",
+                                paddingBottom: "8px",
                                 marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
                                 letterSpacing: "-0.025em",
@@ -739,7 +741,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             style={{
                                 fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "2px",
+                                paddingBottom: "8px",
                                 marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
                                 letterSpacing: "-0.025em",
@@ -895,7 +897,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             style={{
                                 fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "2px",
+                                paddingBottom: "8px",
                                 marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
                                 letterSpacing: "-0.025em",
@@ -934,7 +936,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 fontSize:
                                     Math.max(10, Math.round(12 * scalingFactor)) + "px",
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "1px",
+                                paddingBottom: "8px",
                                 marginBottom:
                                     Math.max(3, Math.round(4 * scalingFactor)) + "px",
                                 fontWeight: "bold",
@@ -1024,7 +1026,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             style={{
                                 fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "2px",
+                                paddingBottom: "8px",
                                 marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
                                 letterSpacing: "-0.025em",
@@ -1142,7 +1144,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             style={{
                                 fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "2px",
+                                paddingBottom: "8px",
                                 marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
                                 letterSpacing: "-0.025em",
@@ -1466,6 +1468,21 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                     style={{ marginBottom: "1rem", textAlign: "center" }}
                 >
                     <button
+                        onClick={() => setShowScalingModal(true)}
+                        style={{
+                            backgroundColor: "#10b981",
+                            color: "white",
+                            padding: "8px 16px",
+                            border: "none",
+                            borderRadius: "4px",
+                            marginRight: "8px",
+                            cursor: "pointer",
+                            fontWeight: "600",
+                        }}
+                    >
+                        In-House Scaling
+                    </button>
+                    <button
                         onClick={handlePrint}
                         style={{
                             backgroundColor: "#3b82f6",
@@ -1494,6 +1511,15 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                     </button>
                 </div>
             )}
+
+            {/* Scaling Modal */}
+            <ResumeScalingModal
+                isOpen={showScalingModal}
+                onClose={() => setShowScalingModal(false)}
+                resumeContent={resumeContent}
+                resumeData={data}
+                version={0}
+            />
 
             {/* Screen Preview */}
             <div
