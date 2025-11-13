@@ -623,7 +623,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     
     const generateFilename = (resumeData: ResumeData) => {
         const name = resumeData.personalInfo.name || "Resume";
-        const cleanName = name.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "-");
+        const cleanName = name.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_");
         return `${cleanName}-Medical-Resume.pdf`;
     };
 
