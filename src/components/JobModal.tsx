@@ -32,7 +32,7 @@ import {
     getOptimizedResumeTitle,
 } from "../utils/getOptimizedResumeUrl";
 import { ResumePreview } from "./AiOprimizer/components/ResumePreview";
-import { ResumePreview1 } from "./AiOprimizer/components/ResumePreview1";
+// import { ResumePreview1 } from "./AiOprimizer/components/ResumePreview1";
 import { ResumePreviewMedical } from "./AiOprimizer/components/ResumePreviewMedical";
 
 /* ---------- ENV ---------- */
@@ -1315,7 +1315,7 @@ useEffect(() => {
                                     )}
                                     
                                     {resumeData.version === 1 && (
-                                        <ResumePreview1
+                                        <ResumePreview
                                             data={resumeData.resumeData}
                                             showLeadership={resumeData.showLeadership}
                                             showProjects={resumeData.showProjects}

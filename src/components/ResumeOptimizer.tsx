@@ -2,7 +2,7 @@ import { ArrowLeftCircle, Trash2 } from "lucide-react";
 import React, { useEffect, useState, useContext } from "react";
 import { UserContext } from '../state_management/UserContext.js';
 import { ResumePreview } from './AiOprimizer/components/ResumePreview.tsx';
-import { ResumePreview1 } from './AiOprimizer/components/ResumePreview1.tsx';
+// import { ResumePreview1 } from './AiOprimizer/components/ResumePreview1.tsx';
 import { ResumePreviewMedical } from './AiOprimizer/components/ResumePreviewMedical.tsx';
 
 // type PendingType = "optimized" | "coverLetter" | null;
@@ -1107,7 +1107,7 @@ const handleDelete = async (item: Entry, category: "base" | "optimized" | "cover
                                         )}
                                         
                                         {resumeData.version === 1 && (
-                                            <ResumePreview1
+                                            <ResumePreview
                                                 data={resumeData.resumeData}
                                                 showLeadership={resumeData.showLeadership}
                                                 showProjects={resumeData.showProjects}

@@ -8,7 +8,7 @@ import { Skills } from "./AiOprimizer/components/Skills";
 import { Education } from "./AiOprimizer/components/Education";
 import { Publications } from "./AiOprimizer/components/Publications";
 import { ResumePreview } from "./AiOprimizer/components/ResumePreview";
-import { ResumePreview1 } from "./AiOprimizer/components/ResumePreview1";
+// import { ResumePreview1 } from "./AiOprimizer/components/ResumePreview1";
 import { ResumePreviewMedical } from "./AiOprimizer/components/ResumePreviewMedical";
 import { DraggableSections } from "./AiOprimizer/components/DraggableSections";
 import { Save, Check } from "lucide-react";
@@ -1270,7 +1270,7 @@ export default function ResumeOptimizerDashboard() {
                                         ) : null}
 
                                         {versionV === 1 ? (
-                                            <ResumePreview1
+                                            <ResumePreview
                                                 data={resumeData}
                                                 showLeadership={showLeadership}
                                                 showProjects={showProjects}
@@ -1464,7 +1464,7 @@ export default function ResumeOptimizerDashboard() {
                                                         )}
 
                                                         {versionV === 1 && (
-                                                            <ResumePreview1
+                                                            <ResumePreview
                                                                 data={optimizedData}
                                                                 showLeadership={showLeadership}
                                                                 showProjects={showProjects}

@@ -19,7 +19,7 @@ import LockedSection from "./components/LockedSection";
 import ResumeParserModal from "./components/ResumeParserModal";
 import Login from "./components/Login";
 import AdminDashboard from "./components/AdminDashboard";
-import { ResumePreview1 } from "./components/ResumePreview1";
+// import { ResumePreview1 } from "./components/ResumePreview1";
 import { PreviewStore } from "./store/PreviewStore";
 import { Publications } from "./components/Publications";
 import { ResumePreviewMedical } from "./components/ResumePreviewMedical";
@@ -2247,7 +2247,7 @@ function App() {
                                     ) : null}
 
                                     {versionV === 1 ? (
-                                        <ResumePreview1
+                                        <ResumePreview
                                             data={resumeData}
                                             showLeadership={showLeadership}
                                             showProjects={showProjects}
@@ -2504,7 +2504,7 @@ function App() {
                                                     )}
 
                                                     {versionV === 1 && (
-                                                        <ResumePreview1
+                                                        <ResumePreview
                                                             data={optimizedData}
                                                             showLeadership={
                                                                 showLeadership
@@ -2599,10 +2599,11 @@ function App() {
                                             />
                                         ) : null}
                                         {versionV == 1 ? (
-                                            <ResumePreview1
+                                            <ResumePreview
                                                 data={resumeData}
                                                 showLeadership={showLeadership}
                                                 showProjects={showProjects}
+                                                showSummary={showSummary}
                                                 showChanges={false}
                                                 changedFields={new Set()}
                                                 sectionOrder={sectionOrder}
@@ -2640,10 +2641,11 @@ function App() {
                                             />
                                         ) : null}
                                         {versionV == 1 ? (
-                                            <ResumePreview1
+                                            <ResumePreview
                                                 data={resumeData}
                                                 showLeadership={showLeadership}
                                                 showProjects={showProjects}
+                                                showSummary={showSummary}
                                                 showChanges={false}
                                                 changedFields={changedFields}
                                                 sectionOrder={sectionOrder}
@@ -2705,7 +2707,7 @@ function App() {
                             ) : null}
 
                             {versionV === 1 ? (
-                                <ResumePreview1
+                                <ResumePreview
                                     data={optimizedData}
                                     showLeadership={showLeadership}
                                     showProjects={showProjects}
@@ -2745,7 +2747,7 @@ function App() {
                             ) : null}
 
                             {versionV === 1 ? (
-                                <ResumePreview1
+                                <ResumePreview
                                     data={resumeData}
                                     showLeadership={showLeadership}
                                     showProjects={showProjects}

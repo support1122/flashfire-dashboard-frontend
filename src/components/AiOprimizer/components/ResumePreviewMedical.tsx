@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { ResumeScalingModal } from "./ResumeScalingModal";
+import React from "react";
+// import React, { useState } from "react";
+// import { ResumeScalingModal } from "./ResumeScalingModal";
 
 interface ResumeData {
     personalInfo: {
@@ -77,7 +78,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     showPrintButtons = true,
     sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education", "publications"],
 }) => {
-    const [showScalingModal, setShowScalingModal] = useState(false);
+    // const [showScalingModal, setShowScalingModal] = useState(false);
     const formatLinkedIn = (linkedin: string) => {
         if (!linkedin) return "";
         if (linkedin.startsWith("http")) {
@@ -822,12 +823,12 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             {/* Print Control Buttons */}
             {showPrintButtons && (
                 <div className="flex gap-3 mb-4 no-print">
-                    <button
+                    {/* <button
                         onClick={() => setShowScalingModal(true)}
                         className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-semibold"
                     >
                         In-House Scaling
-                    </button>
+                    </button> */}
                     <button
                         onClick={handleDownloadPDF}
                         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
@@ -844,13 +845,13 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             )}
 
             {/* Scaling Modal */}
-            <ResumeScalingModal
+            {/* <ResumeScalingModal
                 isOpen={showScalingModal}
                 onClose={() => setShowScalingModal(false)}
                 resumeContent={resumeContent}
                 resumeData={data}
                 version={2}
-            />
+            /> */}
 
             {/* Screen Preview */}
             <div
