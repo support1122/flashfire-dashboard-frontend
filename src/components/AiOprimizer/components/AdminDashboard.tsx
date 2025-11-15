@@ -9,6 +9,7 @@ import {
 import RegisterOPS  from './Operations/RegisterOPS';
 import AddignUser from './Operations/AddignUser';
 import OperationsDirectory from './Operations/OperationsDirectory';
+import AssignResumeModal from '../../Admin/AssignResumeModal';
 
 interface User {
   id: string;
@@ -63,9 +64,10 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
   const [sessionKeys, setSessionKeys] = useState<SessionKey[]>([]);
   const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'history' | 'sessions' | 'Admin'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'history' | 'sessions' | 'Admin' | 'resume'>('overview');
   const [showAddUser, setShowAddUser] = useState(false);
   const [showGenerateSessionKey, setShowGenerateSessionKey] = useState(false);
+  const [showAssignResumeModal, setShowAssignResumeModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
 
@@ -456,11 +458,12 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                 { key: 'users', label: 'User Management', icon: Users },
                 { key: 'history', label: 'Login Activity', icon: Activity },
                 { key: 'sessions', label: 'Session Management', icon: Shield },
-                { key: 'Admin', label: 'Operations management', icon: Shield }
+                { key: 'Admin', label: 'Operations management', icon: Shield },
+                { key: 'resume', label: 'Resume Management', icon: FileText }
               ].map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
-                  onClick={() => setActiveTab(key as 'overview' | 'users' | 'history' | 'sessions')}
+                  onClick={() => setActiveTab(key as 'overview' | 'users' | 'history' | 'sessions' | 'Admin' | 'resume')}
                   className={`flex items-center space-x-2 py-4 px-6 text-sm font-medium border-b-2 transition-all duration-200 ${
                     activeTab === key
                       ? 'border-blue-500 text-blue-600 bg-blue-50/50'
@@ -832,8 +835,64 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                 </div>
               </div>
             )}
+
+            {/* Resume Management Tab */}
+            {activeTab === 'resume' && (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+                  <h3 className="text-2xl font-bold text-gray-900">Resume Management</h3>
+                  <button
+                    onClick={() => setShowAssignResumeModal(true)}
+                    className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>Assign Resume</span>
+                  </button>
+                </div>
+
+                <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+                      <FileText className="h-5 w-5 text-purple-600" />
+                      <span>Resume Assignment</span>
+                    </h4>
+                  </div>
+                  <p className="text-gray-600 mb-4">
+                    Assign resumes to users. Each user can have only one assigned resume. 
+                    If a user already has a resume assigned, you can replace it with a new one.
+                  </p>
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
+                    <div className="flex items-start space-x-4">
+                      <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl">
+                        <FileText className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h5 className="font-semibold text-gray-900 mb-2">How to Assign a Resume</h5>
+                        <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
+                          <li>Click the "Assign Resume" button above</li>
+                          <li>Select a user from the dropdown</li>
+                          <li>Select a resume to assign</li>
+                          <li>If the user already has a resume, confirm the replacement</li>
+                          <li>The resume will be automatically loaded when the user opens the Resume Optimizer</li>
+                        </ol>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Assign Resume Modal */}
+        <AssignResumeModal
+          open={showAssignResumeModal}
+          onClose={() => setShowAssignResumeModal(false)}
+          onAssignSuccess={() => {
+            setShowAssignResumeModal(false);
+            // Optionally refresh data or show success message
+          }}
+        />
 
         {/* Generate Session Key Modal */}
         {showGenerateSessionKey && (

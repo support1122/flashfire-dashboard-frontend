@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
+// import { ResumeScalingModal } from "./ResumeScalingModal";
 
 interface ResumeData {
     personalInfo: {
@@ -84,6 +85,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
 }) => {
     const [scalingFactor, setScalingFactor] = useState(1);
     const [showWarningModal, setShowWarningModal] = useState(false);
+    // const [showScalingModal, setShowScalingModal] = useState(false);
     const measureRef = useRef<HTMLDivElement>(null);
 
     // Enhanced print function with automatic settings
@@ -377,15 +379,17 @@ The resume will print across multiple pages if needed, ensuring no content is cu
             }
 
             // Work experience
-            totalLines = data.workExperience.length;
-            data.workExperience.forEach((exp) => {
-                totalLines += 2; // Header ~2 lines
-                exp.responsibilities
-                    .filter((r) => r.trim())
-                    .forEach((r) => {
-                        totalLines += Math.ceil(r.length / 60);
-                    });
-            });
+            if (data.workExperience && data.workExperience.length > 0) {
+                totalLines += data.workExperience.length;
+                data.workExperience.forEach((exp) => {
+                    totalLines += 2; // Header ~2 lines
+                    exp.responsibilities
+                        .filter((r) => r.trim())
+                        .forEach((r) => {
+                            totalLines += Math.ceil(r.length / 60);
+                        });
+                });
+            }
 
             // Projects if shown
             if (showProjects && data.projects) {
@@ -409,21 +413,25 @@ The resume will print across multiple pages if needed, ensuring no content is cu
             }
 
             // Skills
-            data.skills.forEach((s) => {
-                const text = `${s.category}: ${s.skills}`;
-                totalLines += Math.ceil(text.length / 60);
-            });
+            if (data.skills && data.skills.length > 0) {
+                data.skills.forEach((s) => {
+                    const text = `${s.category}: ${s.skills}`;
+                    totalLines += Math.ceil(text.length / 60);
+                });
+            }
 
             // Education
-            data.education.forEach((e) => {
-                const mainText = `${e.institution}${
-                    e.location ? `, ${e.location}` : ""
-                } - ${e.degree}${e.field ? `, ${e.field}` : ""}`;
-                totalLines += Math.ceil(mainText.length / 60);
-                if (e.additionalInfo) {
-                    totalLines += Math.ceil(e.additionalInfo.length / 60);
-                }
-            });
+            if (data.education && data.education.length > 0) {
+                data.education.forEach((e) => {
+                    const mainText = `${e.institution}${
+                        e.location ? `, ${e.location}` : ""
+                    } - ${e.degree}${e.field ? `, ${e.field}` : ""}`;
+                    totalLines += Math.ceil(mainText.length / 60);
+                    if (e.additionalInfo) {
+                        totalLines += Math.ceil(e.additionalInfo.length / 60);
+                    }
+                });
+            }
 
             // Publications if shown
             if (showPublications && data.publications) {
@@ -554,7 +562,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             style={{
                                 fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "2px",
+                                paddingBottom: "8px",
                                 marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
                                 letterSpacing: "-0.025em",
@@ -588,7 +596,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             style={{
                                 fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "2px",
+                                paddingBottom: "8px",
                                 marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
                                 letterSpacing: "-0.025em",
@@ -596,7 +604,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         >
                             WORK EXPERIENCE
                         </div>
-                        {data.workExperience.length > 0 ? (
+                        {data.workExperience && data.workExperience.length > 0 ? (
                             data.workExperience.map((exp, index) => (
                                 <div
                                     key={exp.id}
@@ -739,7 +747,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             style={{
                                 fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "2px",
+                                paddingBottom: "8px",
                                 marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
                                 letterSpacing: "-0.025em",
@@ -895,7 +903,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             style={{
                                 fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "2px",
+                                paddingBottom: "8px",
                                 marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
                                 letterSpacing: "-0.025em",
@@ -934,7 +942,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 fontSize:
                                     Math.max(10, Math.round(12 * scalingFactor)) + "px",
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "1px",
+                                paddingBottom: "8px",
                                 marginBottom:
                                     Math.max(3, Math.round(4 * scalingFactor)) + "px",
                                 fontWeight: "bold",
@@ -943,7 +951,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         >
                             SKILLS
                         </div>
-                        {data.skills.length > 0 ? (
+                        {data.skills && data.skills.length > 0 ? (
                             data.skills.map((category) => (
                                 <div
                                     key={category.id}
@@ -1024,7 +1032,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             style={{
                                 fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "2px",
+                                paddingBottom: "8px",
                                 marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
                                 letterSpacing: "-0.025em",
@@ -1033,7 +1041,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             EDUCATION
                         </div>
                         <div>
-                            {data.education.length > 0 ? (
+                            {data.education && data.education.length > 0 ? (
                                 data.education.map((edu, index) => (
                                     <div
                                         key={edu.id}
@@ -1142,7 +1150,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             style={{
                                 fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "2px",
+                                paddingBottom: "8px",
                                 marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
                                 letterSpacing: "-0.025em",
@@ -1465,6 +1473,21 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                     className="no-print"
                     style={{ marginBottom: "1rem", textAlign: "center" }}
                 >
+                    {/* <button
+                        onClick={() => setShowScalingModal(true)}
+                        style={{
+                            backgroundColor: "#10b981",
+                            color: "white",
+                            padding: "8px 16px",
+                            border: "none",
+                            borderRadius: "4px",
+                            marginRight: "8px",
+                            cursor: "pointer",
+                            fontWeight: "600",
+                        }}
+                    >
+                        In-House Scaling
+                    </button> */}
                     <button
                         onClick={handlePrint}
                         style={{
@@ -1494,6 +1517,15 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                     </button>
                 </div>
             )}
+
+            {/* Scaling Modal */}
+            {/* <ResumeScalingModal
+                isOpen={showScalingModal}
+                onClose={() => setShowScalingModal(false)}
+                resumeContent={resumeContent}
+                resumeData={data}
+                version={0}
+            /> */}
 
             {/* Screen Preview */}
             <div

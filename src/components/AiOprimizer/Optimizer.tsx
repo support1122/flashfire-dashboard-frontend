@@ -19,7 +19,7 @@ import LockedSection from "./components/LockedSection";
 import ResumeParserModal from "./components/ResumeParserModal";
 import Login from "./components/Login";
 import AdminDashboard from "./components/AdminDashboard";
-import { ResumePreview1 } from "./components/ResumePreview1";
+// import { ResumePreview1 } from "./components/ResumePreview1";
 import { PreviewStore } from "./store/PreviewStore";
 import { Publications } from "./components/Publications";
 import { ResumePreviewMedical } from "./components/ResumePreviewMedical";
@@ -1836,7 +1836,7 @@ function App() {
                                 <nav className="flex space-x-4">
                                     {userRole === "admin" && (
                                         <>
-                                            <button
+                                            {/* <button
                                                 onClick={() => {
                                                     setVersion(1);
                                                     setShowModal(true);
@@ -1844,7 +1844,7 @@ function App() {
                                                 className="px-4 py-2 rounded-md text-sm font-medium transition-colors bg-orange-600 text-white hover:bg-orange-700"
                                             >
                                                 All resume V1
-                                            </button>
+                                            </button> */}
                                             <button
                                                 onClick={() => {
                                                     setVersion(2);
@@ -2095,13 +2095,13 @@ function App() {
                                         fresh
                                     </p>
                                     <div className="flex gap-4">
-                                        <button
+                                        {/* <button
                                             onClick={handleV1Resume}
                                             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium mt-2"
                                         >
                                             <LucideSaveAll size={18} />
                                             Save to V1 Resume
-                                        </button>
+                                        </button> */}
                                         <button
                                             onClick={handleV2Resume}
                                             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium mt-2"
@@ -2247,7 +2247,7 @@ function App() {
                                     ) : null}
 
                                     {versionV === 1 ? (
-                                        <ResumePreview1
+                                        <ResumePreview
                                             data={resumeData}
                                             showLeadership={showLeadership}
                                             showProjects={showProjects}
@@ -2504,7 +2504,7 @@ function App() {
                                                     )}
 
                                                     {versionV === 1 && (
-                                                        <ResumePreview1
+                                                        <ResumePreview
                                                             data={optimizedData}
                                                             showLeadership={
                                                                 showLeadership
@@ -2599,10 +2599,11 @@ function App() {
                                             />
                                         ) : null}
                                         {versionV == 1 ? (
-                                            <ResumePreview1
+                                            <ResumePreview
                                                 data={resumeData}
                                                 showLeadership={showLeadership}
                                                 showProjects={showProjects}
+                                                showSummary={showSummary}
                                                 showChanges={false}
                                                 changedFields={new Set()}
                                                 sectionOrder={sectionOrder}
@@ -2640,10 +2641,11 @@ function App() {
                                             />
                                         ) : null}
                                         {versionV == 1 ? (
-                                            <ResumePreview1
+                                            <ResumePreview
                                                 data={resumeData}
                                                 showLeadership={showLeadership}
                                                 showProjects={showProjects}
+                                                showSummary={showSummary}
                                                 showChanges={false}
                                                 changedFields={changedFields}
                                                 sectionOrder={sectionOrder}
@@ -2705,7 +2707,7 @@ function App() {
                             ) : null}
 
                             {versionV === 1 ? (
-                                <ResumePreview1
+                                <ResumePreview
                                     data={optimizedData}
                                     showLeadership={showLeadership}
                                     showProjects={showProjects}
@@ -2745,7 +2747,7 @@ function App() {
                             ) : null}
 
                             {versionV === 1 ? (
-                                <ResumePreview1
+                                <ResumePreview
                                     data={resumeData}
                                     showLeadership={showLeadership}
                                     showProjects={showProjects}

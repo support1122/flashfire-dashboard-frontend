@@ -32,7 +32,7 @@ import {
     getOptimizedResumeTitle,
 } from "../utils/getOptimizedResumeUrl";
 import { ResumePreview } from "./AiOprimizer/components/ResumePreview";
-import { ResumePreview1 } from "./AiOprimizer/components/ResumePreview1";
+// import { ResumePreview1 } from "./AiOprimizer/components/ResumePreview1";
 import { ResumePreviewMedical } from "./AiOprimizer/components/ResumePreviewMedical";
 
 /* ---------- ENV ---------- */
@@ -1315,7 +1315,7 @@ useEffect(() => {
                                     )}
                                     
                                     {resumeData.version === 1 && (
-                                        <ResumePreview1
+                                        <ResumePreview
                                             data={resumeData.resumeData}
                                             showLeadership={resumeData.showLeadership}
                                             showProjects={resumeData.showProjects}
@@ -1538,38 +1538,274 @@ useEffect(() => {
                         </div>
                         <div className="flex items-center space-x-4">
                             {role == "operations" ? (
-                                <button
-                                    onClick={async () => {
-                                        // Try _id first, then fall back to jobID
-                                        const mongoId = jobDetails._id;
-                                        const jobId = jobDetails.jobID;
-                                        
-                                        // Prefer _id if available, otherwise use jobID
-                                        const idToUse = mongoId || jobId;
-                                        
-                                        if (!idToUse) {
-                                            console.error('No ID found in job details:', jobDetails);
-                                            toastUtils.error('Job ID not found. Please refresh the page and try again.');
-                                            return;
-                                        }
-                                        
-                                        // Use appropriate query parameter
-                                        const queryParam = mongoId ? 'id' : 'jobId';
-                                        const optimizeUrl = `${window.location.origin}/optimize/${idToUse}?view=editor&${queryParam}=${idToUse}`;
-                                        
-                                        // Copy URL to clipboard
+                                <>
+                                    <button
+                                        onClick={async () => {
+                                            // Try _id first, then fall back to jobID
+                                            const mongoId = jobDetails._id;
+                                            const jobId = jobDetails.jobID;
+                                            
+                                            // Prefer _id if available, otherwise use jobID
+                                            const idToUse = mongoId || jobId;
+                                            
+                                            if (!idToUse) {
+                                                console.error('No ID found in job details:', jobDetails);
+                                                toastUtils.error('Job ID not found. Please refresh the page and try again.');
+                                                return;
+                                            }
+                                            
+                                            // Use appropriate query parameter
+                                            const queryParam = mongoId ? 'id' : 'jobId';
+                                            const optimizeUrl = `${window.location.origin}/optimize/${idToUse}?view=editor&${queryParam}=${idToUse}`;
+                                            
+                                            // Copy URL to clipboard
+                                            try {
+                                                await navigator.clipboard.writeText(optimizeUrl);
+                                                toastUtils.success("Optimize URL copied to clipboard!");
+                                            } catch (error) {
+                                                console.error('Failed to copy URL:', error);
+                                                toastUtils.error("Failed to copy URL to clipboard");
+                                            }
+                                        }}
+                                        className="hover:bg-orange-900 hover:bg-opacity-20 p-2 rounded-full transition-colors bg-orange-700 px-4 py-2 text-white font-medium"
+                                    >
+                                        Copy Optimize URL
+                                    </button>
+                                    <button
+                                        onClick={async () => {
                                         try {
-                                            await navigator.clipboard.writeText(optimizeUrl);
-                                            toastUtils.success("Optimize URL copied to clipboard!");
-                                        } catch (error) {
-                                            console.error('Failed to copy URL:', error);
-                                            toastUtils.error("Failed to copy URL to clipboard");
+                                            // Get user email - for operations, get from currentUser (the client whose job this is)
+                                            const userEmail = currentUser?.email;
+                                            
+                                            if (!userEmail) {
+                                                toastUtils.error("User email not found. Cannot optimize resume.");
+                                                return;
+                                            }
+
+                                            // Get job description - try multiple sources
+                                            let jobDesc = jobDetails?.jobDescription || getJobDescription(jobDetails?.jobID) || "";
+                                            
+                                            // If no job description found, try to load it
+                                            if (!jobDesc && jobDetails?.jobID) {
+                                                if (!isJobDescriptionLoading(jobDetails.jobID)) {
+                                                    await loadJobDescription(jobDetails.jobID);
+                                                    // Wait a bit for it to load
+                                                    await new Promise(resolve => setTimeout(resolve, 500));
+                                                    jobDesc = getJobDescription(jobDetails.jobID) || "";
+                                                }
+                                            }
+                                            
+                                            if (!jobDesc) {
+                                                toastUtils.error("Job description not found. Please add job description first.");
+                                                return;
+                                            }
+
+                                            const loadingToast = toastUtils.loading("Optimizing resume... Please wait.");
+
+                                            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+                                            const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8086";
+
+                                            // Step 1: Get user's assigned resume
+                                            const resumeResponse = await fetch(`${apiUrl}/api/resume-by-email`, {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ email: userEmail }),
+                                            });
+
+                                            if (!resumeResponse.ok) {
+                                                toastUtils.dismissToast(loadingToast);
+                                                if (resumeResponse.status === 404) {
+                                                    toastUtils.error("No resume assigned to this user. Please assign a resume first.");
+                                                } else {
+                                                    toastUtils.error("Failed to load user's resume.");
+                                                }
+                                                return;
+                                            }
+
+                                            const resumeData = await resumeResponse.json();
+                                            
+                                            if (!resumeData || !resumeData.personalInfo) {
+                                                toastUtils.dismissToast(loadingToast);
+                                                toastUtils.error("Invalid resume data.");
+                                                return;
+                                            }
+
+                                            // Step 2: Optimize the resume
+                                            const prompt = "if you recieve any HTML tages please ignore it and optimize the resume according to the given JD. Make sure not to cut down or shorten any points in the Work Experience section. IN all fields please do not cut down or shorten any points or content. For example, if a role in the base resume has 6 points, the optimized version should also retain all 6 points. The content should be aligned with the JD but the number of points per role must remain the same. Do not touch or optimize publications if given to you.";
+
+                                            const filteredResumeForOptimization = {
+                                                ...resumeData,
+                                                summary: resumeData.checkboxStates?.showSummary !== false ? resumeData.summary : "",
+                                                projects: resumeData.checkboxStates?.showProjects ? resumeData.projects : [],
+                                                leadership: resumeData.checkboxStates?.showLeadership ? resumeData.leadership : [],
+                                                publications: resumeData.publications || [],
+                                            };
+
+                                            const optimizeResponse = await fetch(`${apiUrl}/api/optimize-with-gemini`, {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({
+                                                    resume_data: filteredResumeForOptimization,
+                                                    job_description: prompt + jobDesc,
+                                                }),
+                                            });
+
+                                            if (!optimizeResponse.ok) {
+                                                toastUtils.dismissToast(loadingToast);
+                                                throw new Error(`Optimization failed: ${optimizeResponse.status}`);
+                                            }
+
+                                            const optimizedData = await optimizeResponse.json();
+
+                                            if (!optimizedData || (!optimizedData.summary && !optimizedData.workExperience)) {
+                                                toastUtils.dismissToast(loadingToast);
+                                                toastUtils.error("Optimization failed. Please try again.");
+                                                return;
+                                            }
+
+                                            // Step 3: Calculate changes
+                                            const getChangedFieldsOnly = () => {
+                                                const startingContent: any = {};
+                                                const finalChanges: any = {};
+
+                                                // Personal Info changes
+                                                const personalInfoChanged = Object.keys(resumeData.personalInfo).filter(
+                                                    (key) => resumeData.personalInfo[key] !== optimizedData.personalInfo[key]
+                                                );
+                                                if (personalInfoChanged.length > 0) {
+                                                    startingContent.personalInfo = {};
+                                                    finalChanges.personalInfo = {};
+                                                    personalInfoChanged.forEach((key) => {
+                                                        startingContent.personalInfo[key] = resumeData.personalInfo[key];
+                                                        finalChanges.personalInfo[key] = optimizedData.personalInfo[key];
+                                                    });
+                                                }
+
+                                                // Summary changes
+                                                if (resumeData.summary !== optimizedData.summary) {
+                                                    startingContent.summary = resumeData.summary;
+                                                    finalChanges.summary = optimizedData.summary;
+                                                }
+
+                                                // Work Experience changes
+                                                const changedWorkExp = resumeData.workExperience
+                                                    .map((orig: any, idx: number) => {
+                                                        const opt = optimizedData.workExperience[idx];
+                                                        if (!opt) return null;
+                                                        const changes: any = {};
+                                                        const originals: any = {};
+                                                        let hasChanges = false;
+                                                        ["position", "company", "duration", "location", "roleType"].forEach((field) => {
+                                                            if (orig[field] !== opt[field]) {
+                                                                originals[field] = orig[field];
+                                                                changes[field] = opt[field];
+                                                                hasChanges = true;
+                                                            }
+                                                        });
+                                                        if (JSON.stringify(orig.responsibilities) !== JSON.stringify(opt.responsibilities)) {
+                                                            originals.responsibilities = [...orig.responsibilities];
+                                                            changes.responsibilities = [...opt.responsibilities];
+                                                            hasChanges = true;
+                                                        }
+                                                        return hasChanges ? { id: orig.id, original: originals, optimized: changes } : null;
+                                                    })
+                                                    .filter(Boolean);
+
+                                                if (changedWorkExp.length > 0) {
+                                                    startingContent.workExperience = changedWorkExp.map((item: any) => ({
+                                                        id: item.id,
+                                                        ...item.original,
+                                                    }));
+                                                    finalChanges.workExperience = changedWorkExp.map((item: any) => ({
+                                                        id: item.id,
+                                                        ...item.optimized,
+                                                    }));
+                                                }
+
+                                                // Skills changes
+                                                const changedSkills = resumeData.skills
+                                                    .map((orig: any, idx: number) => {
+                                                        const opt = optimizedData.skills[idx];
+                                                        if (!opt) return null;
+                                                        if (orig.category !== opt.category || orig.skills !== opt.skills) {
+                                                            return {
+                                                                id: orig.id,
+                                                                original: { category: orig.category, skills: orig.skills },
+                                                                optimized: { category: opt.category, skills: opt.skills },
+                                                            };
+                                                        }
+                                                        return null;
+                                                    })
+                                                    .filter(Boolean);
+
+                                                if (changedSkills.length > 0) {
+                                                    startingContent.skills = changedSkills.map((item: any) => ({
+                                                        id: item.id,
+                                                        ...item.original,
+                                                    }));
+                                                    finalChanges.skills = changedSkills.map((item: any) => ({
+                                                        id: item.id,
+                                                        ...item.optimized,
+                                                    }));
+                                                }
+
+                                                return { startingContent, finalChanges };
+                                            };
+
+                                            const { startingContent, finalChanges } = getChangedFieldsOnly();
+
+                                            // Step 4: Save optimized resume to job
+                                            const jobId = jobDetails._id || jobDetails.jobID;
+                                            const saveResponse = await fetch(`${apiBaseUrl}/saveChangedSession`, {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({
+                                                    id: jobId,
+                                                    startingContent: startingContent,
+                                                    finalChanges: finalChanges,
+                                                    optimizedResume: {
+                                                        resumeData: optimizedData,
+                                                        hasResume: true,
+                                                        showSummary: resumeData.checkboxStates?.showSummary !== false,
+                                                        showProjects: resumeData.checkboxStates?.showProjects || false,
+                                                        showLeadership: resumeData.checkboxStates?.showLeadership || false,
+                                                        showPublications: resumeData.checkboxStates?.showPublications || false,
+                                                        version: resumeData.V || 0,
+                                                        sectionOrder: resumeData.sectionOrder || [
+                                                            "personalInfo",
+                                                            "summary",
+                                                            "workExperience",
+                                                            "projects",
+                                                            "leadership",
+                                                            "skills",
+                                                            "education",
+                                                            "publications"
+                                                        ]
+                                                    }
+                                                }),
+                                            });
+
+                                            toastUtils.dismissToast(loadingToast);
+
+                                            if (saveResponse.ok) {
+                                                toastUtils.success("✅ Resume optimized and saved successfully!");
+                                                // Refresh job data
+                                                setTimeout(() => {
+                                                    window.location.reload();
+                                                }, 1500);
+                                            } else {
+                                                throw new Error("Failed to save optimized resume");
+                                            }
+                                        } catch (error: any) {
+                                            console.error("Error optimizing resume:", error);
+                                            toastUtils.error(error.message || "Failed to optimize resume. Please try again.");
                                         }
                                     }}
-                                    className="hover:bg-orange-900 hover:bg-opacity-20 p-2 rounded-full transition-colors bg-orange-700 px-4 py-2"
+                                    className="hover:bg-orange-900 hover:bg-opacity-20 p-2 rounded-full transition-colors bg-orange-700 px-4 py-2 text-white font-medium"
                                 >
-                                    Copy Optimize URL
+                                    Optimize
                                 </button>
+                                </>
                             ) : null}
                             <button
                                 onClick={() => setShowJobModal(false)}
