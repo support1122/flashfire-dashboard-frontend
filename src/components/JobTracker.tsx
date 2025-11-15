@@ -90,9 +90,9 @@ useEffect(() => {
 
 
 
-    useEffect(() => {
-        if (!showJobModal) setPendingMove(null);
-    }, [showJobModal]);
+useEffect(() => {
+    if (!showJobModal) setPendingMove(null);
+}, [showJobModal]);
 
     console.log("Role in job tracker is ", role);
 
@@ -370,8 +370,6 @@ const handleDragEnd = (e: React.DragEvent) => {
         const statusSuffix = role === "operations" ? " by " + (name || "operations") : " by user";
         const newStatus = status + statusSuffix;
 
-        console.log("🔄 Starting job status update:", { jobID, status, newStatus, role });
-
         // OPTIMISTIC UPDATE: Update UI immediately
         setUserJobs((prevJobs) =>
             prevJobs.map((j) =>
@@ -385,14 +383,11 @@ const handleDragEnd = (e: React.DragEvent) => {
             )
         );
 
-        let responseHandled = false;
         try {
             const endpoint =
                 role === "operations"
                     ? `${API_BASE_URL}/operations/jobs`
                     : `${API_BASE_URL}/updatechanges`;
-
-            console.log("📤 Sending request to:", endpoint);
 
             let reqToServer = await fetch(endpoint, {
                 method: "PUT",
@@ -414,126 +409,44 @@ const handleDragEnd = (e: React.DragEvent) => {
                 }),
             });
 
-            console.log("📥 Response received:", {
-                status: reqToServer.status,
-                statusText: reqToServer.statusText,
-                ok: reqToServer.ok,
-                headers: Object.fromEntries(reqToServer.headers.entries())
-            });
-
-            // Check if response is OK before parsing
-            if (!reqToServer.ok) {
-                // Try to parse error response
-                let errorResponse;
-                try {
-                    errorResponse = await reqToServer.json();
-                } catch {
-                    errorResponse = { message: `Server error: ${reqToServer.status} ${reqToServer.statusText}` };
-                }
-
-                // Handle removal limit exceeded
-                if (errorResponse.message === "Removal limit exceeded") {
-                    setUserJobs((prevJobs) =>
-                        prevJobs.map((j) =>
-                            j.jobID === jobID ? { ...j, currentStatus: originalStatus } : j
-                        )
-                    );
-                    clearPendingUpdate(jobID);
-                    setShowRemovalLimitModal(true);
-                    console.log("Removal limit exceeded for user");
-                    responseHandled = true;
-                    return;
-                }
-
-                // Other server errors - revert to original state
-                setUserJobs((prevJobs) =>
-                    prevJobs.map((j) =>
-                        j.jobID === jobID ? { ...j, currentStatus: originalStatus } : j
-                    )
-                );
-                clearPendingUpdate(jobID);
-                toastUtils.error(errorResponse.message || "Failed to update job status");
-                console.error("Server error updating job status:", errorResponse);
-                responseHandled = true;
-                return;
-            }
-
-            // Response is OK (200), parse JSON
-            let resFromServer;
-            try {
-                const responseText = await reqToServer.text();
-                console.log("Raw response text:", responseText.substring(0, 200)); // Log first 200 chars
-                
-                if (!responseText || responseText.trim() === '') {
-                    console.warn("Empty response body");
-                    // Empty response but 200 OK - assume success
-                    clearPendingUpdate(jobID);
-                    toastUtils.success("Job status updated successfully!");
-                    responseHandled = true;
-                    return;
-                }
-                
-                resFromServer = JSON.parse(responseText);
-                console.log("✅ Parsed server response:", {
-                    message: resFromServer?.message,
-                    hasUpdatedJobs: !!resFromServer?.updatedJobs,
-                    updatedJobsCount: Array.isArray(resFromServer?.updatedJobs) ? resFromServer.updatedJobs.length : 0
-                });
-            } catch (parseError) {
-                console.error("❌ JSON parse error:", parseError);
-                console.error("Response status was:", reqToServer.status);
-                // If JSON parsing fails but status is 200, assume success based on HTTP status
+            let resFromServer = await reqToServer.json();
+            if (resFromServer.message === "Jobs updated successfully") {
+                // Server confirmed - update with server data
+                setUserJobs(resFromServer?.updatedJobs);
                 clearPendingUpdate(jobID);
                 toastUtils.success("Job status updated successfully!");
-                console.log("✅ Job status updated (assuming success from 200 OK despite parse error)");
-                responseHandled = true;
-                return;
-            }
-
-            // SIMPLE RULE: If HTTP status is 200 OK, it's a success - update UI and show success
-            // The optimistic update is already done, so we just need to sync with server data if available
-            if (resFromServer?.updatedJobs && Array.isArray(resFromServer.updatedJobs) && resFromServer.updatedJobs.length > 0) {
-                // Update with server data - this will overwrite the optimistic update with server truth
-                console.log("✅ Updating UI with", resFromServer.updatedJobs.length, "jobs from server");
-                setUserJobs(resFromServer.updatedJobs);
-            } else {
-                // Server returned 200 OK but no updatedJobs - keep optimistic update
-                console.log("✅ Server returned 200 OK but no updatedJobs array - keeping optimistic update");
-            }
-            
-            // Always show success for 200 OK - NEVER show error for 200 OK
-            clearPendingUpdate(jobID);
-            toastUtils.success("Job status updated successfully!");
-            console.log("✅ Success message shown - update complete");
-            responseHandled = true;
-        } catch (error) {
-            console.error("❌ Error updating job status:", error);
-            console.error("Error details:", {
-                errorType: error?.constructor?.name,
-                errorMessage: (error as any)?.message,
-                responseHandled,
-                errorStack: (error as any)?.stack
-            });
-            
-            // Only revert if we haven't already handled a successful response
-            if (!responseHandled) {
-                console.log("Reverting optimistic update due to error");
+                console.log("Job status updated:", resFromServer?.updatedJobs);
+            } else if (resFromServer.message === "Removal limit exceeded") {
+                // Handle removal limit exceeded
                 setUserJobs((prevJobs) =>
                     prevJobs.map((j) =>
                         j.jobID === jobID ? { ...j, currentStatus: originalStatus } : j
                     )
                 );
                 clearPendingUpdate(jobID);
-                // Only show network error for actual network failures
-                if (error instanceof TypeError && (error.message.includes('fetch') || error.message.includes('Failed to fetch'))) {
-                    toastUtils.error("Network error while updating job status");
-                } else {
-                    toastUtils.error("Error updating job status. Please try again.");
-                }
+                setShowRemovalLimitModal(true);
+                console.log("Removal limit exceeded for user");
             } else {
-                // Response was already handled successfully, just log the error - DON'T show error to user
-                console.warn("⚠️ Error occurred after successful response handling (ignoring):", error);
+                // Server failed - revert to original state
+                setUserJobs((prevJobs) =>
+                    prevJobs.map((j) =>
+                        j.jobID === jobID ? { ...j, currentStatus: originalStatus } : j
+                    )
+                );
+                clearPendingUpdate(jobID);
+                toastUtils.error("Failed to update job status");
+                console.error("Failed to update job status on server");
             }
+        } catch (error) {
+            console.error("Error updating job status:", error);
+            // Network error - revert to original state
+            setUserJobs((prevJobs) =>
+                prevJobs.map((j) =>
+                    j.jobID === jobID ? { ...j, currentStatus: originalStatus } : j
+                )
+            );
+            clearPendingUpdate(jobID);
+            toastUtils.error("Network error while updating job status");
         }
     };
 
@@ -710,8 +623,8 @@ const handleDragEnd = (e: React.DragEvent) => {
                                 })
                                 .sort(
                                     (a, b) =>
-                                        tsFromUpdatedAt(a.dateAdded) -
-                                        tsFromUpdatedAt(b.dateAdded)
+                                        tsFromUpdatedAt(b.updatedAt) -
+                                        tsFromUpdatedAt(a.updatedAt)
                                 )
                                 : [];
 
