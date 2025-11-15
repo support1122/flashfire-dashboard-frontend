@@ -1571,7 +1571,7 @@ useEffect(() => {
                                     >
                                         Copy Optimize URL
                                     </button>
-                                    <button
+                                    {/* <button
                                         onClick={async () => {
                                         try {
                                             // Get user email - for operations, get from currentUser (the client whose job this is)
@@ -1804,7 +1804,7 @@ useEffect(() => {
                                     className="hover:bg-orange-900 hover:bg-opacity-20 p-2 rounded-full transition-colors bg-orange-700 px-4 py-2 text-white font-medium"
                                 >
                                     Optimize
-                                </button>
+                                </button> */}
                                 </>
                             ) : null}
                             <button
