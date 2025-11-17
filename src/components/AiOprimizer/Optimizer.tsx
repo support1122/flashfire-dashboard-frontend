@@ -434,21 +434,25 @@ function App() {
             setShowLeadership(
                 resumeData.checkboxStates.showLeadership ?? false
             );
-            const hasValidPublications =
-                resumeData.publications &&
-                resumeData.publications.length > 0 &&
-                resumeData.publications.some(
-                    (item) => item.details && item.details.trim() !== ""
-                );
-            const hasOnlyEmptyPublications =
-                resumeData.publications &&
-                resumeData.publications.length > 0 &&
-                resumeData.publications.every(
-                    (item) => !item.details || item.details.trim() === ""
-                );
-            const finalHasPublications =
-                hasValidPublications && !hasOnlyEmptyPublications;
-            setShowPublications(finalHasPublications);
+            if (resumeData.checkboxStates.showPublications !== undefined) {
+                setShowPublications(resumeData.checkboxStates.showPublications);
+            } else {
+                const hasValidPublications =
+                    resumeData.publications &&
+                    resumeData.publications.length > 0 &&
+                    resumeData.publications.some(
+                        (item) => item.details && item.details.trim() !== ""
+                    );
+                const hasOnlyEmptyPublications =
+                    resumeData.publications &&
+                    resumeData.publications.length > 0 &&
+                    resumeData.publications.every(
+                        (item) => !item.details || item.details.trim() === ""
+                    );
+                const finalHasPublications =
+                    hasValidPublications && !hasOnlyEmptyPublications;
+                setShowPublications(finalHasPublications);
+            }
             console.log(
                 "Checkboxes set from saved states - Summary:",
                 resumeData.checkboxStates.showSummary,
@@ -535,6 +539,21 @@ function App() {
                     (!item.organization || item.organization.trim() === "")
             );
 
+        const hasValidPublications =
+            resumeData.publications &&
+            resumeData.publications.length > 0 &&
+            resumeData.publications.some(
+                (item) => item.details && item.details.trim() !== ""
+            );
+        const hasOnlyEmptyPublications =
+            resumeData.publications &&
+            resumeData.publications.length > 0 &&
+            resumeData.publications.every(
+                (item) => !item.details || item.details.trim() === ""
+            );
+        const finalHasPublications =
+            hasValidPublications && !hasOnlyEmptyPublications;
+
         // Final decision: Only show if there's actual content, not just empty objects
         const finalHasSummary = Boolean(hasValidSummary);
         const finalHasProjects = hasValidProjects && !hasOnlyEmptyProjects;
@@ -550,12 +569,15 @@ function App() {
             hasValidLeadership,
             hasOnlyEmptyLeadership,
             finalHasLeadership,
+            hasValidPublications,
+            finalHasPublications,
         });
 
         // Set the checkboxes based on actual data
         setShowSummary(finalHasSummary);
         setShowProjects(finalHasProjects);
         setShowLeadership(finalHasLeadership);
+        setShowPublications(finalHasPublications);
 
         console.log(
             "Checkboxes set from content analysis - Summary:",
@@ -563,7 +585,9 @@ function App() {
             "Projects:",
             finalHasProjects,
             "Leadership:",
-            finalHasLeadership
+            finalHasLeadership,
+            "Publications:",
+            finalHasPublications
         );
     };
 
@@ -1876,6 +1900,7 @@ function App() {
                                         onSelect={(
                                             resume: ResumeDataType & {
                                                 checkboxStates?: any;
+                                                V?: number;
                                             }
                                         ) => {
                                             setResumeData(resume);
@@ -1886,6 +1911,13 @@ function App() {
                                             if (userRole === "admin") {
                                                 checkAdminAndUnlock();
                                             }
+                                            
+                                            console.log("Resume V field:", resume.V);
+                                            if (resume.V !== undefined) {
+                                                setVersion(resume.V);
+                                                console.log("Set versionV to:", resume.V);
+                                            }
+                                            
                                             setCurrentResumeView("editor");
 
                                             // setModalVersion(null);

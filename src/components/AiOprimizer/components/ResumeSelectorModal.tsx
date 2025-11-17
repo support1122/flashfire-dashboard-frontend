@@ -101,8 +101,22 @@ export default function ResumeSelectorModal({
                         }
                     }
 
-                    setResumes(allResumes);
-                    setFilteredResumes(allResumes);
+                   const seen = new Set<string>(); 
+                    const deduplicated: any[] = [];
+                    
+                    for (const resume of allResumes) {
+                        const name = `${resume.firstName || ''} ${resume.lastName || ''}`.trim().toLowerCase();
+                        const version = resume.V !== undefined ? resume.V : 0;
+                        const key = `${name}_v${version}`;
+                        
+                        if (!seen.has(key)) {
+                            seen.add(key);
+                            deduplicated.push(resume);
+                        }
+                    }
+
+                    setResumes(deduplicated);
+                    setFilteredResumes(deduplicated);
                 } else {
                     // For specific version requests (admin users)
                     let url = `${apiUrl}/api/resumes`; // default (all)
