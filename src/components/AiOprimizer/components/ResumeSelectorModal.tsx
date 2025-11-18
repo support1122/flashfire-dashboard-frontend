@@ -101,7 +101,10 @@ export default function ResumeSelectorModal({
                         }
                     }
 
-                   const seen = new Set<string>(); 
+                   // Deduplicate resumes: for each name+version combination, keep only one
+                    // This works for ALL versions (v=0, v=1, v=2, etc.)
+                    // If multiple resumes have the same name and same version, only one will be shown
+                    const seen = new Set<string>(); 
                     const deduplicated: any[] = [];
                     
                     for (const resume of allResumes) {
@@ -109,6 +112,8 @@ export default function ResumeSelectorModal({
                         const version = resume.V !== undefined ? resume.V : 0;
                         const key = `${name}_v${version}`;
                         
+                        // Only add if we haven't seen this name+version combination before
+                        // This ensures no duplicates for any version (v=0, v=1, v=2, etc.)
                         if (!seen.has(key)) {
                             seen.add(key);
                             deduplicated.push(resume);

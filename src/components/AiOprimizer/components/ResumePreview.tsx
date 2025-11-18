@@ -929,24 +929,22 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                 );
 
             case "skills":
+                const skillsFontSize = Math.max(11, Math.round(13 * scalingFactor)) + "px";
                 return (
                     <div
                         style={{
-                            marginBottom:
-                                Math.max(8, Math.round(10 * scalingFactor)) + "px",
+                            marginBottom: styles.sectionMargin,
                             ...getHighlightStyle("skills"),
                         }}
                     >
                         <div
                             style={{
-                                fontSize:
-                                    Math.max(10, Math.round(12 * scalingFactor)) + "px",
+                                fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
                                 paddingBottom: "8px",
-                                marginBottom:
-                                    Math.max(3, Math.round(4 * scalingFactor)) + "px",
+                                marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
-                                letterSpacing: "0.1px",
+                                letterSpacing: "-0.025em",
                             }}
                         >
                             SKILLS
@@ -956,19 +954,10 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 <div
                                     key={category.id}
                                     style={{
-                                        fontSize:
-                                            Math.max(
-                                                9,
-                                                Math.round(11 * scalingFactor)
-                                            ) + "px",
-                                        marginBottom:
-                                            Math.max(2, Math.round(3 * scalingFactor)) +
-                                            "px",
-                                        lineHeight: Math.max(
-                                            1.15,
-                                            1.25 * scalingFactor
-                                        ).toString(),
-                                        letterSpacing: "0.01px",
+                                        fontSize: skillsFontSize,
+                                        marginBottom: styles.bulletSpacing,
+                                        lineHeight: styles.lineHeight,
+                                        letterSpacing: "-0.025em",
                                         display: "flex",
                                         alignItems: "flex-start",
                                     }}
@@ -978,7 +967,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                             width: "160px",
                                             flexShrink: 0,
                                             fontWeight: "bold",
-                                            letterSpacing: "0.01px",
+                                            letterSpacing: "-0.025em",
                                         }}
                                     >
                                         {category.category}
@@ -1005,12 +994,10 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         ) : (
                             <div
                                 style={{
-                                    fontSize:
-                                        Math.max(9, Math.round(11 * scalingFactor)) +
-                                        "px",
+                                    fontSize: skillsFontSize,
                                     fontStyle: "italic",
                                     color: "#666",
-                                    letterSpacing: "0.01px",
+                                    letterSpacing: "-0.025em",
                                 }}
                             >
                                 Your skills will appear here...
