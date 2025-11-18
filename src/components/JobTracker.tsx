@@ -622,9 +622,11 @@ const handleDragEnd = (e: React.DragEvent) => {
                                     return titleMatch || companyMatch;
                                 })
                                 .sort(
-                                    (a, b) =>
-                                        tsFromUpdatedAt(b.updatedAt) -
-                                        tsFromUpdatedAt(a.updatedAt)
+                                    (a, b) => {
+                                        const dateA = tsFromUpdatedAt(a.dateAdded || a.createdAt || "");
+                                        const dateB = tsFromUpdatedAt(b.dateAdded || b.createdAt || "");
+                                        return dateB - dateA;
+                                    }
                                 )
                                 : [];
 
