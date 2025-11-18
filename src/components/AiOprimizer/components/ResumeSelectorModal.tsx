@@ -47,6 +47,27 @@ export default function ResumeSelectorModal({
         }
     }, []);
 
+    // Helper function to deduplicate resumes by name+version
+    const deduplicateResumes = (resumes: any[]): any[] => {
+        const seen = new Set<string>();
+        const deduplicated: any[] = [];
+        
+        for (const resume of resumes) {
+            const firstName = (resume.firstName || '').trim();
+            const lastName = (resume.lastName || '').trim();
+            const name = `${firstName} ${lastName}`.trim().toLowerCase();
+            const version = resume.V !== undefined ? resume.V : 0;
+            const key = `${name}_v${version}`;
+            
+            if (!seen.has(key)) {
+                seen.add(key);
+                deduplicated.push(resume);
+            }
+        }
+        
+        return deduplicated;
+    };
+
     // Reset state + fetch resumes
     useEffect(() => {
         if (!open) {
@@ -101,25 +122,8 @@ export default function ResumeSelectorModal({
                         }
                     }
 
-                   // Deduplicate resumes: for each name+version combination, keep only one
-                    // This works for ALL versions (v=0, v=1, v=2, etc.)
-                    // If multiple resumes have the same name and same version, only one will be shown
-                    const seen = new Set<string>(); 
-                    const deduplicated: any[] = [];
-                    
-                    for (const resume of allResumes) {
-                        const name = `${resume.firstName || ''} ${resume.lastName || ''}`.trim().toLowerCase();
-                        const version = resume.V !== undefined ? resume.V : 0;
-                        const key = `${name}_v${version}`;
-                        
-                        // Only add if we haven't seen this name+version combination before
-                        // This ensures no duplicates for any version (v=0, v=1, v=2, etc.)
-                        if (!seen.has(key)) {
-                            seen.add(key);
-                            deduplicated.push(resume);
-                        }
-                    }
-
+                    // Deduplicate resumes: for each name+version combination, keep only one
+                    const deduplicated = deduplicateResumes(allResumes);
                     setResumes(deduplicated);
                     setFilteredResumes(deduplicated);
                 } else {
@@ -137,8 +141,10 @@ export default function ResumeSelectorModal({
                         headers: { "user-role": userRole },
                     });
                     const data = await res.json();
-                    setResumes(data);
-                    setFilteredResumes(data);
+                    
+                    const deduplicated = deduplicateResumes(Array.isArray(data) ? data : []);
+                    setResumes(deduplicated);
+                    setFilteredResumes(deduplicated);
                 }
             } catch (err) {
                 console.error("Error fetching resumes:", err);
