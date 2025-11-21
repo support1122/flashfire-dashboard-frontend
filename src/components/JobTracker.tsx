@@ -503,57 +503,6 @@ const handleDragEnd = (e: React.DragEvent) => {
 //   onUpdateJobStatus(jobID, status, userDetails);
 // };
 
-    const tsFromUpdatedAt = (val: unknown): number => {
-        if (!val) return 0;
-        if (val instanceof Date) return val.getTime();
-        if (typeof val === "string") {
-            const isoDate = new Date(val);
-            if (!isNaN(isoDate.getTime())) {
-                return isoDate.getTime();
-            }
-
-            const parts = val.split(",").map((s) => s.trim());
-            if (parts.length === 2) {
-                const [datePart, timePartRaw] = parts;
-                const dateParts = datePart.split("/");
-                
-                if (dateParts.length === 3) {
-                    const [first, second, yyyyStr] = dateParts;
-                    const yyyy = parseInt(yyyyStr, 10);
-                    
-                    // Try DD/MM/YYYY format first (en-IN)
-                    let dd = parseInt(first, 10);
-                    let mm = parseInt(second, 10);
-                    
-                    // If month > 12, it's likely MM/DD/YYYY format (en-US)
-                    if (mm > 12 && dd <= 12) {
-                        // Swap them
-                        [dd, mm] = [mm, dd];
-                    }
-                    
-                    if (!isNaN(dd) && !isNaN(mm) && !isNaN(yyyy) && mm <= 12 && dd <= 31) {
-                        const timeBits = timePartRaw.toLowerCase().split(" ");
-                        const clock = timeBits[0] || "";
-                        const ampm = timeBits[1] || "";
-
-                        const [hStr, mStr, sStr] = clock.split(":");
-                        let h = parseInt(hStr || "0", 10);
-                        const m = parseInt(mStr || "0", 10);
-                        const s = parseInt(sStr || "0", 10);
-
-                        if (ampm === "pm" && h < 12) h += 12;
-                        if (ampm === "am" && h === 12) h = 0;
-
-                        return new Date(yyyy, mm - 1, dd, h, m || 0, s || 0).getTime();
-                    }
-                }
-            }
-        }
-
-        // Final fallback - try parsing as Date
-        const t = new Date(val as any).getTime();
-        return isNaN(t) ? 0 : t;
-    };
     const updateColumnPage = (status: JobStatus, page: number) => {
         setColumnPages((prev) => ({ ...prev, [status]: page }));
     };
@@ -642,8 +591,10 @@ const handleDragEnd = (e: React.DragEvent) => {
                                 })
                                 .sort(
                                     (a, b) => {
-                                        tsFromUpdatedAt(b.updatedAt) -
-                                        tsFromUpdatedAt(a.updatedAt)
+                                        // Sort by updatedAt - most recently moved/updated cards appear first
+                                        const dateA = new Date(a.updatedAt || a.createdAt || a.dateAdded || 0).getTime();
+                                        const dateB = new Date(b.updatedAt || b.createdAt || b.dateAdded || 0).getTime();
+                                        return dateB - dateA; // Newest first
                                     }
                                 )
                                 : [];
