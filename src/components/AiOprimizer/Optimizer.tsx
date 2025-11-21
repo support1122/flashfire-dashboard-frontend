@@ -1052,23 +1052,25 @@ function App() {
 
                     if (response.ok) {
                         const resumeData = await response.json();
-                        if (resumeData && resumeData.personalInfo) {
+                        if (resumeData && resumeData.personalInfo && resumeData.resumeId) {
                             console.log("✅ Assigned resume loaded successfully:", resumeData);
                             setResumeData(resumeData);
                             setBaseResume(resumeData);
                             checkLoadedResumeData(resumeData);
-                            if (resumeData.resumeId) {
-                                setResumeId(resumeData.resumeId);
-                                setLastSelectedResume(resumeData, resumeData.resumeId);
-                                // Store the assigned resume ID to track it
-                                setAssignedResumeId(resumeData.resumeId);
-                            }
+                            setResumeId(resumeData.resumeId);
+                            setLastSelectedResume(resumeData, resumeData.resumeId);
+                            // Store the assigned resume ID to track it
+                            setAssignedResumeId(resumeData.resumeId);
                             if (resumeData.V !== undefined) {
                                 setVersion(resumeData.V);
                             }
                             lockAllSections();
                             checkAdminAndUnlock();
                             console.log("✅ Loaded assigned resume from email parameter");
+                        } else {
+                            // No valid resume data - clear assigned resume ID
+                            console.log("ℹ️ No valid resume assigned to this email:", emailToUse);
+                            setAssignedResumeId(null);
                         }
                     } else if (response.status === 404) {
                         console.log("ℹ️ No resume assigned to this email:", emailToUse);
@@ -1076,6 +1078,8 @@ function App() {
                         setAssignedResumeId(null);
                     } else {
                         console.error("❌ Failed to load assigned resume:", response.status, response.statusText);
+                        // Clear on error to be safe
+                        setAssignedResumeId(null);
                     }
                 } catch (error) {
                     console.error("❌ Error loading assigned resume:", error);
@@ -1092,6 +1096,13 @@ function App() {
             loadedEmailRef.current = null;
         }
     }, [emailFromUrl, isAuthenticated, storeHydrated]);
+
+    // Clear the resume mismatch warning if there's no assigned resume
+    useEffect(() => {
+        if (!assignedResumeId || (typeof assignedResumeId === 'string' && assignedResumeId.trim() === '')) {
+            setShowResumeMismatchWarning(false);
+        }
+    }, [assignedResumeId]);
 
     // Fetch job description from backend when jobId is available
     const fetchJobDescription = async (jobId: string) => {
@@ -2524,21 +2535,17 @@ function App() {
                                     {/* Optimize Button - Also stays UNLOCKED */}
                                     <button
                                         onClick={() => {
-                                            // Check if assigned resume exists and current resume doesn't match
-                                            // Check both resume_id from store and lastSelectedResumeId
-                                            const currentResumeId = resume_id || lastSelectedResumeId;
-                                            // Only show mismatch warning if:
-                                            // 1. There IS an assigned resume (not null/undefined/empty)
-                                            // 2. There IS a current resume loaded
-                                            // 3. They don't match
-                                            const hasAssignedResume = assignedResumeId && typeof assignedResumeId === 'string' && assignedResumeId.trim() !== '';
-                                            if (hasAssignedResume && currentResumeId && assignedResumeId !== currentResumeId) {
-                                                // Show warning modal instead of confirmation
-                                                setShowResumeMismatchWarning(true);
-                                            } else {
-                                                // Proceed with normal confirmation
-                                                setShowOptimizeConfirmation(true);
-                                            }
+                                            // Warning modal completely disabled - always proceed to optimization
+                                            setShowOptimizeConfirmation(true);
+                                            
+                                            // COMMENTED OUT: Resume mismatch warning modal
+                                            // if (assignedResumeId && typeof assignedResumeId === 'string' && assignedResumeId.trim() !== '') {
+                                            //     const currentResumeId = resume_id || lastSelectedResumeId;
+                                            //     if (currentResumeId && assignedResumeId !== currentResumeId) {
+                                            //         setShowResumeMismatchWarning(true);
+                                            //         return;
+                                            //     }
+                                            // }
                                         }}
                                         disabled={
                                             isOptimizing ||
@@ -3225,8 +3232,8 @@ function App() {
                 </div>
             )}
 
-            {/* Resume Mismatch Warning Modal - Only show if there's an assigned resume */}
-            {showResumeMismatchWarning && assignedResumeId && typeof assignedResumeId === 'string' && assignedResumeId.trim() !== '' && (
+            {/* COMMENTED OUT: Resume Mismatch Warning Modal - Completely disabled */}
+            {/* {showResumeMismatchWarning && assignedResumeId && typeof assignedResumeId === 'string' && assignedResumeId.trim() !== '' && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg shadow-xl p-8 max-w-2xl mx-4 border-4 border-red-500">
                         <div className="flex items-center justify-center mb-6">
@@ -3285,21 +3292,25 @@ function App() {
 
                                             if (response.ok) {
                                                 const resumeData = await response.json();
-                                                if (resumeData && resumeData.personalInfo) {
+                                                if (resumeData && resumeData.personalInfo && resumeData.resumeId) {
                                                     setResumeData(resumeData);
                                                     setBaseResume(resumeData);
                                                     checkLoadedResumeData(resumeData);
-                                                    if (resumeData.resumeId) {
-                                                        setResumeId(resumeData.resumeId);
-                                                        setLastSelectedResume(resumeData, resumeData.resumeId);
-                                                        setAssignedResumeId(resumeData.resumeId);
-                                                    }
+                                                    setResumeId(resumeData.resumeId);
+                                                    setLastSelectedResume(resumeData, resumeData.resumeId);
+                                                    setAssignedResumeId(resumeData.resumeId);
                                                     if (resumeData.V !== undefined) {
                                                         setVersion(resumeData.V);
                                                     }
                                                     lockAllSections();
                                                     checkAdminAndUnlock();
+                                                } else {
+                                                    // No valid resume - clear assigned resume ID
+                                                    setAssignedResumeId(null);
                                                 }
+                                            } else {
+                                                // API error - clear assigned resume ID
+                                                setAssignedResumeId(null);
                                             }
                                         } catch (error) {
                                             console.error("Error loading assigned resume:", error);
@@ -3310,19 +3321,10 @@ function App() {
                             >
                                 Open Client Resume
                             </button>
-                            {/* <button
-                                onClick={() => {
-                                    setShowResumeMismatchWarning(false);
-                                    setShowOptimizeConfirmation(true);
-                                }}
-                                className="flex-1 bg-gray-300 text-gray-700 py-4 px-6 rounded-lg hover:bg-gray-400 transition-colors font-medium text-lg"
-                            >
-                                Proceed Anyhow
-                            </button> */}
                         </div>
                     </div>
                 </div>
-            )}
+            )} */}
 
         </>
     );
