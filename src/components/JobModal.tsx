@@ -1554,9 +1554,17 @@ useEffect(() => {
                                                 return;
                                             }
                                             
+                                            // Get client email from currentUser
+                                            const clientEmail = currentUser?.email;
+                                            
                                             // Use appropriate query parameter
                                             const queryParam = mongoId ? 'id' : 'jobId';
-                                            const optimizeUrl = `${window.location.origin}/optimize/${idToUse}?view=editor&${queryParam}=${idToUse}`;
+                                            let optimizeUrl = `${window.location.origin}/optimize/${idToUse}?view=editor&${queryParam}=${idToUse}`;
+                                            
+                                            // Add email to URL if available
+                                            if (clientEmail) {
+                                                optimizeUrl += `&email=${encodeURIComponent(clientEmail)}`;
+                                            }
                                             
                                             // Copy URL to clipboard
                                             try {

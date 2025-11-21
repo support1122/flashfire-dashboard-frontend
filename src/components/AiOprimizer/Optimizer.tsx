@@ -12,7 +12,7 @@ import { RotateCcw, Save, Check, LucideSaveAll } from "lucide-react";
 import { useResumeStore } from "./store/useResumeStore";
 import { useResumeUnlockStore } from "./store/resumeStore";
 import { initialData } from "./data/initialData";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import ResumeSelectorModal from "./components/ResumeSelectorModal";
 import LockedSection from "./components/LockedSection";
@@ -80,7 +80,18 @@ function AccessKeyEditor() {
     const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
     const [showConfirm, setShowConfirm] = useState<boolean>(false);
     const apiUrl = import.meta.env.VITE_API_URL || "https://resume-maker-backend-lf5z.onrender.com";
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8086";
     const isAdmin = typeof window !== 'undefined' && localStorage.getItem("role") === "admin";
+    
+    // User assignment state
+    const [users, setUsers] = useState<{ id: string; name: string; email: string }[]>([]);
+    const [selectedUserEmail, setSelectedUserEmail] = useState<string>("");
+    const [assignedUserEmail, setAssignedUserEmail] = useState<string | null>(null);
+    const [assignedUserName, setAssignedUserName] = useState<string | null>(null);
+    const [assignStatus, setAssignStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+    const [assignMessage, setAssignMessage] = useState<string>("");
+    const [showReassignWarning, setShowReassignWarning] = useState<boolean>(false);
+    const [pendingUserEmail, setPendingUserEmail] = useState<string>("");
 
     useEffect(() => {
         setInputKey(accessKey || "");
@@ -97,6 +108,20 @@ function AccessKeyEditor() {
                         setInputKey(data.unlockKey);
                         setOriginalKey(data.unlockKey);
                     }
+                    // Also fetch assigned user email if available
+                    if (res.ok && data && data.userEmail) {
+                        setAssignedUserEmail(data.userEmail);
+                        // Fetch user details to get name
+                        fetch(`${apiBaseUrl}/admin/list/users`)
+                            .then(res => res.json())
+                            .then(userData => {
+                                const assignedUser = userData.users?.find((u: any) => u.email === data.userEmail);
+                                if (assignedUser) {
+                                    setAssignedUserName(assignedUser.name);
+                                }
+                            })
+                            .catch(err => console.error("Error fetching assigned user details:", err));
+                    }
                 } catch (e) {
                     console.error("Error fetching unlock key:", e);
                     
@@ -105,6 +130,24 @@ function AccessKeyEditor() {
         };
         fetchUnlock();
     }, [accessKey, resume_id, setAccessKey]);
+
+    // Fetch users list for admin
+    useEffect(() => {
+        if (isAdmin && resume_id) {
+            const fetchUsers = async () => {
+                try {
+                    const response = await fetch(`${apiBaseUrl}/admin/list/users`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setUsers(data.users || []);
+                    }
+                } catch (err) {
+                    console.error("Error fetching users:", err);
+                }
+            };
+            fetchUsers();
+        }
+    }, [isAdmin, resume_id, apiBaseUrl]);
 
     const hasChanges = inputKey.trim() !== (originalKey || "");
     const disabled = !resume_id || !hasChanges || status === "saving";
@@ -135,6 +178,96 @@ function AccessKeyEditor() {
     const handleUpdateClick = () => {
         if (!hasChanges || !resume_id) return;
         setShowConfirm(true);
+    };
+
+    const handleAssignClick = () => {
+        if (!selectedUserEmail || !resume_id) {
+            setAssignMessage("Please select a user");
+            setAssignStatus("error");
+            setTimeout(() => {
+                setAssignStatus("idle");
+                setAssignMessage("");
+            }, 3000);
+            return;
+        }
+
+        // Check if assigning to a different user
+        if (assignedUserEmail && selectedUserEmail !== assignedUserEmail) {
+            setPendingUserEmail(selectedUserEmail);
+            setShowReassignWarning(true);
+        } else {
+            handleAssignResume(selectedUserEmail);
+        }
+    };
+
+    const handleAssignResume = async (userEmailToAssign?: string) => {
+        const emailToAssign = userEmailToAssign || selectedUserEmail;
+        
+        if (!emailToAssign || !resume_id) {
+            return;
+        }
+
+        setAssignStatus("loading");
+        setAssignMessage("");
+        setShowReassignWarning(false);
+
+        try {
+            // Assign resume to user
+            const response = await fetch(`${apiBaseUrl}/admin/assign-resume-to-user`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userEmail: emailToAssign,
+                    resumeId: resume_id,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Also update ResumeIndex userEmail
+                try {
+                    await fetch(`${apiUrl}/api/update-resume-user-email`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            resumeId: resume_id,
+                            userEmail: emailToAssign,
+                        }),
+                    });
+                } catch (err) {
+                    console.error("Error updating ResumeIndex:", err);
+                }
+
+                // Update assigned user info
+                const assignedUser = users.find(u => u.email === emailToAssign);
+                setAssignedUserEmail(emailToAssign);
+                setAssignedUserName(assignedUser?.name || null);
+                setAssignStatus("success");
+                setAssignMessage(data.message || "Resume assigned successfully!");
+                setSelectedUserEmail("");
+                
+                setTimeout(() => {
+                    setAssignStatus("idle");
+                    setAssignMessage("");
+                }, 3000);
+            } else {
+                setAssignStatus("error");
+                setAssignMessage(data.message || "Failed to assign resume");
+                setTimeout(() => {
+                    setAssignStatus("idle");
+                    setAssignMessage("");
+                }, 3000);
+            }
+        } catch (err) {
+            console.error("Error assigning resume:", err);
+            setAssignStatus("error");
+            setAssignMessage("Failed to assign resume. Please try again.");
+            setTimeout(() => {
+                setAssignStatus("idle");
+                setAssignMessage("");
+            }, 3000);
+        }
     };
 
     // Only admins can see and update unlock key editor
@@ -192,6 +325,140 @@ function AccessKeyEditor() {
                     </div>
                 </div>
             )}
+
+            {/* Assign Resume to User Section */}
+            <div className="mt-6 border-t border-gray-200 pt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Assign Resume to User
+                </label>
+                {assignedUserEmail && (
+                    <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-md">
+                        <p className="text-xs text-green-700">
+                            <span className="font-semibold">Currently assigned to:</span>{" "}
+                            {assignedUserName ? (
+                                <span>{assignedUserName} ({assignedUserEmail})</span>
+                            ) : (
+                                <span>{assignedUserEmail}</span>
+                            )}
+                        </p>
+                    </div>
+                )}
+                <div className="space-y-3">
+                    <select
+                        value={selectedUserEmail}
+                        onChange={(e) => setSelectedUserEmail(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                        <option value="">Select a user...</option>
+                        {users.map((user) => (
+                            <option key={user.id} value={user.email}>
+                                {user.name} ({user.email})
+                            </option>
+                        ))}
+                    </select>
+                    <button
+                        onClick={handleAssignClick}
+                        disabled={!selectedUserEmail || assignStatus === "loading"}
+                        className={`w-full px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                            !selectedUserEmail || assignStatus === "loading"
+                                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                                : "bg-green-600 text-white hover:bg-green-700"
+                        }`}
+                    >
+                        {assignStatus === "loading" ? "Assigning..." : "Assign Resume to User"}
+                    </button>
+                    {assignMessage && (
+                        <p className={`text-xs mt-1 ${
+                            assignStatus === "success" 
+                                ? "text-green-600" 
+                                : assignStatus === "error"
+                                ? "text-red-600"
+                                : "text-gray-600"
+                        }`}>
+                            {assignMessage}
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            {/* Reassign Warning Modal */}
+            {showReassignWarning && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 z-[999] flex items-center justify-center" onClick={() => setShowReassignWarning(false)}>
+                    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 border-4 border-red-500" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center mb-4">
+                            <div className="bg-red-100 rounded-full p-3">
+                                <svg
+                                    className="w-8 h-8 text-red-600"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                    />
+                                </svg>
+                            </div>
+                        </div>
+                        <h3 className="text-lg font-semibold text-red-600 mb-3 text-center">
+                            Warning: Resume Already Assigned
+                        </h3>
+                        <div className="mb-4">
+                            <p className="text-sm text-gray-700 mb-3">
+                                This resume is currently assigned to:
+                            </p>
+                            <div className="bg-red-50 p-3 rounded-md border-2 border-red-200 mb-3">
+                                <p className="text-sm font-semibold text-gray-800">
+                                    {assignedUserName ? (
+                                        <span>{assignedUserName} ({assignedUserEmail})</span>
+                                    ) : (
+                                        <span>{assignedUserEmail}</span>
+                                    )}
+                                </p>
+                            </div>
+                            <p className="text-sm text-gray-700 mb-3">
+                                You are about to assign it to:
+                            </p>
+                            <div className="bg-yellow-50 p-3 rounded-md border-2 border-yellow-200 mb-3">
+                                <p className="text-sm font-semibold text-gray-800">
+                                    {(() => {
+                                        const newUser = users.find(u => u.email === pendingUserEmail);
+                                        return newUser ? (
+                                            <span>{newUser.name} ({newUser.email})</span>
+                                        ) : (
+                                            <span>{pendingUserEmail}</span>
+                                        );
+                                    })()}
+                                </p>
+                            </div>
+                            <p className="text-sm text-red-600 font-semibold">
+                                This will replace the current assignment. Are you sure you want to continue?
+                            </p>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <button
+                                className="px-4 py-2 text-sm rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300"
+                                onClick={() => {
+                                    setShowReassignWarning(false);
+                                    setPendingUserEmail("");
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="px-4 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700"
+                                onClick={() => {
+                                    handleAssignResume(pendingUserEmail);
+                                }}
+                            >
+                                Yes, Replace Assignment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -204,6 +471,7 @@ function App() {
     const [searchParams] = useSearchParams();
     const { jobId } = useParams<{ jobId: string }>();
     const startWithEditor = searchParams.get("view") === "editor";
+    const emailFromUrl = searchParams.get("email"); // Extract email from URL
     
     // Check if we're in the optimize route to show print buttons
     const isOptimizeRoute = window.location.pathname.includes('/optimize/');
@@ -248,6 +516,7 @@ function App() {
         resetStore,
         loadLastSelectedResume,
         clearLastSelectedResume,
+        setLastSelectedResume,
         debugLocalStorage,
         // setUserId,
         showPublications,
@@ -281,6 +550,9 @@ function App() {
     const [companyName, setCompanyName] = useState<string>("");
     const [jobTitle, setJobTitle] = useState<string>("");
     const [showOptimizeConfirmation, setShowOptimizeConfirmation] = useState(false);
+    const [assignedResumeId, setAssignedResumeId] = useState<string | null>(null);
+    const [showResumeMismatchWarning, setShowResumeMismatchWarning] = useState(false);
+    const loadedEmailRef = useRef<string | null>(null);
 
     // Section order managed via store; drag is handled by DraggableSections
 
@@ -756,6 +1028,70 @@ function App() {
         loadLastSelectedResume,
         debugLocalStorage,
     ]);
+
+    // Load assigned resume when email is present in URL or when user is authenticated
+    useEffect(() => {
+        const emailToUse = emailFromUrl || (isAuthenticated ? localStorage.getItem("userEmail") : null);
+        
+        // Only load if email exists, user is authenticated, store is hydrated, and we haven't loaded this email yet
+        if (emailToUse && isAuthenticated && storeHydrated && loadedEmailRef.current !== emailToUse) {
+            console.log("📧 Loading assigned resume for:", emailToUse);
+            loadedEmailRef.current = emailToUse;
+            
+            const loadAssignedResume = async () => {
+                try {
+                    const apiUrl =
+                        import.meta.env.VITE_API_URL ||
+                        "https://resume-maker-backend-lf5z.onrender.com";
+                    
+                    const response = await fetch(`${apiUrl}/api/resume-by-email`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: emailToUse }),
+                    });
+
+                    if (response.ok) {
+                        const resumeData = await response.json();
+                        if (resumeData && resumeData.personalInfo) {
+                            console.log("✅ Assigned resume loaded successfully:", resumeData);
+                            setResumeData(resumeData);
+                            setBaseResume(resumeData);
+                            checkLoadedResumeData(resumeData);
+                            if (resumeData.resumeId) {
+                                setResumeId(resumeData.resumeId);
+                                setLastSelectedResume(resumeData, resumeData.resumeId);
+                                // Store the assigned resume ID to track it
+                                setAssignedResumeId(resumeData.resumeId);
+                            }
+                            if (resumeData.V !== undefined) {
+                                setVersion(resumeData.V);
+                            }
+                            lockAllSections();
+                            checkAdminAndUnlock();
+                            console.log("✅ Loaded assigned resume from email parameter");
+                        }
+                    } else if (response.status === 404) {
+                        console.log("ℹ️ No resume assigned to this email:", emailToUse);
+                        // Clear assigned resume ID if no resume is assigned
+                        setAssignedResumeId(null);
+                    } else {
+                        console.error("❌ Failed to load assigned resume:", response.status, response.statusText);
+                    }
+                } catch (error) {
+                    console.error("❌ Error loading assigned resume:", error);
+                    // Reset the ref on error so it can retry if needed
+                    loadedEmailRef.current = null;
+                }
+            };
+            
+            loadAssignedResume();
+        }
+        
+        // Reset the ref when email is cleared
+        if (!emailToUse) {
+            loadedEmailRef.current = null;
+        }
+    }, [emailFromUrl, isAuthenticated, storeHydrated]);
 
     // Fetch job description from backend when jobId is available
     const fetchJobDescription = async (jobId: string) => {
@@ -1901,6 +2237,8 @@ function App() {
                                             resume: ResumeDataType & {
                                                 checkboxStates?: any;
                                                 V?: number;
+                                                resumeId?: string;
+                                                _id?: string;
                                             }
                                         ) => {
                                             setResumeData(resume);
@@ -1916,6 +2254,13 @@ function App() {
                                             if (resume.V !== undefined) {
                                                 setVersion(resume.V);
                                                 console.log("Set versionV to:", resume.V);
+                                            }
+                                            
+                                            // Update resume ID in store if available
+                                            const resumeIdToUse = resume.resumeId || (resume as any)._id;
+                                            if (resumeIdToUse) {
+                                                setResumeId(resumeIdToUse);
+                                                setLastSelectedResume(resume, resumeIdToUse);
                                             }
                                             
                                             setCurrentResumeView("editor");
@@ -2178,7 +2523,18 @@ function App() {
 
                                     {/* Optimize Button - Also stays UNLOCKED */}
                                     <button
-                                        onClick={() => setShowOptimizeConfirmation(true)}
+                                        onClick={() => {
+                                            // Check if assigned resume exists and current resume doesn't match
+                                            // Check both resume_id from store and lastSelectedResumeId
+                                            const currentResumeId = resume_id || lastSelectedResumeId;
+                                            if (assignedResumeId && currentResumeId && assignedResumeId !== currentResumeId) {
+                                                // Show warning modal instead of confirmation
+                                                setShowResumeMismatchWarning(true);
+                                            } else {
+                                                // Proceed with normal confirmation
+                                                setShowOptimizeConfirmation(true);
+                                            }
+                                        }}
                                         disabled={
                                             isOptimizing ||
                                             !jobDescription.trim()
@@ -2863,6 +3219,106 @@ function App() {
                     </div>
                 </div>
             )}
+
+            {/* Resume Mismatch Warning Modal */}
+            {showResumeMismatchWarning && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl p-8 max-w-2xl mx-4 border-4 border-red-500">
+                        <div className="flex items-center justify-center mb-6">
+                            <div className="bg-red-100 rounded-full p-3">
+                                <svg
+                                    className="w-8 h-8 text-red-600"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                    />
+                                </svg>
+                            </div>
+                        </div>
+                        <h2 className="text-2xl font-bold text-red-600 mb-4 text-center">
+                            Warning: Resume Mismatch
+                        </h2>
+                        <div className="mb-8">
+                            <p className="text-lg text-gray-700 text-center mb-4">
+                                You are trying to optimize a different resume than the one assigned to this client.
+                            </p>
+                            <div className="bg-red-50 p-6 rounded-lg border-2 border-red-200">
+                                <p className="text-center text-gray-700 mb-2">
+                                    <span className="font-semibold">Current Resume:</span> {resumeData.personalInfo?.name || "Unknown"}
+                                </p>
+                                <p className="text-center text-sm text-gray-500">
+                                    This may not be the correct resume for this client.
+                                </p>
+                            </div>
+                            <p className="text-sm text-gray-600 text-center mt-4">
+                                Please open the client's assigned resume to ensure you're optimizing the correct document.
+                            </p>
+                        </div>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={async () => {
+                                    setShowResumeMismatchWarning(false);
+                                    // Reload the assigned resume
+                                    const emailToUse = emailFromUrl || (isAuthenticated ? localStorage.getItem("userEmail") : null);
+                                    if (emailToUse) {
+                                        try {
+                                            const apiUrl =
+                                                import.meta.env.VITE_API_URL ||
+                                                "https://resume-maker-backend-lf5z.onrender.com";
+                                            
+                                            const response = await fetch(`${apiUrl}/api/resume-by-email`, {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ email: emailToUse }),
+                                            });
+
+                                            if (response.ok) {
+                                                const resumeData = await response.json();
+                                                if (resumeData && resumeData.personalInfo) {
+                                                    setResumeData(resumeData);
+                                                    setBaseResume(resumeData);
+                                                    checkLoadedResumeData(resumeData);
+                                                    if (resumeData.resumeId) {
+                                                        setResumeId(resumeData.resumeId);
+                                                        setLastSelectedResume(resumeData, resumeData.resumeId);
+                                                        setAssignedResumeId(resumeData.resumeId);
+                                                    }
+                                                    if (resumeData.V !== undefined) {
+                                                        setVersion(resumeData.V);
+                                                    }
+                                                    lockAllSections();
+                                                    checkAdminAndUnlock();
+                                                }
+                                            }
+                                        } catch (error) {
+                                            console.error("Error loading assigned resume:", error);
+                                        }
+                                    }
+                                }}
+                                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 px-6 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-bold text-lg shadow-lg transform hover:scale-105"
+                            >
+                                Open Client Resume
+                            </button>
+                            {/* <button
+                                onClick={() => {
+                                    setShowResumeMismatchWarning(false);
+                                    setShowOptimizeConfirmation(true);
+                                }}
+                                className="flex-1 bg-gray-300 text-gray-700 py-4 px-6 rounded-lg hover:bg-gray-400 transition-colors font-medium text-lg"
+                            >
+                                Proceed Anyhow
+                            </button> */}
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </>
     );
 }
