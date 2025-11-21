@@ -503,38 +503,6 @@ const handleDragEnd = (e: React.DragEvent) => {
 //   onUpdateJobStatus(jobID, status, userDetails);
 // };
 
-    const tsFromUpdatedAt = (val: unknown): number => {
-        if (!val) return 0;
-        if (val instanceof Date) return val.getTime();
-        if (typeof val === "string") {
-            const parts = val.split(",").map((s) => s.trim());
-            if (parts.length !== 2) return 0;
-
-            const [datePart, timePartRaw] = parts;
-            const [ddStr, mmStr, yyyyStr] = datePart.split("/");
-            const dd = parseInt(ddStr, 10);
-            const mm = parseInt(mmStr, 10);
-            const yyyy = parseInt(yyyyStr, 10);
-            if (isNaN(dd) || isNaN(mm) || isNaN(yyyy)) return 0;
-
-            const timeBits = timePartRaw.toLowerCase().split(" ");
-            const clock = timeBits[0] || "";
-            const ampm = timeBits[1] || "";
-
-            const [hStr, mStr, sStr] = clock.split(":");
-            let h = parseInt(hStr || "0", 10);
-            const m = parseInt(mStr || "0", 10);
-            const s = parseInt(sStr || "0", 10);
-
-            if (ampm === "pm" && h < 12) h += 12;
-            if (ampm === "am" && h === 12) h = 0;
-
-            return new Date(yyyy, mm - 1, dd, h, m || 0, s || 0).getTime();
-        }
-
-        const t = new Date(val as any).getTime();
-        return isNaN(t) ? 0 : t;
-    };
     const updateColumnPage = (status: JobStatus, page: number) => {
         setColumnPages((prev) => ({ ...prev, [status]: page }));
     };
@@ -623,9 +591,10 @@ const handleDragEnd = (e: React.DragEvent) => {
                                 })
                                 .sort(
                                     (a, b) => {
-                                        const dateA = tsFromUpdatedAt(a.dateAdded || a.createdAt || "");
-                                        const dateB = tsFromUpdatedAt(b.dateAdded || b.createdAt || "");
-                                        return dateB - dateA;
+                                        // Sort by updatedAt - most recently moved/updated cards appear first
+                                        const dateA = new Date(a.updatedAt || a.createdAt || a.dateAdded || 0).getTime();
+                                        const dateB = new Date(b.updatedAt || b.createdAt || b.dateAdded || 0).getTime();
+                                        return dateB - dateA; // Newest first
                                     }
                                 )
                                 : [];
