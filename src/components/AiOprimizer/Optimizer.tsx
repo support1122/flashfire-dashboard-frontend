@@ -2527,12 +2527,7 @@ function App() {
                                             // Check if assigned resume exists and current resume doesn't match
                                             // Check both resume_id from store and lastSelectedResumeId
                                             const currentResumeId = resume_id || lastSelectedResumeId;
-                                            // Only show mismatch warning if:
-                                            // 1. There IS an assigned resume (not null/undefined/empty)
-                                            // 2. There IS a current resume loaded
-                                            // 3. They don't match
-                                            const hasAssignedResume = assignedResumeId && typeof assignedResumeId === 'string' && assignedResumeId.trim() !== '';
-                                            if (hasAssignedResume && currentResumeId && assignedResumeId !== currentResumeId) {
+                                            if (assignedResumeId && currentResumeId && assignedResumeId !== currentResumeId) {
                                                 // Show warning modal instead of confirmation
                                                 setShowResumeMismatchWarning(true);
                                             } else {
@@ -3225,8 +3220,8 @@ function App() {
                 </div>
             )}
 
-            {/* Resume Mismatch Warning Modal - Only show if there's an assigned resume */}
-            {showResumeMismatchWarning && assignedResumeId && typeof assignedResumeId === 'string' && assignedResumeId.trim() !== '' && (
+            {/* Resume Mismatch Warning Modal */}
+            {showResumeMismatchWarning && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg shadow-xl p-8 max-w-2xl mx-4 border-4 border-red-500">
                         <div className="flex items-center justify-center mb-6">
