@@ -1983,8 +1983,12 @@ useEffect(() => {
       } else {
         const gradDate = new Date(data.bachelorsGradMonthYear);
         const today = new Date();
-        if (gradDate > today) {
-          e.bachelorsGradMonthYear = "Graduation date cannot be in the future";
+        const maxFutureDate = new Date();
+        maxFutureDate.setFullYear(today.getFullYear() + 10); // Allow up to 10 years in the future
+        
+        // Allow future dates (for students who haven't graduated yet) but prevent dates too far in the future
+        if (gradDate > maxFutureDate) {
+          e.bachelorsGradMonthYear = "Graduation date cannot be more than 10 years in the future";
         }
       }
       
@@ -1997,8 +2001,12 @@ useEffect(() => {
       if (data.mastersGradMonthYear) {
         const gradDate = new Date(data.mastersGradMonthYear);
         const today = new Date();
-        if (gradDate > today) {
-          e.mastersGradMonthYear = "Graduation date cannot be in the future";
+        const maxFutureDate = new Date();
+        maxFutureDate.setFullYear(today.getFullYear() + 10); // Allow up to 10 years in the future
+        
+        // Allow future dates (for students who haven't graduated yet) but prevent dates too far in the future
+        if (gradDate > maxFutureDate) {
+          e.mastersGradMonthYear = "Graduation date cannot be more than 10 years in the future";
         }
         // Check if master's graduation is after bachelor's
         if (data.bachelorsGradMonthYear) {
@@ -2899,6 +2907,7 @@ const handleSubmit = () => {
     </div>
   );
 }
+
 
 
 
