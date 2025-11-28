@@ -591,24 +591,9 @@ const handleDragEnd = (e: React.DragEvent) => {
                                 })
                                 .sort(
                                     (a, b) => {
-                                        // For "applied" column, prioritize appliedDate (stack behavior - newest on top)
-                                        if (status === "applied") {
-                                            const aAppliedDate = a.appliedDate ? new Date(a.appliedDate).getTime() : 0;
-                                            const bAppliedDate = b.appliedDate ? new Date(b.appliedDate).getTime() : 0;
-                                            
-                                            // If both have appliedDate, sort by appliedDate (newest first - stack behavior)
-                                            if (aAppliedDate > 0 && bAppliedDate > 0) {
-                                                return bAppliedDate - aAppliedDate;
-                                            }
-                                            // If only one has appliedDate, prioritize it (put it on top)
-                                            if (aAppliedDate > 0 && bAppliedDate === 0) return -1;
-                                            if (bAppliedDate > 0 && aAppliedDate === 0) return 1;
-                                            // If neither has appliedDate, fallback to updatedAt
-                                        }
-                                        
-                                        // Default sorting by updatedAt - most recently moved/updated cards appear first
-                                        const dateA = new Date(a.dateAdded || a.createdAt || a.updatedAt || 0).getTime();
-                                        const dateB = new Date(b.dateAdded || b.createdAt || b.updatedAt || 0).getTime();
+                                        // Sort by updatedAt - most recently moved/updated cards appear first
+                                        const dateA = new Date(a.updatedAt || a.createdAt || a.dateAdded || 0).getTime();
+                                        const dateB = new Date(b.updatedAt || b.createdAt || b.dateAdded || 0).getTime();
                                         return dateB - dateA; // Newest first
                                     }
                                 )
