@@ -379,9 +379,7 @@ const handleDragEnd = (e: React.DragEvent) => {
                     ? { 
                         ...j, 
                         currentStatus: newStatus,
-                        updatedAt: now, // ISO string for proper sorting
-                        // Also update dateAdded to ensure it appears at top
-                        dateAdded: now
+                        updatedAt: now // ONLY update updatedAt (not dateAdded - that stays original)
                     } 
                     : j
             )
@@ -418,24 +416,13 @@ const handleDragEnd = (e: React.DragEvent) => {
 
             let resFromServer = await reqToServer.json();
             if (resFromServer.message === "Jobs updated successfully") {
-                // Server confirmed - update with server data
-                // Ensure moved job has fresh updatedAt timestamp to appear at top
-                const updatedJobs = resFromServer?.updatedJobs.map((job: Job) => {
-                    if (job.jobID === jobID) {
-                        return {
-                            ...job,
-                            updatedAt: new Date().toISOString(), // Fresh timestamp for moved job
-                            dateAdded: job.dateAdded || new Date().toISOString()
-                        };
-                    }
-                    return job;
-                });
-                setUserJobs(updatedJobs);
+                // Server confirmed - update with server data (backend already updated updatedAt)
+                setUserJobs(resFromServer?.updatedJobs);
                 // Reset page to 1 for the target column
                 setColumnPages((prev) => ({ ...prev, [status]: 1 }));
                 clearPendingUpdate(jobID);
                 toastUtils.success("Job status updated successfully!");
-                console.log("Job status updated:", updatedJobs);
+                console.log("Job status updated:", resFromServer?.updatedJobs);
             } else if (resFromServer.message === "Removal limit exceeded") {
                 // Handle removal limit exceeded
                 setUserJobs((prevJobs) =>
@@ -609,49 +596,18 @@ const handleDragEnd = (e: React.DragEvent) => {
                                         .includes(query);
                                     return titleMatch || companyMatch;
                                 })
-                                .sort(
-                                    (a, b) => {
-                                        // For "applied" column, prioritize appliedDate (stack behavior - newest on top)
-                                        if (status === "applied") {
-                                            const aAppliedDate = a.appliedDate ? new Date(a.appliedDate).getTime() : 0;
-                                            const bAppliedDate = b.appliedDate ? new Date(b.appliedDate).getTime() : 0;
-                                            
-                                            // If both have appliedDate, sort by appliedDate (newest first - stack behavior)
-                                            if (aAppliedDate > 0 && bAppliedDate > 0) {
-                                                return bAppliedDate - aAppliedDate;
-                                            }
-                                            // If only one has appliedDate, prioritize it (put it on top)
-                                            if (aAppliedDate > 0 && bAppliedDate === 0) return -1;
-                                            if (bAppliedDate > 0 && aAppliedDate === 0) return 1;
-                                            // If neither has appliedDate, fallback to updatedAt
+                                .sort((a, b) => {
+                                    // ONLY sort by updatedAt - most recently updated/moved jobs appear at top
+                                    const getUpdatedTime = (job: Job): number => {
+                                        if (job.updatedAt) {
+                                            const time = new Date(job.updatedAt).getTime();
+                                            if (!isNaN(time)) return time;
                                         }
-                                        
-                                        // Default sorting: prioritize updatedAt (when job is moved), then dateAdded, then createdAt
-                                        // Most recently moved/updated cards appear first
-                                        const getSortDate = (job: Job): number => {
-                                            // Priority 1: updatedAt (when job was last moved/updated)
-                                            if (job.updatedAt) {
-                                                const updated = new Date(job.updatedAt).getTime();
-                                                if (!isNaN(updated)) return updated;
-                                            }
-                                            // Priority 2: dateAdded
-                                            if (job.dateAdded) {
-                                                const added = new Date(job.dateAdded).getTime();
-                                                if (!isNaN(added)) return added;
-                                            }
-                                            // Priority 3: createdAt
-                                            if (job.createdAt) {
-                                                const created = new Date(job.createdAt).getTime();
-                                                if (!isNaN(created)) return created;
-                                            }
-                                            return 0;
-                                        };
-                                        
-                                        const dateA = getSortDate(a);
-                                        const dateB = getSortDate(b);
-                                        return dateB - dateA; // Newest first (most recently moved on top)
-                                    }
-                                )
+                                        return 0; // If no updatedAt, put at bottom
+                                    };
+                                    
+                                    return getUpdatedTime(b) - getUpdatedTime(a); // Newest first
+                                })
                                 : [];
 
                         const paginatedJobs = getPaginatedJobs(
