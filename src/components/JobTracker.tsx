@@ -371,17 +371,24 @@ const handleDragEnd = (e: React.DragEvent) => {
         const newStatus = status + statusSuffix;
 
         // OPTIMISTIC UPDATE: Update UI immediately
+        // Use ISO string for proper Date sorting - moved jobs will appear at top
+        const now = new Date().toISOString();
         setUserJobs((prevJobs) =>
             prevJobs.map((j) =>
                 j.jobID === jobID 
                     ? { 
                         ...j, 
                         currentStatus: newStatus,
-                        updatedAt: new Date().toLocaleString("en-IN")
+                        updatedAt: now, // ISO string for proper sorting
+                        // Also update dateAdded to ensure it appears at top
+                        dateAdded: now
                     } 
                     : j
             )
         );
+        
+        // Reset page to 1 for the target column so moved job appears at top
+        setColumnPages((prev) => ({ ...prev, [status]: 1 }));
 
         try {
             const endpoint =
@@ -412,10 +419,23 @@ const handleDragEnd = (e: React.DragEvent) => {
             let resFromServer = await reqToServer.json();
             if (resFromServer.message === "Jobs updated successfully") {
                 // Server confirmed - update with server data
-                setUserJobs(resFromServer?.updatedJobs);
+                // Ensure moved job has fresh updatedAt timestamp to appear at top
+                const updatedJobs = resFromServer?.updatedJobs.map((job: Job) => {
+                    if (job.jobID === jobID) {
+                        return {
+                            ...job,
+                            updatedAt: new Date().toISOString(), // Fresh timestamp for moved job
+                            dateAdded: job.dateAdded || new Date().toISOString()
+                        };
+                    }
+                    return job;
+                });
+                setUserJobs(updatedJobs);
+                // Reset page to 1 for the target column
+                setColumnPages((prev) => ({ ...prev, [status]: 1 }));
                 clearPendingUpdate(jobID);
                 toastUtils.success("Job status updated successfully!");
-                console.log("Job status updated:", resFromServer?.updatedJobs);
+                console.log("Job status updated:", updatedJobs);
             } else if (resFromServer.message === "Removal limit exceeded") {
                 // Handle removal limit exceeded
                 setUserJobs((prevJobs) =>
@@ -606,10 +626,30 @@ const handleDragEnd = (e: React.DragEvent) => {
                                             // If neither has appliedDate, fallback to updatedAt
                                         }
                                         
-                                        // Default sorting by updatedAt - most recently moved/updated cards appear first
-                                        const dateA = new Date(a.dateAdded || a.createdAt || a.updatedAt || 0).getTime();
-                                        const dateB = new Date(b.dateAdded || b.createdAt || b.updatedAt || 0).getTime();
-                                        return dateB - dateA; // Newest first
+                                        // Default sorting: prioritize updatedAt (when job is moved), then dateAdded, then createdAt
+                                        // Most recently moved/updated cards appear first
+                                        const getSortDate = (job: Job): number => {
+                                            // Priority 1: updatedAt (when job was last moved/updated)
+                                            if (job.updatedAt) {
+                                                const updated = new Date(job.updatedAt).getTime();
+                                                if (!isNaN(updated)) return updated;
+                                            }
+                                            // Priority 2: dateAdded
+                                            if (job.dateAdded) {
+                                                const added = new Date(job.dateAdded).getTime();
+                                                if (!isNaN(added)) return added;
+                                            }
+                                            // Priority 3: createdAt
+                                            if (job.createdAt) {
+                                                const created = new Date(job.createdAt).getTime();
+                                                if (!isNaN(created)) return created;
+                                            }
+                                            return 0;
+                                        };
+                                        
+                                        const dateA = getSortDate(a);
+                                        const dateB = getSortDate(b);
+                                        return dateB - dateA; // Newest first (most recently moved on top)
                                     }
                                 )
                                 : [];
