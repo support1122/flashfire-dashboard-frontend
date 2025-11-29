@@ -371,17 +371,24 @@ const handleDragEnd = (e: React.DragEvent) => {
         const newStatus = status + statusSuffix;
 
         // OPTIMISTIC UPDATE: Update UI immediately
+        // Use ISO string for proper Date sorting - moved jobs will appear at top
+        const now = new Date().toISOString();
         setUserJobs((prevJobs) =>
             prevJobs.map((j) =>
                 j.jobID === jobID 
                     ? { 
                         ...j, 
                         currentStatus: newStatus,
-                        updatedAt: new Date().toLocaleString("en-IN")
+                        updatedAt: now, // ISO string for proper sorting
+                        // Also update dateAdded to ensure it appears at top
+                        dateAdded: now
                     } 
                     : j
             )
         );
+        
+        // Reset page to 1 for the target column so moved job appears at top
+        setColumnPages((prev) => ({ ...prev, [status]: 1 }));
 
         try {
             const endpoint =
@@ -412,10 +419,23 @@ const handleDragEnd = (e: React.DragEvent) => {
             let resFromServer = await reqToServer.json();
             if (resFromServer.message === "Jobs updated successfully") {
                 // Server confirmed - update with server data
-                setUserJobs(resFromServer?.updatedJobs);
+                // Ensure moved job has fresh updatedAt timestamp to appear at top
+                const updatedJobs = resFromServer?.updatedJobs.map((job: Job) => {
+                    if (job.jobID === jobID) {
+                        return {
+                            ...job,
+                            updatedAt: new Date().toISOString(), // Fresh timestamp for moved job
+                            dateAdded: job.dateAdded || new Date().toISOString()
+                        };
+                    }
+                    return job;
+                });
+                setUserJobs(updatedJobs);
+                // Reset page to 1 for the target column
+                setColumnPages((prev) => ({ ...prev, [status]: 1 }));
                 clearPendingUpdate(jobID);
                 toastUtils.success("Job status updated successfully!");
-                console.log("Job status updated:", resFromServer?.updatedJobs);
+                console.log("Job status updated:", updatedJobs);
             } else if (resFromServer.message === "Removal limit exceeded") {
                 // Handle removal limit exceeded
                 setUserJobs((prevJobs) =>
