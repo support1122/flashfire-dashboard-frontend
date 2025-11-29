@@ -371,22 +371,17 @@ const handleDragEnd = (e: React.DragEvent) => {
         const newStatus = status + statusSuffix;
 
         // OPTIMISTIC UPDATE: Update UI immediately
-        // Use ISO string for proper Date sorting - moved jobs will appear at top
-        const now = new Date().toISOString();
         setUserJobs((prevJobs) =>
             prevJobs.map((j) =>
                 j.jobID === jobID 
                     ? { 
                         ...j, 
                         currentStatus: newStatus,
-                        updatedAt: now // ONLY update updatedAt (not dateAdded - that stays original)
+                        updatedAt: new Date().toLocaleString("en-IN")
                     } 
                     : j
             )
         );
-        
-        // Reset page to 1 for the target column so moved job appears at top
-        setColumnPages((prev) => ({ ...prev, [status]: 1 }));
 
         try {
             const endpoint =
@@ -416,10 +411,7 @@ const handleDragEnd = (e: React.DragEvent) => {
 
             let resFromServer = await reqToServer.json();
             if (resFromServer.message === "Jobs updated successfully") {
-                // Server confirmed - update with server data (backend already updated updatedAt)
                 setUserJobs(resFromServer?.updatedJobs);
-                // Reset page to 1 for the target column
-                setColumnPages((prev) => ({ ...prev, [status]: 1 }));
                 clearPendingUpdate(jobID);
                 toastUtils.success("Job status updated successfully!");
                 console.log("Job status updated:", resFromServer?.updatedJobs);
