@@ -1,0 +1,300 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Google Login Button Full Width Fix - Enhanced */
+.google-login-wrapper {
+  width: 100% !important;
+  display: block !important;
+  position: relative !important;
+}
+
+.google-login-wrapper > div {
+  width: 100% !important;
+  display: block !important;
+  position: relative !important;
+}
+
+.google-login-wrapper > div > div {
+  width: 100% !important;
+  display: block !important;
+  position: relative !important;
+}
+
+.google-login-wrapper iframe {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+  height: auto !important;
+  min-height: 48px !important;
+  border: none !important;
+  border-radius: 8px !important;
+}
+
+/* Target Google's dynamically generated containers */
+div[id^="container-"] {
+  width: 100% !important;
+  display: block !important;
+  position: relative !important;
+}
+
+div[id^="container-"] iframe {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+  height: auto !important;
+  min-height: 48px !important;
+  border: none !important;
+  border-radius: 8px !important;
+}
+
+#credential_picker_container {
+  width: 100% !important;
+  display: block !important;
+  position: relative !important;
+}
+
+#credential_picker_container iframe {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+  height: auto !important;
+  min-height: 48px !important;
+  border: none !important;
+  border-radius: 8px !important;
+}
+
+/* Additional selectors for Google OAuth button */
+div[data-testid="google-login-button"] {
+  width: 100% !important;
+  display: block !important;
+}
+
+div[data-testid="google-login-button"] iframe {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+  height: auto !important;
+  min-height: 48px !important;
+}
+
+/* Force all Google OAuth related elements to full width */
+iframe[src*="accounts.google.com"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+  height: auto !important;
+  min-height: 48px !important;
+}
+
+/* Ensure proper spacing and alignment */
+.google-login-wrapper {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Override any inline styles that might be set by Google */
+.google-login-wrapper * {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Additional fixes for Google OAuth button */
+.google-login-wrapper > div > div > iframe {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+  height: auto !important;
+  min-height: 48px !important;
+  display: block !important;
+}
+
+/* Force Google button to respect container width */
+div[id*="google-login"] {
+  width: 100% !important;
+  display: block !important;
+}
+
+div[id*="google-login"] iframe {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+}
+
+/* Handle any nested divs that Google might create */
+.google-login-wrapper div[role="button"] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Ensure proper button appearance */
+.google-login-wrapper button {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 48px !important;
+}
+
+/* Mobile responsive fixes */
+@media (max-width: 768px) {
+  .google-login-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .google-login-wrapper iframe {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+  }
+}
+
+/* AGGRESSIVE FIXES FOR GOOGLE BUTTON CONTENT DISPLAY */
+.google-login-wrapper {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  position: relative !important;
+}
+
+/* Force all nested elements to full width */
+.google-login-wrapper *,
+.google-login-wrapper > *,
+.google-login-wrapper > * > *,
+.google-login-wrapper > * > * > *,
+.google-login-wrapper > * > * > * > * {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+/* Specific targeting for Google's iframe content */
+.google-login-wrapper iframe {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  border: none !important;
+  border-radius: 8px !important;
+  overflow: visible !important;
+  position: relative !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Force Google button content to be visible */
+div[id*="google-login"],
+div[id*="credential_picker"],
+div[id^="container-"],
+#credential_picker_container {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  position: relative !important;
+  left: 0 !important;
+  right: 0 !important;
+}
+
+div[id*="google-login"] iframe,
+div[id*="credential_picker"] iframe,
+div[id^="container-"] iframe,
+#credential_picker_container iframe {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  border: none !important;
+  border-radius: 8px !important;
+  overflow: visible !important;
+  position: relative !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Additional override for any Google OAuth elements */
+iframe[src*="accounts.google.com"],
+iframe[src*="oauth"],
+iframe[src*="google"] {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  border: none !important;
+  border-radius: 8px !important;
+  overflow: visible !important;
+  position: relative !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Force proper text display */
+.google-login-wrapper,
+.google-login-wrapper * {
+  font-family: 'Google Sans', Roboto, Arial, sans-serif !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+}
+
+/* CRITICAL: Force Google button to show full content */
+.google-login-wrapper iframe {
+  transform: none !important;
+  clip: auto !important;
+  clip-path: none !important;
+  -webkit-clip-path: none !important;
+  overflow: visible !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Force all Google OAuth containers to be fully visible */
+div[id*="google-login"],
+div[id*="credential_picker"],
+div[id^="container-"],
+#credential_picker_container,
+.google-login-wrapper > div {
+  transform: none !important;
+  clip: auto !important;
+  clip-path: none !important;
+  -webkit-clip-path: none !important;
+  overflow: visible !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  display: block !important;
+  position: relative !important;
+  z-index: 1 !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+}
+
+/* Additional fix for any hidden or clipped content */
+.google-login-wrapper * {
+  transform: none !important;
+  clip: auto !important;
+  clip-path: none !important;
+  -webkit-clip-path: none !important;
+  overflow: visible !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  z-index: 1 !important;
+}

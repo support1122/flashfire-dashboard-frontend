@@ -1,0 +1,450 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Print styles for ResumePreviewMedical - Multi-page support */
+@media print {
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    width: 100% !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  @page {
+    size: letter portrait;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+
+  /* Hide everything except the print content */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Multi-page styles ONLY for ResumePreviewMedical */
+  .resume-medical-print #resume-print-only {
+    display: block !important;
+    visibility: visible !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    padding: 0.1in 0.3in !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    background: white !important;
+    color: black !important;
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 9pt !important;
+    line-height: 1.2 !important;
+    display: flex !important;
+    flex-direction: column !important;
+
+    /* Allow natural multi-page flow */
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  /* Ensure all child elements are visible for medical resume */
+  .resume-medical-print #resume-print-only * {
+    visibility: visible !important;
+    opacity: 1 !important;
+    color: inherit !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  /* Keep links blue in print for medical resume */
+  .resume-medical-print #resume-print-only a {
+    color: blue !important;
+    text-decoration: none !important;
+  }
+
+  /* Section spacing for medical resume */
+  .resume-medical-print #resume-print-only > div {
+    margin-bottom: 12px !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  /* Prevent orphaned headers for medical resume */
+  .resume-medical-print #resume-print-only > div > div:first-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* Let the last section flex if needed */
+  .resume-medical-print #resume-print-only > div:last-child {
+    margin-bottom: 0 !important;
+  }
+
+
+  /* Single-page styles for other resume components */
+  .resume-single-page #resume-print-only {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    padding: 0.2in 0.5in 0.5in 0.5in !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+    background: white !important;
+    color: black !important;
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Ensure all child elements are visible for single-page resumes */
+  .resume-single-page #resume-print-only * {
+    visibility: visible !important;
+    opacity: 1 !important;
+    color: inherit !important;
+  }
+
+  /* Prevent page break before the first element */
+  .resume-single-page #resume-print-only > *:first-child {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+
+  /* Keep links blue in print for single-page resumes */
+  .resume-single-page #resume-print-only a {
+    color: blue !important;
+    text-decoration: none !important;
+  }
+
+  /* Make sections fill available space for single-page resumes */
+  .resume-single-page #resume-print-only > div {
+    margin-bottom: 8px !important;
+  }
+
+  /* Last section (education) should not expand to fill remaining space */
+  .resume-single-page #resume-print-only > div:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  /* Remove bottom margin from education section for print */
+  .resume-single-page #resume-print-only .education-section {
+    margin-bottom: 0 !important;
+  }
+
+  .resume-single-page #resume-print-only .education-item {
+    margin-bottom: 0 !important;
+  }
+
+  /* Prevent page breaks for single-page resumes */
+  .resume-single-page #resume-print-only,
+  .resume-single-page #resume-print-only * {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Default margins for standard ResumePreview (screen) */
+.resume-single-page [data-resume-preview] {
+  padding-right: 0.7in !important;
+}
+
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  max-height: 80vh;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-search {
+  margin: 0.5rem 0;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.5rem;
+}
+
+.resume-list {
+  list-style: none;
+  padding: 0;
+}
+
+.resume-item {
+  padding: 0.5rem;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+.resume-item:hover {
+  background: #f5f5f5;
+}
+
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  border: 3px solid #f59e0b;
+}
+
+.modal-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #dc2626;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.modal-body {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #374151;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.modal-instruction {
+  margin-bottom: 0.75rem;
+}
+
+.modal-instruction strong {
+  color: #dc2626;
+  font-weight: bold;
+}
+
+.modal-note {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+  font-style: italic;
+}
+
+.modal-button {
+  background-color: #10b981;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.modal-button:hover {
+  background-color: #059669;
+}
+
+/* /home/bsc/Codding/Work/Test/resume-maker-very-latest-somith/src/components/ResumePreviewMedical.tsx */
+
+/* --- PRINT STYLES --- */
+@media print {
+  /* Basic setup for printing */
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    width: 100% !important;
+    overflow: visible !important;
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    size: letter portrait; /* Use 'letter' for US standard, or 'A4' */
+    margin: 0 !important;
+  }
+
+  /* Hide everything that shouldn't be printed */
+  .no-print {
+    display: none !important;
+  }
+  
+  /* Make sure links print black, not blue - but ONLY for single-page resumes */
+  .resume-single-page a {
+    color: black !important;
+    text-decoration: none !important;
+  }
+
+  /* --- STYLES FOR SINGLE-PAGE RESUME --- */
+  /* This is the main container that will be visible for printing */
+  .resume-single-page #resume-print-only {
+    /* Core Layout: Allow natural flow */
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    
+    /* Content & Font Styling */
+    padding: 0.2in 0.5in 0.5in 0.5in !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    background: white !important;
+    color: black !important;
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 11px !important; /* Base font size for print */
+    line-height: 1.25 !important;
+  }
+
+  /* Ensure all children are visible inside the print container */
+  .resume-single-page #resume-print-only * {
+    visibility: visible !important;
+    opacity: 1 !important;
+    color: inherit !important;
+    page-break-inside: auto !important; /* Allow natural page breaks */
+    break-inside: auto !important;
+  }
+
+  /* Prevent page break before the first element */
+  .resume-single-page #resume-print-only > *:first-child {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+
+  /* Set consistent bottom margin for all sections within the resume */
+  .resume-single-page #resume-print-only > div {
+    margin-bottom: 8px !important;
+  }
+
+  /* Allow natural spacing for all sections */
+  .resume-single-page #resume-print-only > div:last-child {
+    margin-bottom: 0 !important; /* Remove margin from the last item */
+  }
+
+
+}
+
+
+/* --- MODAL STYLES (for screen) --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  border: 3px solid #f59e0b;
+}
+
+.modal-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #dc2626;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.modal-body {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #374151;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.modal-instruction {
+  margin-bottom: 0.75rem;
+}
+
+.modal-instruction strong {
+  color: #1f2937;
+  font-weight: bold;
+}
+
+.modal-instruction span {
+  color: #dc2626;
+  font-weight: bold;
+  background-color: #fef2f2;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.modal-note {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+  font-style: italic;
+}
+
+.modal-button {
+  background-color: #10b981;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.modal-button:hover {
+  background-color: #059669;
+}
