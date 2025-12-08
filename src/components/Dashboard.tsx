@@ -34,7 +34,8 @@ const Dashboard: React.FC = () => {
 
     const { token, userDetails } = context;
     const { userJobs, setUserJobs } = useUserJobs();
-    const [loadingDetails, setLoadingDetails] = useState(false);
+    const [loadingDetails, setLoadingDetails] = useState(true); // Start with true to show loading initially
+    const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial load state
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [showJobForm, setShowJobForm] = useState(false);
     const { role } = useOperationsStore();
@@ -49,6 +50,7 @@ const Dashboard: React.FC = () => {
             console.log("local storage email : ", localUserDetails.email);
             try {
                 setLoadingDetails(true);
+                setIsInitialLoad(true);
                 const res = await fetch(
                     `${API_BASE_URL}/operations/getalljobs`,
                     {
@@ -61,18 +63,23 @@ const Dashboard: React.FC = () => {
                     }
                 );
                 const data = await res.json();
-                setLoadingDetails(false);
                 if (res.ok) {
-                    setUserJobs(data?.allJobs);
+                    setUserJobs(data?.allJobs || []);
+                    setIsInitialLoad(false);
                 } else {
                     alert("something is really wrong");
+                    setIsInitialLoad(false);
                 }
             } catch (error) {
                 console.log("error while initial fetch data", error);
+                setIsInitialLoad(false);
+            } finally {
+                setLoadingDetails(false);
             }
         } else {
             try {
                 setLoadingDetails(true);
+                setIsInitialLoad(true);
                 const res = await fetch(`${API_BASE_URL}/getalljobs`, {
                     method: "POST",
                     headers: {
@@ -83,7 +90,8 @@ const Dashboard: React.FC = () => {
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    setUserJobs(data?.allJobs);
+                    setUserJobs(data?.allJobs || []);
+                    setIsInitialLoad(false);
                 } else if (
                     data.message === "invalid token please login again" ||
                     data.message === "Invalid token or expired"
@@ -115,9 +123,13 @@ const Dashboard: React.FC = () => {
                     );
                     localStorage.clear();
                     navigate("/login");
+                    setIsInitialLoad(false);
+                } else {
+                    setIsInitialLoad(false);
                 }
             } catch (err) {
                 console.error(err);
+                setIsInitialLoad(false);
             } finally {
                 setLoadingDetails(false);
             }
@@ -140,14 +152,58 @@ const Dashboard: React.FC = () => {
             setShowProfileModal(false);
         }
 
-        if (userJobs.length === 0) {
-            FetchAllJobs(token, userDetails);
-        }
+        // Always fetch fresh data on mount/refresh to ensure we have latest data
+        // This prevents showing stale cached data from sessionStorage
+        setIsInitialLoad(true);
+        FetchAllJobs(token, userDetails);
     }, [token, userDetails]);
     
-    // Use session storage stats instead of calculating from userJobs
-    const stats = dashboardStats;
-    console.log("stats from session storage = ", stats);
+    // Calculate stats directly from userJobs to avoid stale sessionStorage data
+    const calculateStatsFromJobs = (jobs: typeof userJobs) => {
+        const safeJobs = Array.isArray(jobs) ? jobs : [];
+        return safeJobs.reduce((stats, job) => {
+            const status = job?.currentStatus?.toLowerCase() || '';
+            stats.total++;
+            
+            if (status.startsWith('saved')) {
+                stats.saved++;
+            } else if (status.startsWith('applied')) {
+                stats.applied++;
+            } else if (status.startsWith('interviewing')) {
+                stats.interviewing++;
+            } else if (status.startsWith('offer')) {
+                stats.offer++;
+            } else if (status.startsWith('rejected')) {
+                stats.rejected++;
+            } else if (status.startsWith('deleted')) {
+                stats.deleted++;
+            }
+            
+            return stats;
+        }, {
+            total: 0,
+            saved: 0,
+            applied: 0,
+            interviewing: 0,
+            offer: 0,
+            rejected: 0,
+            deleted: 0,
+        });
+    };
+
+    // Calculate stats from current userJobs (not from sessionStorage to avoid stale data)
+    // Only calculate after initial load completes to prevent showing stale values
+    const stats = isInitialLoad ? {
+        total: 0,
+        saved: 0,
+        applied: 0,
+        interviewing: 0,
+        offer: 0,
+        rejected: 0,
+        deleted: 0,
+    } : calculateStatsFromJobs(userJobs);
+    
+    console.log("stats calculated from userJobs = ", stats);
 
     // Helper function to parse dates in various formats
     const parseCustomDate = (dateString: string): Date => {
@@ -283,7 +339,8 @@ const Dashboard: React.FC = () => {
         stats.total > 0 ? Math.round((stats.offer / stats.total) * 100) : 0;
     // alert(successRate)
 
-    if (loadingDetails) {
+    // Show loading screen while fetching initial data to prevent showing stale cached data
+    if (loadingDetails || isInitialLoad) {
         return <LoadingScreen />;
     }
     return (
@@ -372,10 +429,7 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
             <h3 className="text-2xl font-bold text-gray-900 mb-1">
-              {userJobs?.length -
-                userJobs.filter((items) =>
-                  items.currentStatus?.toLowerCase().startsWith("deleted")
-                ).length}
+              {stats.total}
             </h3>
             <p className="text-gray-600 text-sm">Total Applications</p>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
@@ -411,7 +465,7 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
             <h3 className="text-2xl font-bold text-gray-900 mb-1">
-              {userJobs?.filter((item) => item.currentStatus.startsWith("offer")).length}
+              {stats.offer}
             </h3>
             <p className="text-gray-600 text-sm">Offers Received</p>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
@@ -483,9 +537,7 @@ const Dashboard: React.FC = () => {
               </div>
               <span className="text-sm font-medium text-gray-600">Saved</span>
               <span className="text-lg font-bold text-gray-900">
-                {userJobs?.filter((item) =>
-                  item.currentStatus?.toLowerCase().startsWith("saved")
-                ).length}
+                {stats.saved}
               </span>
             </div>
 

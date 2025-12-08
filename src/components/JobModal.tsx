@@ -299,6 +299,7 @@ export default function JobModal({
         }
     }, [jobDetails?.jobID, activeSection, getJobDescription, isJobDescriptionLoading, loadJobDescription]);
 
+
     // Handle keyboard shortcuts for job description copy
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -1579,7 +1580,7 @@ useEffect(() => {
                                     >
                                         Copy Optimize URL
                                     </button>
-                                    {/* <button
+                                    <button
                                         onClick={async () => {
                                         try {
                                             // Get user email - for operations, get from currentUser (the client whose job this is)
@@ -1612,6 +1613,7 @@ useEffect(() => {
 
                                             const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
                                             const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8086";
+                                            const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
 
                                             // Step 1: Get user's assigned resume
                                             const resumeResponse = await fetch(`${apiUrl}/api/resume-by-email`, {
@@ -1637,6 +1639,10 @@ useEffect(() => {
                                                 toastUtils.error("Invalid resume data.");
                                                 return;
                                             }
+
+                                            // Check if resume version is 2 (Medical)
+                                            const resumeVersion = resumeData.V || 0;
+                                            const isVersion2 = resumeVersion === 2;
 
                                             // Step 2: Optimize the resume
                                             const prompt = "if you recieve any HTML tages please ignore it and optimize the resume according to the given JD. Make sure not to cut down or shorten any points in the Work Experience section. IN all fields please do not cut down or shorten any points or content. For example, if a role in the base resume has 6 points, the optimized version should also retain all 6 points. The content should be aligned with the JD but the number of points per role must remain the same. Do not touch or optimize publications if given to you.";
@@ -1793,16 +1799,137 @@ useEffect(() => {
                                                 }),
                                             });
 
+                                            if (!saveResponse.ok) {
+                                                toastUtils.dismissToast(loadingToast);
+                                                throw new Error("Failed to save optimized resume");
+                                            }
+
                                             toastUtils.dismissToast(loadingToast);
 
-                                            if (saveResponse.ok) {
-                                                toastUtils.success("✅ Resume optimized and saved successfully!");
+                                            // Step 5: Generate PDF - Use /v1/convert for v2, /generate-resume-pdf for others
+                                            if (isVersion2) {
+                                                // For version 2 (Medical), use /v1/convert endpoint
+                                                const pdfLoadingToast = toastUtils.loading("Making the best optimal PDF... Please wait.");
+                                                
+                                                // Format data for /v1/convert endpoint (flat format, no scale/version needed)
+                                                const pdfPayload = {
+                                                    personalInfo: optimizedData.personalInfo,
+                                                    summary: optimizedData.summary || "",
+                                                    workExperience: optimizedData.workExperience || [],
+                                                    projects: optimizedData.projects || [],
+                                                    leadership: optimizedData.leadership || [],
+                                                    skills: optimizedData.skills || [],
+                                                    education: optimizedData.education || [],
+                                                    publications: optimizedData.publications || [],
+                                                    checkboxStates: {
+                                                        showSummary: resumeData.checkboxStates?.showSummary !== false,
+                                                        showProjects: resumeData.checkboxStates?.showProjects || false,
+                                                        showLeadership: resumeData.checkboxStates?.showLeadership || false,
+                                                        showPublications: resumeData.checkboxStates?.showPublications || false,
+                                                    },
+                                                };
+
+                                                const pdfResponse = await fetch(`${pdfServerUrl}/v1/convert`, {
+                                                    method: "POST",
+                                                    headers: { "Content-Type": "application/json" },
+                                                    body: JSON.stringify(pdfPayload),
+                                                });
+
+                                                if (!pdfResponse.ok) {
+                                                    toastUtils.dismissToast(pdfLoadingToast);
+                                                    throw new Error(`PDF generation failed: ${pdfResponse.status}`);
+                                                }
+
+                                                // Download PDF directly
+                                                const pdfBlob = await pdfResponse.blob();
+                                                const pdfUrl = window.URL.createObjectURL(pdfBlob);
+                                                const link = document.createElement("a");
+                                                link.href = pdfUrl;
+                                                
+                                                // Generate filename: "{name}_Resume.pdf"
+                                                const name = optimizedData.personalInfo?.name || "Resume";
+                                                const cleanName = name.replace(/\s+/g, "_");
+                                                link.download = `${cleanName}_Resume.pdf`;
+                                                
+                                                document.body.appendChild(link);
+                                                link.click();
+                                                document.body.removeChild(link);
+                                                window.URL.revokeObjectURL(pdfUrl);
+
+                                                toastUtils.dismissToast(pdfLoadingToast);
+                                                toastUtils.success("✅ Resume optimized, saved, and PDF downloaded successfully!");
+                                                
                                                 // Refresh job data
                                                 setTimeout(() => {
                                                     window.location.reload();
                                                 }, 1500);
                                             } else {
-                                                throw new Error("Failed to save optimized resume");
+                                                // For other versions, use PDF API
+                                                const pdfLoadingToast = toastUtils.loading("Making the best optimal PDF... Please wait.");
+
+                                                // Format data for PDF server (flat format with scale)
+                                                const pdfPayload = {
+                                                    personalInfo: optimizedData.personalInfo,
+                                                    summary: optimizedData.summary || "",
+                                                    workExperience: optimizedData.workExperience || [],
+                                                    projects: optimizedData.projects || [],
+                                                    leadership: optimizedData.leadership || [],
+                                                    skills: optimizedData.skills || [],
+                                                    education: optimizedData.education || [],
+                                                    publications: optimizedData.publications || [],
+                                                    checkboxStates: {
+                                                        showSummary: resumeData.checkboxStates?.showSummary !== false,
+                                                        showProjects: resumeData.checkboxStates?.showProjects || false,
+                                                        showLeadership: resumeData.checkboxStates?.showLeadership || false,
+                                                        showPublications: resumeData.checkboxStates?.showPublications || false,
+                                                    },
+                                                    sectionOrder: resumeData.sectionOrder || [
+                                                        "personalInfo",
+                                                        "summary",
+                                                        "workExperience",
+                                                        "projects",
+                                                        "leadership",
+                                                        "skills",
+                                                        "education",
+                                                        "publications"
+                                                    ],
+                                                    scale: 1.5, // Default scale (higher than 1.35 as requested)
+                                                };
+
+                                                const pdfResponse = await fetch(`${pdfServerUrl}/generate-resume-pdf`, {
+                                                    method: "POST",
+                                                    headers: { "Content-Type": "application/json" },
+                                                    body: JSON.stringify(pdfPayload),
+                                                });
+
+                                                if (!pdfResponse.ok) {
+                                                    toastUtils.dismissToast(pdfLoadingToast);
+                                                    throw new Error(`PDF generation failed: ${pdfResponse.status}`);
+                                                }
+
+                                                // Download PDF
+                                                const pdfBlob = await pdfResponse.blob();
+                                                const pdfUrl = window.URL.createObjectURL(pdfBlob);
+                                                const link = document.createElement("a");
+                                                link.href = pdfUrl;
+                                                
+                                                // Generate filename: "{name}_Resume.pdf"
+                                                const name = optimizedData.personalInfo?.name || "Resume";
+                                                const cleanName = name.replace(/\s+/g, "_");
+                                                link.download = `${cleanName}_Resume.pdf`;
+                                                
+                                                document.body.appendChild(link);
+                                                link.click();
+                                                document.body.removeChild(link);
+                                                window.URL.revokeObjectURL(pdfUrl);
+
+                                                toastUtils.dismissToast(pdfLoadingToast);
+                                                toastUtils.success("✅ Resume optimized, saved, and PDF downloaded successfully!");
+                                                
+                                                // Refresh job data
+                                                setTimeout(() => {
+                                                    window.location.reload();
+                                                }, 1500);
                                             }
                                         } catch (error: any) {
                                             console.error("Error optimizing resume:", error);
@@ -1812,7 +1939,7 @@ useEffect(() => {
                                     className="hover:bg-orange-900 hover:bg-opacity-20 p-2 rounded-full transition-colors bg-orange-700 px-4 py-2 text-white font-medium"
                                 >
                                     Optimize
-                                </button> */}
+                                </button>
                                 </>
                             ) : null}
                             <button
