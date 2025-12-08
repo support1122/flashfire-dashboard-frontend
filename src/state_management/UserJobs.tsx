@@ -3,7 +3,7 @@ import React, { createContext, useState, useEffect, useContext, useRef } from 'r
 import { UserContext } from './UserContext.tsx';
 import { useNavigate } from 'react-router-dom';
 import { useOperationsStore } from "./Operations.ts";
-import { useJobsSessionStore, useShouldFetchJobs } from './JobsSessionStore';
+import { useJobsSessionStore, useShouldFetchJobs } from './JobsSessionStore.ts';
 
 type Job = any;
 

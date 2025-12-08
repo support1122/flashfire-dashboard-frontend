@@ -16,28 +16,28 @@ import {
     GitCommit,
 } from "lucide-react";
 import { useRef, useState, Suspense, lazy, useContext, useEffect } from "react";
-import LoadingScreen from "./LoadingScreen";
+import LoadingScreen from "./LoadingScreen.tsx";
 import { getTimeAgo } from "../utils/getTimeAgo.ts";
-import { UserContext } from "../state_management/UserContext";
+import { UserContext } from "../state_management/UserContext.tsx";
 import { useUserJobs } from "../state_management/UserJobs.tsx"; // ⬅️ NEW
 import { hasOptimizedResumeLocal } from "../utils/hasOptimizedResumeLocal.ts";
-import { useJobDescriptionLoader } from "../state_management/JobsSessionStore";
-const AttachmentsModal = lazy(() => import("./AttachmentsModal"));
+import { useJobDescriptionLoader } from "../state_management/JobsSessionStore.ts";
+const AttachmentsModal = lazy(() => import("./AttachmentsModal.tsx"));
 import ResumeChangesComparison from "./ResumeChangesComparison.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
 import { useResumeStore } from "./AiOprimizer/store/useResumeStore.ts";
-import { toastUtils, toastMessages } from "../utils/toast";
+import { toastUtils, toastMessages } from "../utils/toast.ts";
 import {
     getOptimizedResumeUrl,
     getOptimizedResumeTitle,
-} from "../utils/getOptimizedResumeUrl";
-import { ResumePreview } from "./AiOprimizer/components/ResumePreview";
+} from "../utils/getOptimizedResumeUrl.ts";
+import { ResumePreview } from "./AiOprimizer/components/ResumePreview.tsx";
 // import { ResumePreview1 } from "./AiOprimizer/components/ResumePreview1";
-import { ResumePreviewMedical } from "./AiOprimizer/components/ResumePreviewMedical";
+import { ResumePreviewMedical } from "./AiOprimizer/components/ResumePreviewMedical.tsx";
 
 /* ---------- ENV ---------- */
-import { uploadAttachment } from "../utils/uploadService";
-import { optimizeImageUrl } from "../utils/imageCache";
+import { uploadAttachment } from "../utils/uploadService.ts";
+import { optimizeImageUrl } from "../utils/imageCache.ts";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 const JOB_UPDATE_ENDPOINT = `${API_BASE}/updatechanges`;

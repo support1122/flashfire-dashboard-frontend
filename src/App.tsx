@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
-import Login from './components/Login';
-import Register from './components/Register';
+import Login from './components/Login.tsx';
+import Register from './components/Register.tsx';
 import MainContent from './components/MainContent.tsx';
 
 import { UserJobsProvider } from './state_management/UserJobs.tsx';

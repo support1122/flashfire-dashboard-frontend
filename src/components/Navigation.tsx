@@ -15,9 +15,9 @@ import {
   X,
 } from "lucide-react";
 import { UserContext } from "../state_management/UserContext.tsx";
-import { useUserProfile } from "../state_management/ProfileContext";
+import { useUserProfile } from "../state_management/ProfileContext.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
-import { toastUtils, toastMessages } from "../utils/toast";
+import { toastUtils, toastMessages } from "../utils/toast.ts";
 
 interface NavigationProps {
   activeTab: string;

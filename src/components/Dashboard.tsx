@@ -16,9 +16,9 @@ import LoadingScreen from "./LoadingScreen.tsx";
 import NewUserModal from "./NewUserModal.tsx";
 import DashboardManagerDisplay from "./DashboardManagerDisplay.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
-import { useJobsSessionStore } from "../state_management/JobsSessionStore";
+import { useJobsSessionStore } from "../state_management/JobsSessionStore.ts";
 
-const JobForm = lazy(() => import("./JobForm"));
+const JobForm = lazy(() => import("./JobForm.tsx"));
 
 const Dashboard: React.FC = () => {
     const context = useContext(UserContext);
@@ -154,37 +154,51 @@ const Dashboard: React.FC = () => {
         if (!dateString) return new Date(0);
 
         try {
-            // Try to parse with standard Date constructor first
-            const standardDate = new Date(dateString);
-            if (!isNaN(standardDate.getTime())) {
-                return standardDate;
+            // Try ISO format first
+            if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dateString)) {
+                const iso = new Date(dateString);
+                if (!isNaN(iso.getTime())) {
+                    return iso;
+                }
             }
 
-            // Handle format like "19/9/2025, 12:19:50 pm" or "5/9/2025, 2:16:09 am"
-            const cleaned = dateString.replace(/,/g, "").trim();
-            const parts = cleaned.split(" ");
+            // Handle format: "MM/DD/YYYY, h:mm:ss am/pm" (dateAdded) or "DD/MM/YYYY, h:mm:ss am/pm" (createdAt)
+            const parts = dateString.trim().split(",");
+            if (parts.length === 2) {
+                const datePart = parts[0].trim();
+                const timePart = parts[1].trim();
 
-            if (parts.length >= 2) {
-                const datePart = parts[0]; // "19/9/2025" or "5/9/2025"
-                const timePart = parts.slice(1).join(" "); // "12:19:50 pm"
+                const dateNumbers = datePart.split("/").map((p) => parseInt(p.trim()));
+                
+                if (dateNumbers.length === 3) {
+                    let dd, mm, yyyy;
+                    
+                    // Detect format: if first number > 12, it's DD/MM/YYYY (createdAt)
+                    // Otherwise, assume MM/DD/YYYY (US format) for dateAdded
+                    if (dateNumbers[0] > 12) {
+                        // DD/MM/YYYY format (createdAt)
+                        dd = dateNumbers[0];
+                        mm = dateNumbers[1];
+                        yyyy = dateNumbers[2];
+                    } else {
+                        // MM/DD/YYYY format (dateAdded)
+                        mm = dateNumbers[0];
+                        dd = dateNumbers[1];
+                        yyyy = dateNumbers[2];
+                    }
+                    
+                    if (dd && mm && yyyy) {
+                        // Handle 2-digit years
+                        if (yyyy < 100) yyyy += 2000;
 
-                const [day, month, year] = datePart.split("/");
-                if (day && month && year) {
-                    const date = new Date(
-                        parseInt(year),
-                        parseInt(month) - 1,
-                        parseInt(day)
-                    );
+                        const date = new Date(yyyy, mm - 1, dd);
 
-                    // Add time if available
-                    if (timePart) {
-                        const timeMatch = timePart.match(
-                            /(\d{1,2}):(\d{2}):(\d{2})\s*(am|pm)?/i
-                        );
+                        // Parse time with AM/PM
+                        const timeMatch = timePart.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)/i);
                         if (timeMatch) {
                             let hours = parseInt(timeMatch[1]);
                             const minutes = parseInt(timeMatch[2]);
-                            const seconds = parseInt(timeMatch[3]);
+                            const seconds = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
                             const period = timeMatch[4]?.toLowerCase();
 
                             if (period === "pm" && hours !== 12) hours += 12;
@@ -192,16 +206,16 @@ const Dashboard: React.FC = () => {
 
                             date.setHours(hours, minutes, seconds);
                         }
-                    }
 
-                    return date;
+                        return date;
+                    }
                 }
             }
 
-            // Try parsing as ISO string or other common formats
-            const isoDate = new Date(dateString);
-            if (!isNaN(isoDate.getTime())) {
-                return isoDate;
+            // Fallback: try native Date parse (handles US format, etc.)
+            const native = new Date(dateString);
+            if (!isNaN(native.getTime())) {
+                return native;
             }
         } catch (error) {
             console.warn("Failed to parse date:", dateString, error);
