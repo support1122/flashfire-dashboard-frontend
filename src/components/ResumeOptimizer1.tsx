@@ -822,7 +822,7 @@ export default function DocumentUpload() {
   const uploadToCloudinary = async (file: File) => {
     try {
       // Use the new unified upload service
-      const { uploadProfileFile } = await import('../utils/uploadService');
+      const { uploadProfileFile } = await import('../utils/uploadService.ts');
       const url = await uploadProfileFile(file, 'resume');
       return url;
     } catch (error) {

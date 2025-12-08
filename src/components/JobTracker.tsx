@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useContext, Suspense, lazy, useRef } from "react";
 import { Search, Plus } from "lucide-react";
-import { Job, JobStatus } from "../types";
-const JobForm = lazy(() => import("./JobForm"));
-const JobCard = lazy(() => import("./JobCard"));
+import { Job, JobStatus } from "../types/index.ts";
+const JobForm = lazy(() => import("./JobForm.tsx"));
+const JobCard = lazy(() => import("./JobCard.tsx"));
 import { UserContext } from "../state_management/UserContext.tsx";
 import { useUserJobs } from "../state_management/UserJobs.tsx";
 import LoadingScreen from "./LoadingScreen.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
-import { toastUtils, toastMessages } from "../utils/toast";
-import { useJobsSessionStore } from "../state_management/JobsSessionStore";
+import { toastUtils, toastMessages } from "../utils/toast.ts";
+import { useJobsSessionStore } from "../state_management/JobsSessionStore.ts";
 const JobModal = lazy(() => import("./JobModal.tsx"));
 const RemovalLimitModal = lazy(() => import("./RemovalLimitModal.tsx"));
 
@@ -106,41 +106,56 @@ useEffect(() => {
         }
       }
 
-      // Parse en-IN format: "DD/MM/YYYY, h:mm:ss am/pm" (IST timezone)
+      // Parse format: "MM/DD/YYYY, h:mm:ss am/pm" (dateAdded) or "DD/MM/YYYY, h:mm:ss am/pm" (createdAt)
       const parts = value.trim().split(",");
       if (parts.length === 2) {
         const datePart = parts[0].trim();
         const timePart = parts[1].trim();
 
-        const [ddStr, mmStr, yyStr] = datePart.split("/").map((p) => p.trim());
-        const dd = Number(ddStr);
-        const mm = Number(mmStr);
-        let yyyy = Number(yyStr);
+        const dateNumbers = datePart.split("/").map((p) => Number(p.trim()));
         
-        if (dd && mm && yyyy) {
-          // Handle 2-digit years
-          if (yyyy < 100) yyyy += 2000;
+        if (dateNumbers.length === 3) {
+          let dd, mm, yyyy;
+          
+          // Detect format: if first number > 12, it's DD/MM/YYYY (createdAt)
+          // Otherwise, assume MM/DD/YYYY (US format) for dateAdded
+          if (dateNumbers[0] > 12) {
+            // DD/MM/YYYY format (createdAt)
+            dd = dateNumbers[0];
+            mm = dateNumbers[1];
+            yyyy = dateNumbers[2];
+          } else {
+            // MM/DD/YYYY format (dateAdded)
+            mm = dateNumbers[0];
+            dd = dateNumbers[1];
+            yyyy = dateNumbers[2];
+          }
+          
+          if (dd && mm && yyyy) {
+            // Handle 2-digit years
+            if (yyyy < 100) yyyy += 2000;
 
-          // Parse time with AM/PM
-          const timeMatch = timePart.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)/i);
-          if (timeMatch) {
-            let hour = Number(timeMatch[1]);
-            const minute = Number(timeMatch[2]);
-            const second = timeMatch[3] ? Number(timeMatch[3]) : 0;
-            const meridian = (timeMatch[4] || "").toLowerCase();
+            // Parse time with AM/PM
+            const timeMatch = timePart.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)/i);
+            if (timeMatch) {
+              let hour = Number(timeMatch[1]);
+              const minute = Number(timeMatch[2]);
+              const second = timeMatch[3] ? Number(timeMatch[3]) : 0;
+              const meridian = (timeMatch[4] || "").toLowerCase();
 
-            if (!Number.isNaN(hour) && !Number.isNaN(minute)) {
-              // Convert to 24-hour format
-              if (meridian === "pm" && hour !== 12) hour += 12;
-              if (meridian === "am" && hour === 12) hour = 0;
+              if (!Number.isNaN(hour) && !Number.isNaN(minute)) {
+                // Convert to 24-hour format
+                if (meridian === "pm" && hour !== 12) hour += 12;
+                if (meridian === "am" && hour === 12) hour = 0;
 
-              // Create date in IST (UTC+5:30), then convert to UTC timestamp
-              // IST offset is +05:30 => 330 minutes
-              const istOffsetMinutes = 330;
-              const utcMs = Date.UTC(yyyy, mm - 1, dd, hour, minute, second) - istOffsetMinutes * 60 * 1000;
-              const d = new Date(utcMs);
-              if (!Number.isNaN(d.getTime())) {
-                return d.getTime();
+                // Create date in IST (UTC+5:30), then convert to UTC timestamp
+                // IST offset is +05:30 => 330 minutes
+                const istOffsetMinutes = 330;
+                const utcMs = Date.UTC(yyyy, mm - 1, dd, hour, minute, second) - istOffsetMinutes * 60 * 1000;
+                const d = new Date(utcMs);
+                if (!Number.isNaN(d.getTime())) {
+                  return d.getTime();
+                }
               }
             }
           }
