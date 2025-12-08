@@ -16,9 +16,9 @@ import LoadingScreen from "./LoadingScreen.tsx";
 import NewUserModal from "./NewUserModal.tsx";
 import DashboardManagerDisplay from "./DashboardManagerDisplay.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
-import { useJobsSessionStore } from "../state_management/JobsSessionStore";
+import { useJobsSessionStore } from "../state_management/JobsSessionStore.ts";
 
-const JobForm = lazy(() => import("./JobForm"));
+const JobForm = lazy(() => import("./JobForm.tsx"));
 
 const Dashboard: React.FC = () => {
     const context = useContext(UserContext);
@@ -34,7 +34,8 @@ const Dashboard: React.FC = () => {
 
     const { token, userDetails } = context;
     const { userJobs, setUserJobs } = useUserJobs();
-    const [loadingDetails, setLoadingDetails] = useState(false);
+    const [loadingDetails, setLoadingDetails] = useState(true); // Start with true to show loading initially
+    const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial load state
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [showJobForm, setShowJobForm] = useState(false);
     const { role } = useOperationsStore();
@@ -49,6 +50,7 @@ const Dashboard: React.FC = () => {
             console.log("local storage email : ", localUserDetails.email);
             try {
                 setLoadingDetails(true);
+                setIsInitialLoad(true);
                 const res = await fetch(
                     `${API_BASE_URL}/operations/getalljobs`,
                     {
@@ -61,18 +63,23 @@ const Dashboard: React.FC = () => {
                     }
                 );
                 const data = await res.json();
-                setLoadingDetails(false);
                 if (res.ok) {
-                    setUserJobs(data?.allJobs);
+                    setUserJobs(data?.allJobs || []);
+                    setIsInitialLoad(false);
                 } else {
                     alert("something is really wrong");
+                    setIsInitialLoad(false);
                 }
             } catch (error) {
                 console.log("error while initial fetch data", error);
+                setIsInitialLoad(false);
+            } finally {
+                setLoadingDetails(false);
             }
         } else {
             try {
                 setLoadingDetails(true);
+                setIsInitialLoad(true);
                 const res = await fetch(`${API_BASE_URL}/getalljobs`, {
                     method: "POST",
                     headers: {
@@ -83,7 +90,8 @@ const Dashboard: React.FC = () => {
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    setUserJobs(data?.allJobs);
+                    setUserJobs(data?.allJobs || []);
+                    setIsInitialLoad(false);
                 } else if (
                     data.message === "invalid token please login again" ||
                     data.message === "Invalid token or expired"
@@ -115,9 +123,13 @@ const Dashboard: React.FC = () => {
                     );
                     localStorage.clear();
                     navigate("/login");
+                    setIsInitialLoad(false);
+                } else {
+                    setIsInitialLoad(false);
                 }
             } catch (err) {
                 console.error(err);
+                setIsInitialLoad(false);
             } finally {
                 setLoadingDetails(false);
             }
@@ -140,51 +152,109 @@ const Dashboard: React.FC = () => {
             setShowProfileModal(false);
         }
 
-        if (userJobs.length === 0) {
-            FetchAllJobs(token, userDetails);
-        }
+        // Always fetch fresh data on mount/refresh to ensure we have latest data
+        // This prevents showing stale cached data from sessionStorage
+        setIsInitialLoad(true);
+        FetchAllJobs(token, userDetails);
     }, [token, userDetails]);
     
-    // Use session storage stats instead of calculating from userJobs
-    const stats = dashboardStats;
-    console.log("stats from session storage = ", stats);
+    // Calculate stats directly from userJobs to avoid stale sessionStorage data
+    const calculateStatsFromJobs = (jobs: typeof userJobs) => {
+        const safeJobs = Array.isArray(jobs) ? jobs : [];
+        return safeJobs.reduce((stats, job) => {
+            const status = job?.currentStatus?.toLowerCase() || '';
+            stats.total++;
+            
+            if (status.startsWith('saved')) {
+                stats.saved++;
+            } else if (status.startsWith('applied')) {
+                stats.applied++;
+            } else if (status.startsWith('interviewing')) {
+                stats.interviewing++;
+            } else if (status.startsWith('offer')) {
+                stats.offer++;
+            } else if (status.startsWith('rejected')) {
+                stats.rejected++;
+            } else if (status.startsWith('deleted')) {
+                stats.deleted++;
+            }
+            
+            return stats;
+        }, {
+            total: 0,
+            saved: 0,
+            applied: 0,
+            interviewing: 0,
+            offer: 0,
+            rejected: 0,
+            deleted: 0,
+        });
+    };
+
+    // Calculate stats from current userJobs (not from sessionStorage to avoid stale data)
+    // Only calculate after initial load completes to prevent showing stale values
+    const stats = isInitialLoad ? {
+        total: 0,
+        saved: 0,
+        applied: 0,
+        interviewing: 0,
+        offer: 0,
+        rejected: 0,
+        deleted: 0,
+    } : calculateStatsFromJobs(userJobs);
+    
+    console.log("stats calculated from userJobs = ", stats);
 
     // Helper function to parse dates in various formats
     const parseCustomDate = (dateString: string): Date => {
         if (!dateString) return new Date(0);
 
         try {
-            // Try to parse with standard Date constructor first
-            const standardDate = new Date(dateString);
-            if (!isNaN(standardDate.getTime())) {
-                return standardDate;
+            // Try ISO format first
+            if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dateString)) {
+                const iso = new Date(dateString);
+                if (!isNaN(iso.getTime())) {
+                    return iso;
+                }
             }
 
-            // Handle format like "19/9/2025, 12:19:50 pm" or "5/9/2025, 2:16:09 am"
-            const cleaned = dateString.replace(/,/g, "").trim();
-            const parts = cleaned.split(" ");
+            // Handle format: "MM/DD/YYYY, h:mm:ss am/pm" (dateAdded) or "DD/MM/YYYY, h:mm:ss am/pm" (createdAt)
+            const parts = dateString.trim().split(",");
+            if (parts.length === 2) {
+                const datePart = parts[0].trim();
+                const timePart = parts[1].trim();
 
-            if (parts.length >= 2) {
-                const datePart = parts[0]; // "19/9/2025" or "5/9/2025"
-                const timePart = parts.slice(1).join(" "); // "12:19:50 pm"
+                const dateNumbers = datePart.split("/").map((p) => parseInt(p.trim()));
+                
+                if (dateNumbers.length === 3) {
+                    let dd, mm, yyyy;
+                    
+                    // Detect format: if first number > 12, it's DD/MM/YYYY (createdAt)
+                    // Otherwise, assume MM/DD/YYYY (US format) for dateAdded
+                    if (dateNumbers[0] > 12) {
+                        // DD/MM/YYYY format (createdAt)
+                        dd = dateNumbers[0];
+                        mm = dateNumbers[1];
+                        yyyy = dateNumbers[2];
+                    } else {
+                        // MM/DD/YYYY format (dateAdded)
+                        mm = dateNumbers[0];
+                        dd = dateNumbers[1];
+                        yyyy = dateNumbers[2];
+                    }
+                    
+                    if (dd && mm && yyyy) {
+                        // Handle 2-digit years
+                        if (yyyy < 100) yyyy += 2000;
 
-                const [day, month, year] = datePart.split("/");
-                if (day && month && year) {
-                    const date = new Date(
-                        parseInt(year),
-                        parseInt(month) - 1,
-                        parseInt(day)
-                    );
+                        const date = new Date(yyyy, mm - 1, dd);
 
-                    // Add time if available
-                    if (timePart) {
-                        const timeMatch = timePart.match(
-                            /(\d{1,2}):(\d{2}):(\d{2})\s*(am|pm)?/i
-                        );
+                        // Parse time with AM/PM
+                        const timeMatch = timePart.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)/i);
                         if (timeMatch) {
                             let hours = parseInt(timeMatch[1]);
                             const minutes = parseInt(timeMatch[2]);
-                            const seconds = parseInt(timeMatch[3]);
+                            const seconds = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
                             const period = timeMatch[4]?.toLowerCase();
 
                             if (period === "pm" && hours !== 12) hours += 12;
@@ -192,16 +262,16 @@ const Dashboard: React.FC = () => {
 
                             date.setHours(hours, minutes, seconds);
                         }
-                    }
 
-                    return date;
+                        return date;
+                    }
                 }
             }
 
-            // Try parsing as ISO string or other common formats
-            const isoDate = new Date(dateString);
-            if (!isNaN(isoDate.getTime())) {
-                return isoDate;
+            // Fallback: try native Date parse (handles US format, etc.)
+            const native = new Date(dateString);
+            if (!isNaN(native.getTime())) {
+                return native;
             }
         } catch (error) {
             console.warn("Failed to parse date:", dateString, error);
@@ -269,7 +339,8 @@ const Dashboard: React.FC = () => {
         stats.total > 0 ? Math.round((stats.offer / stats.total) * 100) : 0;
     // alert(successRate)
 
-    if (loadingDetails) {
+    // Show loading screen while fetching initial data to prevent showing stale cached data
+    if (loadingDetails || isInitialLoad) {
         return <LoadingScreen />;
     }
     return (
@@ -358,10 +429,7 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
             <h3 className="text-2xl font-bold text-gray-900 mb-1">
-              {userJobs?.length -
-                userJobs.filter((items) =>
-                  items.currentStatus?.toLowerCase().startsWith("deleted")
-                ).length}
+              {stats.total}
             </h3>
             <p className="text-gray-600 text-sm">Total Applications</p>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
@@ -397,7 +465,7 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
             <h3 className="text-2xl font-bold text-gray-900 mb-1">
-              {userJobs?.filter((item) => item.currentStatus.startsWith("offer")).length}
+              {stats.offer}
             </h3>
             <p className="text-gray-600 text-sm">Offers Received</p>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
@@ -469,9 +537,7 @@ const Dashboard: React.FC = () => {
               </div>
               <span className="text-sm font-medium text-gray-600">Saved</span>
               <span className="text-lg font-bold text-gray-900">
-                {userJobs?.filter((item) =>
-                  item.currentStatus?.toLowerCase().startsWith("saved")
-                ).length}
+                {stats.saved}
               </span>
             </div>
 
