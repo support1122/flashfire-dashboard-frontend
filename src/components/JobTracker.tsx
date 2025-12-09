@@ -92,7 +92,8 @@ useEffect(() => {
    * Parse a date string coming from the backend (stored as en-IN locale string)
    * or any ISO/standard format into a numeric timestamp.
    *
-   * Uses similar logic to getTimeAgo.ts for consistency.
+   * Tries multiple formats: ISO, DD/MM/YYYY (IST), MM/DD/YYYY (US).
+   * Returns 0 if parsing fails (will be sorted to bottom when sorting newest first).
    */
   const parseJobDate = (value?: string | null): number => {
     if (!value || typeof value !== "string") return 0;
@@ -101,12 +102,12 @@ useEffect(() => {
       // Fast path: ISO timestamps (e.g., "2025-12-03T10:30:00.000Z")
       if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) {
         const iso = new Date(value);
-        if (!Number.isNaN(iso.getTime())) {
+        if (!Number.isNaN(iso.getTime()) && iso.getTime() > 0) {
           return iso.getTime();
         }
       }
 
-      // Parse format: "MM/DD/YYYY, h:mm:ss am/pm" (dateAdded) or "DD/MM/YYYY, h:mm:ss am/pm" (createdAt)
+      // Parse format: "DD/MM/YYYY, h:mm:ss am/pm" or "MM/DD/YYYY, h:mm:ss am/pm"
       const parts = value.trim().split(",");
       if (parts.length === 2) {
         const datePart = parts[0].trim();
@@ -114,80 +115,115 @@ useEffect(() => {
 
         const dateNumbers = datePart.split("/").map((p) => Number(p.trim()));
         
-        if (dateNumbers.length === 3) {
-          let dd, mm, yyyy;
-          
-          // Detect format: if first number > 12, it's DD/MM/YYYY (createdAt)
-          // Otherwise, assume MM/DD/YYYY (US format) for dateAdded
-          if (dateNumbers[0] > 12) {
-            // DD/MM/YYYY format (createdAt)
-            dd = dateNumbers[0];
-            mm = dateNumbers[1];
-            yyyy = dateNumbers[2];
+        if (dateNumbers.length === 3 && dateNumbers.every(n => !Number.isNaN(n) && n > 0)) {
+          // Parse time first (common to both formats)
+          let hour = 0, minute = 0, second = 0;
+          const timeMatch = timePart.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)/i);
+          if (timeMatch) {
+            hour = Number(timeMatch[1]);
+            minute = Number(timeMatch[2]);
+            second = timeMatch[3] ? Number(timeMatch[3]) : 0;
+            const meridian = (timeMatch[4] || "").toLowerCase();
+            if (hour >= 1 && hour <= 12 && minute >= 0 && minute <= 59) {
+              if (meridian === "pm" && hour !== 12) hour += 12;
+              if (meridian === "am" && hour === 12) hour = 0;
+            } else {
+              return 0; // Invalid time
+            }
           } else {
-            // MM/DD/YYYY format (dateAdded)
-            mm = dateNumbers[0];
-            dd = dateNumbers[1];
-            yyyy = dateNumbers[2];
-          }
-          
-          if (dd && mm && yyyy) {
-            // Handle 2-digit years
-            if (yyyy < 100) yyyy += 2000;
-
-            // Parse time with AM/PM
-            const timeMatch = timePart.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)/i);
-            if (timeMatch) {
-              let hour = Number(timeMatch[1]);
-              const minute = Number(timeMatch[2]);
-              const second = timeMatch[3] ? Number(timeMatch[3]) : 0;
-              const meridian = (timeMatch[4] || "").toLowerCase();
-
-              if (!Number.isNaN(hour) && !Number.isNaN(minute)) {
-                // Convert to 24-hour format
-                if (meridian === "pm" && hour !== 12) hour += 12;
-                if (meridian === "am" && hour === 12) hour = 0;
-
-                // Create date in IST (UTC+5:30), then convert to UTC timestamp
-                // IST offset is +05:30 => 330 minutes
-                const istOffsetMinutes = 330;
-                const utcMs = Date.UTC(yyyy, mm - 1, dd, hour, minute, second) - istOffsetMinutes * 60 * 1000;
-                const d = new Date(utcMs);
-                if (!Number.isNaN(d.getTime())) {
-                  return d.getTime();
-                }
+            const timeMatch24 = timePart.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+            if (timeMatch24) {
+              hour = Number(timeMatch24[1]);
+              minute = Number(timeMatch24[2]);
+              second = timeMatch24[3] ? Number(timeMatch24[3]) : 0;
+              if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+                return 0; // Invalid time
               }
             }
+          }
+
+          const now = Date.now();
+          const currentYear = new Date().getFullYear();
+          let bestTimestamp = 0;
+
+          if (dateNumbers[0] <= 31 && dateNumbers[1] <= 12) {
+            let yyyy = dateNumbers[2];
+            if (yyyy < 100) yyyy += 2000;
+            if (yyyy >= 2000 && yyyy <= currentYear + 1) {
+              try {
+                const istOffsetMinutes = 330;
+                const utcMs = Date.UTC(yyyy, dateNumbers[1] - 1, dateNumbers[0], hour, minute, second) - istOffsetMinutes * 60 * 1000;
+                const d = new Date(utcMs);
+                if (!Number.isNaN(d.getTime()) && d.getTime() > 0 && d.getTime() <= now + 86400000) { // Allow 1 day in future for timezone issues
+                  bestTimestamp = d.getTime();
+                }
+              } catch (e) {
+              }
+            }
+          }
+
+          if (dateNumbers[0] <= 12 && dateNumbers[1] <= 31 && (bestTimestamp === 0 || (dateNumbers[0] <= 12 && dateNumbers[1] <= 12))) {
+            let yyyy = dateNumbers[2];
+            if (yyyy < 100) yyyy += 2000;
+            if (yyyy >= 2000 && yyyy <= currentYear + 1) {
+              try {
+                const istOffsetMinutes = 330;
+                const utcMs = Date.UTC(yyyy, dateNumbers[0] - 1, dateNumbers[1], hour, minute, second) - istOffsetMinutes * 60 * 1000;
+                const d = new Date(utcMs);
+                if (!Number.isNaN(d.getTime()) && d.getTime() > 0 && d.getTime() <= now + 86400000) {
+                  if (bestTimestamp === 0 || d.getTime() > bestTimestamp) {
+                    bestTimestamp = d.getTime();
+                  }
+                }
+              } catch (e) {
+                // Invalid date
+              }
+            }
+          }
+
+          if (bestTimestamp > 0) {
+            return bestTimestamp;
           }
         }
       }
 
-      // Fallback: try native Date parse (handles US format, etc.)
+      // Fallback: try native Date parse
       const native = new Date(value);
-      if (!Number.isNaN(native.getTime())) {
-        return native.getTime();
+      if (!Number.isNaN(native.getTime()) && native.getTime() > 0) {
+        const now = Date.now();
+        if (native.getTime() <= now + 86400000) {
+          return native.getTime();
+        }
       }
     } catch (error) {
       console.warn("Failed to parse job date:", value, error);
     }
 
+    // Return 0 for unparseable dates (will be sorted to bottom when sorting newest first)
     return 0;
   };
 
   /**
    * Get the timestamp we will use for ordering cards.
    * Requirement from product: sort strictly by "when it was added",
-   * so we prefer createdAt / dateAdded and do NOT use updatedAt.
+   * so we prefer dateAdded first, then createdAt, and do NOT use updatedAt.
+   * Returns 0 if neither date can be parsed (will be sorted to bottom).
    */
   const getJobCreationTime = (job: Job): number => {
-    const createdAtTime = parseJobDate(job.createdAt);
+    // Prioritize dateAdded (when job was added)
     const dateAddedTime = parseJobDate(job.dateAdded);
+    if (dateAddedTime > 0) {
+      return dateAddedTime;
+    }
     
-    // Use the larger (more recent) timestamp, or 0 if both fail
-    // This handles cases where one might be missing or invalid
-    const result = Math.max(createdAtTime, dateAddedTime);
+    // Fall back to createdAt if dateAdded is not available or invalid
+    const createdAtTime = parseJobDate(job.createdAt);
+    if (createdAtTime > 0) {
+      return createdAtTime;
+    }
     
-    return result || 0;
+    // If both are invalid, return 0 (will be sorted to bottom)
+    return 0;
   };
 
 
@@ -700,15 +736,20 @@ const handleDragEnd = (e: React.DragEvent) => {
                                     })
                                     .sort((a, b) => {
                                         // Sort strictly by creation time (when job was added),
-                                        // newest first, so "Added 1 day ago" appears above
-                                        // "Added 2 days ago", etc.
+                                        // newest first, so "Added now" appears at the top,
+                                        // "Added 1 day ago" appears above "Added 2 days ago", etc.
                                         const timeA = getJobCreationTime(a);
                                         const timeB = getJobCreationTime(b);
                                         
-                                        // If times are equal or both 0, maintain stable sort
+                                        // Handle unparseable dates (0): put them at the bottom
+                                        if (timeA === 0 && timeB === 0) return 0; // Both unparseable, maintain order
+                                        if (timeA === 0) return 1; // A is unparseable, put it after B
+                                        if (timeB === 0) return -1; // B is unparseable, put it after A
+                                        
+                                        // If times are equal, maintain stable sort
                                         if (timeA === timeB) return 0;
                                         
-                                        // Newest first: larger timestamp comes first
+                                        // Newest first: larger timestamp comes first (descending order)
                                         return timeB - timeA;
                                     })
                                 : [];
