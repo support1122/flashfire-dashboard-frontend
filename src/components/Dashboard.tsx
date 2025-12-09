@@ -306,13 +306,12 @@ const Dashboard: React.FC = () => {
     const recentJobs =
         uniqueJobs
             ?.sort((a, b) => {
-                // Sort by createdAt/dateAdded (when job was originally added), not updatedAt
                 // This matches the JobTracker sorting logic for consistency
                 const dateA = parseCustomDate(
-                    a?.createdAt || a?.dateAdded || ""
+                    a?.dateAdded || a?.createdAt || ""
                 );
                 const dateB = parseCustomDate(
-                    b?.createdAt || b?.dateAdded || ""
+                    b?.dateAdded || b?.createdAt || ""
                 );
                 return dateB.getTime() - dateA.getTime();
             })
