@@ -84,15 +84,10 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
         return saved ? parseFloat(saved) : 1.0;
     };
     
-    const getLastOverrideAutoScale = () => {
-        const saved = localStorage.getItem('resumePreviewMedical_overrideAutoScale');
-        return saved === 'true';
-    };
-
     const [isPrinting, setIsPrinting] = useState(false);
     const [showScaleModal, setShowScaleModal] = useState(false);
     const [selectedScale, setSelectedScale] = useState(getLastSelectedScale());
-    const [overrideAutoScale, setOverrideAutoScale] = useState(getLastOverrideAutoScale());
+    const overrideAutoScale = true;
     const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
     const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
     const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
@@ -789,7 +784,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
             const loadingToast = toastUtils.loading("Making the best optimal PDF... Please wait.");
             
-            // Format data for /generate-resume-pdf endpoint with scale and override
+            // Format data for /v1/generate-pdf endpoint with scale and override
             const pdfPayload = {
                 personalInfo: data.personalInfo,
                 summary: data.summary || "",
@@ -810,7 +805,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 overrideAutoScale: overrideAutoScale,
             };
 
-            const response = await fetch(`${pdfServerUrl}/generate-resume-pdf`, {
+            const response = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(pdfPayload),
@@ -885,7 +880,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 overrideAutoScale: overrideAutoScale,
             };
 
-            const response = await fetch(`${pdfServerUrl}/generate-resume-pdf`, {
+            const response = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(pdfPayload),
@@ -1117,9 +1112,9 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                     color: "#6b7280",
                                 }}
                             >
-                                Adjust the scale and see a live preview. A red line indicates page overflow.
+                                Adjust the scale and see a live preview.
                             </p>
-                        </div>
+                        </div>  
 
                         {/* Content Area - Side by Side */}
                         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
@@ -1182,56 +1177,20 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Override Auto-Scale Option */}
                                 <div style={{ 
                                     marginBottom: "1.5rem", 
                                     padding: "1rem", 
                                     backgroundColor: "#f9fafb", 
                                     borderRadius: "8px",
-                                    border: overrideAutoScale ? "2px solid #f59e0b" : "1px solid #e5e7eb"
+                                    border: "1px solid #e5e7eb"
                                 }}>
-                                    <label
-                                        style={{
-                                            display: "flex",
-                                            alignItems: "flex-start",
-                                            cursor: "pointer",
-                                            fontSize: "0.9rem",
-                                            fontWeight: "600",
-                                            color: "#374151",
-                                        }}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={overrideAutoScale}
-                                            onChange={(e) => {
-                                                const checked = e.target.checked;
-                                                setOverrideAutoScale(checked);
-                                                // Save to localStorage
-                                                localStorage.setItem('resumePreviewMedical_overrideAutoScale', checked.toString());
-                                                // Regenerate preview when override changes
-                                                setTimeout(() => generatePreview(selectedScale), 100);
-                                            }}
-                                            style={{
-                                                marginRight: "0.75rem",
-                                                marginTop: "0.2rem",
-                                                width: "18px",
-                                                height: "18px",
-                                                cursor: "pointer",
-                                            }}
-                                        />
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ marginBottom: "0.5rem", fontWeight: "700", color: overrideAutoScale ? "#f59e0b" : "#374151" }}>
-                                                Override Auto-Scaling
-                                            </div>
-                                            <div style={{ fontSize: "0.85rem", color: "#6b7280", lineHeight: "1.5" }}>
-                                                When enabled, uses your exact scale value without auto-adjusting. 
-                                                <strong style={{ color: "#dc2626" }}> Content may overflow to multiple pages.</strong>
-                                            </div>
-                                            <div style={{ fontSize: "0.8rem", color: "#9ca3af", marginTop: "0.5rem", fontStyle: "italic" }}>
-                                                💡 Feel free to adjust the scale and remember this setting for your feature PDFs
-                                            </div>
-                                        </div>
-                                    </label>
+                                    <div style={{ fontSize: "0.85rem", color: "#6b7280", lineHeight: "1.5" }}>
+                                        <strong style={{ color: "#374151" }}>Reduce or increase scale to change the PDF scale.</strong>
+                                        <br />
+                                        <span style={{ color: "#6b7280", marginTop: "0.5rem", display: "block" }}>
+                                            If you want a one-page resume, make sure the preview is also one page so you will get the resume as it is.
+                                        </span>
+                                    </div>
                                 </div>
 
                                 {/* Action Buttons */}
