@@ -113,7 +113,9 @@ const AddignUser: React.FC<RegisterFormProps> = ({}) => {
                                     <option value="">Loading users...</option>
                                 ) : (
                                     visibleUsers.map((u) => (
-                                        <option key={u.id} value={u.email}>{u.name} — {u.email}</option>
+                                        <option key={u.id} value={u.email}>
+                                            {u.name && u.name.trim() ? u.name : u.email} {u.name && u.name.trim() ? `— ${u.email}` : ''}
+                                        </option>
                                     ))
                                 )}
                             </select>

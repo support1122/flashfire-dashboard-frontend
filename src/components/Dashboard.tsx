@@ -1,11 +1,11 @@
 import {
-    Briefcase,
-    FileText,
-    TrendingUp,
-    Users,
-    CheckCircle,
-    XCircle,
-    Clock,
+  Briefcase,
+  FileText,
+  TrendingUp,
+  Users,
+  CheckCircle,
+  XCircle,
+  Clock,
 } from "lucide-react";
 import React, { useEffect, useContext, useState, Suspense, lazy } from "react";
 import { useNavigate } from "react-router-dom";
@@ -21,328 +21,330 @@ import { useJobsSessionStore } from "../state_management/JobsSessionStore.ts";
 const JobForm = lazy(() => import("./JobForm.tsx"));
 
 const Dashboard: React.FC = () => {
-    const context = useContext(UserContext);
-    const navigate = useNavigate();
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-    const { userProfile } = useUserProfile();
+  const context = useContext(UserContext);
+  const navigate = useNavigate();
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const { userProfile } = useUserProfile();
 
-    if (!context) {
-        console.error("UserContext is null");
-        navigate("/login");
-        return null;
-    }
+  if (!context) {
+    console.error("UserContext is null");
+    navigate("/login");
+    return null;
+  }
 
-    const { token, userDetails } = context;
-    const { userJobs, setUserJobs } = useUserJobs();
-    const [loadingDetails, setLoadingDetails] = useState(true); // Start with true to show loading initially
-    const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial load state
-    const [showProfileModal, setShowProfileModal] = useState(false);
-    const [showJobForm, setShowJobForm] = useState(false);
-    const { role } = useOperationsStore();
-    
-    // Use session storage for analytics
-    const { getDashboardStats } = useJobsSessionStore();
-    const dashboardStats = getDashboardStats();
-    
+  const { token, userDetails } = context;
+  const { userJobs, setUserJobs } = useUserJobs();
+  const [loadingDetails, setLoadingDetails] = useState(true); // Start with true to show loading initially
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial load state
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showJobForm, setShowJobForm] = useState(false);
+  const { role } = useOperationsStore();
 
-    async function FetchAllJobs(localToken: string, localUserDetails: any) {
-        if (role == "operations") {
-            console.log("local storage email : ", localUserDetails.email);
-            try {
-                setLoadingDetails(true);
-                setIsInitialLoad(true);
-                const res = await fetch(
-                    `${API_BASE_URL}/operations/getalljobs`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${localToken}`,
-                        },
-                        body: JSON.stringify({ email: localUserDetails.email }),
-                    }
-                );
-                const data = await res.json();
-                if (res.ok) {
-                    setUserJobs(data?.allJobs || []);
-                    setIsInitialLoad(false);
-                } else {
-                    alert("something is really wrong");
-                    setIsInitialLoad(false);
-                }
-            } catch (error) {
-                console.log("error while initial fetch data", error);
-                setIsInitialLoad(false);
-            } finally {
-                setLoadingDetails(false);
-            }
-        } else {
-            try {
-                setLoadingDetails(true);
-                setIsInitialLoad(true);
-                const res = await fetch(`${API_BASE_URL}/getalljobs`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${localToken}`,
-                    },
-                    body: JSON.stringify({ email: localUserDetails.email }),
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    setUserJobs(data?.allJobs || []);
-                    setIsInitialLoad(false);
-                } else if (
-                    data.message === "invalid token please login again" ||
-                    data.message === "Invalid token or expired"
-                ) {
-                    console.log("Token invalid, attempting refresh...");
+  // Use session storage for analytics
+  const { getDashboardStats } = useJobsSessionStore();
+  const dashboardStats = getDashboardStats();
 
-                    // Try to refresh token
-                    if (context?.refreshToken) {
-                        const refreshSuccess = await context.refreshToken();
-                        if (refreshSuccess) {
-                            // Retry the request with new token
-                            console.log(
-                                "Token refreshed, retrying job fetch..."
-                            );
-                            setTimeout(
-                                () =>
-                                    FetchAllJobs(
-                                        context?.token!,
-                                        context?.userDetails!
-                                    ),
-                                100
-                            );
-                            return;
-                        }
-                    }
 
-                    console.log(
-                        "Token refresh failed, clearing storage and redirecting to login"
-                    );
-                    localStorage.clear();
-                    navigate("/login");
-                    setIsInitialLoad(false);
-                } else {
-                    setIsInitialLoad(false);
-                }
-            } catch (err) {
-                console.error(err);
-                setIsInitialLoad(false);
-            } finally {
-                setLoadingDetails(false);
-            }
-        }
-    }
-
-    useEffect(() => {
-        if (!token || !userDetails) {
-            navigate("/login");
-            return;
-        }
-
-        const hasProfileValue = sessionStorage.getItem('hasProfile');
-        
-        if (hasProfileValue === 'false') {
-            console.log("No profile - showing modal");
-            setShowProfileModal(true);
-        } else {
-            console.log("Has profile or not checked - not showing modal");
-            setShowProfileModal(false);
-        }
-
-        // Always fetch fresh data on mount/refresh to ensure we have latest data
-        // This prevents showing stale cached data from sessionStorage
+  async function FetchAllJobs(localToken: string, localUserDetails: any) {
+    if (role == "operations") {
+      console.log("local storage email : ", localUserDetails.email);
+      try {
+        setLoadingDetails(true);
         setIsInitialLoad(true);
-        FetchAllJobs(token, userDetails);
-    }, [token, userDetails]);
-    
-    // Calculate stats directly from userJobs to avoid stale sessionStorage data
-    const calculateStatsFromJobs = (jobs: typeof userJobs) => {
-        const safeJobs = Array.isArray(jobs) ? jobs : [];
-        return safeJobs.reduce((stats, job) => {
-            const status = job?.currentStatus?.toLowerCase() || '';
-            stats.total++;
-            
-            if (status.startsWith('saved')) {
-                stats.saved++;
-            } else if (status.startsWith('applied')) {
-                stats.applied++;
-            } else if (status.startsWith('interviewing')) {
-                stats.interviewing++;
-            } else if (status.startsWith('offer')) {
-                stats.offer++;
-            } else if (status.startsWith('rejected')) {
-                stats.rejected++;
-            } else if (status.startsWith('deleted')) {
-                stats.deleted++;
-            }
-            
-            return stats;
-        }, {
-            total: 0,
-            saved: 0,
-            applied: 0,
-            interviewing: 0,
-            offer: 0,
-            rejected: 0,
-            deleted: 0,
-        });
-    };
-
-    // Calculate stats from current userJobs (not from sessionStorage to avoid stale data)
-    // Only calculate after initial load completes to prevent showing stale values
-    const stats = isInitialLoad ? {
-        total: 0,
-        saved: 0,
-        applied: 0,
-        interviewing: 0,
-        offer: 0,
-        rejected: 0,
-        deleted: 0,
-    } : calculateStatsFromJobs(userJobs);
-    
-    console.log("stats calculated from userJobs = ", stats);
-
-    // Helper function to parse dates in various formats
-    const parseCustomDate = (dateString: string): Date => {
-        if (!dateString) return new Date(0);
-
-        try {
-            // Try ISO format first
-            if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dateString)) {
-                const iso = new Date(dateString);
-                if (!isNaN(iso.getTime())) {
-                    return iso;
-                }
-            }
-
-            // Handle format: "MM/DD/YYYY, h:mm:ss am/pm" (dateAdded) or "DD/MM/YYYY, h:mm:ss am/pm" (createdAt)
-            const parts = dateString.trim().split(",");
-            if (parts.length === 2) {
-                const datePart = parts[0].trim();
-                const timePart = parts[1].trim();
-
-                const dateNumbers = datePart.split("/").map((p) => parseInt(p.trim()));
-                
-                if (dateNumbers.length === 3) {
-                    let dd, mm, yyyy;
-                    
-                    // Detect format: if first number > 12, it's DD/MM/YYYY (createdAt)
-                    // Otherwise, assume MM/DD/YYYY (US format) for dateAdded
-                    if (dateNumbers[0] > 12) {
-                        // DD/MM/YYYY format (createdAt)
-                        dd = dateNumbers[0];
-                        mm = dateNumbers[1];
-                        yyyy = dateNumbers[2];
-                    } else {
-                        // MM/DD/YYYY format (dateAdded)
-                        mm = dateNumbers[0];
-                        dd = dateNumbers[1];
-                        yyyy = dateNumbers[2];
-                    }
-                    
-                    if (dd && mm && yyyy) {
-                        // Handle 2-digit years
-                        if (yyyy < 100) yyyy += 2000;
-
-                        const date = new Date(yyyy, mm - 1, dd);
-
-                        // Parse time with AM/PM
-                        const timeMatch = timePart.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)/i);
-                        if (timeMatch) {
-                            let hours = parseInt(timeMatch[1]);
-                            const minutes = parseInt(timeMatch[2]);
-                            const seconds = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
-                            const period = timeMatch[4]?.toLowerCase();
-
-                            if (period === "pm" && hours !== 12) hours += 12;
-                            if (period === "am" && hours === 12) hours = 0;
-
-                            date.setHours(hours, minutes, seconds);
-                        }
-
-                        return date;
-                    }
-                }
-            }
-
-            // Fallback: try native Date parse (handles US format, etc.)
-            const native = new Date(dateString);
-            if (!isNaN(native.getTime())) {
-                return native;
-            }
-        } catch (error) {
-            console.warn("Failed to parse date:", dateString, error);
+        const res = await fetch(
+          `${API_BASE_URL}/operations/getalljobs`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localToken}`,
+            },
+            body: JSON.stringify({ email: localUserDetails.email }),
+          }
+        );
+        const data = await res.json();
+        if (res.ok) {
+          setUserJobs(data?.allJobs || []);
+          setIsInitialLoad(false);
+        } else {
+          alert("something is really wrong");
+          setIsInitialLoad(false);
         }
+      } catch (error) {
+        console.log("error while initial fetch data", error);
+        setIsInitialLoad(false);
+      } finally {
+        setLoadingDetails(false);
+      }
+    } else {
+      try {
+        setLoadingDetails(true);
+        setIsInitialLoad(true);
+        const res = await fetch(`${API_BASE_URL}/getalljobs`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localToken}`,
+          },
+          body: JSON.stringify({ email: localUserDetails.email }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setUserJobs(data?.allJobs || []);
+          setIsInitialLoad(false);
+        } else if (
+          data.message === "invalid token please login again" ||
+          data.message === "Invalid token or expired"
+        ) {
+          console.log("Token invalid, attempting refresh...");
 
-        // Final fallback - return epoch time to sort at the end
-        return new Date(0);
-    };
+          // Try to refresh token
+          if (context?.refreshToken) {
+            const refreshSuccess = await context.refreshToken();
+            if (refreshSuccess) {
+              // Retry the request with new token
+              console.log(
+                "Token refreshed, retrying job fetch..."
+              );
+              setTimeout(
+                () =>
+                  FetchAllJobs(
+                    context?.token!,
+                    context?.userDetails!
+                  ),
+                100
+              );
+              return;
+            }
+          }
 
-    // Remove duplicates based on jobID and filter valid jobs
-    const uniqueJobs =
-        userJobs?.filter(
-            (job, index, self) =>
-                job &&
-                job.updatedAt &&
-                job.jobID &&
-                self.findIndex((j) => j.jobID === job.jobID) === index
-        ) || [];
-
-    console.log("Total unique jobs:", uniqueJobs.length);
-    console.log(
-        "All jobs with updatedAt:",
-        uniqueJobs.map((job) => ({
-            jobID: job.jobID,
-            title: job.jobTitle,
-            company: job.companyName,
-            updatedAt: job.updatedAt,
-            parsedDate: parseCustomDate(job.updatedAt),
-        }))
-    );
-
-    const recentJobs =
-        uniqueJobs
-            ?.sort((a, b) => {
-                // This matches the JobTracker sorting logic for consistency
-                const dateA = parseCustomDate(
-                    a?.dateAdded || a?.createdAt || ""
-                );
-                const dateB = parseCustomDate(
-                    b?.dateAdded || b?.createdAt || ""
-                );
-                return dateB.getTime() - dateA.getTime();
-            })
-            ?.slice(0, 6) || [];
-
-    console.log(
-        "RecentAllJOBS META DATA",
-        recentJobs.map((job) => ({
-            jobID: job.jobID,
-            title: job.jobTitle,
-            company: job.companyName,
-            updatedAt: job.updatedAt,
-            status: job.currentStatus,
-            parsedDate: parseCustomDate(job.updatedAt),
-        }))
-    );
-
-    // Force re-calculation when userJobs changes
-    useEffect(() => {
-        // This effect ensures the component re-renders when userJobs changes
-        console.log("userJobs updated, recalculating recent jobs");
-    }, [userJobs]);
-    const successRate =
-        stats.total > 0 ? Math.round((stats.offer / stats.total) * 100) : 0;
-    // alert(successRate)
-
-    // Show loading screen while fetching initial data to prevent showing stale cached data
-    if (loadingDetails || isInitialLoad) {
-        return <LoadingScreen />;
+          console.log(
+            "Token refresh failed, clearing storage and redirecting to login"
+          );
+          localStorage.clear();
+          navigate("/login");
+          setIsInitialLoad(false);
+        } else {
+          setIsInitialLoad(false);
+        }
+      } catch (err) {
+        console.error(err);
+        setIsInitialLoad(false);
+      } finally {
+        setLoadingDetails(false);
+      }
     }
-    return (
+  }
+
+  useEffect(() => {
+    if (!token || !userDetails) {
+      navigate("/login");
+      return;
+    }
+
+    const hasProfileValue = sessionStorage.getItem('hasProfile');
+
+    if (hasProfileValue === 'false') {
+      console.log("No profile - showing modal");
+      setShowProfileModal(true);
+    } else {
+      console.log("Has profile or not checked - not showing modal");
+      setShowProfileModal(false);
+    }
+
+    // Always fetch fresh data on mount/refresh to ensure we have latest data
+    // This prevents showing stale cached data from sessionStorage
+    setIsInitialLoad(true);
+    FetchAllJobs(token, userDetails);
+  }, [token, userDetails]);
+
+  // Calculate stats directly from userJobs to avoid stale sessionStorage data
+  const calculateStatsFromJobs = (jobs: typeof userJobs) => {
+    const safeJobs = Array.isArray(jobs) ? jobs : [];
+    return safeJobs.reduce((stats, job) => {
+      const status = job?.currentStatus?.toLowerCase() || '';
+
+      if (status.startsWith('saved')) {
+        stats.saved++;
+      } else if (status.startsWith('applied')) {
+        stats.applied++;
+      } else if (status.startsWith('interviewing')) {
+        stats.interviewing++;
+      } else if (status.startsWith('offer')) {
+        stats.offer++;
+      } else if (status.startsWith('rejected')) {
+        stats.rejected++;
+      } else if (status.startsWith('deleted')) {
+        stats.deleted++;
+      }
+
+      // Calculate total as the sum of active statuses (excluding deleted)
+      stats.total = stats.saved + stats.applied + stats.interviewing + stats.offer + stats.rejected;
+
+      return stats;
+    }, {
+      total: 0,
+      saved: 0,
+      applied: 0,
+      interviewing: 0,
+      offer: 0,
+      rejected: 0,
+      deleted: 0,
+    });
+  };
+
+  // Calculate stats from current userJobs (not from sessionStorage to avoid stale data)
+  // Only calculate after initial load completes to prevent showing stale values
+  const stats = isInitialLoad ? {
+    total: 0,
+    saved: 0,
+    applied: 0,
+    interviewing: 0,
+    offer: 0,
+    rejected: 0,
+    deleted: 0,
+  } : calculateStatsFromJobs(userJobs);
+
+  console.log("stats calculated from userJobs = ", stats);
+
+  // Helper function to parse dates in various formats
+  const parseCustomDate = (dateString: string): Date => {
+    if (!dateString) return new Date(0);
+
+    try {
+      // Try ISO format first
+      if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dateString)) {
+        const iso = new Date(dateString);
+        if (!isNaN(iso.getTime())) {
+          return iso;
+        }
+      }
+
+      // Handle format: "MM/DD/YYYY, h:mm:ss am/pm" (dateAdded) or "DD/MM/YYYY, h:mm:ss am/pm" (createdAt)
+      const parts = dateString.trim().split(",");
+      if (parts.length === 2) {
+        const datePart = parts[0].trim();
+        const timePart = parts[1].trim();
+
+        const dateNumbers = datePart.split("/").map((p) => parseInt(p.trim()));
+
+        if (dateNumbers.length === 3) {
+          let dd, mm, yyyy;
+
+          // Detect format: if first number > 12, it's DD/MM/YYYY (createdAt)
+          // Otherwise, assume MM/DD/YYYY (US format) for dateAdded
+          if (dateNumbers[0] > 12) {
+            // DD/MM/YYYY format (createdAt)
+            dd = dateNumbers[0];
+            mm = dateNumbers[1];
+            yyyy = dateNumbers[2];
+          } else {
+            // MM/DD/YYYY format (dateAdded)
+            mm = dateNumbers[0];
+            dd = dateNumbers[1];
+            yyyy = dateNumbers[2];
+          }
+
+          if (dd && mm && yyyy) {
+            // Handle 2-digit years
+            if (yyyy < 100) yyyy += 2000;
+
+            const date = new Date(yyyy, mm - 1, dd);
+
+            // Parse time with AM/PM
+            const timeMatch = timePart.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)/i);
+            if (timeMatch) {
+              let hours = parseInt(timeMatch[1]);
+              const minutes = parseInt(timeMatch[2]);
+              const seconds = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
+              const period = timeMatch[4]?.toLowerCase();
+
+              if (period === "pm" && hours !== 12) hours += 12;
+              if (period === "am" && hours === 12) hours = 0;
+
+              date.setHours(hours, minutes, seconds);
+            }
+
+            return date;
+          }
+        }
+      }
+
+      // Fallback: try native Date parse (handles US format, etc.)
+      const native = new Date(dateString);
+      if (!isNaN(native.getTime())) {
+        return native;
+      }
+    } catch (error) {
+      console.warn("Failed to parse date:", dateString, error);
+    }
+
+    // Final fallback - return epoch time to sort at the end
+    return new Date(0);
+  };
+
+  // Remove duplicates based on jobID and filter valid jobs
+  const uniqueJobs =
+    userJobs?.filter(
+      (job, index, self) =>
+        job &&
+        job.updatedAt &&
+        job.jobID &&
+        self.findIndex((j) => j.jobID === job.jobID) === index
+    ) || [];
+
+  console.log("Total unique jobs:", uniqueJobs.length);
+  console.log(
+    "All jobs with updatedAt:",
+    uniqueJobs.map((job) => ({
+      jobID: job.jobID,
+      title: job.jobTitle,
+      company: job.companyName,
+      updatedAt: job.updatedAt,
+      parsedDate: parseCustomDate(job.updatedAt),
+    }))
+  );
+
+  const recentJobs =
+    uniqueJobs
+      ?.sort((a, b) => {
+        // This matches the JobTracker sorting logic for consistency
+        const dateA = parseCustomDate(
+          a?.dateAdded || a?.createdAt || ""
+        );
+        const dateB = parseCustomDate(
+          b?.dateAdded || b?.createdAt || ""
+        );
+        return dateB.getTime() - dateA.getTime();
+      })
+      ?.slice(0, 6) || [];
+
+  console.log(
+    "RecentAllJOBS META DATA",
+    recentJobs.map((job) => ({
+      jobID: job.jobID,
+      title: job.jobTitle,
+      company: job.companyName,
+      updatedAt: job.updatedAt,
+      status: job.currentStatus,
+      parsedDate: parseCustomDate(job.updatedAt),
+    }))
+  );
+
+  // Force re-calculation when userJobs changes
+  useEffect(() => {
+    // This effect ensures the component re-renders when userJobs changes
+    console.log("userJobs updated, recalculating recent jobs");
+  }, [userJobs]);
+  const successRate =
+    stats.total > 0 ? Math.round((stats.offer / stats.total) * 100) : 0;
+  // alert(successRate)
+
+  // Show loading screen while fetching initial data to prevent showing stale cached data
+  if (loadingDetails || isInitialLoad) {
+    return <LoadingScreen />;
+  }
+  return (
     <div className="relative min-h-dvh text-zinc-900 overflow-x-hidden">
       {/* NewUserModal */}
       {showProfileModal && (
@@ -379,7 +381,7 @@ const Dashboard: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
+
         {/* Welcome Section */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row items-start justify-between gap-4">

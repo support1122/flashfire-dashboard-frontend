@@ -1,6 +1,9 @@
 import React, { useRef, useEffect, useState } from "react";
 import { toastUtils } from "../../../utils/toast";
+import * as pdfjsLib from 'pdfjs-dist';
 // import { ResumeScalingModal } from "./ResumeScalingModal";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 interface ResumeData {
     personalInfo: {
@@ -100,6 +103,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
     const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
     const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+    const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
     
     const loadingMessages = [
         "Our PDF engine is optimizing the PDF view...",
@@ -329,6 +333,17 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             const pdfBlob = await response.blob();
             const pdfUrl = window.URL.createObjectURL(pdfBlob);
             
+            // Get PDF page count
+            try {
+                const arrayBuffer = await pdfBlob.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const numPages = pdf.numPages;
+                setPdfPageCount(numPages);
+            } catch (pdfError) {
+                console.error("Error getting PDF page count:", pdfError);
+                setPdfPageCount(null);
+            }
+            
             // Clean up previous preview
             if (previewPdfUrl) {
                 window.URL.revokeObjectURL(previewPdfUrl);
@@ -348,6 +363,8 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     // Handle scale change with debounced preview
     useEffect(() => {
         if (showScaleModal && selectedScale) {
+            // Reset page count when scale changes
+            setPdfPageCount(null);
             const timer = setTimeout(() => {
                 generatePreview(selectedScale);
             }, 500); // Debounce preview generation
@@ -363,6 +380,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             window.URL.revokeObjectURL(previewPdfUrl);
             setPreviewPdfUrl(null);
             setPreviewPdfBlob(null);
+            setPdfPageCount(null);
         }
     }, [showScaleModal, previewPdfUrl]);
 
@@ -378,6 +396,216 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             }
         }
     }, [showScaleModal]);
+
+    // Handle copying JSON with styles
+    const handleCopyJsonWithStyles = () => {
+        try {
+            // Get the computed styles object
+            const computedStyles = {
+                fontSize: styles.fontSize,
+                headerSize: styles.headerSize,
+                contactSize: styles.contactSize,
+                sectionMargin: styles.sectionMargin,
+                itemMargin: styles.itemMargin,
+                bulletSpacing: styles.bulletSpacing,
+                lineHeight: styles.lineHeight,
+                paddingTop: styles.paddingTop,
+                paddingBottom: styles.paddingBottom,
+                paddingSide: styles.paddingSide,
+                scalingFactor: scalingFactor,
+            };
+
+            // Create JSON structure matching PDF payload format + styles
+            const jsonWithStyles = {
+                // Data structure (same as PDF payload)
+                personalInfo: data.personalInfo,
+                summary: data.summary || "",
+                workExperience: data.workExperience || [],
+                projects: data.projects || [],
+                leadership: data.leadership || [],
+                skills: data.skills || [],
+                education: data.education || [],
+                publications: data.publications || [],
+                checkboxStates: {
+                    showSummary: showSummary,
+                    showProjects: showProjects,
+                    showLeadership: showLeadership,
+                    showPublications: showPublications,
+                },
+                sectionOrder: sectionOrder,
+                scale: selectedScale,
+                overrideAutoScale: overrideAutoScale,
+                // Styles information
+                styles: computedStyles,
+                // HTML structure styles - how divs and elements are styled
+                htmlStructure: {
+                    container: {
+                        fontFamily: '"Times New Roman", Times, serif',
+                        fontSize: styles.fontSize,
+                        lineHeight: styles.lineHeight,
+                        color: "#000000",
+                        padding: `${styles.paddingTop} ${styles.paddingSide} ${styles.paddingBottom} ${styles.paddingSide}`,
+                        letterSpacing: "-0.025em",
+                    },
+                    header: {
+                        textAlign: "center",
+                        marginBottom: styles.sectionMargin,
+                    },
+                    name: {
+                        fontSize: styles.headerSize,
+                        marginBottom: "2px",
+                        fontWeight: "bold",
+                        letterSpacing: "-0.025em",
+                    },
+                    title: {
+                        fontSize: styles.contactSize,
+                        marginBottom: "2px",
+                        letterSpacing: "-0.025em",
+                    },
+                    contact: {
+                        fontSize: styles.contactSize,
+                        letterSpacing: "-0.025em",
+                    },
+                    sectionTitle: {
+                        fontSize: styles.fontSize,
+                        borderBottom: "1px solid #000",
+                        paddingBottom: "2px",
+                        marginBottom: styles.itemMargin,
+                        fontWeight: "bold",
+                        letterSpacing: "-0.025em",
+                    },
+                    sectionContent: {
+                        fontSize: styles.fontSize,
+                        lineHeight: styles.lineHeight,
+                        letterSpacing: "-0.025em",
+                    },
+                    workExperienceItem: {
+                        marginBottom: styles.itemMargin,
+                    },
+                    workExperienceHeader: {
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        marginBottom: styles.bulletSpacing,
+                    },
+                    companyName: {
+                        fontSize: styles.fontSize,
+                        fontWeight: "bold",
+                        letterSpacing: "-0.025em",
+                        lineHeight: styles.lineHeight,
+                    },
+                    position: {
+                        fontSize: styles.fontSize,
+                        letterSpacing: "-0.025em",
+                        lineHeight: styles.lineHeight,
+                    },
+                    location: {
+                        textAlign: "right",
+                        marginLeft: "20px",
+                        fontSize: styles.fontSize,
+                        letterSpacing: "-0.025em",
+                        lineHeight: styles.lineHeight,
+                    },
+                    bulletPoint: {
+                        display: "flex",
+                        alignItems: "flex-start",
+                        marginBottom: styles.bulletSpacing,
+                    },
+                    bullet: {
+                        fontSize: styles.fontSize,
+                        marginRight: "4px",
+                        minWidth: "8px",
+                    },
+                    bulletText: {
+                        textAlign: "justify",
+                        fontSize: styles.fontSize,
+                        lineHeight: styles.lineHeight,
+                        letterSpacing: "-0.025em",
+                    },
+                    skillsCategory: {
+                        fontSize: Math.max(11, Math.round(13 * scalingFactor)) + "px",
+                        marginBottom: styles.bulletSpacing,
+                        lineHeight: styles.lineHeight,
+                        letterSpacing: "-0.025em",
+                        display: "flex",
+                        alignItems: "flex-start",
+                    },
+                    skillsLabel: {
+                        width: "160px",
+                        flexShrink: 0,
+                        fontWeight: "bold",
+                        letterSpacing: "-0.025em",
+                    },
+                    link: {
+                        color: "blue",
+                        textDecoration: "none",
+                    },
+                    educationItem: {
+                        marginBottom: styles.itemMargin,
+                    },
+                    educationHeader: {
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        marginBottom: styles.bulletSpacing,
+                    },
+                    institution: {
+                        fontSize: styles.fontSize,
+                        fontWeight: "bold",
+                        letterSpacing: "-0.025em",
+                        lineHeight: styles.lineHeight,
+                    },
+                    degree: {
+                        fontSize: styles.fontSize,
+                        letterSpacing: "-0.025em",
+                        lineHeight: styles.lineHeight,
+                    },
+                    projectItem: {
+                        marginBottom: styles.itemMargin,
+                    },
+                    projectHeader: {
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        marginBottom: styles.bulletSpacing,
+                    },
+                    projectName: {
+                        fontSize: styles.fontSize,
+                        fontWeight: "bold",
+                        letterSpacing: "-0.025em",
+                        lineHeight: styles.lineHeight,
+                        color: "#000",
+                        fontStyle: "normal",
+                    },
+                    publicationItem: {
+                        display: "flex",
+                        alignItems: "flex-start",
+                        marginBottom: styles.bulletSpacing,
+                    },
+                    leadershipItem: {
+                        fontSize: styles.fontSize,
+                        marginBottom: styles.bulletSpacing,
+                        letterSpacing: "-0.025em",
+                        lineHeight: styles.lineHeight,
+                    },
+                },
+            };
+
+            // Convert to JSON string with proper formatting
+            const jsonString = JSON.stringify(jsonWithStyles, null, 2);
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(jsonString).then(() => {
+                toastUtils.success("✅ JSON with styles copied to clipboard!");
+            }).catch((err) => {
+                console.error("Failed to copy:", err);
+                toastUtils.error("Failed to copy JSON to clipboard");
+            });
+        } catch (error: any) {
+            console.error("Error copying JSON with styles:", error);
+            toastUtils.error(`Failed to copy JSON: ${error.message}`);
+        }
+    };
 
     // Handle PDF download - use the preview PDF if available
     const handleDownloadResume = async () => {
@@ -1678,10 +1906,10 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                 </div>
             )}
 
-            {/* Download Resume Button - Shows to all users */}
-            <div
+            {/* Download Resume Button - Hidden from users */}
+            {/* <div
                 className="no-print"
-                style={{ marginBottom: "1rem", textAlign: "center" }}
+                style={{ marginBottom: "1rem", textAlign: "center", display: "flex", gap: "10px", justifyContent: "center" }}
             >
                 <button
                     onClick={() => setShowScaleModal(true)}
@@ -1700,7 +1928,29 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                 >
                     {isGeneratingPDF ? "Generating PDF..." : "Download Resume"}
                 </button>
-            </div>
+                <button
+                    onClick={handleCopyJsonWithStyles}
+                    style={{
+                        backgroundColor: "#3b82f6",
+                        color: "white",
+                        padding: "10px 20px",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontWeight: "600",
+                        fontSize: "14px",
+                        transition: "background-color 0.2s",
+                    }}
+                    onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = "#2563eb";
+                    }}
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = "#3b82f6";
+                    }}
+                >
+                    Copy JSON with Styles
+                </button>
+            </div> */}
 
             {/* Print Control Buttons - Add these to your UI */}
             {showPrintButtons && (
@@ -1882,10 +2132,61 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                     </div>
                                 </div>
 
+                                {/* Page Count Warning */}
+                                {pdfPageCount !== null && pdfPageCount > 1 && (
+                                    <div style={{ 
+                                        marginBottom: "1rem", 
+                                        padding: "1rem", 
+                                        backgroundColor: "#fef3c7", 
+                                        borderRadius: "8px",
+                                        border: "2px solid #f59e0b"
+                                    }}>
+                                        <div style={{ 
+                                            display: "flex", 
+                                            alignItems: "center", 
+                                            gap: "0.5rem",
+                                            marginBottom: "0.5rem"
+                                        }}>
+                                            <span style={{ fontSize: "1.25rem" }}>⚠️</span>
+                                            <strong style={{ color: "#92400e", fontSize: "0.9rem" }}>
+                                                PDF is crossing {pdfPageCount} pages
+                                            </strong>
+                                        </div>
+                                        <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
+                                            Please reduce the scale to fit the resume on 1 page before downloading.
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Page Count Success */}
+                                {pdfPageCount !== null && pdfPageCount === 1 && (
+                                    <div style={{ 
+                                        marginBottom: "1rem", 
+                                        padding: "1rem", 
+                                        backgroundColor: "#d1fae5", 
+                                        borderRadius: "8px",
+                                        border: "2px solid #10b981"
+                                    }}>
+                                        <div style={{ 
+                                            display: "flex", 
+                                            alignItems: "center", 
+                                            gap: "0.5rem"
+                                        }}>
+                                            <span style={{ fontSize: "1.25rem" }}>✅</span>
+                                            <strong style={{ color: "#065f46", fontSize: "0.9rem" }}>
+                                                PDF is 1 page - Ready to download!
+                                            </strong>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Action Buttons */}
                                 <div style={{ display: "flex", gap: "0.75rem", marginTop: "auto", paddingTop: "1rem" }}>
                                     <button
-                                        onClick={() => setShowScaleModal(false)}
+                                        onClick={() => {
+                                            setShowScaleModal(false);
+                                            setPdfPageCount(null);
+                                        }}
                                         disabled={isGeneratingPDF}
                                         style={{
                                             flex: 1,
@@ -1904,21 +2205,21 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                     </button>
                                     <button
                                         onClick={handleDownloadResume}
-                                        disabled={isGeneratingPDF || isGeneratingPreview || !previewPdfBlob}
+                                        disabled={isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1)}
                                         style={{
                                             flex: 1,
-                                            backgroundColor: (isGeneratingPDF || isGeneratingPreview || !previewPdfBlob) ? "#9ca3af" : "#10b981",
+                                            backgroundColor: (isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1)) ? "#9ca3af" : "#10b981",
                                             color: "white",
                                             padding: "10px 24px",
                                             border: "none",
                                             borderRadius: "8px",
                                             fontSize: "1rem",
                                             fontWeight: "600",
-                                            cursor: (isGeneratingPDF || isGeneratingPreview || !previewPdfBlob) ? "not-allowed" : "pointer",
+                                            cursor: (isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1)) ? "not-allowed" : "pointer",
                                             transition: "background-color 0.2s",
                                         }}
                                     >
-                                        {isGeneratingPDF ? "Generating..." : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
+                                        {isGeneratingPDF ? "Generating..." : (pdfPageCount !== null && pdfPageCount > 1) ? `PDF is ${pdfPageCount} pages - Reduce scale` : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
                                     </button>
                                 </div>
                             </div>

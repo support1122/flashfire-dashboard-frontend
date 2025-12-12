@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { toastUtils } from "../../../utils/toast";
+import * as pdfjsLib from 'pdfjs-dist';
 // import { ResumeScalingModal } from "./ResumeScalingModal";
+
+// Set up PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 interface ResumeData {
     personalInfo: {
@@ -92,6 +96,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
     const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
     const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+    const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
     
     const loadingMessages = [
         "Our PDF engine is optimizing the PDF view...",
@@ -893,6 +898,17 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             const pdfBlob = await response.blob();
             const pdfUrl = window.URL.createObjectURL(pdfBlob);
             
+            // Get PDF page count
+            try {
+                const arrayBuffer = await pdfBlob.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const numPages = pdf.numPages;
+                setPdfPageCount(numPages);
+            } catch (pdfError) {
+                console.error("Error getting PDF page count:", pdfError);
+                setPdfPageCount(null);
+            }
+            
             // Clean up previous preview
             if (previewPdfUrl) {
                 window.URL.revokeObjectURL(previewPdfUrl);
@@ -912,6 +928,8 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     // Handle scale change with debounced preview
     useEffect(() => {
         if (showScaleModal && selectedScale) {
+            // Reset page count when scale changes
+            setPdfPageCount(null);
             const timer = setTimeout(() => {
                 generatePreview(selectedScale);
             }, 500); // Debounce preview generation
@@ -931,6 +949,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 window.URL.revokeObjectURL(previewPdfUrl);
                 setPreviewPdfUrl(null);
                 setPreviewPdfBlob(null);
+                setPdfPageCount(null);
             }
         }
     }, [showScaleModal]);
@@ -1040,8 +1059,8 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
 
     return (
         <div className="resume-medical-print">
-            {/* Download Resume Button - Shows to all users */}
-            <div
+            {/* Download Resume Button - Hidden from users */}
+            {/* <div
                 className="no-print"
                 style={{ marginBottom: "1rem", textAlign: "center" }}
             >
@@ -1062,7 +1081,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 >
                     {isPrinting ? "Preparing PDF..." : "Download Resume"}
                 </button>
-            </div>
+            </div> */}
 
             {/* Scale Selection Modal */}
             {showScaleModal && (
@@ -1188,15 +1207,66 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         <strong style={{ color: "#374151" }}>Reduce or increase scale to change the PDF scale.</strong>
                                         <br />
                                         <span style={{ color: "#6b7280", marginTop: "0.5rem", display: "block" }}>
-                                            If you want a one-page resume, make sure the preview is also one page so you will get the resume as it is.
+                                            Medical resumes must span more than 1 page. Make sure the preview shows multiple pages before downloading.
                                         </span>
                                     </div>
                                 </div>
 
+                                {/* Page Count Warning - Medical resume must be more than 1 page */}
+                                {pdfPageCount !== null && pdfPageCount === 1 && (
+                                    <div style={{ 
+                                        marginBottom: "1rem", 
+                                        padding: "1rem", 
+                                        backgroundColor: "#fef3c7", 
+                                        borderRadius: "8px",
+                                        border: "2px solid #f59e0b"
+                                    }}>
+                                        <div style={{ 
+                                            display: "flex", 
+                                            alignItems: "center", 
+                                            gap: "0.5rem",
+                                            marginBottom: "0.5rem"
+                                        }}>
+                                            <span style={{ fontSize: "1.25rem" }}>⚠️</span>
+                                            <strong style={{ color: "#92400e", fontSize: "0.9rem" }}>
+                                                Medical resume must be more than 1 page
+                                            </strong>
+                                        </div>
+                                        <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
+                                            Please increase the scale so the resume spans multiple pages before downloading.
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Page Count Success - Medical resume should have more than 1 page */}
+                                {pdfPageCount !== null && pdfPageCount > 1 && (
+                                    <div style={{ 
+                                        marginBottom: "1rem", 
+                                        padding: "1rem", 
+                                        backgroundColor: "#d1fae5", 
+                                        borderRadius: "8px",
+                                        border: "2px solid #10b981"
+                                    }}>
+                                        <div style={{ 
+                                            display: "flex", 
+                                            alignItems: "center", 
+                                            gap: "0.5rem"
+                                        }}>
+                                            <span style={{ fontSize: "1.25rem" }}>✅</span>
+                                            <strong style={{ color: "#065f46", fontSize: "0.9rem" }}>
+                                                PDF is {pdfPageCount} pages - Ready to download!
+                                            </strong>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Action Buttons */}
                                 <div style={{ display: "flex", gap: "0.75rem", marginTop: "auto", paddingTop: "1rem" }}>
                                     <button
-                                        onClick={() => setShowScaleModal(false)}
+                                        onClick={() => {
+                                            setShowScaleModal(false);
+                                            setPdfPageCount(null);
+                                        }}
                                         disabled={isPrinting}
                                         style={{
                                             flex: 1,
@@ -1215,21 +1285,21 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                     </button>
                                     <button
                                         onClick={handleDownloadResume}
-                                        disabled={isPrinting || isGeneratingPreview || !previewPdfBlob}
+                                        disabled={isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount === 1)}
                                         style={{
                                             flex: 1,
-                                            backgroundColor: (isPrinting || isGeneratingPreview || !previewPdfBlob) ? "#9ca3af" : "#10b981",
+                                            backgroundColor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount === 1)) ? "#9ca3af" : "#10b981",
                                             color: "white",
                                             padding: "10px 24px",
                                             border: "none",
                                             borderRadius: "8px",
                                             fontSize: "1rem",
                                             fontWeight: "600",
-                                            cursor: (isPrinting || isGeneratingPreview || !previewPdfBlob) ? "not-allowed" : "pointer",
+                                            cursor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount === 1)) ? "not-allowed" : "pointer",
                                             transition: "background-color 0.2s",
                                         }}
                                     >
-                                        {isPrinting ? "Generating..." : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
+                                        {isPrinting ? "Generating..." : (pdfPageCount !== null && pdfPageCount === 1) ? "Medical resume must be more than 1 page - Increase scale" : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
                                     </button>
                                 </div>
                             </div>
