@@ -1906,51 +1906,58 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                 </div>
             )}
 
-            {/* Download Resume Button - Hidden from users */}
-            {/* <div
-                className="no-print"
-                style={{ marginBottom: "1rem", textAlign: "center", display: "flex", gap: "10px", justifyContent: "center" }}
-            >
-                <button
-                    onClick={() => setShowScaleModal(true)}
-                    disabled={isGeneratingPDF}
+            {showPrintButtons && (
+                <div
+                    className="no-print"
                     style={{
-                        backgroundColor: isGeneratingPDF ? "#9ca3af" : "#10b981",
-                        color: "white",
-                        padding: "10px 20px",
-                        border: "none",
-                        borderRadius: "6px",
-                        cursor: isGeneratingPDF ? "not-allowed" : "pointer",
-                        fontWeight: "600",
-                        fontSize: "14px",
-                        transition: "background-color 0.2s",
+                        marginBottom: "1rem",
+                        textAlign: "center",
+                        display: "flex",
+                        gap: "10px",
+                        justifyContent: "center",
                     }}
                 >
-                    {isGeneratingPDF ? "Generating PDF..." : "Download Resume"}
-                </button>
-                <button
-                    onClick={handleCopyJsonWithStyles}
-                    style={{
-                        backgroundColor: "#3b82f6",
-                        color: "white",
-                        padding: "10px 20px",
-                        border: "none",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        fontWeight: "600",
-                        fontSize: "14px",
-                        transition: "background-color 0.2s",
-                    }}
-                    onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = "#2563eb";
-                    }}
-                    onMouseOut={(e) => {
-                        e.currentTarget.style.backgroundColor = "#3b82f6";
-                    }}
-                >
-                    Copy JSON with Styles
-                </button>
-            </div> */}
+                    <button
+                        onClick={() => setShowScaleModal(true)}
+                        disabled={isGeneratingPDF}
+                        style={{
+                            backgroundColor: isGeneratingPDF ? "#9ca3af" : "#10b981",
+                            color: "white",
+                            padding: "10px 20px",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: isGeneratingPDF ? "not-allowed" : "pointer",
+                            fontWeight: "600",
+                            fontSize: "14px",
+                            transition: "background-color 0.2s",
+                        }}
+                    >
+                        {isGeneratingPDF ? "Generating PDF..." : "Download Resume"}
+                    </button>
+                    {/* <button
+                        onClick={handleCopyJsonWithStyles}
+                        style={{
+                            backgroundColor: "#3b82f6",
+                            color: "white",
+                            padding: "10px 20px",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontWeight: "600",
+                            fontSize: "14px",
+                            transition: "background-color 0.2s",
+                        }}
+                        onMouseOver={(e) => {
+                            e.currentTarget.style.backgroundColor = "#2563eb";
+                        }}
+                        onMouseOut={(e) => {
+                            e.currentTarget.style.backgroundColor = "#3b82f6";
+                        }}
+                    >
+                        Copy JSON with Styles
+                    </button> */}
+                </div>
+            )}
 
             {/* Print Control Buttons - Add these to your UI */}
             {showPrintButtons && (
