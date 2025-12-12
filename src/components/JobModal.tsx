@@ -2218,7 +2218,7 @@ export default function JobModal({
                                         showProjects={optimizedResumeMetadata.showProjects}
                                         showSummary={optimizedResumeMetadata.showSummary}
                                         showPublications={optimizedResumeMetadata.showPublications}
-                                        showPrintButtons={false}
+                                        showPrintButtons={role === "operations"}
                                         sectionOrder={optimizedResumeMetadata.sectionOrder}
                                     />
                                 ) : (
@@ -2230,7 +2230,7 @@ export default function JobModal({
                                         showPublications={optimizedResumeMetadata.showPublications}
                                         showChanges={false}
                                         changedFields={new Set()}
-                                        showPrintButtons={false}
+                                        showPrintButtons={role === "operations"}
                                         sectionOrder={optimizedResumeMetadata.sectionOrder}
                                     />
                                 )}

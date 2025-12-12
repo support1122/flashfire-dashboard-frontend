@@ -1059,29 +1059,30 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
 
     return (
         <div className="resume-medical-print">
-            {/* Download Resume Button - Hidden from users */}
-            {/* <div
-                className="no-print"
-                style={{ marginBottom: "1rem", textAlign: "center" }}
-            >
-                <button
-                    onClick={() => setShowScaleModal(true)}
-                    disabled={isPrinting}
-                    style={{
-                        backgroundColor: isPrinting ? "#9ca3af" : "#10b981",
-                        color: "white",
-                        padding: "10px 20px",
-                        border: "none",
-                        borderRadius: "6px",
-                        cursor: isPrinting ? "not-allowed" : "pointer",
-                        fontWeight: "600",
-                        fontSize: "14px",
-                        transition: "background-color 0.2s",
-                    }}
+            {showPrintButtons && (
+                <div
+                    className="no-print"
+                    style={{ marginBottom: "1rem", textAlign: "center" }}
                 >
-                    {isPrinting ? "Preparing PDF..." : "Download Resume"}
-                </button>
-            </div> */}
+                    <button
+                        onClick={() => setShowScaleModal(true)}
+                        disabled={isPrinting}
+                        style={{
+                            backgroundColor: isPrinting ? "#9ca3af" : "#10b981",
+                            color: "white",
+                            padding: "10px 20px",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: isPrinting ? "not-allowed" : "pointer",
+                            fontWeight: "600",
+                            fontSize: "14px",
+                            transition: "background-color 0.2s",
+                        }}
+                    >
+                        {isPrinting ? "Preparing PDF..." : "Download Resume"}
+                    </button>
+                </div>
+            )}
 
             {/* Scale Selection Modal */}
             {showScaleModal && (
