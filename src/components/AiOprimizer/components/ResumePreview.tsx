@@ -440,7 +440,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 // HTML structure styles - how divs and elements are styled
                 htmlStructure: {
                     container: {
-                        fontFamily: '"Times New Roman", Times, serif',
+                        fontFamily: '"Times New Roman", Times, serif !important',
                         fontSize: styles.fontSize,
                         lineHeight: styles.lineHeight,
                         color: "#000000",
