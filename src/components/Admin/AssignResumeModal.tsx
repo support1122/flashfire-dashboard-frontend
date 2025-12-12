@@ -202,7 +202,7 @@ export default function AssignResumeModal({ open, onClose, onAssignSuccess }: As
                                 <option value="">-- Select a user --</option>
                                 {users.map((user) => (
                                     <option key={user.email} value={user.email}>
-                                        {user.name} ({user.email})
+                                        {user.name && user.name.trim() ? user.name : user.email} {user.name && user.name.trim() ? `(${user.email})` : ''}
                                     </option>
                                 ))}
                             </select>

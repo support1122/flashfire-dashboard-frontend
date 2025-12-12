@@ -352,7 +352,7 @@ function AccessKeyEditor() {
                         <option value="">Select a user...</option>
                         {users.map((user) => (
                             <option key={user.id} value={user.email}>
-                                {user.name} ({user.email})
+                                {user.name && user.name.trim() ? user.name : user.email} {user.name && user.name.trim() ? `(${user.email})` : ''}
                             </option>
                         ))}
                     </select>
@@ -3207,6 +3207,17 @@ function App() {
                                     </div>
                                 </div>
                             </div>
+                            
+                            {/* Job Description Preview */}
+                            {jobDescription && (
+                                <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                    <p className="text-sm font-semibold text-gray-700 mb-2">Job Description Preview:</p>
+                                    <p className="text-sm text-gray-600 line-clamp-2 overflow-hidden">
+                                        {jobDescription.trim()}
+                                    </p>
+                                </div>
+                            )}
+                            
                             <p className="text-sm text-gray-500 text-center mt-4">
                                 Please verify the name, role, and company name are correct before proceeding
                             </p>

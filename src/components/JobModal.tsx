@@ -12,7 +12,7 @@ import {
     Upload as UploadIcon,
     Check,
     Loader2,
-  Mail,
+    Mail,
     GitCommit,
 } from "lucide-react";
 import { useRef, useState, Suspense, lazy, useContext, useEffect } from "react";
@@ -27,6 +27,7 @@ import ResumeChangesComparison from "./ResumeChangesComparison.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
 import { useResumeStore } from "./AiOprimizer/store/useResumeStore.ts";
 import { toastUtils, toastMessages } from "../utils/toast.ts";
+import { useJobsSessionStore } from "../state_management/JobsSessionStore.ts";
 import {
     getOptimizedResumeUrl,
     getOptimizedResumeTitle,
@@ -180,8 +181,8 @@ async function persistOptimizedResumeToUser({
                 jobRole: entry.jobRole ?? "",
                 jobId: entry.jobId ?? "",
                 jobLink: entry.jobLink ?? "",
-                name : entry.jobRole,
-                createdAt : Date.now()
+                name: entry.jobRole,
+                createdAt: Date.now()
             },
         };
 
@@ -195,12 +196,12 @@ async function persistOptimizedResumeToUser({
         let json: any = {};
         try {
             json = text ? JSON.parse(text) : {};
-        } catch {}
+        } catch { }
         if (!res.ok)
             throw new Error(
                 (json && json.message) ||
-                    text ||
-                    "Failed to save optimized resume"
+                text ||
+                "Failed to save optimized resume"
             );
         return json as { message?: string; userDetails?: any };
     } else {
@@ -226,12 +227,12 @@ async function persistOptimizedResumeToUser({
         let json: any = {};
         try {
             json = text ? JSON.parse(text) : {};
-        } catch {}
+        } catch { }
         if (!res.ok)
             throw new Error(
                 (json && json.message) ||
-                    text ||
-                    "Failed to save optimized resume"
+                text ||
+                "Failed to save optimized resume"
             );
         return json as { message?: string; userDetails?: any };
     }
@@ -276,8 +277,9 @@ export default function JobModal({
     const [isUploadingPasted, setIsUploadingPasted] = useState(false);
     const [pasteError, setPasteError] = useState<string | null>(null);
 
-    const { setUserJobs } = useUserJobs(); // ⬅️ NEW: global jobs updater
+    const { setUserJobs } = useUserJobs();
     const { getJobDescription, isJobDescriptionLoading, loadJobDescription } = useJobDescriptionLoader();
+    const { refreshJobByMongoId } = useJobsSessionStore();
 
     const [attachmentsModalActiveStatus, setAttachmentsModalActiveStatus] =
         useState(false);
@@ -288,6 +290,15 @@ export default function JobModal({
     const [activeSection, setActiveSection] = useState<Sections>(
         initialSection ?? "details"
     );
+    const [showOptimizeScaleModal, setShowOptimizeScaleModal] = useState(false);
+    const [optimizedResumeData, setOptimizedResumeData] = useState<any>(null);
+    const [optimizedResumeMetadata, setOptimizedResumeMetadata] = useState<any>(null);
+    const [showOptimizeConfirmation, setShowOptimizeConfirmation] = useState(false);
+    const [resumeNameForModal, setResumeNameForModal] = useState<string>("");
+    const [optimizeScale, setOptimizeScale] = useState(() => {
+        const saved = localStorage.getItem('resumePreview_lastScale');
+        return saved ? parseFloat(saved) : 1.0;
+    });
 
     // Load job description when modal opens
     useEffect(() => {
@@ -299,13 +310,15 @@ export default function JobModal({
         }
     }, [jobDetails?.jobID, activeSection, getJobDescription, isJobDescriptionLoading, loadJobDescription]);
 
+
+
     // Handle keyboard shortcuts for job description copy
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             // Check for Ctrl + Shift + C
             if (event.ctrlKey && event.shiftKey && event.key === 'C') {
                 event.preventDefault();
-                
+
                 // Only copy if we're in the description section and have job description
                 if (activeSection === 'description' && jobDetails?.jobDescription) {
                     const text = document.querySelector(".job-description-html")?.textContent || "";
@@ -350,18 +363,18 @@ export default function JobModal({
     const fetchResumeData = async (jobId: string) => {
         setResumeLoading(true);
         setResumeError(null);
-        
+
         try {
             // Check session storage first
             const cacheKey = `resume_${jobId}`;
             const cachedData = sessionStorage.getItem(cacheKey);
-            
+
             if (cachedData) {
                 const parsed = JSON.parse(cachedData);
                 const now = new Date().getTime();
                 const cacheTime = parsed.timestamp || 0;
                 const hoursDiff = (now - cacheTime) / (1000 * 60 * 60);
-                
+
                 if (hoursDiff < 24) {
                     const defaultOrder = [
                         "personalInfo",
@@ -381,10 +394,10 @@ export default function JobModal({
                     return;
                 }
             }
-            
+
             const response = await fetch(`${API_BASE}/getOptimizedResume/${jobId}`);
             const result = await response.json();
-            
+
             if (response.ok && result.success) {
                 const defaultOrder = [
                     "personalInfo",
@@ -444,7 +457,7 @@ export default function JobModal({
                 });
                 return;
             }
-            
+
             // If no resume data in job object, try to fetch from API
             if (!resumeData && !resumeLoading) {
                 console.log("Auto-fetching resume from API");
@@ -494,26 +507,26 @@ export default function JobModal({
         hasOptimizedResumeLocal(jobDetails?.jobID, jobDetails?.companyName)
     );
 
-// Always keep it in sync when job or local user changes
-useEffect(() => {
-  setHasResumeForJob(hasOptimizedResumeLocal(jobDetails?.jobID, jobDetails?.companyName));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [jobDetails?.jobID, jobDetails?.companyName, ctx?.userDetails]);
-  // NEW: capture images from Ctrl+V
-  const handlePasteImages = (e: React.ClipboardEvent<HTMLDivElement>) => {
-  setPasteError(null);
-  const items = e.clipboardData?.items || [];
-  for (const item of items) {
-    if (item.type && item.type.startsWith("image/")) {
-      const f = item.getAsFile();
-      if (f) {
-        // ✅ Append new image(s) to the existing pasted list
-        setPastedImages((prev) => [...prev, f]);
-        setPastedPreviews((prev) => [...prev, URL.createObjectURL(f)]);
-      }
-    }
-  }
-};
+    // Always keep it in sync when job or local user changes
+    useEffect(() => {
+        setHasResumeForJob(hasOptimizedResumeLocal(jobDetails?.jobID, jobDetails?.companyName));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [jobDetails?.jobID, jobDetails?.companyName, ctx?.userDetails]);
+    // NEW: capture images from Ctrl+V
+    const handlePasteImages = (e: React.ClipboardEvent<HTMLDivElement>) => {
+        setPasteError(null);
+        const items = e.clipboardData?.items || [];
+        for (const item of items) {
+            if (item.type && item.type.startsWith("image/")) {
+                const f = item.getAsFile();
+                if (f) {
+                    // ✅ Append new image(s) to the existing pasted list
+                    setPastedImages((prev) => [...prev, f]);
+                    setPastedPreviews((prev) => [...prev, URL.createObjectURL(f)]);
+                }
+            }
+        }
+    };
 
 
     // NEW: upload pasted images -> Cloudinary -> persist to job.attachments[]
@@ -541,30 +554,30 @@ useEffect(() => {
                 if (up?.secure_url) urls.push(up.secure_url as string);
             }
 
-      if (urls.length) {
-  // ✅ Append uploaded pasted images to existing attachments
-  setAttachments((prev) => [...(Array.isArray(prev) ? prev : []), ...urls]);
+            if (urls.length) {
+                // ✅ Append uploaded pasted images to existing attachments
+                setAttachments((prev) => [...(Array.isArray(prev) ? prev : []), ...urls]);
 
-                   const resp = await persistAttachmentsToJob({
-               jobID,
-               userEmail,
-               urls,
-               token,
-               role,
-               userDetails: currentUser, // Pass user details
-               operationsUserName, // Pass operations user name
-               operationsUserEmail, // Pass operations user email
-           });
+                const resp = await persistAttachmentsToJob({
+                    jobID,
+                    userEmail,
+                    urls,
+                    token,
+                    role,
+                    userDetails: currentUser, // Pass user details
+                    operationsUserName, // Pass operations user name
+                    operationsUserEmail, // Pass operations user email
+                });
 
-  if (resp?.updatedJobs) {
-    setUserJobs(resp.updatedJobs);
-    const updated = resp.updatedJobs.find((j) => j.jobID === jobID);
-    if (updated?.attachments) {
-      // ✅ Reflect full attachments array returned by backend
-      setAttachments(updated.attachments);
-    }
-  }
-}
+                if (resp?.updatedJobs) {
+                    setUserJobs(resp.updatedJobs);
+                    const updated = resp.updatedJobs.find((j) => j.jobID === jobID);
+                    if (updated?.attachments) {
+                        // ✅ Reflect full attachments array returned by backend
+                        setAttachments(updated.attachments);
+                    }
+                }
+            }
 
 
             // clear paste buffer
@@ -618,7 +631,7 @@ useEffect(() => {
             });
             const url = up.secure_url as string;
 
-      setAttachments([url]); // ✅ replace array with just this one
+            setAttachments([url]); // ✅ replace array with just this one
 
 
             const resp = await persistAttachmentsToJob({
@@ -648,19 +661,19 @@ useEffect(() => {
         }
     };
     const sanitizeCompanyDomain = (name: string) => {
-  if (!name) return "example.com";
+        if (!name) return "example.com";
 
-  // Clean spaces and invalid characters
-  let domain = name
-    .toLowerCase()
-    .replace(/\s+/g, "")       // remove spaces
-    .replace(/[^a-z0-9.-]/g, ""); // remove invalid chars
+        // Clean spaces and invalid characters
+        let domain = name
+            .toLowerCase()
+            .replace(/\s+/g, "")       // remove spaces
+            .replace(/[^a-z0-9.-]/g, ""); // remove invalid chars
 
-  // Avoid double .com
-  if (!domain.includes(".")) domain += ".com";
+        // Avoid double .com
+        if (!domain.includes(".")) domain += ".com";
 
-  return domain;
-};
+        return domain;
+    };
 
     const handleChooseDoc = () => docInputRef.current?.click();
 
@@ -691,7 +704,7 @@ useEffect(() => {
             file.type === "application/pdf" ||
             file.type === "application/msword" ||
             file.type ===
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
         if (!isDoc) {
             setDocError("Please select a PDF/DOC/DOCX file.");
             e.target.value = "";
@@ -834,23 +847,23 @@ useEffect(() => {
                             </div>
                             <div className="flex items-center gap-3">
                                 <img
-              src={`https://www.google.com/s2/favicons?domain=${sanitizeCompanyDomain(jobDetails.companyName)}&sz=64`}
-              alt="Company Logo"
-              className="w-[35px] h-[35px] m-2"
-              style={{ display: 'none' }} // Start hidden until load check
-              onError={(e) => {
-                e.currentTarget.style.display = "none"; // Hide broken image
-              }}
-              onLoad={(e) => {
-                const img = e.currentTarget;
-                // Default globe is always 16x16; custom ones resize to 64x64
-                if (img.naturalHeight === 16 && img.naturalWidth === 16) {
-                  img.style.display = "none"; // Hide default
-                } else {
-                  img.style.display = "block"; // Show custom
-                }
-              }}
-            />
+                                    src={`https://www.google.com/s2/favicons?domain=${sanitizeCompanyDomain(jobDetails.companyName)}&sz=64`}
+                                    alt="Company Logo"
+                                    className="w-[35px] h-[35px] m-2"
+                                    style={{ display: 'none' }} // Start hidden until load check
+                                    onError={(e) => {
+                                        e.currentTarget.style.display = "none"; // Hide broken image
+                                    }}
+                                    onLoad={(e) => {
+                                        const img = e.currentTarget;
+                                        // Default globe is always 16x16; custom ones resize to 64x64
+                                        if (img.naturalHeight === 16 && img.naturalWidth === 16) {
+                                            img.style.display = "none"; // Hide default
+                                        } else {
+                                            img.style.display = "block"; // Show custom
+                                        }
+                                    }}
+                                />
                                 <p className="text-lg font-semibold text-gray-900">
                                     {jobDetails.companyName}
                                 </p>
@@ -959,175 +972,175 @@ useEffect(() => {
                             </p>
                         </div>
 
-            {/* Card 3: Position */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center mb-2">
-                <Briefcase className="w-4 h-4 text-gray-500 mr-2" />
-                <span className="text-sm font-medium text-gray-600">Position</span>
-              </div>
-              <p className="text-lg font-semibold text-gray-900">{jobDetails.jobTitle}</p>
-            </div>
+                        {/* Card 3: Position */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-4">
+                            <div className="flex items-center mb-2">
+                                <Briefcase className="w-4 h-4 text-gray-500 mr-2" />
+                                <span className="text-sm font-medium text-gray-600">Position</span>
+                            </div>
+                            <p className="text-lg font-semibold text-gray-900">{jobDetails.jobTitle}</p>
+                        </div>
 
-            {/* Card 4: Candidate */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center mb-2">
-                <User className="w-4 h-4 text-gray-500 mr-2" />
-                <span className="text-sm font-medium text-gray-600">Candidate</span>
-              </div>
-              <p className="text-lg font-semibold text-gray-900">
-                {currentUser?.email || jobDetails.userID}
-              </p>
-            </div>
-          </div>
-        );
+                        {/* Card 4: Candidate */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-4">
+                            <div className="flex items-center mb-2">
+                                <User className="w-4 h-4 text-gray-500 mr-2" />
+                                <span className="text-sm font-medium text-gray-600">Candidate</span>
+                            </div>
+                            <p className="text-lg font-semibold text-gray-900">
+                                {currentUser?.email || jobDetails.userID}
+                            </p>
+                        </div>
+                    </div>
+                );
 
-      case "link":
-        return (
-          <div className="space-y-4">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-gray-900">Job Application Link</h4>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => copyToClipboard(jobDetails.joblink)}
-                    className="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                  >
-                    <Copy className="w-4 h-4 mr-1" />
-                    Copy
-                  </button>
-                  <a
-                    href={jobDetails.joblink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-1" />
-                    Open
-                  </a>
-                </div>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300">
-                <code className="text-sm text-gray-700 break-all font-mono">{jobDetails.joblink}</code>
-              </div>
-            </div>
-          </div>
-        );
-      case "description":
-  const emailMatch = jobDetails?.jobDescription
-    ? jobDetails.jobDescription.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)
-    : null;
+            case "link":
+                return (
+                    <div className="space-y-4">
+                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-lg font-semibold text-gray-900">Job Application Link</h4>
+                                <div className="flex space-x-2">
+                                    <button
+                                        onClick={() => copyToClipboard(jobDetails.joblink)}
+                                        className="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                                    >
+                                        <Copy className="w-4 h-4 mr-1" />
+                                        Copy
+                                    </button>
+                                    <a
+                                        href={jobDetails.joblink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                    >
+                                        <ExternalLink className="w-4 h-4 mr-1" />
+                                        Open
+                                    </a>
+                                </div>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-300">
+                                <code className="text-sm text-gray-700 break-all font-mono">{jobDetails.joblink}</code>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case "description":
+                const emailMatch = jobDetails?.jobDescription
+                    ? jobDetails.jobDescription.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)
+                    : null;
 
-  return (
-    // <div className="space-y-4">
-    //   <div className="bg-white rounded-lg border border-gray-200 p-6">
-    //     <h4 className="text-lg font-semibold text-gray-900 mb-4">Job Description</h4>
-    //     <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-    //       {jobDetails?.jobDescription ? (
-    //         <div
-    //           className="text-sm text-gray-700 leading-relaxed job-description-html"
-    //           dangerouslySetInnerHTML={{
-    //             __html: jobDetails.jobDescription,
-    //           }}
-    //         ></div>
-    //       ) : (
-    //         <p className="text-gray-500 italic text-sm">
-    //           No job description available.
-    //         </p>
-    //       )}
-    //     </div>
+                return (
+                    // <div className="space-y-4">
+                    //   <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    //     <h4 className="text-lg font-semibold text-gray-900 mb-4">Job Description</h4>
+                    //     <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+                    //       {jobDetails?.jobDescription ? (
+                    //         <div
+                    //           className="text-sm text-gray-700 leading-relaxed job-description-html"
+                    //           dangerouslySetInnerHTML={{
+                    //             __html: jobDetails.jobDescription,
+                    //           }}
+                    //         ></div>
+                    //       ) : (
+                    //         <p className="text-gray-500 italic text-sm">
+                    //           No job description available.
+                    //         </p>
+                    //       )}
+                    //     </div>
 
-    //     {/* ✅ Show extracted emails from job description */}
-    //     {emailMatch && emailMatch.length > 0 && (
-    //       <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-    //         <h5 className="text-sm font-semibold text-yellow-800 mb-2">
-    //           📧 Emails found in Job Description to reach out:
-    //         </h5>
-    //         <ul className="list-disc list-inside text-sm text-gray-700">
-    //           {emailMatch.map((email: string, idx: number) => (
-    //             <li key={idx} className="flex p-1 m-1"> <Mail className="size-3 m-1" /> {email}</li>
-    //           ))}
-    //         </ul>
-    //       </div>
-    //     )}
-    //   </div>
-    // </div>
-    <div className="space-y-4">
-  <div className="bg-white rounded-lg border border-gray-200 p-6">
-    <div className="flex items-center justify-between mb-4">
-    <h4 className="text-lg font-semibold text-gray-900">Job Description</h4>
-      <button
-          onClick={() => {
-            // Try to read from the rendered HTML first
-            const el = document.querySelector(".job-description-html") as HTMLElement | null;
-            let text = (el?.textContent || "").trim();
+                    //     {/* ✅ Show extracted emails from job description */}
+                    //     {emailMatch && emailMatch.length > 0 && (
+                    //       <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    //         <h5 className="text-sm font-semibold text-yellow-800 mb-2">
+                    //           📧 Emails found in Job Description to reach out:
+                    //         </h5>
+                    //         <ul className="list-disc list-inside text-sm text-gray-700">
+                    //           {emailMatch.map((email: string, idx: number) => (
+                    //             <li key={idx} className="flex p-1 m-1"> <Mail className="size-3 m-1" /> {email}</li>
+                    //           ))}
+                    //         </ul>
+                    //       </div>
+                    //     )}
+                    //   </div>
+                    // </div>
+                    <div className="space-y-4">
+                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-lg font-semibold text-gray-900">Job Description</h4>
+                                <button
+                                    onClick={() => {
+                                        // Try to read from the rendered HTML first
+                                        const el = document.querySelector(".job-description-html") as HTMLElement | null;
+                                        let text = (el?.textContent || "").trim();
 
-            // Fallback: use cached or raw description, stripping HTML if present
-            if (!text) {
-              const raw = (getJobDescription(jobDetails?.jobID) || jobDetails?.jobDescription || "").toString();
-              // Strip HTML tags if any
-              text = raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-            }
+                                        // Fallback: use cached or raw description, stripping HTML if present
+                                        if (!text) {
+                                            const raw = (getJobDescription(jobDetails?.jobID) || jobDetails?.jobDescription || "").toString();
+                                            // Strip HTML tags if any
+                                            text = raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+                                        }
 
-            if (text) {
-              navigator.clipboard.writeText(text);
-            }
-          }}
-          className="text-sm px-3 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700"
-          title="Copy job description (Ctrl + Shift + C)"
-        >
-          Copy
-        </button>
-    </div>
+                                        if (text) {
+                                            navigator.clipboard.writeText(text);
+                                        }
+                                    }}
+                                    className="text-sm px-3 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                                    title="Copy job description (Ctrl + Shift + C)"
+                                >
+                                    Copy
+                                </button>
+                            </div>
 
-    <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-      {(() => {
-        const cachedDescription = getJobDescription(jobDetails?.jobID);
-        const description = cachedDescription || jobDetails?.jobDescription;
-        const isLoading = isJobDescriptionLoading(jobDetails?.jobID);
-        
-        if (isLoading) {
-          return (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-blue-500 mr-2" />
-              <span className="text-gray-600">Loading job description...</span>
-            </div>
-          );
-        }
-        
-        return description ? (
-          <div
-            className="text-sm text-gray-700 leading-relaxed job-description-html"
-            dangerouslySetInnerHTML={{
-              __html: description,
-            }}
-          ></div>
-        ) : (
-          <p className="text-gray-500 italic text-sm">
-            No job description available.
-          </p>
-        );
-      })()}
-    </div>
+                            <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+                                {(() => {
+                                    const cachedDescription = getJobDescription(jobDetails?.jobID);
+                                    const description = cachedDescription || jobDetails?.jobDescription;
+                                    const isLoading = isJobDescriptionLoading(jobDetails?.jobID);
 
-    {/* ✅ Show extracted emails from job description */}
-    {emailMatch && emailMatch.length > 0 && (
-      <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-        <h5 className="text-sm font-semibold text-yellow-800 mb-2">
-          📧 Emails found in Job Description to reach out:
-        </h5>
-         <ul className="list-disc list-inside text-sm text-gray-700">
-           {emailMatch.map((email: string, idx: number) => (
-             <li key={idx} className="flex p-1 m-1">
-               <Mail className="size-3 m-1" /> {email}
-             </li>
-           ))}
-         </ul>
-      </div>
-    )}
-  </div>
-</div>
+                                    if (isLoading) {
+                                        return (
+                                            <div className="flex items-center justify-center py-8">
+                                                <Loader2 className="w-6 h-6 animate-spin text-blue-500 mr-2" />
+                                                <span className="text-gray-600">Loading job description...</span>
+                                            </div>
+                                        );
+                                    }
 
-  );
+                                    return description ? (
+                                        <div
+                                            className="text-sm text-gray-700 leading-relaxed job-description-html"
+                                            dangerouslySetInnerHTML={{
+                                                __html: description,
+                                            }}
+                                        ></div>
+                                    ) : (
+                                        <p className="text-gray-500 italic text-sm">
+                                            No job description available.
+                                        </p>
+                                    );
+                                })()}
+                            </div>
+
+                            {/* ✅ Show extracted emails from job description */}
+                            {emailMatch && emailMatch.length > 0 && (
+                                <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                    <h5 className="text-sm font-semibold text-yellow-800 mb-2">
+                                        📧 Emails found in Job Description to reach out:
+                                    </h5>
+                                    <ul className="list-disc list-inside text-sm text-gray-700">
+                                        {emailMatch.map((email: string, idx: number) => (
+                                            <li key={idx} className="flex p-1 m-1">
+                                                <Mail className="size-3 m-1" /> {email}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                );
 
             case "attachments":
                 return (
@@ -1139,76 +1152,76 @@ useEffect(() => {
                                 </h4>
                             </div>
 
-              {/* ---- Paste Images (Ctrl+V) ---- */}
-              <div className="mb-6 rounded-lg border border-orange-200 p-4">
-                <div className="flex items-center mb-3">
-                  <UploadIcon className="w-4 h-4 text-orange-600 mr-2" />
-                  <h4 className="text-sm font-semibold text-orange-700">
-                    Paste Images (Ctrl+V) — PNG/JPG/WEBP
-                  </h4>
-                </div>
+                            {/* ---- Paste Images (Ctrl+V) ---- */}
+                            <div className="mb-6 rounded-lg border border-orange-200 p-4">
+                                <div className="flex items-center mb-3">
+                                    <UploadIcon className="w-4 h-4 text-orange-600 mr-2" />
+                                    <h4 className="text-sm font-semibold text-orange-700">
+                                        Paste Images (Ctrl+V) — PNG/JPG/WEBP
+                                    </h4>
+                                </div>
 
-                <div
-                  onPaste={handlePasteImages}
-                  className="border-2 border-dashed border-orange-400/70 rounded-lg p-4 min-h-[96px] flex items-center justify-center bg-orange-50"
-                >
-                  {pastedPreviews.length ? (
-                    <div className="w-full">
-                      <div className="flex flex-wrap gap-2">
-                        {pastedPreviews.map((src, idx) => (
-                          <img
-                            key={idx}
-                            src={src}
-                            alt={`pasted-${idx}`}
-                            className="w-20 h-20 object-cover rounded-md border cursor-zoom-in"
-                            onClick={() => {
-                              setSelectedImage(src);
-                              setAttachmentsModalActiveStatus(true);
-                            }}
-                          />
-                        ))}
-                      </div>
+                                <div
+                                    onPaste={handlePasteImages}
+                                    className="border-2 border-dashed border-orange-400/70 rounded-lg p-4 min-h-[96px] flex items-center justify-center bg-orange-50"
+                                >
+                                    {pastedPreviews.length ? (
+                                        <div className="w-full">
+                                            <div className="flex flex-wrap gap-2">
+                                                {pastedPreviews.map((src, idx) => (
+                                                    <img
+                                                        key={idx}
+                                                        src={src}
+                                                        alt={`pasted-${idx}`}
+                                                        className="w-20 h-20 object-cover rounded-md border cursor-zoom-in"
+                                                        onClick={() => {
+                                                            setSelectedImage(src);
+                                                            setAttachmentsModalActiveStatus(true);
+                                                        }}
+                                                    />
+                                                ))}
+                                            </div>
 
-                      <div className="mt-3 flex gap-2">
-                        <button
-                          onClick={uploadPastedImages}
-                          disabled={isUploadingPasted}
-                          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-600 text-white disabled:opacity-50"
-                        >
-                          {isUploadingPasted ? (
-                            <Loader2 className="animate-spin w-4 h-4" />
-                          ) : (
-                            <UploadIcon className="w-4 h-4" />
-                          )}
-                          {isUploadingPasted ? "Uploading..." : "Upload pasted images"}
-                        </button>
+                                            <div className="mt-3 flex gap-2">
+                                                <button
+                                                    onClick={uploadPastedImages}
+                                                    disabled={isUploadingPasted}
+                                                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-600 text-white disabled:opacity-50"
+                                                >
+                                                    {isUploadingPasted ? (
+                                                        <Loader2 className="animate-spin w-4 h-4" />
+                                                    ) : (
+                                                        <UploadIcon className="w-4 h-4" />
+                                                    )}
+                                                    {isUploadingPasted ? "Uploading..." : "Upload pasted images"}
+                                                </button>
 
-                        <button
-                          onClick={() => {
-                            pastedPreviews.forEach((u) => URL.revokeObjectURL(u));
-                            setPastedPreviews([]);
-                            setPastedImages([]);
-                          }}
-                          disabled={isUploadingPasted}
-                          className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-gray-600 text-sm flex items-center">
-                      <Copy className="w-4 h-4 mr-2" /> Copy an image and press{" "}
-                      <span className="mx-1 font-semibold">Ctrl+V</span> here
-                    </p>
-                  )}
-                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        pastedPreviews.forEach((u) => URL.revokeObjectURL(u));
+                                                        setPastedPreviews([]);
+                                                        setPastedImages([]);
+                                                    }}
+                                                    disabled={isUploadingPasted}
+                                                    className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700"
+                                                >
+                                                    Clear
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="text-gray-600 text-sm flex items-center">
+                                            <Copy className="w-4 h-4 mr-2" /> Copy an image and press{" "}
+                                            <span className="mx-1 font-semibold">Ctrl+V</span> here
+                                        </p>
+                                    )}
+                                </div>
 
-                {pasteError && <p className="mt-2 text-sm text-red-600">{pasteError}</p>}
-              </div>
+                                {pasteError && <p className="mt-2 text-sm text-red-600">{pasteError}</p>}
+                            </div>
 
-              {/* Optimized Resume Section */}
-              {/* {jobDetails?.optimizedResume?.hasResume && (
+                            {/* Optimized Resume Section */}
+                            {/* {jobDetails?.optimizedResume?.hasResume && (
                 <div className="mb-6 rounded-lg border border-blue-200 p-4">
                   <div className="flex items-center mb-3">
                     <FileText className="w-4 h-4 text-blue-600 mr-2" />
@@ -1241,33 +1254,33 @@ useEffect(() => {
                 </div>
               )} */}
 
-              {/* Image Grid */}
-              <div className="h-96 overflow-auto rounded-lg border p-3">
-                {attachments.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1">
-                    {attachments.map((url, idx) => (
-                      <img
-                        key={idx}
-                        src={optimizeImageUrl(url)}
-                        alt={`Attachment-${idx}`}
-                        className="w-full h-auto object-cover cursor-zoom-in"
-                        draggable={false}
-                        onClick={() => {
-                          setSelectedImage(url);
-                          setAttachmentsModalActiveStatus(true);
-                        }}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500 italic flex items-center justify-center h-full">
-                    No attachment uploaded yet.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        );
+                            {/* Image Grid */}
+                            <div className="h-96 overflow-auto rounded-lg border p-3">
+                                {attachments.length > 0 ? (
+                                    <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-1">
+                                        {attachments.map((url, idx) => (
+                                            <img
+                                                key={idx}
+                                                src={optimizeImageUrl(url)}
+                                                alt={`Attachment-${idx}`}
+                                                className="w-full h-auto object-cover cursor-zoom-in"
+                                                draggable={false}
+                                                onClick={() => {
+                                                    setSelectedImage(url);
+                                                    setAttachmentsModalActiveStatus(true);
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-gray-500 italic flex items-center justify-center h-full">
+                                        No attachment uploaded yet.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
 
             case "resume":
                 return (
@@ -1278,14 +1291,14 @@ useEffect(() => {
                                     Resume
                                 </h4>
                             </div>
-                            
+
                             {resumeLoading && (
                                 <div className="flex items-center justify-center py-8">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                                     <span className="ml-2 text-gray-600">Loading resume...</span>
                                 </div>
                             )}
-                            
+
                             {/* {resumeError && (
                                 <div className="text-center py-8">
                                     <p className="text-red-600 mb-4">{resumeError}</p>
@@ -1297,7 +1310,7 @@ useEffect(() => {
                                     </button>
                                 </div>
                             )} */}
-                            
+
                             {resumeData && !resumeLoading && (
                                 <div className="resume-preview-container">
                                     {resumeData.version === 0 && (
@@ -1313,7 +1326,7 @@ useEffect(() => {
                                             sectionOrder={resumeData.sectionOrder}
                                         />
                                     )}
-                                    
+
                                     {resumeData.version === 1 && (
                                         <ResumePreview
                                             data={resumeData.resumeData}
@@ -1326,21 +1339,21 @@ useEffect(() => {
                                             sectionOrder={resumeData.sectionOrder}
                                         />
                                     )}
-                                    
-                                            {resumeData.version === 2 && (
-                                                <ResumePreviewMedical
-                                                    data={resumeData.resumeData}
-                                                    showLeadership={resumeData.showLeadership}
-                                                    showProjects={resumeData.showProjects}
-                                                    showSummary={resumeData.showSummary}
-                                                    showPublications={resumeData.showPublications}
-                                                    showPrintButtons={role === "operations"}
-                                                    sectionOrder={resumeData.sectionOrder}
-                                                />
-                                            )}
+
+                                    {resumeData.version === 2 && (
+                                        <ResumePreviewMedical
+                                            data={resumeData.resumeData}
+                                            showLeadership={resumeData.showLeadership}
+                                            showProjects={resumeData.showProjects}
+                                            showSummary={resumeData.showSummary}
+                                            showPublications={resumeData.showPublications}
+                                            showPrintButtons={role === "operations"}
+                                            sectionOrder={resumeData.sectionOrder}
+                                        />
+                                    )}
                                 </div>
                             )}
-                            
+
                             {!resumeData && !resumeLoading && (
                                 <div className="space-y-4">
                                     {/* Check if job has optimizedResume data in the job object */}
@@ -1379,7 +1392,7 @@ useEffect(() => {
                                                     Open Resume in New Tab
                                                 </button>
                                             </div> */}
-                                            
+
                                             {/* PDF Preview */}
                                             <div className="border border-gray-200 rounded-lg overflow-hidden">
                                                 <iframe
@@ -1397,7 +1410,7 @@ useEffect(() => {
                                                     Add Optimized Resume (PDF/DOC/DOCX)
                                                 </h4>
                                             </div>
-                                            
+
                                             <input
                                                 ref={docInputRef}
                                                 type="file"
@@ -1405,7 +1418,7 @@ useEffect(() => {
                                                 onChange={handleDocFileChange}
                                                 className="hidden"
                                             />
-                                            
+
                                             <button
                                                 onClick={handleChooseDoc}
                                                 disabled={isUploadingDoc}
@@ -1418,7 +1431,7 @@ useEffect(() => {
                                                 )}
                                                 {isUploadingDoc ? "Uploading..." : "Add Optimized Resume"}
                                             </button>
-                                            
+
                                             {recentDocUrl && (
                                                 <div className="mt-3 flex items-center gap-2 text-sm text-green-700">
                                                     <Check className="w-4 h-4" />
@@ -1512,6 +1525,388 @@ useEffect(() => {
         }
     };
 
+    // Handle resume optimization
+    const handleOptimizeResume = async () => {
+        try {
+            // Get user email - for operations, get from currentUser (the client whose job this is)
+            const userEmail = currentUser?.email;
+
+            if (!userEmail) {
+                toastUtils.error("User email not found. Cannot optimize resume.");
+                return;
+            }
+
+            // Get job description - try multiple sources
+            let jobDesc = jobDetails?.jobDescription || getJobDescription(jobDetails?.jobID) || "";
+
+            // If no job description found, try to load it
+            if (!jobDesc && jobDetails?.jobID) {
+                if (!isJobDescriptionLoading(jobDetails.jobID)) {
+                    await loadJobDescription(jobDetails.jobID);
+                    // Wait a bit for it to load
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    jobDesc = getJobDescription(jobDetails.jobID) || "";
+                }
+            }
+
+            if (!jobDesc) {
+                toastUtils.error("Job description not found. Please add job description first.");
+                return;
+            }
+
+            const loadingToast = toastUtils.loading("Optimizing resume... Please wait.");
+
+            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+            const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8086";
+            const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
+
+            // Step 1: Get user's assigned resume
+            const resumeResponse = await fetch(`${apiUrl}/api/resume-by-email`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: userEmail }),
+            });
+
+            if (!resumeResponse.ok) {
+                toastUtils.dismissToast(loadingToast);
+                if (resumeResponse.status === 404) {
+                    toastUtils.error("No resume assigned to this user. Please assign a resume first.");
+                } else {
+                    toastUtils.error("Failed to load user's resume.");
+                }
+                return;
+            }
+
+            const resumeData = await resumeResponse.json();
+
+            if (!resumeData || !resumeData.personalInfo) {
+                toastUtils.dismissToast(loadingToast);
+                toastUtils.error("Invalid resume data.");
+                return;
+            }
+
+            // Check if resume version is 2 (Medical)
+            const resumeVersion = resumeData.V || 0;
+            const isVersion2 = resumeVersion === 2;
+
+            // Step 2: Optimize the resume
+            const prompt = "if you recieve any HTML tages please ignore it and optimize the resume according to the given JD. Make sure not to cut down or shorten any points in the Work Experience section. IN all fields please do not cut down or shorten any points or content. For example, if a role in the base resume has 6 points, the optimized version should also retain all 6 points. The content should be aligned with the JD but the number of points per role must remain the same. Do not touch or optimize publications if given to you.";
+
+            const filteredResumeForOptimization = {
+                ...resumeData,
+                summary: resumeData.checkboxStates?.showSummary !== false ? resumeData.summary : "",
+                projects: resumeData.checkboxStates?.showProjects ? resumeData.projects : [],
+                leadership: resumeData.checkboxStates?.showLeadership ? resumeData.leadership : [],
+                publications: resumeData.publications || [],
+            };
+
+            const optimizeResponse = await fetch(`${apiUrl}/api/optimize-with-gemini`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    resume_data: filteredResumeForOptimization,
+                    job_description: prompt + jobDesc,
+                }),
+            });
+
+            if (!optimizeResponse.ok) {
+                toastUtils.dismissToast(loadingToast);
+                throw new Error(`Optimization failed: ${optimizeResponse.status}`);
+            }
+
+            const optimizedData = await optimizeResponse.json();
+
+            if (!optimizedData || (!optimizedData.summary && !optimizedData.workExperience)) {
+                toastUtils.dismissToast(loadingToast);
+                toastUtils.error("Optimization failed. Please try again.");
+                return;
+            }
+
+            // Step 3: Calculate changes
+            const getChangedFieldsOnly = () => {
+                const startingContent: any = {};
+                const finalChanges: any = {};
+
+                // Personal Info changes
+                const personalInfoChanged = Object.keys(resumeData.personalInfo).filter(
+                    (key) => resumeData.personalInfo[key] !== optimizedData.personalInfo[key]
+                );
+                if (personalInfoChanged.length > 0) {
+                    startingContent.personalInfo = {};
+                    finalChanges.personalInfo = {};
+                    personalInfoChanged.forEach((key) => {
+                        startingContent.personalInfo[key] = resumeData.personalInfo[key];
+                        finalChanges.personalInfo[key] = optimizedData.personalInfo[key];
+                    });
+                }
+
+                // Summary changes
+                if (resumeData.summary !== optimizedData.summary) {
+                    startingContent.summary = resumeData.summary;
+                    finalChanges.summary = optimizedData.summary;
+                }
+
+                // Work Experience changes
+                const changedWorkExp = resumeData.workExperience
+                    .map((orig: any, idx: number) => {
+                        const opt = optimizedData.workExperience[idx];
+                        if (!opt) return null;
+                        const changes: any = {};
+                        const originals: any = {};
+                        let hasChanges = false;
+                        ["position", "company", "duration", "location", "roleType"].forEach((field) => {
+                            if (orig[field] !== opt[field]) {
+                                originals[field] = orig[field];
+                                changes[field] = opt[field];
+                                hasChanges = true;
+                            }
+                        });
+                        if (JSON.stringify(orig.responsibilities) !== JSON.stringify(opt.responsibilities)) {
+                            originals.responsibilities = [...orig.responsibilities];
+                            changes.responsibilities = [...opt.responsibilities];
+                            hasChanges = true;
+                        }
+                        return hasChanges ? { id: orig.id, original: originals, optimized: changes } : null;
+                    })
+                    .filter(Boolean);
+
+                if (changedWorkExp.length > 0) {
+                    startingContent.workExperience = changedWorkExp.map((item: any) => ({
+                        id: item.id,
+                        ...item.original,
+                    }));
+                    finalChanges.workExperience = changedWorkExp.map((item: any) => ({
+                        id: item.id,
+                        ...item.optimized,
+                    }));
+                }
+
+                // Skills changes
+                const changedSkills = resumeData.skills
+                    .map((orig: any, idx: number) => {
+                        const opt = optimizedData.skills[idx];
+                        if (!opt) return null;
+                        if (orig.category !== opt.category || orig.skills !== opt.skills) {
+                            return {
+                                id: orig.id,
+                                original: { category: orig.category, skills: orig.skills },
+                                optimized: { category: opt.category, skills: opt.skills },
+                            };
+                        }
+                        return null;
+                    })
+                    .filter(Boolean);
+
+                if (changedSkills.length > 0) {
+                    startingContent.skills = changedSkills.map((item: any) => ({
+                        id: item.id,
+                        ...item.original,
+                    }));
+                    finalChanges.skills = changedSkills.map((item: any) => ({
+                        id: item.id,
+                        ...item.optimized,
+                    }));
+                }
+
+                return { startingContent, finalChanges };
+            };
+
+            const { startingContent, finalChanges } = getChangedFieldsOnly();
+
+            // Step 4: Save optimized resume to job
+            const jobId = jobDetails._id || jobDetails.jobID;
+            const saveResponse = await fetch(`${apiBaseUrl}/saveChangedSession`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: jobId,
+                    startingContent: startingContent,
+                    finalChanges: finalChanges,
+                    optimizedResume: {
+                        resumeData: optimizedData,
+                        hasResume: true,
+                        showSummary: resumeData.checkboxStates?.showSummary !== false,
+                        showProjects: resumeData.checkboxStates?.showProjects || false,
+                        showLeadership: resumeData.checkboxStates?.showLeadership || false,
+                        showPublications: resumeData.checkboxStates?.showPublications || false,
+                        version: resumeData.V || 0,
+                        sectionOrder: resumeData.sectionOrder || [
+                            "personalInfo",
+                            "summary",
+                            "workExperience",
+                            "projects",
+                            "leadership",
+                            "skills",
+                            "education",
+                            "publications"
+                        ]
+                    }
+                }),
+            });
+
+            if (!saveResponse.ok) {
+                toastUtils.dismissToast(loadingToast);
+                throw new Error("Failed to save optimized resume");
+            }
+
+            toastUtils.dismissToast(loadingToast);
+
+            await refreshJobByMongoId(jobId);
+            const optimizedResumeEntry = {
+                resumeData: optimizedData,
+                hasResume: true,
+                showSummary: resumeData.checkboxStates?.showSummary !== false,
+                showProjects: resumeData.checkboxStates?.showProjects || false,
+                showLeadership: resumeData.checkboxStates?.showLeadership || false,
+                showPublications: resumeData.checkboxStates?.showPublications || false,
+                version: resumeData.V || 0,
+                sectionOrder: resumeData.sectionOrder || [
+                    "personalInfo",
+                    "summary",
+                    "workExperience",
+                    "projects",
+                    "leadership",
+                    "skills",
+                    "education",
+                    "publications"
+                ]
+            };
+            setUserJobs((prevJobs) =>
+                prevJobs.map((job) =>
+                    (job._id === jobId || job.jobID === jobId)
+                        ? { ...job, optimizedResume: optimizedResumeEntry }
+                        : job
+                )
+            );
+
+            if (role === "operations") {
+                setOptimizedResumeData(optimizedData);
+                setOptimizedResumeMetadata({
+                    showSummary: resumeData.checkboxStates?.showSummary !== false,
+                    showProjects: resumeData.checkboxStates?.showProjects || false,
+                    showLeadership: resumeData.checkboxStates?.showLeadership || false,
+                    showPublications: resumeData.checkboxStates?.showPublications || false,
+                    version: resumeData.V || 0,
+                    sectionOrder: resumeData.sectionOrder || [
+                        "personalInfo",
+                        "summary",
+                        "workExperience",
+                        "projects",
+                        "leadership",
+                        "skills",
+                        "education",
+                        "publications"
+                    ]
+                });
+                setShowOptimizeScaleModal(true);
+            } else {
+                const downloadPdf = async () => {
+                    const pdfLoadingToast = toastUtils.loading("Making the best optimal PDF... Please wait.");
+                    try {
+                        if (isVersion2) {
+                            const pdfPayload = {
+                                personalInfo: optimizedData.personalInfo,
+                                summary: optimizedData.summary || "",
+                                workExperience: optimizedData.workExperience || [],
+                                projects: optimizedData.projects || [],
+                                leadership: optimizedData.leadership || [],
+                                skills: optimizedData.skills || [],
+                                education: optimizedData.education || [],
+                                publications: optimizedData.publications || [],
+                                checkboxStates: {
+                                    showSummary: resumeData.checkboxStates?.showSummary !== false,
+                                    showProjects: resumeData.checkboxStates?.showProjects || false,
+                                    showLeadership: resumeData.checkboxStates?.showLeadership || false,
+                                    showPublications: resumeData.checkboxStates?.showPublications || false,
+                                },
+                            };
+                            const pdfResponse = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify(pdfPayload),
+                            });
+                            if (!pdfResponse.ok) {
+                                toastUtils.dismissToast(pdfLoadingToast);
+                                throw new Error(`PDF generation failed: ${pdfResponse.status}`);
+                            }
+                            const pdfBlob = await pdfResponse.blob();
+                            const pdfUrl = window.URL.createObjectURL(pdfBlob);
+                            const link = document.createElement("a");
+                            link.href = pdfUrl;
+                            const name = optimizedData.personalInfo?.name || "Resume";
+                            const cleanName = name.replace(/\s+/g, "_");
+                            link.download = `${cleanName}_Resume.pdf`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(pdfUrl);
+                            toastUtils.dismissToast(pdfLoadingToast);
+                            toastUtils.success("✅ Resume optimized, saved, and PDF downloaded successfully!");
+                        } else {
+                            const pdfPayload = {
+                                personalInfo: optimizedData.personalInfo,
+                                summary: optimizedData.summary || "",
+                                workExperience: optimizedData.workExperience || [],
+                                projects: optimizedData.projects || [],
+                                leadership: optimizedData.leadership || [],
+                                skills: optimizedData.skills || [],
+                                education: optimizedData.education || [],
+                                publications: optimizedData.publications || [],
+                                checkboxStates: {
+                                    showSummary: resumeData.checkboxStates?.showSummary !== false,
+                                    showProjects: resumeData.checkboxStates?.showProjects || false,
+                                    showLeadership: resumeData.checkboxStates?.showLeadership || false,
+                                    showPublications: resumeData.checkboxStates?.showPublications || false,
+                                },
+                                sectionOrder: resumeData.sectionOrder || [
+                                    "personalInfo",
+                                    "summary",
+                                    "workExperience",
+                                    "projects",
+                                    "leadership",
+                                    "skills",
+                                    "education",
+                                    "publications"
+                                ],
+                                scale: optimizeScale,
+                                overrideAutoScale: true,
+                            };
+                            const pdfResponse = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify(pdfPayload),
+                            });
+                            if (!pdfResponse.ok) {
+                                toastUtils.dismissToast(pdfLoadingToast);
+                                throw new Error(`PDF generation failed: ${pdfResponse.status}`);
+                            }
+                            const pdfBlob = await pdfResponse.blob();
+                            const pdfUrl = window.URL.createObjectURL(pdfBlob);
+                            const link = document.createElement("a");
+                            link.href = pdfUrl;
+                            const name = optimizedData.personalInfo?.name || "Resume";
+                            const cleanName = name.replace(/\s+/g, "_");
+                            link.download = `${cleanName}_Resume.pdf`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(pdfUrl);
+                            toastUtils.dismissToast(pdfLoadingToast);
+                            toastUtils.success("✅ Resume optimized, saved, and PDF downloaded successfully!");
+                        }
+                    } catch (error: any) {
+                        toastUtils.dismissToast(pdfLoadingToast);
+                        throw error;
+                    }
+                };
+                await downloadPdf();
+            }
+        } catch (error: any) {
+            console.error("Error optimizing resume:", error);
+            toastUtils.error(error.message || "Failed to optimize resume. Please try again.");
+        }
+    };
+
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 p-4"
@@ -1544,28 +1939,28 @@ useEffect(() => {
                                             // Try _id first, then fall back to jobID
                                             const mongoId = jobDetails._id;
                                             const jobId = jobDetails.jobID;
-                                            
+
                                             // Prefer _id if available, otherwise use jobID
                                             const idToUse = mongoId || jobId;
-                                            
+
                                             if (!idToUse) {
                                                 console.error('No ID found in job details:', jobDetails);
                                                 toastUtils.error('Job ID not found. Please refresh the page and try again.');
                                                 return;
                                             }
-                                            
+
                                             // Get client email from currentUser
                                             const clientEmail = currentUser?.email;
-                                            
+
                                             // Use appropriate query parameter
                                             const queryParam = mongoId ? 'id' : 'jobId';
                                             let optimizeUrl = `${window.location.origin}/optimize/${idToUse}?view=editor&${queryParam}=${idToUse}`;
-                                            
+
                                             // Add email to URL if available
                                             if (clientEmail) {
                                                 optimizeUrl += `&email=${encodeURIComponent(clientEmail)}`;
                                             }
-                                            
+
                                             // Copy URL to clipboard
                                             try {
                                                 await navigator.clipboard.writeText(optimizeUrl);
@@ -1579,240 +1974,53 @@ useEffect(() => {
                                     >
                                         Copy Optimize URL
                                     </button>
-                                    {/* <button
+                                    <button
                                         onClick={async () => {
-                                        try {
-                                            // Get user email - for operations, get from currentUser (the client whose job this is)
-                                            const userEmail = currentUser?.email;
-                                            
-                                            if (!userEmail) {
-                                                toastUtils.error("User email not found. Cannot optimize resume.");
-                                                return;
-                                            }
+                                            try {
+                                                // Get user email - for operations, get from currentUser (the client whose job this is)
+                                                const userEmail = currentUser?.email;
 
-                                            // Get job description - try multiple sources
-                                            let jobDesc = jobDetails?.jobDescription || getJobDescription(jobDetails?.jobID) || "";
-                                            
-                                            // If no job description found, try to load it
-                                            if (!jobDesc && jobDetails?.jobID) {
-                                                if (!isJobDescriptionLoading(jobDetails.jobID)) {
-                                                    await loadJobDescription(jobDetails.jobID);
-                                                    // Wait a bit for it to load
-                                                    await new Promise(resolve => setTimeout(resolve, 500));
-                                                    jobDesc = getJobDescription(jobDetails.jobID) || "";
-                                                }
-                                            }
-                                            
-                                            if (!jobDesc) {
-                                                toastUtils.error("Job description not found. Please add job description first.");
-                                                return;
-                                            }
-
-                                            const loadingToast = toastUtils.loading("Optimizing resume... Please wait.");
-
-                                            const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
-                                            const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8086";
-
-                                            // Step 1: Get user's assigned resume
-                                            const resumeResponse = await fetch(`${apiUrl}/api/resume-by-email`, {
-                                                method: "POST",
-                                                headers: { "Content-Type": "application/json" },
-                                                body: JSON.stringify({ email: userEmail }),
-                                            });
-
-                                            if (!resumeResponse.ok) {
-                                                toastUtils.dismissToast(loadingToast);
-                                                if (resumeResponse.status === 404) {
-                                                    toastUtils.error("No resume assigned to this user. Please assign a resume first.");
-                                                } else {
-                                                    toastUtils.error("Failed to load user's resume.");
-                                                }
-                                                return;
-                                            }
-
-                                            const resumeData = await resumeResponse.json();
-                                            
-                                            if (!resumeData || !resumeData.personalInfo) {
-                                                toastUtils.dismissToast(loadingToast);
-                                                toastUtils.error("Invalid resume data.");
-                                                return;
-                                            }
-
-                                            // Step 2: Optimize the resume
-                                            const prompt = "if you recieve any HTML tages please ignore it and optimize the resume according to the given JD. Make sure not to cut down or shorten any points in the Work Experience section. IN all fields please do not cut down or shorten any points or content. For example, if a role in the base resume has 6 points, the optimized version should also retain all 6 points. The content should be aligned with the JD but the number of points per role must remain the same. Do not touch or optimize publications if given to you.";
-
-                                            const filteredResumeForOptimization = {
-                                                ...resumeData,
-                                                summary: resumeData.checkboxStates?.showSummary !== false ? resumeData.summary : "",
-                                                projects: resumeData.checkboxStates?.showProjects ? resumeData.projects : [],
-                                                leadership: resumeData.checkboxStates?.showLeadership ? resumeData.leadership : [],
-                                                publications: resumeData.publications || [],
-                                            };
-
-                                            const optimizeResponse = await fetch(`${apiUrl}/api/optimize-with-gemini`, {
-                                                method: "POST",
-                                                headers: { "Content-Type": "application/json" },
-                                                body: JSON.stringify({
-                                                    resume_data: filteredResumeForOptimization,
-                                                    job_description: prompt + jobDesc,
-                                                }),
-                                            });
-
-                                            if (!optimizeResponse.ok) {
-                                                toastUtils.dismissToast(loadingToast);
-                                                throw new Error(`Optimization failed: ${optimizeResponse.status}`);
-                                            }
-
-                                            const optimizedData = await optimizeResponse.json();
-
-                                            if (!optimizedData || (!optimizedData.summary && !optimizedData.workExperience)) {
-                                                toastUtils.dismissToast(loadingToast);
-                                                toastUtils.error("Optimization failed. Please try again.");
-                                                return;
-                                            }
-
-                                            // Step 3: Calculate changes
-                                            const getChangedFieldsOnly = () => {
-                                                const startingContent: any = {};
-                                                const finalChanges: any = {};
-
-                                                // Personal Info changes
-                                                const personalInfoChanged = Object.keys(resumeData.personalInfo).filter(
-                                                    (key) => resumeData.personalInfo[key] !== optimizedData.personalInfo[key]
-                                                );
-                                                if (personalInfoChanged.length > 0) {
-                                                    startingContent.personalInfo = {};
-                                                    finalChanges.personalInfo = {};
-                                                    personalInfoChanged.forEach((key) => {
-                                                        startingContent.personalInfo[key] = resumeData.personalInfo[key];
-                                                        finalChanges.personalInfo[key] = optimizedData.personalInfo[key];
-                                                    });
+                                                if (!userEmail) {
+                                                    toastUtils.error("User email not found. Cannot optimize resume.");
+                                                    return;
                                                 }
 
-                                                // Summary changes
-                                                if (resumeData.summary !== optimizedData.summary) {
-                                                    startingContent.summary = resumeData.summary;
-                                                    finalChanges.summary = optimizedData.summary;
-                                                }
+                                                // Fetch resume name to show in modal
+                                                const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+                                                const resumeResponse = await fetch(`${apiUrl}/api/resume-by-email`, {
+                                                    method: "POST",
+                                                    headers: { "Content-Type": "application/json" },
+                                                    body: JSON.stringify({ email: userEmail }),
+                                                });
 
-                                                // Work Experience changes
-                                                const changedWorkExp = resumeData.workExperience
-                                                    .map((orig: any, idx: number) => {
-                                                        const opt = optimizedData.workExperience[idx];
-                                                        if (!opt) return null;
-                                                        const changes: any = {};
-                                                        const originals: any = {};
-                                                        let hasChanges = false;
-                                                        ["position", "company", "duration", "location", "roleType"].forEach((field) => {
-                                                            if (orig[field] !== opt[field]) {
-                                                                originals[field] = orig[field];
-                                                                changes[field] = opt[field];
-                                                                hasChanges = true;
-                                                            }
-                                                        });
-                                                        if (JSON.stringify(orig.responsibilities) !== JSON.stringify(opt.responsibilities)) {
-                                                            originals.responsibilities = [...orig.responsibilities];
-                                                            changes.responsibilities = [...opt.responsibilities];
-                                                            hasChanges = true;
-                                                        }
-                                                        return hasChanges ? { id: orig.id, original: originals, optimized: changes } : null;
-                                                    })
-                                                    .filter(Boolean);
-
-                                                if (changedWorkExp.length > 0) {
-                                                    startingContent.workExperience = changedWorkExp.map((item: any) => ({
-                                                        id: item.id,
-                                                        ...item.original,
-                                                    }));
-                                                    finalChanges.workExperience = changedWorkExp.map((item: any) => ({
-                                                        id: item.id,
-                                                        ...item.optimized,
-                                                    }));
-                                                }
-
-                                                // Skills changes
-                                                const changedSkills = resumeData.skills
-                                                    .map((orig: any, idx: number) => {
-                                                        const opt = optimizedData.skills[idx];
-                                                        if (!opt) return null;
-                                                        if (orig.category !== opt.category || orig.skills !== opt.skills) {
-                                                            return {
-                                                                id: orig.id,
-                                                                original: { category: orig.category, skills: orig.skills },
-                                                                optimized: { category: opt.category, skills: opt.skills },
-                                                            };
-                                                        }
-                                                        return null;
-                                                    })
-                                                    .filter(Boolean);
-
-                                                if (changedSkills.length > 0) {
-                                                    startingContent.skills = changedSkills.map((item: any) => ({
-                                                        id: item.id,
-                                                        ...item.original,
-                                                    }));
-                                                    finalChanges.skills = changedSkills.map((item: any) => ({
-                                                        id: item.id,
-                                                        ...item.optimized,
-                                                    }));
-                                                }
-
-                                                return { startingContent, finalChanges };
-                                            };
-
-                                            const { startingContent, finalChanges } = getChangedFieldsOnly();
-
-                                            // Step 4: Save optimized resume to job
-                                            const jobId = jobDetails._id || jobDetails.jobID;
-                                            const saveResponse = await fetch(`${apiBaseUrl}/saveChangedSession`, {
-                                                method: "POST",
-                                                headers: { "Content-Type": "application/json" },
-                                                body: JSON.stringify({
-                                                    id: jobId,
-                                                    startingContent: startingContent,
-                                                    finalChanges: finalChanges,
-                                                    optimizedResume: {
-                                                        resumeData: optimizedData,
-                                                        hasResume: true,
-                                                        showSummary: resumeData.checkboxStates?.showSummary !== false,
-                                                        showProjects: resumeData.checkboxStates?.showProjects || false,
-                                                        showLeadership: resumeData.checkboxStates?.showLeadership || false,
-                                                        showPublications: resumeData.checkboxStates?.showPublications || false,
-                                                        version: resumeData.V || 0,
-                                                        sectionOrder: resumeData.sectionOrder || [
-                                                            "personalInfo",
-                                                            "summary",
-                                                            "workExperience",
-                                                            "projects",
-                                                            "leadership",
-                                                            "skills",
-                                                            "education",
-                                                            "publications"
-                                                        ]
+                                                if (!resumeResponse.ok) {
+                                                    if (resumeResponse.status === 404) {
+                                                        toastUtils.error("No resume assigned to this user. Please assign a resume first.");
+                                                    } else {
+                                                        toastUtils.error("Failed to load user's resume.");
                                                     }
-                                                }),
-                                            });
+                                                    return;
+                                                }
 
-                                            toastUtils.dismissToast(loadingToast);
+                                                const resumeData = await resumeResponse.json();
 
-                                            if (saveResponse.ok) {
-                                                toastUtils.success("✅ Resume optimized and saved successfully!");
-                                                // Refresh job data
-                                                setTimeout(() => {
-                                                    window.location.reload();
-                                                }, 1500);
-                                            } else {
-                                                throw new Error("Failed to save optimized resume");
+                                                if (!resumeData || !resumeData.personalInfo) {
+                                                    toastUtils.error("Invalid resume data.");
+                                                    return;
+                                                }
+
+                                                // Set resume name and show confirmation modal
+                                                setResumeNameForModal(resumeData.personalInfo?.name || "Unknown");
+                                                setShowOptimizeConfirmation(true);
+                                            } catch (error: any) {
+                                                console.error("Error loading resume:", error);
+                                                toastUtils.error("Failed to load resume. Please try again.");
                                             }
-                                        } catch (error: any) {
-                                            console.error("Error optimizing resume:", error);
-                                            toastUtils.error(error.message || "Failed to optimize resume. Please try again.");
-                                        }
-                                    }}
-                                    className="hover:bg-orange-900 hover:bg-opacity-20 p-2 rounded-full transition-colors bg-orange-700 px-4 py-2 text-white font-medium"
-                                >
-                                    Optimize
-                                </button> */}
+                                        }}
+                                        className="hover:bg-orange-900 hover:bg-opacity-20 p-2 rounded-full transition-colors bg-orange-700 px-4 py-2 text-white font-medium"
+                                    >
+                                        Optimize
+                                    </button>
                                 </>
                             ) : null}
                             <button
@@ -1882,16 +2090,14 @@ useEffect(() => {
                                         onClick={() =>
                                             setActiveSection(section.id)
                                         }
-                                        className={`w-full flex items-center px-3 py-2 text-left rounded-lg transition-all duration-200 text-sm ${
-                                            isActive
+                                        className={`w-full flex items-center px-3 py-2 text-left rounded-lg transition-all duration-200 text-sm ${isActive
                                                 ? `${section.color} border shadow-sm`
                                                 : "text-gray-700 hover:bg-white hover:shadow-sm border border-transparent"
-                                        }`}
+                                            }`}
                                     >
                                         <Icon
-                                            className={`w-5 h-5 mr-2 ${
-                                                isActive ? "" : "text-gray-500"
-                                            }`}
+                                            className={`w-5 h-5 mr-2 ${isActive ? "" : "text-gray-500"
+                                                }`}
                                         />
                                         <span className="font-medium">
                                             {section.label}
@@ -1925,6 +2131,192 @@ useEffect(() => {
                         />
                     </Suspense>
                 )}
+
+                {/* Optimize Scale Modal for Operations */}
+                {showOptimizeScaleModal && optimizedResumeData && optimizedResumeMetadata && (
+                    <div
+                        style={{
+                            position: "fixed",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: "rgba(0, 0, 0, 0.5)",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            zIndex: 2000,
+                            padding: "20px",
+                        }}
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                                setShowOptimizeScaleModal(false);
+                                setOptimizedResumeData(null);
+                                setOptimizedResumeMetadata(null);
+                            }
+                        }}
+                    >
+                        <div
+                            style={{
+                                backgroundColor: "white",
+                                borderRadius: "12px",
+                                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                                maxWidth: "1400px",
+                                width: "100%",
+                                maxHeight: "95vh",
+                                display: "flex",
+                                flexDirection: "column",
+                                overflow: "hidden",
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div style={{ padding: "1.5rem", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <div>
+                                    <h2
+                                        style={{
+                                            fontSize: "1.5rem",
+                                            fontWeight: "bold",
+                                            marginBottom: "0.5rem",
+                                            color: "#1f2937",
+                                        }}
+                                    >
+                                        Select PDF Scale
+                                    </h2>
+                                    <p
+                                        style={{
+                                            fontSize: "0.9rem",
+                                            color: "#6b7280",
+                                        }}
+                                    >
+                                        Adjust the scale and see a live preview.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowOptimizeScaleModal(false);
+                                        setOptimizedResumeData(null);
+                                        setOptimizedResumeMetadata(null);
+                                    }}
+                                    style={{
+                                        backgroundColor: "transparent",
+                                        border: "none",
+                                        fontSize: "1.5rem",
+                                        cursor: "pointer",
+                                        color: "#6b7280",
+                                        padding: "0.5rem",
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            <div style={{ flex: 1, overflow: "hidden", padding: "1.5rem" }}>
+                                {optimizedResumeMetadata.version === 2 ? (
+                                    <ResumePreviewMedical
+                                        data={optimizedResumeData}
+                                        showLeadership={optimizedResumeMetadata.showLeadership}
+                                        showProjects={optimizedResumeMetadata.showProjects}
+                                        showSummary={optimizedResumeMetadata.showSummary}
+                                        showPublications={optimizedResumeMetadata.showPublications}
+                                        showPrintButtons={false}
+                                        sectionOrder={optimizedResumeMetadata.sectionOrder}
+                                    />
+                                ) : (
+                                    <ResumePreview
+                                        data={optimizedResumeData}
+                                        showLeadership={optimizedResumeMetadata.showLeadership}
+                                        showProjects={optimizedResumeMetadata.showProjects}
+                                        showSummary={optimizedResumeMetadata.showSummary}
+                                        showPublications={optimizedResumeMetadata.showPublications}
+                                        showChanges={false}
+                                        changedFields={new Set()}
+                                        showPrintButtons={false}
+                                        sectionOrder={optimizedResumeMetadata.sectionOrder}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Optimize Confirmation Dialog */}
+                {showOptimizeConfirmation && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg shadow-xl p-8 max-w-2xl mx-4">
+                            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+                                Confirm Resume Optimization
+                            </h2>
+                            <div className="mb-8">
+                                <p className="text-lg text-gray-700 text-center mb-4">
+                                    Do you want to optimize the resume for:
+                                </p>
+                                <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-lg border-2 border-purple-200">
+                                    <div className="text-center">
+                                        <span className="text-3xl font-bold text-purple-700 block mb-3">
+                                            {resumeNameForModal || "Unknown"}
+                                        </span>
+                                        <p className="text-xl text-gray-700 mb-2">at</p>
+                                        <div className="flex flex-wrap justify-center items-center gap-6">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xl text-gray-700">Role:</span>
+                                                <span className="text-2xl font-bold text-blue-700">
+                                                    {jobDetails?.jobTitle || "Role not specified"}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xl text-gray-700">Company:</span>
+                                                <span className="text-2xl font-bold text-blue-700">
+                                                    {jobDetails?.companyName || "Company not specified"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Job Description Preview */}
+                                <div className="mt-6">
+                                    <h3 className="text-md font-semibold text-gray-700 mb-2">Job Description Preview:</h3>
+                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 max-h-48 overflow-y-auto">
+                                        <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                                            {(() => {
+                                                const raw = (getJobDescription(jobDetails?.jobID) || jobDetails?.jobDescription || "No job description available.").toString();
+                                                return raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+                                            })()}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <p className="text-sm text-gray-500 text-center mt-4">
+                                    Please verify the name, role, and company name are correct before proceeding
+                                </p>
+                            </div>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => {
+                                        setShowOptimizeConfirmation(false);
+                                        handleOptimizeResume();
+                                    }}
+                                    className="flex-1 bg-purple-600 text-white py-3 px-6 rounded-lg hover:bg-purple-700 transition-colors font-semibold text-lg"
+                                >
+                                    Confirm
+                                </button>
+                                <button
+                                    onClick={() => setShowOptimizeConfirmation(false)}
+                                    className="flex-1 bg-gray-300 text-gray-800 py-3 px-6 rounded-lg hover:bg-gray-400 transition-colors font-semibold text-lg"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <style>{`
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                `}</style>
             </div>
         </div>
     );

@@ -1,6 +1,10 @@
-import React from "react";
-// import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { toastUtils } from "../../../utils/toast";
+import * as pdfjsLib from 'pdfjs-dist';
 // import { ResumeScalingModal } from "./ResumeScalingModal";
+
+// Set up PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 interface ResumeData {
     personalInfo: {
@@ -78,6 +82,32 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     showPrintButtons = true,
     sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education", "publications"],
 }) => {
+    // Load last selected scale from localStorage
+    const getLastSelectedScale = () => {
+        const saved = localStorage.getItem('resumePreviewMedical_lastScale');
+        return saved ? parseFloat(saved) : 1.0;
+    };
+    
+    const [isPrinting, setIsPrinting] = useState(false);
+    const [showScaleModal, setShowScaleModal] = useState(false);
+    const [selectedScale, setSelectedScale] = useState(getLastSelectedScale());
+    const overrideAutoScale = true;
+    const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+    const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
+    const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+    const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+    const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
+    
+    const loadingMessages = [
+        "Our PDF engine is optimizing the PDF view...",
+        "Crafting your perfect resume layout...",
+        "Fine-tuning typography and spacing...",
+        "Ensuring pixel-perfect formatting...",
+        "Applying professional styling...",
+        "Optimizing content density...",
+        "Perfecting page breaks and margins...",
+        "Generating high-quality PDF output...",
+    ];
     // const [showScalingModal, setShowScalingModal] = useState(false);
     const formatLinkedIn = (linkedin: string) => {
         if (!linkedin) return "";
@@ -732,6 +762,198 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
         handlePrint();
     };
 
+    // Handle direct PDF download - use the preview PDF if available
+    const handleDownloadResume = async () => {
+        try {
+            // If we have a preview PDF blob, use it directly
+            if (previewPdfBlob) {
+                const pdfUrl = window.URL.createObjectURL(previewPdfBlob);
+                const link = document.createElement("a");
+                link.href = pdfUrl;
+                
+                // Generate filename: "{name}_Resume.pdf"
+                const filename = generateFilename(data);
+                link.download = filename;
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(pdfUrl);
+                
+                toastUtils.success("✅ PDF downloaded successfully!");
+                return;
+            }
+
+            // Otherwise generate new PDF
+            setIsPrinting(true);
+            const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
+            const loadingToast = toastUtils.loading("Making the best optimal PDF... Please wait.");
+            
+            // Format data for /v1/generate-pdf endpoint with scale and override
+            const pdfPayload = {
+                personalInfo: data.personalInfo,
+                summary: data.summary || "",
+                workExperience: data.workExperience || [],
+                projects: data.projects || [],
+                leadership: data.leadership || [],
+                skills: data.skills || [],
+                education: data.education || [],
+                publications: data.publications || [],
+                checkboxStates: {
+                    showSummary: showSummary,
+                    showProjects: showProjects,
+                    showLeadership: showLeadership,
+                    showPublications: showPublications,
+                },
+                sectionOrder: sectionOrder,
+                scale: selectedScale,
+                overrideAutoScale: overrideAutoScale,
+            };
+
+            const response = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(pdfPayload),
+            });
+
+            if (!response.ok) {
+                toastUtils.dismissToast(loadingToast);
+                throw new Error(`PDF generation failed: ${response.status}`);
+            }
+
+            // Download PDF directly
+            const pdfBlob = await response.blob();
+            const pdfUrl = window.URL.createObjectURL(pdfBlob);
+            const link = document.createElement("a");
+            link.href = pdfUrl;
+            
+            // Generate filename: "{name}_Resume.pdf"
+            const filename = generateFilename(data);
+            link.download = filename;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(pdfUrl);
+
+            toastUtils.dismissToast(loadingToast);
+            setShowScaleModal(false);
+            setIsPrinting(false);
+            // Clean up preview URL
+            if (previewPdfUrl) {
+                window.URL.revokeObjectURL(previewPdfUrl);
+                setPreviewPdfUrl(null);
+                setPreviewPdfBlob(null);
+            }
+            toastUtils.success("✅ PDF downloaded successfully!");
+        } catch (error: any) {
+            console.error("Error generating PDF:", error);
+            setIsPrinting(false);
+            toastUtils.error(`Failed to generate PDF: ${error.message}`);
+        }
+    };
+
+    // Generate preview PDF
+    const generatePreview = async (scale: number) => {
+        let messageInterval: NodeJS.Timeout | null = null;
+        try {
+            setIsGeneratingPreview(true);
+            // Rotate loading messages
+            messageInterval = setInterval(() => {
+                setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
+            }, 2000);
+            
+            const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
+            
+            const pdfPayload = {
+                personalInfo: data.personalInfo,
+                summary: data.summary || "",
+                workExperience: data.workExperience || [],
+                projects: data.projects || [],
+                leadership: data.leadership || [],
+                skills: data.skills || [],
+                education: data.education || [],
+                publications: data.publications || [],
+                checkboxStates: {
+                    showSummary: showSummary,
+                    showProjects: showProjects,
+                    showLeadership: showLeadership,
+                    showPublications: showPublications,
+                },
+                sectionOrder: sectionOrder,
+                scale: scale,
+                overrideAutoScale: overrideAutoScale,
+            };
+
+            const response = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(pdfPayload),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Preview generation failed: ${response.status}`);
+            }
+
+            const pdfBlob = await response.blob();
+            const pdfUrl = window.URL.createObjectURL(pdfBlob);
+            
+            // Get PDF page count
+            try {
+                const arrayBuffer = await pdfBlob.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const numPages = pdf.numPages;
+                setPdfPageCount(numPages);
+            } catch (pdfError) {
+                console.error("Error getting PDF page count:", pdfError);
+                setPdfPageCount(null);
+            }
+            
+            // Clean up previous preview
+            if (previewPdfUrl) {
+                window.URL.revokeObjectURL(previewPdfUrl);
+            }
+            
+            setPreviewPdfUrl(pdfUrl);
+            setPreviewPdfBlob(pdfBlob); // Store blob for download
+            setIsGeneratingPreview(false);
+            if (messageInterval) clearInterval(messageInterval);
+        } catch (error: any) {
+            console.error("Error generating preview:", error);
+            setIsGeneratingPreview(false);
+            if (messageInterval) clearInterval(messageInterval);
+        }
+    };
+
+    // Handle scale change with debounced preview
+    useEffect(() => {
+        if (showScaleModal && selectedScale) {
+            // Reset page count when scale changes
+            setPdfPageCount(null);
+            const timer = setTimeout(() => {
+                generatePreview(selectedScale);
+            }, 500); // Debounce preview generation
+            
+            return () => clearTimeout(timer);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedScale, showScaleModal, overrideAutoScale]);
+
+    // Generate preview when modal opens
+    useEffect(() => {
+        if (showScaleModal) {
+            generatePreview(selectedScale);
+        } else {
+            // Clean up preview URL when modal closes
+            if (previewPdfUrl) {
+                window.URL.revokeObjectURL(previewPdfUrl);
+                setPreviewPdfUrl(null);
+                setPreviewPdfBlob(null);
+                setPdfPageCount(null);
+            }
+        }
+    }, [showScaleModal]);
+
     const resumeContent = (
         <>
             {/* Header - Always first */}
@@ -825,22 +1047,6 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                             </a>
                         </>
                     )}
-                    {data.personalInfo.publications && (
-                        <>
-                            {" | "}
-                            <a
-                                href={getPublicationsUrl(data.personalInfo.publications)}
-                                style={{
-                                    color: "blue",
-                                    textDecoration: "none",
-                                }}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                {formatPublications(data.personalInfo.publications)}
-                            </a>
-                        </>
-                    )}
                 </div>
             </div>
 
@@ -853,6 +1059,364 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
 
     return (
         <div className="resume-medical-print">
+            {/* Download Resume Button - Hidden from users */}
+            {/* <div
+                className="no-print"
+                style={{ marginBottom: "1rem", textAlign: "center" }}
+            >
+                <button
+                    onClick={() => setShowScaleModal(true)}
+                    disabled={isPrinting}
+                    style={{
+                        backgroundColor: isPrinting ? "#9ca3af" : "#10b981",
+                        color: "white",
+                        padding: "10px 20px",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: isPrinting ? "not-allowed" : "pointer",
+                        fontWeight: "600",
+                        fontSize: "14px",
+                        transition: "background-color 0.2s",
+                    }}
+                >
+                    {isPrinting ? "Preparing PDF..." : "Download Resume"}
+                </button>
+            </div> */}
+
+            {/* Scale Selection Modal */}
+            {showScaleModal && (
+                <div
+                    style={{
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: "rgba(0, 0, 0, 0.5)",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        zIndex: 1000,
+                        padding: "20px",
+                    }}
+                >
+                    <div
+                        style={{
+                            backgroundColor: "white",
+                            borderRadius: "12px",
+                            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                            maxWidth: "1200px",
+                            width: "100%",
+                            maxHeight: "90vh",
+                            display: "flex",
+                            flexDirection: "column",
+                            overflow: "hidden",
+                        }}
+                    >
+                        {/* Header */}
+                        <div style={{ padding: "1.5rem", borderBottom: "1px solid #e5e7eb" }}>
+                            <h2
+                                style={{
+                                    fontSize: "1.5rem",
+                                    fontWeight: "bold",
+                                    marginBottom: "0.5rem",
+                                    color: "#1f2937",
+                                }}
+                            >
+                                Select PDF Scale
+                            </h2>
+                            <p
+                                style={{
+                                    fontSize: "0.9rem",
+                                    color: "#6b7280",
+                                }}
+                            >
+                                Adjust the scale and see a live preview.
+                            </p>
+                        </div>  
+
+                        {/* Content Area - Side by Side */}
+                        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+                            {/* Left Side - Controls */}
+                            <div style={{ 
+                                width: "400px", 
+                                padding: "1.5rem", 
+                                borderRight: "1px solid #e5e7eb",
+                                display: "flex",
+                                flexDirection: "column",
+                                overflowY: "auto",
+                            }}>
+                                <div style={{ marginBottom: "1.5rem" }}>
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            fontSize: "0.9rem",
+                                            fontWeight: "600",
+                                            marginBottom: "0.75rem",
+                                            color: "#374151",
+                                        }}
+                                    >
+                                        Scale: <span style={{ color: "#10b981", fontSize: "1.1rem", fontWeight: "700" }}>{(selectedScale * 100).toFixed(0)}%</span>
+                                    </label>
+                                    <input
+                                        type="range"
+                                        min="0.5"
+                                        max="1.5"
+                                        step="0.01"
+                                        value={selectedScale}
+                                        onChange={(e) => {
+                                            const newScale = parseFloat(e.target.value);
+                                            setSelectedScale(newScale);
+                                            // Save to localStorage
+                                            localStorage.setItem('resumePreviewMedical_lastScale', newScale.toString());
+                                        }}
+                                        style={{
+                                            width: "100%",
+                                            height: "10px",
+                                            borderRadius: "5px",
+                                            outline: "none",
+                                            cursor: "pointer",
+                                            background: `linear-gradient(to right, #10b981 0%, #10b981 ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb 100%)`,
+                                        }}
+                                    />
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            fontSize: "0.75rem",
+                                            color: "#9ca3af",
+                                            marginTop: "0.5rem",
+                                        }}
+                                    >
+                                        <span>50%</span>
+                                        <span>75%</span>
+                                        <span>100%</span>
+                                        <span>125%</span>
+                                        <span>150%</span>
+                                    </div>
+                                </div>
+
+                                <div style={{ 
+                                    marginBottom: "1.5rem", 
+                                    padding: "1rem", 
+                                    backgroundColor: "#f9fafb", 
+                                    borderRadius: "8px",
+                                    border: "1px solid #e5e7eb"
+                                }}>
+                                    <div style={{ fontSize: "0.85rem", color: "#6b7280", lineHeight: "1.5" }}>
+                                        <strong style={{ color: "#374151" }}>Reduce or increase scale to change the PDF scale.</strong>
+                                        <br />
+                                        <span style={{ color: "#6b7280", marginTop: "0.5rem", display: "block" }}>
+                                            Medical resumes must span more than 1 page. Make sure the preview shows multiple pages before downloading.
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Page Count Warning - Medical resume must be more than 1 page */}
+                                {pdfPageCount !== null && pdfPageCount === 1 && (
+                                    <div style={{ 
+                                        marginBottom: "1rem", 
+                                        padding: "1rem", 
+                                        backgroundColor: "#fef3c7", 
+                                        borderRadius: "8px",
+                                        border: "2px solid #f59e0b"
+                                    }}>
+                                        <div style={{ 
+                                            display: "flex", 
+                                            alignItems: "center", 
+                                            gap: "0.5rem",
+                                            marginBottom: "0.5rem"
+                                        }}>
+                                            <span style={{ fontSize: "1.25rem" }}>⚠️</span>
+                                            <strong style={{ color: "#92400e", fontSize: "0.9rem" }}>
+                                                Medical resume must be more than 1 page
+                                            </strong>
+                                        </div>
+                                        <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
+                                            Please increase the scale so the resume spans multiple pages before downloading.
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Page Count Success - Medical resume should have more than 1 page */}
+                                {pdfPageCount !== null && pdfPageCount > 1 && (
+                                    <div style={{ 
+                                        marginBottom: "1rem", 
+                                        padding: "1rem", 
+                                        backgroundColor: "#d1fae5", 
+                                        borderRadius: "8px",
+                                        border: "2px solid #10b981"
+                                    }}>
+                                        <div style={{ 
+                                            display: "flex", 
+                                            alignItems: "center", 
+                                            gap: "0.5rem"
+                                        }}>
+                                            <span style={{ fontSize: "1.25rem" }}>✅</span>
+                                            <strong style={{ color: "#065f46", fontSize: "0.9rem" }}>
+                                                PDF is {pdfPageCount} pages - Ready to download!
+                                            </strong>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Action Buttons */}
+                                <div style={{ display: "flex", gap: "0.75rem", marginTop: "auto", paddingTop: "1rem" }}>
+                                    <button
+                                        onClick={() => {
+                                            setShowScaleModal(false);
+                                            setPdfPageCount(null);
+                                        }}
+                                        disabled={isPrinting}
+                                        style={{
+                                            flex: 1,
+                                            backgroundColor: "#6b7280",
+                                            color: "white",
+                                            padding: "10px 24px",
+                                            border: "none",
+                                            borderRadius: "8px",
+                                            fontSize: "1rem",
+                                            fontWeight: "600",
+                                            cursor: isPrinting ? "not-allowed" : "pointer",
+                                            opacity: isPrinting ? 0.5 : 1,
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleDownloadResume}
+                                        disabled={isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount === 1)}
+                                        style={{
+                                            flex: 1,
+                                            backgroundColor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount === 1)) ? "#9ca3af" : "#10b981",
+                                            color: "white",
+                                            padding: "10px 24px",
+                                            border: "none",
+                                            borderRadius: "8px",
+                                            fontSize: "1rem",
+                                            fontWeight: "600",
+                                            cursor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount === 1)) ? "not-allowed" : "pointer",
+                                            transition: "background-color 0.2s",
+                                        }}
+                                    >
+                                        {isPrinting ? "Generating..." : (pdfPageCount !== null && pdfPageCount === 1) ? "Medical resume must be more than 1 page - Increase scale" : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Right Side - PDF Preview */}
+                            <div style={{ 
+                                flex: 1, 
+                                padding: "1.5rem", 
+                                backgroundColor: "#f9fafb",
+                                display: "flex",
+                                flexDirection: "column",
+                                overflow: "hidden",
+                                minHeight: 0,
+                            }}>
+                                <div style={{ 
+                                    marginBottom: "0.75rem", 
+                                    fontSize: "0.875rem", 
+                                    color: "#6b7280",
+                                    fontWeight: "600",
+                                }}>
+                                    Live PDF Preview
+                                </div>
+                                
+                                {isGeneratingPreview ? (
+                                    <div style={{ 
+                                        flex: 1, 
+                                        display: "flex", 
+                                        flexDirection: "column",
+                                        alignItems: "center", 
+                                        justifyContent: "center",
+                                        backgroundColor: "white",
+                                        borderRadius: "8px",
+                                        padding: "2rem",
+                                    }}>
+                                        <div style={{ textAlign: "center" }}>
+                                            <div style={{ 
+                                                width: "50px", 
+                                                height: "50px", 
+                                                border: "4px solid #e5e7eb",
+                                                borderTop: "4px solid #10b981",
+                                                borderRadius: "50%",
+                                                animation: "spin 1s linear infinite",
+                                                margin: "0 auto 1.5rem",
+                                            }}></div>
+                                            <div style={{ 
+                                                color: "#374151", 
+                                                fontSize: "1rem",
+                                                fontWeight: "600",
+                                                marginBottom: "0.5rem",
+                                            }}>
+                                                {loadingMessages[loadingMessageIndex]}
+                                            </div>
+                                            <div style={{ 
+                                                color: "#9ca3af", 
+                                                fontSize: "0.85rem",
+                                                fontStyle: "italic",
+                                            }}>
+                                                Please wait while we create your perfect resume...
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : previewPdfUrl ? (
+                                    <div style={{ 
+                                        flex: 1,
+                                        backgroundColor: "#525252",
+                                        borderRadius: "8px",
+                                        boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                                        overflow: "hidden",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        minHeight: 0,
+                                    }}>
+                                        {/* PDF Viewer - Full scrollable viewer */}
+                                        <iframe
+                                            src={`${previewPdfUrl}#toolbar=1&navpanes=1&scrollbar=1`}
+                                            style={{
+                                                width: "100%",
+                                                height: "100%",
+                                                border: "none",
+                                                flex: 1,
+                                                minHeight: 0,
+                                            }}
+                                            title="PDF Preview"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div style={{ 
+                                        flex: 1,
+                                        display: "flex", 
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        backgroundColor: "white",
+                                        borderRadius: "8px",
+                                        color: "#9ca3af",
+                                    }}>
+                                        <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>📄</div>
+                                        <div>Preview will appear here</div>
+                                        <div style={{ fontSize: "0.85rem", marginTop: "0.5rem", color: "#9ca3af" }}>
+                                            Adjust the scale slider to generate preview
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add CSS for spinner animation */}
+            <style>{`
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `}</style>
+
             {/* Print Control Buttons */}
             {showPrintButtons && (
                 <div className="flex gap-3 mb-4 no-print">
@@ -932,6 +1496,18 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             >
                 {resumeContent}
             </div>
+
+            {/* Spinner Animation */}
+            <style
+                dangerouslySetInnerHTML={{
+                    __html: `
+                    @keyframes spin {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(360deg); }
+                    }
+                    `,
+                }}
+            />
         </div>
     );
 };
