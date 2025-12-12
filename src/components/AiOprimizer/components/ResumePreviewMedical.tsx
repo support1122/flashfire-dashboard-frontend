@@ -1458,7 +1458,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             >
                 <div
                     style={{
-                        fontFamily: '"Times New Roman", Times, serif !important',
+                        fontFamily: '"Times New Roman", Times, serif',
                         fontSize: "9pt",
                         lineHeight: "1.2",
                         color: "#000000",
@@ -1481,7 +1481,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 data-resume-preview
                 style={{
                     display: "none", // Hidden on screen
-                    fontFamily: '"Times New Roman", Times, serif !important',
+                    fontFamily: '"Times New Roman", Times, serif',
                     fontSize: "9pt",
                     lineHeight: "1.2",
                     color: "#000000",
