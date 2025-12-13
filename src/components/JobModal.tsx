@@ -1542,9 +1542,21 @@ export default function JobModal({
             // If no job description found, try to load it
             if (!jobDesc && jobDetails?.jobID) {
                 if (!isJobDescriptionLoading(jobDetails.jobID)) {
-                    await loadJobDescription(jobDetails.jobID);
-                    // Wait a bit for it to load
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // Wait for the load to complete and get the result
+                    const loadedDesc = await loadJobDescription(jobDetails.jobID);
+                    if (loadedDesc) {
+                        jobDesc = loadedDesc;
+                    }
+                } else {
+                    // If already loading, we might need a way to wait for it, 
+                    // but for now let's try to get what's there after a small check
+                    // or just proceed if we can't wait.
+                    // A better approach if already loading is to poll briefly or just wait.
+                    // But loadJobDescription checks isJobDescriptionLoading internally and returns null if so.
+                    // So we might technically miss it if it was *just* started elsewhere.
+                    // However, usually "Optimize" click is the trigger.
+                    // unique retry:
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                     jobDesc = getJobDescription(jobDetails.jobID) || "";
                 }
             }
@@ -2011,6 +2023,15 @@ export default function JobModal({
 
                                                 // Set resume name and show confirmation modal
                                                 setResumeNameForModal(resumeData.personalInfo?.name || "Unknown");
+
+                                                // Load job description BEFORE showing confirmation
+                                                if (jobDetails?.jobID) {
+                                                    const cachedJD = getJobDescription(jobDetails.jobID);
+                                                    if (!cachedJD && !isJobDescriptionLoading(jobDetails.jobID)) {
+                                                        await loadJobDescription(jobDetails.jobID);
+                                                    }
+                                                }
+
                                                 setShowOptimizeConfirmation(true);
                                             } catch (error: any) {
                                                 console.error("Error loading resume:", error);
@@ -2091,8 +2112,8 @@ export default function JobModal({
                                             setActiveSection(section.id)
                                         }
                                         className={`w-full flex items-center px-3 py-2 text-left rounded-lg transition-all duration-200 text-sm ${isActive
-                                                ? `${section.color} border shadow-sm`
-                                                : "text-gray-700 hover:bg-white hover:shadow-sm border border-transparent"
+                                            ? `${section.color} border shadow-sm`
+                                            : "text-gray-700 hover:bg-white hover:shadow-sm border border-transparent"
                                             }`}
                                     >
                                         <Icon
