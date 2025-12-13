@@ -80,7 +80,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     showLeadership = true,
     showProjects = false,
     showSummary = true,
-    showPublications = false, 
+    showPublications = false,
     showChanges = false,
     changedFields = new Set(),
     onDownloadClick,
@@ -95,7 +95,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
         const saved = localStorage.getItem('resumePreview_lastScale');
         return saved ? parseFloat(saved) : 1.0;
     };
-    
+
     const [selectedScale, setSelectedScale] = useState(getLastSelectedScale());
     const overrideAutoScale = true;
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -104,7 +104,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
     const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
     const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
-    
+
     const loadingMessages = [
         "Our PDF engine is optimizing the PDF view...",
         "Crafting your perfect resume layout...",
@@ -125,168 +125,168 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     };
 
     // Function to handle actual printing after user confirms
-//     const handlePrintConfirm = () => {
-//         setShowWarningModal(false);
+    //     const handlePrintConfirm = () => {
+    //         setShowWarningModal(false);
 
-//         // Store original title
-//         const originalTitle = document.title;
+    //         // Store original title
+    //         const originalTitle = document.title;
 
-//         // Set document title for the PDF filename
-//         document.title = `${data.personalInfo.name || "Resume"}_Resume`;
+    //         // Set document title for the PDF filename
+    //         document.title = `${data.personalInfo.name || "Resume"}_Resume`;
 
-//         // Create a style element for print-specific settings
-//         const printStyle = document.createElement("style");
-//         printStyle.innerHTML = `
-//   @media print {
-//     body {
-//       margin: 0 !important;
-//       padding: 0 !important;
-//       -webkit-print-color-adjust: exact !important;
-//       print-color-adjust: exact !important;
-//       color-adjust: exact !important;
-//       height: auto !important;
-//       max-height: none !important;
-//       overflow: visible !important;
-//     }
+    //         // Create a style element for print-specific settings
+    //         const printStyle = document.createElement("style");
+    //         printStyle.innerHTML = `
+    //   @media print {
+    //     body {
+    //       margin: 0 !important;
+    //       padding: 0 !important;
+    //       -webkit-print-color-adjust: exact !important;
+    //       print-color-adjust: exact !important;
+    //       color-adjust: exact !important;
+    //       height: auto !important;
+    //       max-height: none !important;
+    //       overflow: visible !important;
+    //     }
 
-//     @page {
-//       size: letter !important;
-//       margin: 0 !important;
-//     }
+    //     @page {
+    //       size: letter !important;
+    //       margin: 0 !important;
+    //     }
 
-//     #resume-print-only {
-//       display: flex !important;
-//       flex-direction: column !important;
-//       font-family: "Times New Roman", Times, serif !important;
-//       font-size: ${styles.fontSize} !important;
-//       line-height: ${styles.lineHeight} !important;
-//       letter-spacing: -0.025em !important;
-//       color: #000 !important;
-//       width: 100% !important;
-//       height: auto !important;
-//       min-height: auto !important;
-//       max-height: none !important;
-//       overflow: visible !important;
-//       padding: 0.2in 0.5in 0.3in 0.5in !important;
-//       box-sizing: border-box !important;
-//       page-break-inside: auto !important;
-//       page-break-before: auto !important;
-//       page-break-after: auto !important;
-//     }
+    //     #resume-print-only {
+    //       display: flex !important;
+    //       flex-direction: column !important;
+    //       font-family: "Times New Roman", Times, serif !important;
+    //       font-size: ${styles.fontSize} !important;
+    //       line-height: ${styles.lineHeight} !important;
+    //       letter-spacing: -0.025em !important;
+    //       color: #000 !important;
+    //       width: 100% !important;
+    //       height: auto !important;
+    //       min-height: auto !important;
+    //       max-height: none !important;
+    //       overflow: visible !important;
+    //       padding: 0.2in 0.5in 0.3in 0.5in !important;
+    //       box-sizing: border-box !important;
+    //       page-break-inside: auto !important;
+    //       page-break-before: auto !important;
+    //       page-break-after: auto !important;
+    //     }
 
-//     /* Allow natural spacing between sections */
-//     #resume-print-only > div {
-//       margin-bottom: 12px !important;
-//     }
+    //     /* Allow natural spacing between sections */
+    //     #resume-print-only > div {
+    //       margin-bottom: 12px !important;
+    //     }
 
-//     /* Allow page breaks for long content */
-//     * {
-//       page-break-before: auto !important;
-//       page-break-after: auto !important;
-//       page-break-inside: auto !important;
-//       break-inside: auto !important;
-//     }
+    //     /* Allow page breaks for long content */
+    //     * {
+    //       page-break-before: auto !important;
+    //       page-break-after: auto !important;
+    //       page-break-inside: auto !important;
+    //       break-inside: auto !important;
+    //     }
 
-//     /* Prevent breaking within individual items */
-//     .work-experience-item,
-//     .project-item,
-//     .education-item {
-//       page-break-inside: avoid !important;
-//       break-inside: avoid !important;
-//     }
-//   }
-// `;
+    //     /* Prevent breaking within individual items */
+    //     .work-experience-item,
+    //     .project-item,
+    //     .education-item {
+    //       page-break-inside: avoid !important;
+    //       break-inside: avoid !important;
+    //     }
+    //   }
+    // `;
 
-//         document.head.appendChild(printStyle);
+    //         document.head.appendChild(printStyle);
 
-//         // Function to automatically set print dialog settings
-//         const setupPrintDialog = () => {
-//             // Store original print function
-//             const originalPrint = window.print;
-            
-//             // Override the print function
-//             window.print = function() {
-//                 // Try to use the modern Print API if available
-//                 if (navigator.userAgent.includes('Chrome') && window.chrome && window.chrome.runtime) {
-//                     try {
-//                         // For Chrome, try to use the Print API
-//                         if (window.chrome.runtime.getManifest) {
-//                             // This would require a Chrome extension
-//                             console.log('Chrome extension required for automatic print settings');
-//                         }
-//                     } catch (error) {
-//                         console.log('Chrome Print API not available:', error);
-//                     }
-//                 }
-                
-//                 // Fallback to standard print with enhanced CSS
-//                 const enhancedPrintStyle = document.createElement("style");
-//                 enhancedPrintStyle.innerHTML = `
-//                     @media print {
-//                         @page {
-//                             size: letter !important;
-//                             margin: 0.2in 0.5in 0.5in 0.5in !important;
-//                         }
-                        
-//                         body {
-//                             margin: 0 !important;
-//                             padding: 0 !important;
-//                             -webkit-print-color-adjust: exact !important;
-//                             print-color-adjust: exact !important;
-//                         }
-                        
-//                         #resume-print-only {
-//                             display: block !important;
-//                             width: 100% !important;
-//                             height: auto !important;
-//                             overflow: visible !important;
-//                             page-break-inside: auto !important;
-//                         }
-                        
-//                         /* Force content to start immediately */
-//                         #resume-print-only > *:first-child {
-//                             margin-top: 0 !important;
-//                             padding-top: 0 !important;
-//                         }
-//                     }
-//                 `;
-                
-//                 document.head.appendChild(enhancedPrintStyle);
-                
-//                 // Call original print
-//                 originalPrint.call(this);
-                
-//                 // Cleanup enhanced styles after print
-//                 setTimeout(() => {
-//                     if (document.head.contains(enhancedPrintStyle)) {
-//                         document.head.removeChild(enhancedPrintStyle);
-//                     }
-//                 }, 1000);
-//             };
-//         };
+    //         // Function to automatically set print dialog settings
+    //         const setupPrintDialog = () => {
+    //             // Store original print function
+    //             const originalPrint = window.print;
 
-//         // Setup the print dialog override
-//         setupPrintDialog();
+    //             // Override the print function
+    //             window.print = function() {
+    //                 // Try to use the modern Print API if available
+    //                 if (navigator.userAgent.includes('Chrome') && window.chrome && window.chrome.runtime) {
+    //                     try {
+    //                         // For Chrome, try to use the Print API
+    //                         if (window.chrome.runtime.getManifest) {
+    //                             // This would require a Chrome extension
+    //                             console.log('Chrome extension required for automatic print settings');
+    //                         }
+    //                     } catch (error) {
+    //                         console.log('Chrome Print API not available:', error);
+    //                     }
+    //                 }
 
-//         // Small delay to ensure styles are applied
-//         setTimeout(() => {
-//             // Open print dialog
-//             window.print();
+    //                 // Fallback to standard print with enhanced CSS
+    //                 const enhancedPrintStyle = document.createElement("style");
+    //                 enhancedPrintStyle.innerHTML = `
+    //                     @media print {
+    //                         @page {
+    //                             size: letter !important;
+    //                             margin: 0.2in 0.5in 0.5in 0.5in !important;
+    //                         }
 
-//             // Cleanup: restore original title and remove print styles
-//             setTimeout(() => {
-//                 document.title = originalTitle;
-//                 document.head.removeChild(printStyle);
-//                 // Restore original print function
-//                 window.print = window.print;
-//             }, 1000);
-//         }, 100);
+    //                         body {
+    //                             margin: 0 !important;
+    //                             padding: 0 !important;
+    //                             -webkit-print-color-adjust: exact !important;
+    //                             print-color-adjust: exact !important;
+    //                         }
 
-//         // Call the optional callback
-//         if (onDownloadClick) {
-//             onDownloadClick();
-//         }
-//     };
+    //                         #resume-print-only {
+    //                             display: block !important;
+    //                             width: 100% !important;
+    //                             height: auto !important;
+    //                             overflow: visible !important;
+    //                             page-break-inside: auto !important;
+    //                         }
+
+    //                         /* Force content to start immediately */
+    //                         #resume-print-only > *:first-child {
+    //                             margin-top: 0 !important;
+    //                             padding-top: 0 !important;
+    //                         }
+    //                     }
+    //                 `;
+
+    //                 document.head.appendChild(enhancedPrintStyle);
+
+    //                 // Call original print
+    //                 originalPrint.call(this);
+
+    //                 // Cleanup enhanced styles after print
+    //                 setTimeout(() => {
+    //                     if (document.head.contains(enhancedPrintStyle)) {
+    //                         document.head.removeChild(enhancedPrintStyle);
+    //                     }
+    //                 }, 1000);
+    //             };
+    //         };
+
+    //         // Setup the print dialog override
+    //         setupPrintDialog();
+
+    //         // Small delay to ensure styles are applied
+    //         setTimeout(() => {
+    //             // Open print dialog
+    //             window.print();
+
+    //             // Cleanup: restore original title and remove print styles
+    //             setTimeout(() => {
+    //                 document.title = originalTitle;
+    //                 document.head.removeChild(printStyle);
+    //                 // Restore original print function
+    //                 window.print = window.print;
+    //             }, 1000);
+    //         }, 100);
+
+    //         // Call the optional callback
+    //         if (onDownloadClick) {
+    //             onDownloadClick();
+    //         }
+    //     };
 
     // Generate preview PDF
     const generatePreview = async (scale: number) => {
@@ -297,9 +297,9 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             messageInterval = setInterval(() => {
                 setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
             }, 2000);
-            
+
             const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
-            
+
             const pdfPayload = {
                 personalInfo: data.personalInfo,
                 summary: data.summary || "",
@@ -332,7 +332,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
 
             const pdfBlob = await response.blob();
             const pdfUrl = window.URL.createObjectURL(pdfBlob);
-            
+
             // Get PDF page count
             try {
                 const arrayBuffer = await pdfBlob.arrayBuffer();
@@ -343,12 +343,12 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 console.error("Error getting PDF page count:", pdfError);
                 setPdfPageCount(null);
             }
-            
+
             // Clean up previous preview
             if (previewPdfUrl) {
                 window.URL.revokeObjectURL(previewPdfUrl);
             }
-            
+
             setPreviewPdfUrl(pdfUrl);
             setPreviewPdfBlob(pdfBlob); // Store blob for download
             setIsGeneratingPreview(false);
@@ -368,7 +368,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             const timer = setTimeout(() => {
                 generatePreview(selectedScale);
             }, 500); // Debounce preview generation
-            
+
             return () => clearTimeout(timer);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -615,17 +615,17 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 const pdfUrl = window.URL.createObjectURL(previewPdfBlob);
                 const link = document.createElement("a");
                 link.href = pdfUrl;
-                
+
                 // Generate filename: "{name}_Resume.pdf"
                 const name = data.personalInfo?.name || "Resume";
                 const cleanName = name.replace(/\s+/g, "_");
                 link.download = `${cleanName}_Resume.pdf`;
-                
+
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(pdfUrl);
-                
+
                 toastUtils.success("✅ PDF downloaded successfully!");
                 return;
             }
@@ -634,7 +634,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             setIsGeneratingPDF(true);
             const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
             const loadingToast = toastUtils.loading("Making the best optimal PDF... Please wait.");
-            
+
             // Format data for PDF server
             const pdfPayload = {
                 personalInfo: data.personalInfo,
@@ -672,12 +672,12 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             const pdfUrl = window.URL.createObjectURL(pdfBlob);
             const link = document.createElement("a");
             link.href = pdfUrl;
-            
+
             // Generate filename: "{name}_Resume.pdf"
             const name = data.personalInfo?.name || "Resume";
             const cleanName = name.replace(/\s+/g, "_");
             link.download = `${cleanName}_Resume.pdf`;
-            
+
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -695,16 +695,16 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     };
 
     const handlePrintConfirm = () => {
-    setShowWarningModal(false);
-  
-    // store original document title and set custom print title
-    const originalTitle = document.title;
-    document.title = `${data.personalInfo.name || "Resume"}_Resume`;
-  
-    // create a print style block (keeps your existing print rules but scoped)
-    const printStyle = document.createElement("style");
-    printStyle.id = "resume-temp-print-style";
-    printStyle.innerHTML = `
+        setShowWarningModal(false);
+
+        // store original document title and set custom print title
+        const originalTitle = document.title;
+        document.title = `${data.personalInfo.name || "Resume"}_Resume`;
+
+        // create a print style block (keeps your existing print rules but scoped)
+        const printStyle = document.createElement("style");
+        printStyle.id = "resume-temp-print-style";
+        printStyle.innerHTML = `
       @media print {
         @page { size: letter; margin: 0 0.2in 0.2in 0.2in; }
         html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
@@ -717,54 +717,54 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
       body.printing-resume > :not(#temp-resume-print-wrapper) { display: none !important; }
       #temp-resume-print-wrapper { display: block !important; width: 100%; background: white; }
     `;
-  
-    document.head.appendChild(printStyle);
-  
-    // find the print-only element in the component
-    const originalPrintElem = document.getElementById("resume-print-only");
-    if (!originalPrintElem) {
-      // fallback to calling normal print
-      window.print();
-      document.title = originalTitle;
-      if (document.head.contains(printStyle)) document.head.removeChild(printStyle);
-      return;
-    }
-  
-    // create a temporary wrapper and append a deep clone of the print-only element
-    const wrapper = document.createElement("div");
-    wrapper.id = "temp-resume-print-wrapper";
-    // add the same parent class so scss rules that look for .resume-single-page apply
-    wrapper.className = "resume-single-page";
-    // clone deeply so event handlers etc. are not needed
-    const clone = originalPrintElem.cloneNode(true) as HTMLElement;
-    wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
-  
-    // add marker class to body so our print style hides everything else
-    document.body.classList.add("printing-resume");
-  
-    // Small timeout to let DOM and style apply, then print
-    setTimeout(() => {
-      try {
-        window.print();
-      } finally {
-        // cleanup immediately after printing (give a small delay to avoid cutting off the print job)
+
+        document.head.appendChild(printStyle);
+
+        // find the print-only element in the component
+        const originalPrintElem = document.getElementById("resume-print-only");
+        if (!originalPrintElem) {
+            // fallback to calling normal print
+            window.print();
+            document.title = originalTitle;
+            if (document.head.contains(printStyle)) document.head.removeChild(printStyle);
+            return;
+        }
+
+        // create a temporary wrapper and append a deep clone of the print-only element
+        const wrapper = document.createElement("div");
+        wrapper.id = "temp-resume-print-wrapper";
+        // add the same parent class so scss rules that look for .resume-single-page apply
+        wrapper.className = "resume-single-page";
+        // clone deeply so event handlers etc. are not needed
+        const clone = originalPrintElem.cloneNode(true) as HTMLElement;
+        wrapper.appendChild(clone);
+        document.body.appendChild(wrapper);
+
+        // add marker class to body so our print style hides everything else
+        document.body.classList.add("printing-resume");
+
+        // Small timeout to let DOM and style apply, then print
         setTimeout(() => {
-          // restore title and remove temporary DOM + style + class
-          document.title = originalTitle;
-          document.body.classList.remove("printing-resume");
-          if (document.body.contains(wrapper)) document.body.removeChild(wrapper);
-          const tmpStyle = document.getElementById("resume-temp-print-style");
-          if (tmpStyle && tmpStyle.parentNode) tmpStyle.parentNode.removeChild(tmpStyle);
-          // remove our printStyle if still present
-          if (document.head.contains(printStyle)) document.head.removeChild(printStyle);
-        }, 700);
-      }
-    }, 120);
-    
-    // optional callback
-    if (onDownloadClick) onDownloadClick();
-  };
+            try {
+                window.print();
+            } finally {
+                // cleanup immediately after printing (give a small delay to avoid cutting off the print job)
+                setTimeout(() => {
+                    // restore title and remove temporary DOM + style + class
+                    document.title = originalTitle;
+                    document.body.classList.remove("printing-resume");
+                    if (document.body.contains(wrapper)) document.body.removeChild(wrapper);
+                    const tmpStyle = document.getElementById("resume-temp-print-style");
+                    if (tmpStyle && tmpStyle.parentNode) tmpStyle.parentNode.removeChild(tmpStyle);
+                    // remove our printStyle if still present
+                    if (document.head.contains(printStyle)) document.head.removeChild(printStyle);
+                }, 700);
+            }
+        }, 120);
+
+        // optional callback
+        if (onDownloadClick) onDownloadClick();
+    };
 
 
 
@@ -859,9 +859,8 @@ The resume will print across multiple pages if needed, ensuring no content is cu
             // Education
             if (data.education && data.education.length > 0) {
                 data.education.forEach((e) => {
-                    const mainText = `${e.institution}${
-                        e.location ? `, ${e.location}` : ""
-                    } - ${e.degree}${e.field ? `, ${e.field}` : ""}`;
+                    const mainText = `${e.institution}${e.location ? `, ${e.location}` : ""
+                        } - ${e.degree}${e.field ? `, ${e.field}` : ""}`;
                     totalLines += Math.ceil(mainText.length / 60);
                     if (e.additionalInfo) {
                         totalLines += Math.ceil(e.additionalInfo.length / 60);
@@ -1810,72 +1809,72 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 gap: "0.5rem",
                             }}
                         >
-                             ⚠️ AUTOMATIC PRINT SETTINGS ⚠️
-                         </div>
+                            ⚠️ AUTOMATIC PRINT SETTINGS ⚠️
+                        </div>
 
-                         <div
-                             style={{
-                                 fontSize: "1rem",
-                                 lineHeight: "1.6",
-                                 color: "#374151",
-                                 marginBottom: "1.5rem",
-                                 textAlign: "left",
-                             }}
-                         >
-                             <div style={{ marginBottom: "0.75rem" }}>
-                                 <strong>
-                                     Pages:{" "}
-                                     <span
-                                         style={{
-                                             color: "#10b981",
-                                             fontWeight: "bold",
-                                         }}
-                                     >
-                                         AUTO-SET TO 2
-                                     </span>
-                                 </strong>{" "}
-                                 — automatically configured.
-                             </div>
-                             <div style={{ marginBottom: "0.75rem" }}>
-                                 <strong>
-                                     Scale:{" "}
-                                     <span
-                                         style={{
-                                             color: "#10b981",
-                                             fontWeight: "bold",
-                                         }}
-                                     >
-                                         AUTO-OPTIMIZED
-                                     </span>
-                                 </strong>{" "}
-                                 — for best fit.
-                             </div>
-                             <div style={{ marginBottom: "0.75rem" }}>
-                                 <strong>
-                                     Margins:{" "}
-                                     <span
-                                         style={{
-                                             color: "#10b981",
-                                             fontWeight: "bold",
-                                         }}
-                                     >
-                                         AUTO-SET TO MINIMAL
-                                     </span>
-                                 </strong>{" "}
-                                 — maximum content space.
-                             </div>
-                         </div>
+                        <div
+                            style={{
+                                fontSize: "1rem",
+                                lineHeight: "1.6",
+                                color: "#374151",
+                                marginBottom: "1.5rem",
+                                textAlign: "left",
+                            }}
+                        >
+                            <div style={{ marginBottom: "0.75rem" }}>
+                                <strong>
+                                    Pages:{" "}
+                                    <span
+                                        style={{
+                                            color: "#10b981",
+                                            fontWeight: "bold",
+                                        }}
+                                    >
+                                        AUTO-SET TO 2
+                                    </span>
+                                </strong>{" "}
+                                — automatically configured.
+                            </div>
+                            <div style={{ marginBottom: "0.75rem" }}>
+                                <strong>
+                                    Scale:{" "}
+                                    <span
+                                        style={{
+                                            color: "#10b981",
+                                            fontWeight: "bold",
+                                        }}
+                                    >
+                                        AUTO-OPTIMIZED
+                                    </span>
+                                </strong>{" "}
+                                — for best fit.
+                            </div>
+                            <div style={{ marginBottom: "0.75rem" }}>
+                                <strong>
+                                    Margins:{" "}
+                                    <span
+                                        style={{
+                                            color: "#10b981",
+                                            fontWeight: "bold",
+                                        }}
+                                    >
+                                        AUTO-SET TO MINIMAL
+                                    </span>
+                                </strong>{" "}
+                                — maximum content space.
+                            </div>
+                        </div>
 
-                         <div
-                             style={{
-                                 fontSize: "0.9rem",
-                                 color: "#6b7280",
-                                 marginBottom: "1.5rem",
-                                 fontStyle: "italic",
-                             }}
-                         >
-                             The print dialog will open with optimized settings. Just click "Print" or "Save as PDF"!
-                         </div>
+                        <div
+                            style={{
+                                fontSize: "0.9rem",
+                                color: "#6b7280",
+                                marginBottom: "1.5rem",
+                                fontStyle: "italic",
+                            }}
+                        >
+                            The print dialog will open with optimized settings. Just click "Print" or "Save as PDF"!
+                        </div>
 
                         <button
                             onClick={handlePrintConfirm}
@@ -2065,9 +2064,9 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         {/* Content Area - Side by Side */}
                         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
                             {/* Left Side - Controls */}
-                            <div style={{ 
-                                width: "400px", 
-                                padding: "1.5rem", 
+                            <div style={{
+                                width: "400px",
+                                padding: "1.5rem",
                                 borderRight: "1px solid #e5e7eb",
                                 display: "flex",
                                 flexDirection: "column",
@@ -2121,12 +2120,73 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                         <span>125%</span>
                                         <span>150%</span>
                                     </div>
+
+                                    {/* Number Input with +/- Buttons */}
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "1rem" }}>
+                                        <button
+                                            onClick={() => {
+                                                const newScale = Math.max(0.5, selectedScale - 0.01);
+                                                setSelectedScale(newScale);
+                                                localStorage.setItem('resumePreview_lastScale', newScale.toString());
+                                            }}
+                                            style={{
+                                                padding: "8px 12px",
+                                                backgroundColor: "#10b981",
+                                                color: "white",
+                                                border: "none",
+                                                borderRadius: "6px",
+                                                cursor: "pointer",
+                                                fontWeight: "bold",
+                                                fontSize: "1rem",
+                                            }}
+                                        >-</button>
+                                        <input
+                                            type="number"
+                                            min="50"
+                                            max="150"
+                                            step="1"
+                                            value={Math.round(selectedScale * 100)}
+                                            onChange={(e) => {
+                                                const val = Math.min(150, Math.max(50, Number(e.target.value)));
+                                                const newScale = val / 100;
+                                                setSelectedScale(newScale);
+                                                localStorage.setItem('resumePreview_lastScale', newScale.toString());
+                                            }}
+                                            style={{
+                                                width: "80px",
+                                                padding: "8px",
+                                                textAlign: "center",
+                                                border: "2px solid #10b981",
+                                                borderRadius: "6px",
+                                                fontSize: "1rem",
+                                                fontWeight: "600",
+                                            }}
+                                        />
+                                        <span style={{ fontWeight: "600", color: "#374151" }}>%</span>
+                                        <button
+                                            onClick={() => {
+                                                const newScale = Math.min(1.5, selectedScale + 0.01);
+                                                setSelectedScale(newScale);
+                                                localStorage.setItem('resumePreview_lastScale', newScale.toString());
+                                            }}
+                                            style={{
+                                                padding: "8px 12px",
+                                                backgroundColor: "#10b981",
+                                                color: "white",
+                                                border: "none",
+                                                borderRadius: "6px",
+                                                cursor: "pointer",
+                                                fontWeight: "bold",
+                                                fontSize: "1rem",
+                                            }}
+                                        >+</button>
+                                    </div>
                                 </div>
 
-                                <div style={{ 
-                                    marginBottom: "1.5rem", 
-                                    padding: "1rem", 
-                                    backgroundColor: "#f9fafb", 
+                                <div style={{
+                                    marginBottom: "1.5rem",
+                                    padding: "1rem",
+                                    backgroundColor: "#f9fafb",
                                     borderRadius: "8px",
                                     border: "1px solid #e5e7eb"
                                 }}>
@@ -2141,16 +2201,16 @@ The resume will print across multiple pages if needed, ensuring no content is cu
 
                                 {/* Page Count Warning */}
                                 {pdfPageCount !== null && pdfPageCount > 1 && (
-                                    <div style={{ 
-                                        marginBottom: "1rem", 
-                                        padding: "1rem", 
-                                        backgroundColor: "#fef3c7", 
+                                    <div style={{
+                                        marginBottom: "1rem",
+                                        padding: "1rem",
+                                        backgroundColor: "#fef3c7",
                                         borderRadius: "8px",
                                         border: "2px solid #f59e0b"
                                     }}>
-                                        <div style={{ 
-                                            display: "flex", 
-                                            alignItems: "center", 
+                                        <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
                                             gap: "0.5rem",
                                             marginBottom: "0.5rem"
                                         }}>
@@ -2167,16 +2227,16 @@ The resume will print across multiple pages if needed, ensuring no content is cu
 
                                 {/* Page Count Success */}
                                 {pdfPageCount !== null && pdfPageCount === 1 && (
-                                    <div style={{ 
-                                        marginBottom: "1rem", 
-                                        padding: "1rem", 
-                                        backgroundColor: "#d1fae5", 
+                                    <div style={{
+                                        marginBottom: "1rem",
+                                        padding: "1rem",
+                                        backgroundColor: "#d1fae5",
                                         borderRadius: "8px",
                                         border: "2px solid #10b981"
                                     }}>
-                                        <div style={{ 
-                                            display: "flex", 
-                                            alignItems: "center", 
+                                        <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
                                             gap: "0.5rem"
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>✅</span>
@@ -2186,6 +2246,27 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Filename Display */}
+                                <div style={{
+                                    marginBottom: "1rem",
+                                    padding: "0.75rem 1rem",
+                                    backgroundColor: "#f3f4f6",
+                                    borderRadius: "8px",
+                                    border: "1px solid #e5e7eb"
+                                }}>
+                                    <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.25rem" }}>
+                                        Download as:
+                                    </div>
+                                    <div style={{
+                                        fontSize: "0.9rem",
+                                        fontWeight: "600",
+                                        color: "#1f2937",
+                                        wordBreak: "break-all"
+                                    }}>
+                                        📄 {(data.personalInfo?.name || "Resume").replace(/\s+/g, "_")}_Resume.pdf
+                                    </div>
+                                </div>
 
                                 {/* Action Buttons */}
                                 <div style={{ display: "flex", gap: "0.75rem", marginTop: "auto", paddingTop: "1rem" }}>
@@ -2232,55 +2313,55 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             </div>
 
                             {/* Right Side - PDF Preview */}
-                            <div style={{ 
-                                flex: 1, 
-                                padding: "1.5rem", 
+                            <div style={{
+                                flex: 1,
+                                padding: "1.5rem",
                                 backgroundColor: "#f9fafb",
                                 display: "flex",
                                 flexDirection: "column",
                                 overflow: "hidden",
                                 minHeight: 0,
                             }}>
-                                <div style={{ 
-                                    marginBottom: "0.75rem", 
-                                    fontSize: "0.875rem", 
+                                <div style={{
+                                    marginBottom: "0.75rem",
+                                    fontSize: "0.875rem",
                                     color: "#6b7280",
                                     fontWeight: "600",
                                 }}>
                                     Live PDF Preview
                                 </div>
-                                
+
                                 {isGeneratingPreview ? (
-                                    <div style={{ 
-                                        flex: 1, 
-                                        display: "flex", 
+                                    <div style={{
+                                        flex: 1,
+                                        display: "flex",
                                         flexDirection: "column",
-                                        alignItems: "center", 
+                                        alignItems: "center",
                                         justifyContent: "center",
                                         backgroundColor: "white",
                                         borderRadius: "8px",
                                         padding: "2rem",
                                     }}>
                                         <div style={{ textAlign: "center" }}>
-                                            <div style={{ 
-                                                width: "50px", 
-                                                height: "50px", 
+                                            <div style={{
+                                                width: "50px",
+                                                height: "50px",
                                                 border: "4px solid #e5e7eb",
                                                 borderTop: "4px solid #10b981",
                                                 borderRadius: "50%",
                                                 animation: "spin 1s linear infinite",
                                                 margin: "0 auto 1.5rem",
                                             }}></div>
-                                            <div style={{ 
-                                                color: "#374151", 
+                                            <div style={{
+                                                color: "#374151",
                                                 fontSize: "1rem",
                                                 fontWeight: "600",
                                                 marginBottom: "0.5rem",
                                             }}>
                                                 {loadingMessages[loadingMessageIndex]}
                                             </div>
-                                            <div style={{ 
-                                                color: "#9ca3af", 
+                                            <div style={{
+                                                color: "#9ca3af",
                                                 fontSize: "0.85rem",
                                                 fontStyle: "italic",
                                             }}>
@@ -2289,7 +2370,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                         </div>
                                     </div>
                                 ) : previewPdfUrl ? (
-                                    <div style={{ 
+                                    <div style={{
                                         flex: 1,
                                         backgroundColor: "#525252",
                                         borderRadius: "8px",
@@ -2313,9 +2394,9 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                         />
                                     </div>
                                 ) : (
-                                    <div style={{ 
+                                    <div style={{
                                         flex: 1,
-                                        display: "flex", 
+                                        display: "flex",
                                         flexDirection: "column",
                                         alignItems: "center",
                                         justifyContent: "center",
