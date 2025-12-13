@@ -87,7 +87,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
         const saved = localStorage.getItem('resumePreviewMedical_lastScale');
         return saved ? parseFloat(saved) : 1.0;
     };
-    
+
     const [isPrinting, setIsPrinting] = useState(false);
     const [showScaleModal, setShowScaleModal] = useState(false);
     const [selectedScale, setSelectedScale] = useState(getLastSelectedScale());
@@ -97,7 +97,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
     const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
     const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
-    
+
     const loadingMessages = [
         "Our PDF engine is optimizing the PDF view...",
         "Crafting your perfect resume layout...",
@@ -372,7 +372,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                     }}
                                 >
                                     <div style={{ fontSize: "9pt" }}>
-                                        
+
                                         <span style={{ fontWeight: "bold" }}>{project.position}</span>
                                         {project.roleType &&
                                             project.roleType !== "None" &&
@@ -669,7 +669,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
         }
     };
 
-    
+
     const generateFilename = (resumeData: ResumeData) => {
         const name = resumeData.personalInfo.name || "Resume";
         const cleanName = name.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_");
@@ -682,12 +682,12 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
         // Simple print with instructions
         const shouldPrint = window.confirm(
             `📄 PRINT SETTINGS:\n\n` +
-                `• Filename: ${filename}\n` +
-                `• Set Margins to "None"\n` +
-                `• Disable "Headers and footers"\n` +
-                `• Set Scale to 100%\n` +
-                `• Use "Save as PDF" for best quality\n\n` +
-                `Click OK to print your resume.`
+            `• Filename: ${filename}\n` +
+            `• Set Margins to "None"\n` +
+            `• Disable "Headers and footers"\n` +
+            `• Set Scale to 100%\n` +
+            `• Use "Save as PDF" for best quality\n\n` +
+            `Click OK to print your resume.`
         );
 
         if (shouldPrint) {
@@ -770,16 +770,16 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 const pdfUrl = window.URL.createObjectURL(previewPdfBlob);
                 const link = document.createElement("a");
                 link.href = pdfUrl;
-                
+
                 // Generate filename: "{name}_Resume.pdf"
                 const filename = generateFilename(data);
                 link.download = filename;
-                
+
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(pdfUrl);
-                
+
                 toastUtils.success("✅ PDF downloaded successfully!");
                 return;
             }
@@ -788,7 +788,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             setIsPrinting(true);
             const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
             const loadingToast = toastUtils.loading("Making the best optimal PDF... Please wait.");
-            
+
             // Format data for /v1/generate-pdf endpoint with scale and override
             const pdfPayload = {
                 personalInfo: data.personalInfo,
@@ -826,11 +826,11 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             const pdfUrl = window.URL.createObjectURL(pdfBlob);
             const link = document.createElement("a");
             link.href = pdfUrl;
-            
+
             // Generate filename: "{name}_Resume.pdf"
             const filename = generateFilename(data);
             link.download = filename;
-            
+
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -862,9 +862,9 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             messageInterval = setInterval(() => {
                 setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
             }, 2000);
-            
+
             const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
-            
+
             const pdfPayload = {
                 personalInfo: data.personalInfo,
                 summary: data.summary || "",
@@ -897,7 +897,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
 
             const pdfBlob = await response.blob();
             const pdfUrl = window.URL.createObjectURL(pdfBlob);
-            
+
             // Get PDF page count
             try {
                 const arrayBuffer = await pdfBlob.arrayBuffer();
@@ -908,12 +908,12 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 console.error("Error getting PDF page count:", pdfError);
                 setPdfPageCount(null);
             }
-            
+
             // Clean up previous preview
             if (previewPdfUrl) {
                 window.URL.revokeObjectURL(previewPdfUrl);
             }
-            
+
             setPreviewPdfUrl(pdfUrl);
             setPreviewPdfBlob(pdfBlob); // Store blob for download
             setIsGeneratingPreview(false);
@@ -933,7 +933,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             const timer = setTimeout(() => {
                 generatePreview(selectedScale);
             }, 500); // Debounce preview generation
-            
+
             return () => clearTimeout(timer);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1134,14 +1134,14 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                             >
                                 Adjust the scale and see a live preview.
                             </p>
-                        </div>  
+                        </div>
 
                         {/* Content Area - Side by Side */}
                         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
                             {/* Left Side - Controls */}
-                            <div style={{ 
-                                width: "400px", 
-                                padding: "1.5rem", 
+                            <div style={{
+                                width: "400px",
+                                padding: "1.5rem",
                                 borderRight: "1px solid #e5e7eb",
                                 display: "flex",
                                 flexDirection: "column",
@@ -1195,12 +1195,73 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         <span>125%</span>
                                         <span>150%</span>
                                     </div>
+
+                                    {/* Number Input with +/- Buttons */}
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "1rem" }}>
+                                        <button
+                                            onClick={() => {
+                                                const newScale = Math.max(0.5, selectedScale - 0.01);
+                                                setSelectedScale(newScale);
+                                                localStorage.setItem('resumePreviewMedical_lastScale', newScale.toString());
+                                            }}
+                                            style={{
+                                                padding: "8px 12px",
+                                                backgroundColor: "#10b981",
+                                                color: "white",
+                                                border: "none",
+                                                borderRadius: "6px",
+                                                cursor: "pointer",
+                                                fontWeight: "bold",
+                                                fontSize: "1rem",
+                                            }}
+                                        >-</button>
+                                        <input
+                                            type="number"
+                                            min="50"
+                                            max="150"
+                                            step="1"
+                                            value={Math.round(selectedScale * 100)}
+                                            onChange={(e) => {
+                                                const val = Math.min(150, Math.max(50, Number(e.target.value)));
+                                                const newScale = val / 100;
+                                                setSelectedScale(newScale);
+                                                localStorage.setItem('resumePreviewMedical_lastScale', newScale.toString());
+                                            }}
+                                            style={{
+                                                width: "80px",
+                                                padding: "8px",
+                                                textAlign: "center",
+                                                border: "2px solid #10b981",
+                                                borderRadius: "6px",
+                                                fontSize: "1rem",
+                                                fontWeight: "600",
+                                            }}
+                                        />
+                                        <span style={{ fontWeight: "600", color: "#374151" }}>%</span>
+                                        <button
+                                            onClick={() => {
+                                                const newScale = Math.min(1.5, selectedScale + 0.01);
+                                                setSelectedScale(newScale);
+                                                localStorage.setItem('resumePreviewMedical_lastScale', newScale.toString());
+                                            }}
+                                            style={{
+                                                padding: "8px 12px",
+                                                backgroundColor: "#10b981",
+                                                color: "white",
+                                                border: "none",
+                                                borderRadius: "6px",
+                                                cursor: "pointer",
+                                                fontWeight: "bold",
+                                                fontSize: "1rem",
+                                            }}
+                                        >+</button>
+                                    </div>
                                 </div>
 
-                                <div style={{ 
-                                    marginBottom: "1.5rem", 
-                                    padding: "1rem", 
-                                    backgroundColor: "#f9fafb", 
+                                <div style={{
+                                    marginBottom: "1.5rem",
+                                    padding: "1rem",
+                                    backgroundColor: "#f9fafb",
                                     borderRadius: "8px",
                                     border: "1px solid #e5e7eb"
                                 }}>
@@ -1215,16 +1276,16 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
 
                                 {/* Page Count Warning - Medical resume must be more than 1 page */}
                                 {pdfPageCount !== null && pdfPageCount === 1 && (
-                                    <div style={{ 
-                                        marginBottom: "1rem", 
-                                        padding: "1rem", 
-                                        backgroundColor: "#fef3c7", 
+                                    <div style={{
+                                        marginBottom: "1rem",
+                                        padding: "1rem",
+                                        backgroundColor: "#fef3c7",
                                         borderRadius: "8px",
                                         border: "2px solid #f59e0b"
                                     }}>
-                                        <div style={{ 
-                                            display: "flex", 
-                                            alignItems: "center", 
+                                        <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
                                             gap: "0.5rem",
                                             marginBottom: "0.5rem"
                                         }}>
@@ -1241,16 +1302,16 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
 
                                 {/* Page Count Success - Medical resume should have more than 1 page */}
                                 {pdfPageCount !== null && pdfPageCount > 1 && (
-                                    <div style={{ 
-                                        marginBottom: "1rem", 
-                                        padding: "1rem", 
-                                        backgroundColor: "#d1fae5", 
+                                    <div style={{
+                                        marginBottom: "1rem",
+                                        padding: "1rem",
+                                        backgroundColor: "#d1fae5",
                                         borderRadius: "8px",
                                         border: "2px solid #10b981"
                                     }}>
-                                        <div style={{ 
-                                            display: "flex", 
-                                            alignItems: "center", 
+                                        <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
                                             gap: "0.5rem"
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>✅</span>
@@ -1260,6 +1321,27 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Filename Display */}
+                                <div style={{
+                                    marginBottom: "1rem",
+                                    padding: "0.75rem 1rem",
+                                    backgroundColor: "#f3f4f6",
+                                    borderRadius: "8px",
+                                    border: "1px solid #e5e7eb"
+                                }}>
+                                    <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.25rem" }}>
+                                        Download as:
+                                    </div>
+                                    <div style={{
+                                        fontSize: "0.9rem",
+                                        fontWeight: "600",
+                                        color: "#1f2937",
+                                        wordBreak: "break-all"
+                                    }}>
+                                        📄 {(data.personalInfo?.name || "Resume").replace(/\s+/g, "_")}_Resume.pdf
+                                    </div>
+                                </div>
 
                                 {/* Action Buttons */}
                                 <div style={{ display: "flex", gap: "0.75rem", marginTop: "auto", paddingTop: "1rem" }}>
@@ -1306,55 +1388,55 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                             </div>
 
                             {/* Right Side - PDF Preview */}
-                            <div style={{ 
-                                flex: 1, 
-                                padding: "1.5rem", 
+                            <div style={{
+                                flex: 1,
+                                padding: "1.5rem",
                                 backgroundColor: "#f9fafb",
                                 display: "flex",
                                 flexDirection: "column",
                                 overflow: "hidden",
                                 minHeight: 0,
                             }}>
-                                <div style={{ 
-                                    marginBottom: "0.75rem", 
-                                    fontSize: "0.875rem", 
+                                <div style={{
+                                    marginBottom: "0.75rem",
+                                    fontSize: "0.875rem",
                                     color: "#6b7280",
                                     fontWeight: "600",
                                 }}>
                                     Live PDF Preview
                                 </div>
-                                
+
                                 {isGeneratingPreview ? (
-                                    <div style={{ 
-                                        flex: 1, 
-                                        display: "flex", 
+                                    <div style={{
+                                        flex: 1,
+                                        display: "flex",
                                         flexDirection: "column",
-                                        alignItems: "center", 
+                                        alignItems: "center",
                                         justifyContent: "center",
                                         backgroundColor: "white",
                                         borderRadius: "8px",
                                         padding: "2rem",
                                     }}>
                                         <div style={{ textAlign: "center" }}>
-                                            <div style={{ 
-                                                width: "50px", 
-                                                height: "50px", 
+                                            <div style={{
+                                                width: "50px",
+                                                height: "50px",
                                                 border: "4px solid #e5e7eb",
                                                 borderTop: "4px solid #10b981",
                                                 borderRadius: "50%",
                                                 animation: "spin 1s linear infinite",
                                                 margin: "0 auto 1.5rem",
                                             }}></div>
-                                            <div style={{ 
-                                                color: "#374151", 
+                                            <div style={{
+                                                color: "#374151",
                                                 fontSize: "1rem",
                                                 fontWeight: "600",
                                                 marginBottom: "0.5rem",
                                             }}>
                                                 {loadingMessages[loadingMessageIndex]}
                                             </div>
-                                            <div style={{ 
-                                                color: "#9ca3af", 
+                                            <div style={{
+                                                color: "#9ca3af",
                                                 fontSize: "0.85rem",
                                                 fontStyle: "italic",
                                             }}>
@@ -1363,7 +1445,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         </div>
                                     </div>
                                 ) : previewPdfUrl ? (
-                                    <div style={{ 
+                                    <div style={{
                                         flex: 1,
                                         backgroundColor: "#525252",
                                         borderRadius: "8px",
@@ -1387,9 +1469,9 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         />
                                     </div>
                                 ) : (
-                                    <div style={{ 
+                                    <div style={{
                                         flex: 1,
-                                        display: "flex", 
+                                        display: "flex",
                                         flexDirection: "column",
                                         alignItems: "center",
                                         justifyContent: "center",

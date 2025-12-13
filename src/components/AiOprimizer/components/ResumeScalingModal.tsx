@@ -27,9 +27,9 @@ export const ResumeScalingModal: React.FC<ResumeScalingModalProps> = ({
     const ctx = useContext(UserContext);
     const userType = ctx?.userDetails?.userType;
     const userRole = localStorage.getItem('role');
-    const isAdmin = 
-        userType === "Admin" || 
-        userType === "Operations" || 
+    const isAdmin =
+        userType === "Admin" ||
+        userType === "Operations" ||
         userType === "admin" ||
         userType === "operations" ||
         userRole === "admin" ||
@@ -46,6 +46,19 @@ export const ResumeScalingModal: React.FC<ResumeScalingModalProps> = ({
     const [contentHeight, setContentHeight] = useState(0);
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
+    // NEW: Custom Filename State
+    const [customFilename, setCustomFilename] = useState("");
+
+    useEffect(() => {
+        if (resumeData?.personalInfo?.name) {
+            const name = resumeData.personalInfo.name;
+            const cleanName = name.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "-");
+            setCustomFilename(`${cleanName}_Optimized_Resume`);
+        } else {
+            setCustomFilename("Resume");
+        }
+    }, [resumeData]);
+
     // Calculate available content height
     const marginPx = pageMargin * DPI;
     const paddingPx = pagePadding * DPI;
@@ -59,13 +72,13 @@ export const ResumeScalingModal: React.FC<ResumeScalingModalProps> = ({
     useEffect(() => {
         const styleId = 'resume-scaling-font-override';
         let styleElement = document.getElementById(styleId) as HTMLStyleElement;
-        
+
         if (!styleElement) {
             styleElement = document.createElement('style');
             styleElement.id = styleId;
             document.head.appendChild(styleElement);
         }
-        
+
         // Override font sizes for all elements within the content container
         styleElement.textContent = `
             #resume-scaling-content-container * {
@@ -75,7 +88,7 @@ export const ResumeScalingModal: React.FC<ResumeScalingModalProps> = ({
                 font-size: ${fontSize}pt !important;
             }
         `;
-        
+
         return () => {
             // Clean up style element when component unmounts
             if (styleElement && styleElement.parentNode) {
@@ -97,9 +110,9 @@ export const ResumeScalingModal: React.FC<ResumeScalingModalProps> = ({
                     setContentHeight(visualHeight);
                 }
             });
-            
+
             resizeObserver.observe(contentRef.current);
-            
+
             // Also check immediately with a small delay to ensure DOM is ready
             setTimeout(() => {
                 if (contentRef.current) {
@@ -108,7 +121,7 @@ export const ResumeScalingModal: React.FC<ResumeScalingModalProps> = ({
                     setContentHeight(visualHeight);
                 }
             }, 100);
-            
+
             return () => {
                 resizeObserver.disconnect();
             };
@@ -189,10 +202,11 @@ export const ResumeScalingModal: React.FC<ResumeScalingModalProps> = ({
             const imgData = canvas.toDataURL('image/png', 1.0);
             pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight, undefined, 'FAST');
 
-            // Generate filename
-            const name = resumeData?.personalInfo?.name || "Resume";
-            const cleanName = name.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "-");
-            const filename = `${cleanName}_Optimized_Resume.pdf`;
+            // Generate filename using custom input
+            let filename = customFilename.trim() || "Resume";
+            if (!filename.toLowerCase().endsWith(".pdf")) {
+                filename += ".pdf";
+            }
 
             // Save the PDF
             pdf.save(filename);
@@ -236,9 +250,20 @@ export const ResumeScalingModal: React.FC<ResumeScalingModalProps> = ({
                             {/* Overall Scale */}
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Overall Scale: {overallScale}%
+                                    File Name
                                 </label>
                                 <input
+                                    type="text"
+                                    value={customFilename}
+                                    onChange={(e) => setCustomFilename(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+                                    placeholder="Enter filename (e.g., John-Doe-Resume)"
+                                />
+
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Overall Scale: {overallScale}%
+                                </label>
+                                {/* <input
                                     type="range"
                                     min="60"
                                     max="120"
@@ -246,22 +271,32 @@ export const ResumeScalingModal: React.FC<ResumeScalingModalProps> = ({
                                     value={overallScale}
                                     onChange={(e) => setOverallScale(Number(e.target.value))}
                                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                                />
+                                /> 
                                 <div className="flex justify-between text-xs text-gray-500 mt-1">
                                     <span>60%</span>
                                     <span>120%</span>
+                                </div> */}
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setOverallScale(Math.max(60, overallScale - 1))}
+                                        className="px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 font-bold"
+                                    >-</button>
+                                    <input
+                                        type="number"
+                                        min="60"
+                                        max="120"
+                                        value={overallScale}
+                                        onChange={(e) => {
+                                            const val = Math.min(120, Math.max(60, Number(e.target.value)));
+                                            setOverallScale(val);
+                                        }}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <button
+                                        onClick={() => setOverallScale(Math.min(120, overallScale + 1))}
+                                        className="px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded text-gray-700 font-bold"
+                                    >+</button>
                                 </div>
-                                <input
-                                    type="number"
-                                    min="60"
-                                    max="120"
-                                    value={overallScale}
-                                    onChange={(e) => {
-                                        const val = Math.min(120, Math.max(60, Number(e.target.value)));
-                                        setOverallScale(val);
-                                    }}
-                                    className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
                             </div>
 
                             {/* Font Size */}
