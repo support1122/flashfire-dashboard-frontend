@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { toastUtils } from "../../../utils/toast";
 import * as pdfjsLib from 'pdfjs-dist';
+import { savePdf } from "../../../utils/savePdf.ts";
 // import { ResumeScalingModal } from "./ResumeScalingModal";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
@@ -97,6 +98,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     };
 
     const [selectedScale, setSelectedScale] = useState(getLastSelectedScale());
+    const [downloadFilename, setDownloadFilename] = useState("");
     const overrideAutoScale = true;
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
     const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
@@ -397,6 +399,14 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
         }
     }, [showScaleModal]);
 
+    useEffect(() => {
+        if (data.personalInfo?.name) {
+            const name = data.personalInfo.name || "Resume";
+            const cleanName = name.replace(/\s+/g, "_");
+            setDownloadFilename(`${cleanName}_Resume.pdf`);
+        }
+    }, [data.personalInfo?.name]);
+
     // Handle copying JSON with styles
     const handleCopyJsonWithStyles = () => {
         try {
@@ -617,13 +627,17 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 link.href = pdfUrl;
 
                 // Generate filename: "{name}_Resume.pdf"
+                // Generate filename: "{name}_Resume.pdf"
                 const name = data.personalInfo?.name || "Resume";
                 const cleanName = name.replace(/\s+/g, "_");
-                link.download = `${cleanName}_Resume.pdf`;
+                // link.download = `${cleanName}_Resume.pdf`;
 
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                // document.body.appendChild(link);
+                // link.click();
+                // document.body.removeChild(link);
+
+                await savePdf(previewPdfBlob, downloadFilename || `${cleanName}_Resume.pdf`);
+
                 window.URL.revokeObjectURL(pdfUrl);
 
                 toastUtils.success("✅ PDF downloaded successfully!");
@@ -674,13 +688,17 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             link.href = pdfUrl;
 
             // Generate filename: "{name}_Resume.pdf"
+            // Generate filename: "{name}_Resume.pdf"
             const name = data.personalInfo?.name || "Resume";
             const cleanName = name.replace(/\s+/g, "_");
-            link.download = `${cleanName}_Resume.pdf`;
+            // link.download = `${cleanName}_Resume.pdf`;
 
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            // document.body.appendChild(link);
+            // link.click();
+            // document.body.removeChild(link);
+
+            await savePdf(pdfBlob, downloadFilename || `${cleanName}_Resume.pdf`);
+
             window.URL.revokeObjectURL(pdfUrl);
 
             toastUtils.dismissToast(loadingToast);
@@ -2258,14 +2276,23 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                     <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.25rem" }}>
                                         Download as:
                                     </div>
-                                    <div style={{
-                                        fontSize: "0.9rem",
-                                        fontWeight: "600",
-                                        color: "#1f2937",
-                                        wordBreak: "break-all"
-                                    }}>
-                                        📄 {(data.personalInfo?.name || "Resume").replace(/\s+/g, "_")}_Resume.pdf
-                                    </div>
+                                    <input
+                                        type="text"
+                                        value={downloadFilename}
+                                        onChange={(e) => setDownloadFilename(e.target.value)}
+                                        style={{
+                                            fontSize: "0.9rem",
+                                            fontWeight: "600",
+                                            color: "#1f2937",
+                                            width: "100%",
+                                            padding: "0.25rem 0",
+                                            border: "none",
+                                            background: "transparent",
+                                            borderBottom: "1px solid #d1d5db",
+                                            outline: "none"
+                                        }}
+                                        placeholder="Enter filename..."
+                                    />
                                 </div>
 
                                 {/* Action Buttons */}

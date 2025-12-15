@@ -39,6 +39,7 @@ import { ResumePreviewMedical } from "./AiOprimizer/components/ResumePreviewMedi
 /* ---------- ENV ---------- */
 import { uploadAttachment } from "../utils/uploadService.ts";
 import { optimizeImageUrl } from "../utils/imageCache.ts";
+import { savePdf } from "../utils/savePdf.ts";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 const JOB_UPDATE_ENDPOINT = `${API_BASE}/updatechanges`;
@@ -290,8 +291,11 @@ export default function JobModal({
     const [activeSection, setActiveSection] = useState<Sections>(
         initialSection ?? "details"
     );
-    const [showOptimizeScaleModal, setShowOptimizeScaleModal] = useState(false);
-    const [optimizedResumeData, setOptimizedResumeData] = useState<any>(null);
+    const [showOptimizeScaleModal, setShowOptimizeScaleModal] = useState(false); // For operations role
+    const [showDownloadFilenameModal, setShowDownloadFilenameModal] = useState(false); // For confirmation modal
+    const [downloadFilename, setDownloadFilename] = useState("");
+    const [pendingDownloadBlob, setPendingDownloadBlob] = useState<Blob | null>(null);
+    const [optimizedResumeData, setOptimizedResumeData] = useState<any>(null); // To store optimized data for scaling modal
     const [optimizedResumeMetadata, setOptimizedResumeMetadata] = useState<any>(null);
     const [showOptimizeConfirmation, setShowOptimizeConfirmation] = useState(false);
     const [resumeNameForModal, setResumeNameForModal] = useState<string>("");
@@ -1534,6 +1538,7 @@ export default function JobModal({
     const handleOptimizeResume = async () => {
         setIsOptimizing(true);
         setOptimizationError(null);
+        let loadingToast: string | number | null = null;
 
         try {
             // Get user email - for operations, get from currentUser (the client whose job this is)
@@ -1565,7 +1570,7 @@ export default function JobModal({
                 throw new Error("Job description not found. Please add job description first.");
             }
 
-            const loadingToast = toastUtils.loading("Optimizing resume... Please wait.");
+            loadingToast = toastUtils.loading("Optimizing resume... Please wait.");
 
             const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
             const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8086";
@@ -1837,13 +1842,20 @@ export default function JobModal({
                             link.href = pdfUrl;
                             const name = optimizedData.personalInfo?.name || "Resume";
                             const cleanName = name.replace(/\s+/g, "_");
-                            link.download = `${cleanName}_Resume.pdf`;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
+                            // link.download = `${cleanName}_Resume.pdf`;
+                            // document.body.appendChild(link);
+                            // link.click();
+                            // document.body.removeChild(link);
+                            // await savePdf(pdfBlob, `${cleanName}_Resume.pdf`);
+
+                            // Open modal instead of direct download
+                            setPendingDownloadBlob(pdfBlob);
+                            setDownloadFilename(`${cleanName}_Resume.pdf`);
+                            setShowDownloadFilenameModal(true);
+
                             window.URL.revokeObjectURL(pdfUrl);
                             toastUtils.dismissToast(pdfLoadingToast);
-                            toastUtils.success("✅ Resume optimized, saved, and PDF downloaded successfully!");
+                            // toastUtils.success("✅ Resume optimized, saved, and PDF downloaded successfully!");
                         } else {
                             const pdfPayload = {
                                 personalInfo: optimizedData.personalInfo,
@@ -1888,13 +1900,20 @@ export default function JobModal({
                             link.href = pdfUrl;
                             const name = optimizedData.personalInfo?.name || "Resume";
                             const cleanName = name.replace(/\s+/g, "_");
-                            link.download = `${cleanName}_Resume.pdf`;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
+                            // link.download = `${cleanName}_Resume.pdf`;
+                            // document.body.appendChild(link);
+                            // link.click();
+                            // document.body.removeChild(link);
+                            // await savePdf(pdfBlob, `${cleanName}_Resume.pdf`);
+
+                            // Open modal instead of direct download
+                            setPendingDownloadBlob(pdfBlob);
+                            setDownloadFilename(`${cleanName}_Resume.pdf`);
+                            setShowDownloadFilenameModal(true);
+
                             window.URL.revokeObjectURL(pdfUrl);
                             toastUtils.dismissToast(pdfLoadingToast);
-                            toastUtils.success("✅ Resume optimized, saved, and PDF downloaded successfully!");
+                            // toastUtils.success("✅ Resume optimized, saved, and PDF downloaded successfully!");
                         }
                     } catch (error: any) {
                         toastUtils.dismissToast(pdfLoadingToast);
@@ -1908,6 +1927,7 @@ export default function JobModal({
             // toastUtils.error(error.message || "Failed to optimize resume. Please try again.");
             setOptimizationError(error.message || "Failed to optimize resume. Please try again.");
         } finally {
+            if (loadingToast) toastUtils.dismissToast(loadingToast);
             setIsOptimizing(false);
         }
     };
@@ -2151,6 +2171,158 @@ export default function JobModal({
                     </Suspense>
                 )}
 
+                {/* Download Filename Modal */}
+                {showDownloadFilenameModal && pendingDownloadBlob && (
+                    <div
+                        style={{
+                            position: "fixed",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: "rgba(0, 0, 0, 0.5)",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            zIndex: 2000,
+                            padding: "20px",
+                        }}
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                                setShowDownloadFilenameModal(false);
+                                setPendingDownloadBlob(null);
+                                setDownloadFilename("");
+                            }
+                        }}
+                    >
+                        <div
+                            style={{
+                                backgroundColor: "white",
+                                borderRadius: "12px",
+                                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                                width: "100%",
+                                maxWidth: "500px",
+                                padding: "1.5rem",
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div style={{ paddingBottom: "1rem", borderBottom: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <h2
+                                    style={{
+                                        fontSize: "1.25rem",
+                                        fontWeight: "bold",
+                                        color: "#1f2937",
+                                    }}
+                                >
+                                    {'showSaveFilePicker' in window ? "Save Resume" : "Save As"}
+                                </h2>
+                                <button
+                                    onClick={() => {
+                                        setShowDownloadFilenameModal(false);
+                                        setPendingDownloadBlob(null);
+                                        setDownloadFilename("");
+                                    }}
+                                    style={{
+                                        backgroundColor: "transparent",
+                                        border: "none",
+                                        fontSize: "1.5rem",
+                                        cursor: "pointer",
+                                        color: "#6b7280",
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            {'showSaveFilePicker' in window ? (
+                                <div style={{ padding: "1.5rem 0", textAlign: "center" }}>
+                                    <p style={{ fontSize: "1rem", color: "#374151" }}>
+                                        Optimization complete! Click <strong>Save</strong> to choose where to save your resume.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div style={{ padding: "1rem 0" }}>
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            fontSize: "0.875rem",
+                                            fontWeight: "500",
+                                            color: "#374151",
+                                            marginBottom: "0.5rem",
+                                        }}
+                                    >
+                                        Name:
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={downloadFilename}
+                                        onChange={(e) => setDownloadFilename(e.target.value)}
+                                        placeholder="Enter filename"
+                                        style={{
+                                            width: "100%",
+                                            padding: "0.75rem",
+                                            border: "1px solid #d1d5db",
+                                            borderRadius: "6px",
+                                            fontSize: "1rem",
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            <div style={{ paddingTop: "1rem", borderTop: "1px solid #e5e7eb", display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
+                                <button
+                                    onClick={() => {
+                                        setShowDownloadFilenameModal(false);
+                                        setPendingDownloadBlob(null);
+                                        setDownloadFilename("");
+                                    }}
+                                    style={{
+                                        padding: "0.75rem 1.5rem",
+                                        backgroundColor: "#f3f4f6",
+                                        color: "#374151",
+                                        border: "1px solid #d1d5db",
+                                        borderRadius: "6px",
+                                        cursor: "pointer",
+                                        fontSize: "0.875rem",
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        if (pendingDownloadBlob && downloadFilename.trim()) {
+                                            try {
+                                                await savePdf(pendingDownloadBlob, downloadFilename.trim());
+                                                // Only close modal if successful or native picker handled it
+                                                setShowDownloadFilenameModal(false);
+                                                setPendingDownloadBlob(null);
+                                                setDownloadFilename("");
+                                                toastUtils.success("✅ Download started!");
+                                            } catch (error) {
+                                                console.error("Download failed:", error);
+                                                toastUtils.error("Failed to save file.");
+                                            }
+                                        }
+                                    }}
+                                    disabled={!('showSaveFilePicker' in window) && !downloadFilename.trim()}
+                                    style={{
+                                        padding: "0.75rem 1.5rem",
+                                        backgroundColor: "#3b82f6",
+                                        color: "white",
+                                        border: "none",
+                                        borderRadius: "6px",
+                                        cursor: (('showSaveFilePicker' in window) || downloadFilename.trim()) ? "pointer" : "not-allowed",
+                                        fontSize: "0.875rem",
+                                        opacity: (('showSaveFilePicker' in window) || downloadFilename.trim()) ? 1 : 0.5,
+                                    }}
+                                >
+                                    Save
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Optimize Scale Modal for Operations */}
                 {showOptimizeScaleModal && optimizedResumeData && optimizedResumeMetadata && (
                     <div
@@ -2326,25 +2498,7 @@ export default function JobModal({
                     </div>
                 )}
 
-                {isOptimizing && (
-                    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60]">
-                        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md mx-4 text-center cursor-wait">
-                            <div className="mb-6 flex justify-center">
-                                <Loader2 className="w-16 h-16 text-purple-600 animate-spin" />
-                            </div>
-                            <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                                Optimizing Resume...
-                            </h2>
-                            <p className="text-gray-600">
-                                Please wait while we tailor your resume to the job description.
-                                <br />
-                                <span className="font-semibold text-red-500 text-sm mt-2 block">
-                                    Do not close this window.
-                                </span>
-                            </p>
-                        </div>
-                    </div>
-                )}
+
 
                 {/* Optimization Error Modal */}
                 {optimizationError && (
