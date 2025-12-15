@@ -6,7 +6,7 @@ interface RegisterFormProps {
     onRegister?: (email: string, password: string) => void;
 }
 
-const AddignUser: React.FC<RegisterFormProps> = ({}) => {
+const AddignUser: React.FC<RegisterFormProps> = ({ }) => {
     const [selectedUserEmail, setSelectedUserEmail] = useState("");
     const [selectedOpEmail, setSelectedOpEmail] = useState("");
     const [users, setUsers] = useState<{ id: string; name: string; email: string }[]>([]);
@@ -114,7 +114,7 @@ const AddignUser: React.FC<RegisterFormProps> = ({}) => {
                                 ) : (
                                     visibleUsers.map((u) => (
                                         <option key={u.id} value={u.email}>
-                                            {u.name && u.name.trim() ? u.name : u.email} {u.name && u.name.trim() ? `— ${u.email}` : ''}
+                                            {u.name && u.name.trim() ? `${u.name} (${u.email})` : `Unknown (${u.email})`}
                                         </option>
                                     ))
                                 )}
@@ -149,7 +149,9 @@ const AddignUser: React.FC<RegisterFormProps> = ({}) => {
                                     <option value="">Loading operations...</option>
                                 ) : (
                                     visibleOps.map((o) => (
-                                        <option key={o.id} value={o.email}>{o.name} — {o.email}</option>
+                                        <option key={o.id} value={o.email}>
+                                            {o.name && o.name.trim() ? `${o.name} (${o.email})` : `Unknown (${o.email})`}
+                                        </option>
                                     ))
                                 )}
                             </select>
@@ -160,9 +162,8 @@ const AddignUser: React.FC<RegisterFormProps> = ({}) => {
                 <button
                     type="submit"
                     disabled={loading}
-                    className={`w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl ${
-                        loading ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
+                    className={`w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl ${loading ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
                 >
                     {loading ? "Linking..." : "Link"}
                 </button>
