@@ -300,6 +300,10 @@ export default function JobModal({
         return saved ? parseFloat(saved) : 1.0;
     });
 
+    // NEW: Blocking state for optimization
+    const [isOptimizing, setIsOptimizing] = useState(false);
+    const [optimizationError, setOptimizationError] = useState<string | null>(null);
+
     // Load job description when modal opens
     useEffect(() => {
         if (jobDetails?.jobID && activeSection === 'description') {
@@ -783,12 +787,13 @@ export default function JobModal({
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Escape") {
+                if (isOptimizing) return;
                 setShowJobModal(false);
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [setShowJobModal]);
+    }, [setShowJobModal, isOptimizing]); // Added isOptimizing dependency
 
     const sections = [
         {
@@ -1527,13 +1532,16 @@ export default function JobModal({
 
     // Handle resume optimization
     const handleOptimizeResume = async () => {
+        setIsOptimizing(true);
+        setOptimizationError(null);
+
         try {
             // Get user email - for operations, get from currentUser (the client whose job this is)
             const userEmail = currentUser?.email;
 
             if (!userEmail) {
-                toastUtils.error("User email not found. Cannot optimize resume.");
-                return;
+                // toastUtils.error("User email not found. Cannot optimize resume.");
+                throw new Error("User email not found. Cannot optimize resume.");
             }
 
             // Get job description - try multiple sources
@@ -1548,22 +1556,13 @@ export default function JobModal({
                         jobDesc = loadedDesc;
                     }
                 } else {
-                    // If already loading, we might need a way to wait for it, 
-                    // but for now let's try to get what's there after a small check
-                    // or just proceed if we can't wait.
-                    // A better approach if already loading is to poll briefly or just wait.
-                    // But loadJobDescription checks isJobDescriptionLoading internally and returns null if so.
-                    // So we might technically miss it if it was *just* started elsewhere.
-                    // However, usually "Optimize" click is the trigger.
-                    // unique retry:
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     jobDesc = getJobDescription(jobDetails.jobID) || "";
                 }
             }
 
             if (!jobDesc) {
-                toastUtils.error("Job description not found. Please add job description first.");
-                return;
+                throw new Error("Job description not found. Please add job description first.");
             }
 
             const loadingToast = toastUtils.loading("Optimizing resume... Please wait.");
@@ -1580,21 +1579,17 @@ export default function JobModal({
             });
 
             if (!resumeResponse.ok) {
-                toastUtils.dismissToast(loadingToast);
                 if (resumeResponse.status === 404) {
-                    toastUtils.error("No resume assigned to this user. Please assign a resume first.");
+                    throw new Error("No resume assigned to this user. Please assign a resume first.");
                 } else {
-                    toastUtils.error("Failed to load user's resume.");
+                    throw new Error("Failed to load user's resume.");
                 }
-                return;
             }
 
             const resumeData = await resumeResponse.json();
 
             if (!resumeData || !resumeData.personalInfo) {
-                toastUtils.dismissToast(loadingToast);
-                toastUtils.error("Invalid resume data.");
-                return;
+                throw new Error("Invalid resume data.");
             }
 
             // Check if resume version is 2 (Medical)
@@ -1622,16 +1617,13 @@ export default function JobModal({
             });
 
             if (!optimizeResponse.ok) {
-                toastUtils.dismissToast(loadingToast);
                 throw new Error(`Optimization failed: ${optimizeResponse.status}`);
             }
 
             const optimizedData = await optimizeResponse.json();
 
             if (!optimizedData || (!optimizedData.summary && !optimizedData.workExperience)) {
-                toastUtils.dismissToast(loadingToast);
-                toastUtils.error("Optimization failed. Please try again.");
-                return;
+                throw new Error("Optimization failed. Data returned was empty.");
             }
 
             // Step 3: Calculate changes
@@ -1757,11 +1749,9 @@ export default function JobModal({
             });
 
             if (!saveResponse.ok) {
-                toastUtils.dismissToast(loadingToast);
                 throw new Error("Failed to save optimized resume");
             }
 
-            toastUtils.dismissToast(loadingToast);
 
             await refreshJobByMongoId(jobId);
             const optimizedResumeEntry = {
@@ -1915,9 +1905,13 @@ export default function JobModal({
             }
         } catch (error: any) {
             console.error("Error optimizing resume:", error);
-            toastUtils.error(error.message || "Failed to optimize resume. Please try again.");
+            // toastUtils.error(error.message || "Failed to optimize resume. Please try again.");
+            setOptimizationError(error.message || "Failed to optimize resume. Please try again.");
+        } finally {
+            setIsOptimizing(false);
         }
     };
+
 
     return (
         <div
@@ -2045,8 +2039,12 @@ export default function JobModal({
                                 </>
                             ) : null}
                             <button
-                                onClick={() => setShowJobModal(false)}
-                                className="hover:bg-white hover:bg-opacity-20 p-2 rounded-full transition-colors"
+                                onClick={() => {
+                                    if (isOptimizing) return;
+                                    setShowJobModal(false)
+                                }}
+                                disabled={isOptimizing}
+                                className={`p-2 rounded-full transition-colors ${isOptimizing ? 'cursor-not-allowed opacity-50 bg-gray-400' : 'hover:bg-white hover:bg-opacity-20'}`}
                             >
                                 <X className="w-6 h-6" />
                             </button>
@@ -2306,10 +2304,6 @@ export default function JobModal({
                                         </p>
                                     </div>
                                 </div>
-
-                                <p className="text-sm text-gray-500 text-center mt-4">
-                                    Please verify the name, role, and company name are correct before proceeding
-                                </p>
                             </div>
                             <div className="flex gap-4">
                                 <button
@@ -2328,6 +2322,51 @@ export default function JobModal({
                                     Cancel
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {isOptimizing && (
+                    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60]">
+                        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md mx-4 text-center cursor-wait">
+                            <div className="mb-6 flex justify-center">
+                                <Loader2 className="w-16 h-16 text-purple-600 animate-spin" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                                Optimizing Resume...
+                            </h2>
+                            <p className="text-gray-600">
+                                Please wait while we tailor your resume to the job description.
+                                <br />
+                                <span className="font-semibold text-red-500 text-sm mt-2 block">
+                                    Do not close this window.
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Optimization Error Modal */}
+                {optimizationError && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70]">
+                        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md mx-4 text-center">
+                            <div className="mb-6 flex justify-center">
+                                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                                    <X className="w-8 h-8 text-red-600" />
+                                </div>
+                            </div>
+                            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                                Optimization Failed
+                            </h2>
+                            <p className="text-gray-600 mb-6">
+                                {optimizationError}
+                            </p>
+                            <button
+                                onClick={() => setOptimizationError(null)}
+                                className="w-full bg-gray-800 text-white py-3 px-6 rounded-lg hover:bg-gray-900 transition-colors font-semibold"
+                            >
+                                Close
+                            </button>
                         </div>
                     </div>
                 )}
