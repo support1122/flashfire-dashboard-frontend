@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { 
-  Users, Activity, UserPlus, Edit, Trash2, Shield, 
+import {
+  Users, Activity, UserPlus, Edit, Trash2, Shield,
   FileText, TrendingUp, Search, Filter,
   Calendar, Clock, MapPin, Settings,
   BarChart3, RefreshCw, CheckCircle,
   Mail, LogOut, Key
 } from 'lucide-react';
-import RegisterOPS  from './Operations/RegisterOPS';
+import RegisterOPS from './Operations/RegisterOPS';
 import AddignUser from './Operations/AddignUser';
 import OperationsDirectory from './Operations/OperationsDirectory';
 import AssignResumeModal from '../../Admin/AssignResumeModal';
@@ -17,6 +17,15 @@ interface User {
   email: string;
   role: string;
   created: string;
+  assignedResumeId?: string | null;
+}
+
+interface Resume {
+  _id: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
 }
 
 interface LoginEvent {
@@ -60,6 +69,7 @@ interface AdminDashboardProps {
 
 export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilder }: AdminDashboardProps) {
   const [users, setUsers] = useState<User[]>([]);
+  const [resumes, setResumes] = useState<Resume[]>([]);
   const [loginHistory, setLoginHistory] = useState<LoginEvent[]>([]);
   const [sessionKeys, setSessionKeys] = useState<SessionKey[]>([]);
   const [statistics, setStatistics] = useState<Statistics | null>(null);
@@ -98,6 +108,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
     try {
       await Promise.all([
         loadUsers(),
+        loadResumes(),
         loadLoginHistory(),
         loadSessionKeys(),
         loadStatistics()
@@ -107,16 +118,74 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
     }
   };
 
-  const loadUsers = async () => {
+  const loadResumes = async () => {
     try {
-      const response = await authFetch(API_OPTIMIZER, '/api/admin/users');
+      // Fetch all resumes to map IDs to names
+      // Try v1 and v2 endpoints if 'all' isn't available or structure differs
+      const response = await authFetch(API_OPTIMIZER, '/api/resumes/all');
       if (response.ok) {
         const data = await response.json();
-        setUsers(data);
+        setResumes(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.error('Failed to load resumes:', error);
+    }
+  };
+
+  // Map of userEmail -> resumeId (verified from API)
+  const [verifiedAssignments, setVerifiedAssignments] = useState<Record<string, string>>({});
+
+  const loadUsers = async () => {
+    try {
+      // Use the list endpoint which includes assignedResumeId
+      const response = await authFetch(API_OPTIMIZER, '/admin/list/users');
+      if (response.ok) {
+        const data = await response.json();
+        const userList = data.users || [];
+
+        // Sort alphabetically
+        userList.sort((a: User, b: User) => {
+          const nameA = (a.username || a.email).toLowerCase();
+          const nameB = (b.username || b.email).toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+
+        setUsers(userList);
+
+        // After loading users, verify their assignments from the resume service
+        verifyResumeAssignments(userList);
       }
     } catch (error) {
       console.error('Failed to load users:', error);
     }
+  };
+
+  const verifyResumeAssignments = async (usersToVerify: User[]) => {
+    const assignments: Record<string, string> = {};
+    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+    // We'll process in batches to avoid overwhelming the server check
+    const verifyUser = async (user: User) => {
+      try {
+        const res = await fetch(`${apiUrl}/api/resume-by-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.resumeId) {
+            assignments[user.email] = data.resumeId;
+          }
+        }
+      } catch (e) {
+        console.error(`Failed to verify resume for ${user.email}`, e);
+      }
+    };
+
+    // Run all checks (using Promise.all for parallelism)
+    await Promise.all(usersToVerify.map(u => verifyUser(u)));
+    setVerifiedAssignments(assignments);
   };
 
   const loadLoginHistory = async () => {
@@ -241,7 +310,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
           target: sessionKeyForm.target
         })
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         if (data.sessionKey) {
@@ -264,13 +333,13 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
 
   const handleRevokeSession = async (sessionId: string) => {
     if (!confirm('Are you sure you want to revoke this session?')) return;
-    
+
     try {
       const response = await authFetch(API_OPTIMIZER, '/api/sessions/revoke-session', {
         method: 'POST',
         body: JSON.stringify({ sessionId })
       });
-      
+
       if (response.ok) {
         loadLoginHistory();
         alert('Session revoked successfully');
@@ -285,13 +354,13 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
 
   const handleRevokeUserSessions = async (username: string) => {
     if (!confirm(`Are you sure you want to revoke all sessions for ${username}?`)) return;
-    
+
     try {
       const response = await authFetch(API_OPTIMIZER, '/api/sessions/revoke-user-sessions', {
         method: 'POST',
         body: JSON.stringify({ username })
       });
-      
+
       if (response.ok) {
         loadLoginHistory();
         alert(`All sessions revoked for ${username}`);
@@ -306,13 +375,13 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
 
   const handleDeleteUserAccount = async (username: string) => {
     if (!confirm(`Are you sure you want to delete ${username}'s account? This will log them out from all devices.`)) return;
-    
+
     try {
       const response = await authFetch(API_OPTIMIZER, '/api/sessions/delete-user', {
         method: 'DELETE',
         body: JSON.stringify({ username })
       });
-      
+
       if (response.ok) {
         loadUsers();
         loadLoginHistory();
@@ -328,7 +397,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
 
   const filteredUsers = users?.filter(user => {
     const matchesSearch = user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -410,7 +479,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl p-6 border border-white/20 hover:shadow-2xl transition-all duration-300">
               <div className="flex items-center justify-between">
                 <div>
@@ -464,11 +533,10 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                 <button
                   key={key}
                   onClick={() => setActiveTab(key as 'overview' | 'users' | 'history' | 'sessions' | 'Admin' | 'resume')}
-                  className={`flex items-center space-x-2 py-4 px-6 text-sm font-medium border-b-2 transition-all duration-200 ${
-                    activeTab === key
-                      ? 'border-blue-500 text-blue-600 bg-blue-50/50'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50/50'
-                  }`}
+                  className={`flex items-center space-x-2 py-4 px-6 text-sm font-medium border-b-2 transition-all duration-200 ${activeTab === key
+                    ? 'border-blue-500 text-blue-600 bg-blue-50/50'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50/50'
+                    }`}
                 >
                   <Icon className="h-4 w-4" />
                   <span>{label}</span>
@@ -555,7 +623,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                     <Activity className="h-5 w-5 text-blue-600" />
                     <span>Active Sessions</span>
                   </h4>
-                  
+
                   {loginHistory && loginHistory.length > 0 ? (
                     <div className="space-y-4">
                       {loginHistory.map((session) => (
@@ -600,30 +668,29 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                     <Key className="h-5 w-5 text-purple-600" />
                     <span>Generated Session Keys</span>
                   </h4>
-                  
+
                   {sessionKeys && sessionKeys.length > 0 ? (
                     <div className="space-y-4">
                       {sessionKeys.map((sessionKey) => (
                         <div key={sessionKey._id} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
+                              <div className="flex items-center space-x-3 mb-2">
                                 <span className="font-semibold text-gray-900">{sessionKey.username}</span>
                                 <span className="text-sm text-gray-500">•</span>
                                 <span className="text-sm text-gray-500">{sessionKey.duration}h</span>
                                 <span className="text-sm text-gray-500">•</span>
-                                <span className={`text-sm px-2 py-1 rounded-full ${
-                                  sessionKey.isUsed 
-                                    ? 'bg-red-100 text-red-700' 
-                                    : 'bg-green-100 text-green-700'
-                                }`}>
+                                <span className={`text-sm px-2 py-1 rounded-full ${sessionKey.isUsed
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-green-100 text-green-700'
+                                  }`}>
                                   {sessionKey.isUsed ? 'Used' : 'Active'}
                                 </span>
-                            {sessionKey.source && (
-                              <span className={`text-xs px-2 py-1 rounded-full border ${sessionKey.source === 'dashboard' ? 'border-purple-300 text-purple-700 bg-purple-50' : 'border-blue-300 text-blue-700 bg-blue-50'}`}>
-                                {sessionKey.source === 'dashboard' ? 'Dashboard' : 'Optimizer'}
-                              </span>
-                            )}
+                                {sessionKey.source && (
+                                  <span className={`text-xs px-2 py-1 rounded-full border ${sessionKey.source === 'dashboard' ? 'border-purple-300 text-purple-700 bg-purple-50' : 'border-blue-300 text-blue-700 bg-blue-50'}`}>
+                                    {sessionKey.source === 'dashboard' ? 'Dashboard' : 'Optimizer'}
+                                  </span>
+                                )}
                               </div>
                               <div className="text-sm text-gray-600 space-y-1">
                                 <div>Session Key: <code className="bg-gray-200 px-2 py-1 rounded font-mono text-lg">{sessionKey.sessionKey}</code></div>
@@ -694,16 +761,15 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center space-x-3">
                           <div className={`p-3 rounded-2xl ${user.role === 'admin' ? 'bg-red-100' : 'bg-blue-100'}`}>
-                            {user.role === 'admin' ? 
-                              <Shield className="h-6 w-6 text-red-600" /> : 
+                            {user.role === 'admin' ?
+                              <Shield className="h-6 w-6 text-red-600" /> :
                               <Users className="h-6 w-6 text-blue-600" />
                             }
                           </div>
                           <div>
                             <h4 className="font-semibold text-gray-900">{user.username}</h4>
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              user.role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-                            }`}>
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${user.role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                              }`}>
                               {user.role}
                             </span>
                           </div>
@@ -748,7 +814,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
             {activeTab === 'history' && (
               <div className="space-y-6">
                 <h3 className="text-2xl font-bold text-gray-900">Login Activity Monitor</h3>
-                
+
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="min-w-full">
@@ -773,8 +839,8 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center space-x-3">
                                   <div className={`p-2 rounded-xl ${user?.role === 'admin' ? 'bg-red-100' : 'bg-blue-100'}`}>
-                                    {user?.role === 'admin' ? 
-                                      <Shield className="h-4 w-4 text-red-600" /> : 
+                                    {user?.role === 'admin' ?
+                                      <Shield className="h-4 w-4 text-red-600" /> :
                                       <Users className="h-4 w-4 text-blue-600" />
                                     }
                                   </div>
@@ -823,7 +889,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
             {activeTab === 'Admin' && (
               <div className="space-y-6">
                 <h3 className="text-2xl font-bold text-gray-900">Operations Management Dashboard</h3>
-                
+
                 <div className='flex flex-wrap gap-1'>
                   <RegisterOPS />
                   <AddignUser />
@@ -851,32 +917,119 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                 </div>
 
                 <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
-                      <FileText className="h-5 w-5 text-purple-600" />
-                      <span>Resume Assignment</span>
-                    </h4>
-                  </div>
-                  <p className="text-gray-600 mb-4">
-                    Assign resumes to users. Each user can have only one assigned resume. 
-                    If a user already has a resume assigned, you can replace it with a new one.
-                  </p>
-                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
-                    <div className="flex items-start space-x-4">
-                      <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl">
-                        <FileText className="h-6 w-6 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <h5 className="font-semibold text-gray-900 mb-2">How to Assign a Resume</h5>
-                        <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
-                          <li>Click the "Assign Resume" button above</li>
-                          <li>Select a user from the dropdown</li>
-                          <li>Select a resume to assign</li>
-                          <li>If the user already has a resume, confirm the replacement</li>
-                          <li>The resume will be automatically loaded when the user opens the Resume Optimizer</li>
-                        </ol>
-                      </div>
-                    </div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                    <FileText className="h-5 w-5 text-purple-600" />
+                    <span>Assigned Resumes</span>
+                  </h4>
+
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                      <thead className="bg-gray-50/50">
+                        <tr>
+                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Resume</th>
+                          <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users.map((user) => {
+                          // Use verified assignment if available, fallback to user.assignedResumeId
+                          const verifiedResumeId = verifiedAssignments[user.email];
+                          // If verifiedAssignments has an entry (even if null/undefined explicitly), use it? 
+                          // Actually logic: verifiedAssignments is populated with found IDs.
+                          // If verifiedAssignments[user.email] exists, use it.
+                          // If not, use user.assignedResumeId (legacy/fallback)
+                          // But if API returns nothing, verifiedAssignments won't have the key.
+                          const effectiveResumeId = verifiedResumeId || user.assignedResumeId;
+
+                          const assignedResume = effectiveResumeId
+                            ? resumes.find((r) => r._id === effectiveResumeId)
+                            : null;
+
+                          return (
+                            <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-200 border-b border-gray-100 last:border-0">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="h-10 w-10 flex-shrink-0">
+                                    <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-100 to-indigo-100 text-blue-600 flex items-center justify-center font-bold text-lg shadow-inner">
+                                      {(user.username || user.email).charAt(0).toUpperCase()}
+                                    </div>
+                                  </div>
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900">{user.username || 'No Name'}</div>
+                                    <div className="text-sm text-gray-500">{user.email}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {assignedResume ? (
+                                  <div className="flex items-center space-x-2">
+                                    <FileText className="h-4 w-4 text-blue-500" />
+                                    <span className="text-sm text-gray-900 font-medium">
+                                      {assignedResume.firstName && assignedResume.lastName
+                                        ? `${assignedResume.firstName} ${assignedResume.lastName}`
+                                        : assignedResume.name || "Untitled Resume"}
+                                    </span>
+                                    <span className="text-xs text-gray-400">({effectiveResumeId})</span>
+                                  </div>
+                                ) : (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    No resume assigned
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div className="flex items-center justify-end space-x-2">
+                                  <button
+                                    onClick={() => {
+                                      // Open modal to assign/change resume
+                                      setShowAssignResumeModal(true);
+                                    }}
+                                    className={`px-3 py-1 rounded-lg transition-colors ${assignedResume
+                                        ? "text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100"
+                                        : "text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100"
+                                      }`}
+                                  >
+                                    {assignedResume ? "Change" : "Assign"}
+                                  </button>
+                                  {effectiveResumeId && (
+                                    <button
+                                      onClick={async () => {
+                                        if (confirm(`Are you sure you want to remove the assigned resume for ${user.username}?`)) {
+                                          try {
+                                            const response = await authFetch(API_OPTIMIZER, '/admin/unassign-resume', {
+                                              method: 'POST',
+                                              body: JSON.stringify({ userEmail: user.email })
+                                            });
+                                            if (response.ok) {
+                                              // Update local verify state to remove assignment immediately
+                                              const newAssignments = { ...verifiedAssignments };
+                                              delete newAssignments[user.email];
+                                              setVerifiedAssignments(newAssignments);
+
+                                              loadUsers(); // Refresh list to update UI from backend too
+                                              alert('Resume unassigned successfully');
+                                            } else {
+                                              alert('Failed to unassign resume');
+                                            }
+                                          } catch (e) {
+                                            console.error(e);
+                                            alert('Error removing assignment');
+                                          }
+                                        }
+                                      }}
+                                      className="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded-lg hover:bg-red-100 transition-colors"
+                                    >
+                                      Remove
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -904,7 +1057,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                   <span>Generate Session Key</span>
                 </h3>
               </div>
-              
+
               <form onSubmit={(e) => { e.preventDefault(); handleGenerateSessionKey(); }} className="p-6 space-y-6">
                 <div className="space-y-4">
                   <div>
@@ -982,7 +1135,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                   <span>Add New User</span>
                 </h3>
               </div>
-              
+
               <form onSubmit={handleAddUser} className="p-6 space-y-6">
                 <div className="space-y-4">
                   <div>
