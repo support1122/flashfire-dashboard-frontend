@@ -705,6 +705,9 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             setShowScaleModal(false);
             setIsGeneratingPDF(false);
             toastUtils.success("✅ PDF downloaded successfully!");
+            if (onDownloadClick) {
+                onDownloadClick();
+            }
         } catch (error: any) {
             console.error("Error generating PDF:", error);
             setIsGeneratingPDF(false);

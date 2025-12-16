@@ -304,6 +304,43 @@ export default function JobModal({
         return saved ? parseFloat(saved) : 1.0;
     });
 
+
+    const handleDownloadClick = async () => {
+        if (role !== 'operator' && role !== 'operations') {
+            return; // Don't track downloads for non-operation users
+        }
+
+        try {
+            const mongoId = jobDetails._id;
+            const jobId = jobDetails.jobID;
+            const idToUse = mongoId || jobId;
+
+            if (!idToUse) {
+                console.error('No ID found in job details:', jobDetails);
+                return;
+            }
+
+            await fetch(`${API_BASE}/downloaded`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: idToUse }),
+            });
+
+            if (setUserJobs) {
+                setUserJobs((prev) =>
+                    prev.map(j =>
+                        ((j._id === idToUse || j.jobID === idToUse)) ? { ...j, downloaded: true } : j
+                    )
+                );
+            }
+        } catch (error) {
+            console.error("Failed to track download:", error);
+        }
+    };
+
+    const showOpsDownloadIndicator =
+        (role === 'operator' || role === 'operations') && !jobDetails.downloaded;
+
     // NEW: Blocking state for optimization
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [optimizationError, setOptimizationError] = useState<string | null>(null);
@@ -1333,6 +1370,7 @@ export default function JobModal({
                                             changedFields={new Set()}
                                             showPrintButtons={role === "operations"}
                                             sectionOrder={resumeData.sectionOrder}
+                                            onDownloadClick={handleDownloadClick}
                                         />
                                     )}
 
@@ -1346,6 +1384,7 @@ export default function JobModal({
                                             changedFields={new Set()}
                                             showPrintButtons={role === "operations"}
                                             sectionOrder={resumeData.sectionOrder}
+                                            onDownloadClick={handleDownloadClick}
                                         />
                                     )}
 
@@ -1358,6 +1397,7 @@ export default function JobModal({
                                             showPublications={resumeData.showPublications}
                                             showPrintButtons={role === "operations"}
                                             sectionOrder={resumeData.sectionOrder}
+                                            onDownloadClick={handleDownloadClick}
                                         />
                                     )}
                                 </div>
@@ -1952,7 +1992,11 @@ export default function JobModal({
                                     📄 FlashFire Jobs
                                 </h1>
                                 <p className="text-orange-100 text-sm">
-                                    {jobDetails.jobTitle} at{" "}
+                                    {jobDetails.jobTitle}
+                                    <span style={{
+                                        color: (role === 'operator' || role === 'operations') && !jobDetails.downloaded ? '#d1d5db' : 'inherit',
+                                        fontWeight: (role === 'operator' || role === 'operations') && !jobDetails.downloaded ? 'bold' : 'normal'
+                                    }}> at </span>
                                     {jobDetails.companyName}
                                 </p>
                             </div>
@@ -2065,6 +2109,11 @@ export default function JobModal({
                                 }}
                                 disabled={isOptimizing}
                                 className={`p-2 rounded-full transition-colors ${isOptimizing ? 'cursor-not-allowed opacity-50 bg-gray-400' : 'hover:bg-white hover:bg-opacity-20'}`}
+                                style={{
+                                    backgroundColor: showOpsDownloadIndicator ? 'rgba(255,255,255,0.12)' : undefined,
+                                    border: showOpsDownloadIndicator ? '1px solid rgba(255,255,255,0.18)' : undefined,
+                                    boxShadow: showOpsDownloadIndicator ? '0 0 0 1px rgba(0,0,0,0.08)' : undefined,
+                                }}
                             >
                                 <X className="w-6 h-6" />
                             </button>
@@ -2411,6 +2460,7 @@ export default function JobModal({
                                         showPublications={optimizedResumeMetadata.showPublications}
                                         showPrintButtons={role === "operations"}
                                         sectionOrder={optimizedResumeMetadata.sectionOrder}
+                                        onDownloadClick={handleDownloadClick}
                                     />
                                 ) : (
                                     <ResumePreview
@@ -2423,6 +2473,7 @@ export default function JobModal({
                                         changedFields={new Set()}
                                         showPrintButtons={role === "operations"}
                                         sectionOrder={optimizedResumeMetadata.sectionOrder}
+                                        onDownloadClick={handleDownloadClick}
                                     />
                                 )}
                             </div>

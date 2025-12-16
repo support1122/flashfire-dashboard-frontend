@@ -72,6 +72,7 @@ interface ResumePreviewProps {
     showPublications?: boolean;
     showPrintButtons?: boolean;
     sectionOrder?: string[]; // Add section order prop
+    onDownloadClick?: () => void;
 }
 
 export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
@@ -82,6 +83,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     showSummary = true,
     showPrintButtons = true,
     sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education", "publications"],
+    onDownloadClick,
 }) => {
     // Load last selected scale from localStorage
     const getLastSelectedScale = () => {
@@ -786,6 +788,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 window.URL.revokeObjectURL(pdfUrl);
 
                 toastUtils.success("✅ PDF downloaded successfully!");
+                if (onDownloadClick) onDownloadClick();
                 return;
             }
 
@@ -854,6 +857,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 setPreviewPdfBlob(null);
             }
             toastUtils.success("✅ PDF downloaded successfully!");
+            if (onDownloadClick) onDownloadClick(); // Added this line
         } catch (error: any) {
             console.error("Error generating PDF:", error);
             setIsPrinting(false);
