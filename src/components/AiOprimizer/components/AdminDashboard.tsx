@@ -14,6 +14,7 @@ import AssignResumeModal from '../../Admin/AssignResumeModal';
 interface User {
   id: string;
   username: string;
+  name?: string;
   email: string;
   role: string;
   created: string;
@@ -78,6 +79,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
   const [showAddUser, setShowAddUser] = useState(false);
   const [showGenerateSessionKey, setShowGenerateSessionKey] = useState(false);
   const [showAssignResumeModal, setShowAssignResumeModal] = useState(false);
+  const [assignModalUserEmail, setAssignModalUserEmail] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
 
@@ -95,7 +97,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
   });
 
   const API_OPTIMIZER = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? import.meta.env.VITE_DEV_API_URL || 'http://localhost:8001' : '');
-  const API_DASHBOARD = import.meta.env.VITE_API_BASE_URL || '';
+  const API_DASHBOARD = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8086' : '');
 
   const authFetch = (base: string, url: string, options: RequestInit = {}) => {
     const headers: Record<string, string> = options.headers ? { ...options.headers as Record<string, string> } : {};
@@ -138,15 +140,23 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
   const loadUsers = async () => {
     try {
       // Use the list endpoint which includes assignedResumeId
-      const response = await authFetch(API_OPTIMIZER, '/admin/list/users');
+      const response = await authFetch(API_DASHBOARD, '/admin/list/users');
       if (response.ok) {
         const data = await response.json();
-        const userList = data.users || [];
+        const rawList = data.users || [];
+        const userList: User[] = rawList.map((u: any) => ({
+          ...u,
+          // normalize
+          username: u.username || u.name || u.email || '',
+          name: u.name || u.username || u.email || '',
+          role: u.role || 'user',
+          created: u.created || u.createdAt || new Date().toISOString(),
+        }));
 
         // Sort alphabetically
         userList.sort((a: User, b: User) => {
-          const nameA = (a.username || a.email).toLowerCase();
-          const nameB = (b.username || b.email).toLowerCase();
+          const nameA = (a.name || a.username || a.email).toLowerCase();
+          const nameB = (b.name || b.username || b.email).toLowerCase();
           return nameA.localeCompare(nameB);
         });
 
@@ -908,7 +918,10 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
                   <h3 className="text-2xl font-bold text-gray-900">Resume Management</h3>
                   <button
-                    onClick={() => setShowAssignResumeModal(true)}
+                    onClick={() => {
+                      setAssignModalUserEmail(null);
+                      setShowAssignResumeModal(true);
+                    }}
                     className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2"
                   >
                     <FileText className="h-4 w-4" />
@@ -952,11 +965,11 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                                 <div className="flex items-center">
                                   <div className="h-10 w-10 flex-shrink-0">
                                     <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-100 to-indigo-100 text-blue-600 flex items-center justify-center font-bold text-lg shadow-inner">
-                                      {(user.username || user.email).charAt(0).toUpperCase()}
+                                      {(user.name || user.email).charAt(0).toUpperCase()}
                                     </div>
                                   </div>
                                   <div className="ml-4">
-                                    <div className="text-sm font-medium text-gray-900">{user.username || 'No Name'}</div>
+                                    <div className="text-sm font-medium text-gray-900">{user.name || 'No Name'}</div>
                                     <div className="text-sm text-gray-500">{user.email}</div>
                                   </div>
                                 </div>
@@ -982,22 +995,20 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                                 <div className="flex items-center justify-end space-x-2">
                                   <button
                                     onClick={() => {
-                                      // Open modal to assign/change resume
+                                      // Open modal to assign/change resume for this user
+                                      setAssignModalUserEmail(user.email);
                                       setShowAssignResumeModal(true);
                                     }}
-                                    className={`px-3 py-1 rounded-lg transition-colors ${assignedResume
-                                        ? "text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100"
-                                        : "text-green-600 hover:text-green-900 bg-green-50 hover:bg-green-100"
-                                      }`}
+                                    className="px-3 py-1 rounded-lg transition-colors text-green-700 hover:text-green-900 bg-green-50 hover:bg-green-100"
                                   >
-                                    {assignedResume ? "Change" : "Assign"}
+                                    Assign another
                                   </button>
                                   {effectiveResumeId && (
                                     <button
                                       onClick={async () => {
-                                        if (confirm(`Are you sure you want to remove the assigned resume for ${user.username}?`)) {
+                                        if (confirm(`Are you sure you want to unlink the assigned resume for ${user.name || user.email}?`)) {
                                           try {
-                                            const response = await authFetch(API_OPTIMIZER, '/admin/unassign-resume', {
+                                            const response = await authFetch(API_DASHBOARD, '/admin/unassign-resume', {
                                               method: 'POST',
                                               body: JSON.stringify({ userEmail: user.email })
                                             });
@@ -1008,19 +1019,19 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                                               setVerifiedAssignments(newAssignments);
 
                                               loadUsers(); // Refresh list to update UI from backend too
-                                              alert('Resume unassigned successfully');
+                                              alert('Resume unlinked successfully');
                                             } else {
-                                              alert('Failed to unassign resume');
+                                              alert('Failed to unlink resume');
                                             }
                                           } catch (e) {
                                             console.error(e);
-                                            alert('Error removing assignment');
+                                            alert('Error unlinking resume');
                                           }
                                         }
                                       }}
                                       className="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded-lg hover:bg-red-100 transition-colors"
                                     >
-                                      Remove
+                                      Unlink
                                     </button>
                                   )}
                                 </div>
@@ -1044,7 +1055,9 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
           onAssignSuccess={() => {
             setShowAssignResumeModal(false);
             // Optionally refresh data or show success message
+            loadUsers();
           }}
+          defaultUserEmail={assignModalUserEmail}
         />
 
         {/* Generate Session Key Modal */}
