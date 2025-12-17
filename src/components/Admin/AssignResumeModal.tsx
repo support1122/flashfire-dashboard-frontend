@@ -6,9 +6,10 @@ interface AssignResumeModalProps {
     open: boolean;
     onClose: () => void;
     onAssignSuccess: () => void;
+    defaultUserEmail?: string | null;
 }
 
-export default function AssignResumeModal({ open, onClose, onAssignSuccess }: AssignResumeModalProps) {
+export default function AssignResumeModal({ open, onClose, onAssignSuccess, defaultUserEmail }: AssignResumeModalProps) {
     const [users, setUsers] = useState<any[]>([]);
     const [resumes, setResumes] = useState<any[]>([]);
     const [selectedUserEmail, setSelectedUserEmail] = useState<string>("");
@@ -27,6 +28,13 @@ export default function AssignResumeModal({ open, onClose, onAssignSuccess }: As
             fetchResumes();
         }
     }, [open]);
+
+    useEffect(() => {
+        if (!open) return;
+        if (!defaultUserEmail) return;
+        setSelectedUserEmail(defaultUserEmail);
+        checkExistingResume(defaultUserEmail);
+    }, [open, defaultUserEmail]);
 
     const fetchUsers = async () => {
         try {
@@ -207,6 +215,7 @@ export default function AssignResumeModal({ open, onClose, onAssignSuccess }: As
                             <select
                                 value={selectedUserEmail}
                                 onChange={handleUserChange}
+                                disabled={!!defaultUserEmail}
                                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 <option value="">-- Select a user --</option>
