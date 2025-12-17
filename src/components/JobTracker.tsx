@@ -227,6 +227,18 @@ const JobTracker = () => {
     };
 
 
+    const getJobSortTimeForStatus = (job: Job, status: JobStatus): number => {
+        if (status === "applied") {
+            const appliedTime = parseJobDate(job.appliedDate ?? undefined);
+            if (appliedTime > 0) return appliedTime;
+            const maybeAttachmentTime = parseJobDate((job as any)?.attachmentsAttachedAt ?? (job as any)?.attachmentsAttachedAtDate ?? (job as any)?.attachedAt);
+            if (maybeAttachmentTime > 0) return maybeAttachmentTime;
+        }
+
+        return getJobCreationTime(job);
+    };
+
+
     useEffect(() => {
         if (!showJobModal) setPendingMove(null);
     }, [showJobModal]);
@@ -737,11 +749,10 @@ const JobTracker = () => {
                                     return titleMatch || companyMatch;
                                 })
                                 .sort((a, b) => {
-                                    // Sort strictly by creation time (when job was added),
-                                    // newest first, so "Added now" appears at the top,
-                                    // "Added 1 day ago" appears above "Added 2 days ago", etc.
-                                    const timeA = getJobCreationTime(a);
-                                    const timeB = getJobCreationTime(b);
+                                    // Default: sort by when the job was added (dateAdded/createdAt).
+                                    // Applied column: prefer appliedDate (when user applied / attached).
+                                    const timeA = getJobSortTimeForStatus(a, status);
+                                    const timeB = getJobSortTimeForStatus(b, status);
 
                                     // Handle unparseable dates (0): put them at the bottom
                                     if (timeA === 0 && timeB === 0) return 0; // Both unparseable, maintain order
