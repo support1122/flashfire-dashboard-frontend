@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useContext } from "react";
+import React, { useMemo, useState, useContext, useEffect } from "react";
 import { Pencil, Save, X, ArrowLeft, Copy, Check } from "lucide-react";
 import { useUserProfile, UserProfile } from "../state_management/ProfileContext";
 import { UserContext } from "../state_management/UserContext";
@@ -135,7 +135,7 @@ function FileUploadRow({
         try {
             setUploading(true);
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
-            
+
             // Get token and email from localStorage
             const userAuth = JSON.parse(localStorage.getItem('userAuth') || '{}');
             const token = userAuth.token;
@@ -165,7 +165,7 @@ function FileUploadRow({
 
             const data = await response.json();
             const fileUrl = data.secure_url || data.url;
-            
+
             if (fileUrl) {
                 onFileChange(fileUrl);
                 toastUtils.success(`${title} uploaded successfully!`);
@@ -289,6 +289,31 @@ export default function ProfilePage() {
     const [editData, setEditData] = useState<Partial<UserProfile>>({});
     const ctx = useContext(UserContext);
 
+    useEffect(() => {
+        const fetchLatestProfile = async () => {
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
+            if (!ctx?.userDetails?.email || !ctx?.token) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/get-profile?email=${ctx.userDetails.email}`, {
+                    headers: {
+                        'Authorization': `Bearer ${ctx.token}`
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.userProfile) {
+                        updateProfile(data.userProfile);
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch latest profile", error);
+            }
+        };
+
+        fetchLatestProfile();
+    }, []);
+
     const data = userProfile ?? ({} as UserProfile);
 
     const handleEditClick = (section: string) => {
@@ -391,7 +416,7 @@ export default function ProfilePage() {
                 {/* Personal */}
                 <Card
                     title="Personal Details"
-                    onEdit={() => handleEditClick("personal")}
+                    onEdit={ctx?.userDetails?.role === 'operations' ? () => handleEditClick("personal") : undefined}
                     isEditing={editingSection === "personal"}
                     onSave={handleSave}
                     onCancel={handleCancel}
@@ -438,12 +463,19 @@ export default function ProfilePage() {
                         isEditing={editingSection === "personal"}
                         onValueChange={(v) => setEditData({ ...editData, otherVisaType: v })}
                     />}
+                    {ctx?.userDetails?.role === 'operations' && (
+                        <InfoRow
+                            title="Removed by users"
+                            value={String(userProfile?.removedJobsCount || 0)}
+                            isEditing={false} // Always read-only
+                        />
+                    )}
                 </Card>
 
                 {/* Educations */}
                 <Card
                     title="Education"
-                    onEdit={() => handleEditClick("education")}
+                    onEdit={ctx?.userDetails?.role === 'operations' ? () => handleEditClick("education") : undefined}
                     isEditing={editingSection === "education"}
                     onSave={handleSave}
                     onCancel={handleCancel}
@@ -517,7 +549,7 @@ export default function ProfilePage() {
                 {/* Professional */}
                 <Card
                     title="Professional"
-                    onEdit={() => handleEditClick("professional")}
+                    onEdit={ctx?.userDetails?.role === 'operations' ? () => handleEditClick("professional") : undefined}
                     isEditing={editingSection === "professional"}
                     onSave={handleSave}
                     onCancel={handleCancel}
@@ -599,7 +631,7 @@ export default function ProfilePage() {
                 {/* Links & Documents */}
                 <Card
                     title="Links & Documents"
-                    onEdit={() => handleEditClick("links")}
+                    onEdit={ctx?.userDetails?.role === 'operations' ? () => handleEditClick("links") : undefined}
                     isEditing={editingSection === "links"}
                     onSave={handleSave}
                     onCancel={handleCancel}
@@ -655,7 +687,7 @@ export default function ProfilePage() {
                 {/* Terms & Accuracy */}
                 <Card
                     title="Terms & Accuracy"
-                    onEdit={() => handleEditClick("compliance")}
+                    onEdit={ctx?.userDetails?.role === 'operations' ? () => handleEditClick("compliance") : undefined}
                     isEditing={editingSection === "compliance"}
                     onSave={handleSave}
                     onCancel={handleCancel}

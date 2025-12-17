@@ -33,7 +33,11 @@ export default function AssignResumeModal({ open, onClose, onAssignSuccess }: As
             const response = await fetch(`${apiBaseUrl}/admin/list/users`);
             if (response.ok) {
                 const data = await response.json();
-                setUsers(data.users || []);
+                setUsers((data.users || []).sort((a: any, b: any) => {
+                    const nameA = (a.name && a.name.trim() ? a.name : a.email).toLowerCase();
+                    const nameB = (b.name && b.name.trim() ? b.name : b.email).toLowerCase();
+                    return nameA.localeCompare(nameB);
+                }));
             }
         } catch (err) {
             console.error("Error fetching users:", err);
@@ -70,8 +74,14 @@ export default function AssignResumeModal({ open, onClose, onAssignSuccess }: As
                     allResumes.push(...data.map((r: any) => ({ ...r, V: 2 })));
                 }
             }
+            // Sort resumes alphabetically
+            const sortedResumes = allResumes.sort((a, b) => {
+                const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase() || a.name?.toLowerCase() || '';
+                const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase() || b.name?.toLowerCase() || '';
+                return nameA.localeCompare(nameB);
+            });
 
-            setResumes(allResumes);
+            setResumes(sortedResumes);
         } catch (err) {
             console.error("Error fetching resumes:", err);
         }

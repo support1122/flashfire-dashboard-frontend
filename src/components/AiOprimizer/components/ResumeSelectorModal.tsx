@@ -51,21 +51,26 @@ export default function ResumeSelectorModal({
     const deduplicateResumes = (resumes: any[]): any[] => {
         const seen = new Set<string>();
         const deduplicated: any[] = [];
-        
+
         for (const resume of resumes) {
             const firstName = (resume.firstName || '').trim();
             const lastName = (resume.lastName || '').trim();
             const name = `${firstName} ${lastName}`.trim().toLowerCase();
             const version = resume.V !== undefined ? resume.V : 0;
             const key = `${name}_v${version}`;
-            
+
             if (!seen.has(key)) {
                 seen.add(key);
                 deduplicated.push(resume);
             }
         }
-        
-        return deduplicated;
+
+        // Sort alphabetically by name
+        return deduplicated.sort((a, b) => {
+            const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase() || a.name?.toLowerCase() || '';
+            const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase() || b.name?.toLowerCase() || '';
+            return nameA.localeCompare(nameB);
+        });
     };
 
     // Reset state + fetch resumes
@@ -84,24 +89,24 @@ export default function ResumeSelectorModal({
         const fetchResumes = async () => {
             try {
                 const userRole = localStorage.getItem("role") || "";
-                
+
                 // If version is 0 or undefined, fetch ALL resumes from all versions
                 if (version === 0 || version === undefined) {
                     const allResumes: any[] = [];
-                    
+
                     const [resAll, resV1, resV2] = await Promise.all([
-                       fetch(`${apiUrl}/api/resumes/all`, {
+                        fetch(`${apiUrl}/api/resumes/all`, {
                             headers: { "user-role": userRole },
                         }).catch(() => null),
-                         fetch(`${apiUrl}/api/resumes/v1`, {
+                        fetch(`${apiUrl}/api/resumes/v1`, {
                             headers: { "user-role": userRole },
                         }).catch(() => null),
-                         fetch(`${apiUrl}/api/resumes/v2`, {
+                        fetch(`${apiUrl}/api/resumes/v2`, {
                             headers: { "user-role": userRole },
                         }).catch(() => null),
                     ]);
 
-                     if (resAll && resAll.ok) {
+                    if (resAll && resAll.ok) {
                         const data = await resAll.json();
                         if (Array.isArray(data)) {
                             allResumes.push(...data.map((r: any) => ({ ...r, V: r.V || 0 })));
@@ -141,7 +146,7 @@ export default function ResumeSelectorModal({
                         headers: { "user-role": userRole },
                     });
                     const data = await res.json();
-                    
+
                     const deduplicated = deduplicateResumes(Array.isArray(data) ? data : []);
                     setResumes(deduplicated);
                     setFilteredResumes(deduplicated);
@@ -290,7 +295,7 @@ export default function ResumeSelectorModal({
             // Find the resume from the list to get its version (V property)
             const listResume = resumes.find((r) => r._id === selectedResumeId);
             const resumeVersion = listResume?.V !== undefined ? listResume.V : resumeData?.V || 0;
-            
+
             // Add version to resume data if not present
             if (resumeVersion !== undefined && resumeData) {
                 resumeData.V = resumeVersion;
@@ -316,7 +321,7 @@ export default function ResumeSelectorModal({
                 } else {
                     setSectionOrder(defaultOrder);
                 }
-            } catch {}
+            } catch { }
 
             onSelect(resumeData);
             setUnlockModalOpen(false);
@@ -383,8 +388,8 @@ export default function ResumeSelectorModal({
                                                     r.V === 2
                                                         ? "px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-800 border border-red-200"
                                                         : r.V === 1
-                                                        ? "px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-800 border border-orange-200"
-                                                        : "px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800 border border-green-200"
+                                                            ? "px-2 py-0.5 text-xs rounded-full bg-orange-100 text-orange-800 border border-orange-200"
+                                                            : "px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800 border border-green-200"
                                                 }
                                             >
                                                 {r.V === 2 ? "Medical resume" : r.V === 1 ? "V1 resume" : "Normal"}

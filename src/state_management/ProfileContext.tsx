@@ -226,7 +226,6 @@
 
 //   const isProfileComplete = useCallback(() => {
 //     if (!userProfile) return false;
-    
 //     // Check if all required fields are filled (excluding optional file uploads)
 //     const requiredFields = [
 //       'firstName', 'lastName', 'contactNumber', 'dob',
@@ -346,6 +345,7 @@ export interface UserProfile {
   availabilityNote?: string;
   joinTime?: string;
   references?: string;
+  removedJobsCount?: number;
 }
 
 /**
@@ -399,8 +399,8 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
   const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
     if (typeof window === "undefined") return null;
     const userAuth = safeParse(localStorage.getItem(STORAGE_KEY));
-    console.log('ProfileContext initialization:', { 
-      userAuth, 
+    console.log('ProfileContext initialization:', {
+      userAuth,
       userProfile: userAuth?.userProfile,
       localStorageKeys: Object.keys(localStorage),
       userAuthRaw: localStorage.getItem(STORAGE_KEY)
@@ -436,7 +436,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
 
     const payload = apiPayload as any;
 
-     const safeIsoFromDateLike = (value: unknown): string => {
+    const safeIsoFromDateLike = (value: unknown): string => {
       if (!value || typeof value !== "string") return "";
       const trimmed = value.trim();
       if (!trimmed || /^(n\/a|na|none|null|undefined)$/i.test(trimmed)) return "";
@@ -496,6 +496,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       references: payload.references || "",
       dashboardManager: payload.dashboardManager || "",
       dashboardManagerContact: payload.dashboardManagerContact || "",
+      removedJobsCount: payload.removedJobsCount ?? 0,
     };
 
     setProfile(normalized);

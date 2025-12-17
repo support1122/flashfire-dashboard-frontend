@@ -82,7 +82,7 @@ function AccessKeyEditor() {
     const apiUrl = import.meta.env.VITE_API_URL || "https://resume-maker-backend-lf5z.onrender.com";
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8086";
     const isAdmin = typeof window !== 'undefined' && localStorage.getItem("role") === "admin";
-    
+
     // User assignment state
     const [users, setUsers] = useState<{ id: string; name: string; email: string }[]>([]);
     const [selectedUserEmail, setSelectedUserEmail] = useState<string>("");
@@ -124,7 +124,7 @@ function AccessKeyEditor() {
                     }
                 } catch (e) {
                     console.error("Error fetching unlock key:", e);
-                    
+
                 }
             }
         };
@@ -202,7 +202,7 @@ function AccessKeyEditor() {
 
     const handleAssignResume = async (userEmailToAssign?: string) => {
         const emailToAssign = userEmailToAssign || selectedUserEmail;
-        
+
         if (!emailToAssign || !resume_id) {
             return;
         }
@@ -246,7 +246,7 @@ function AccessKeyEditor() {
                 setAssignStatus("success");
                 setAssignMessage(data.message || "Resume assigned successfully!");
                 setSelectedUserEmail("");
-                
+
                 setTimeout(() => {
                     setAssignStatus("idle");
                     setAssignMessage("");
@@ -350,31 +350,35 @@ function AccessKeyEditor() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                         <option value="">Select a user...</option>
-                        {users.map((user) => (
-                            <option key={user.id} value={user.email}>
-                                {user.name && user.name.trim() ? user.name : user.email} {user.name && user.name.trim() ? `(${user.email})` : ''}
-                            </option>
-                        ))}
+                        {[...users]
+                            .sort((a, b) => {
+                                const nameA = a.name && a.name.trim() ? a.name : a.email;
+                                const nameB = b.name && b.name.trim() ? b.name : b.email;
+                                return nameA.localeCompare(nameB);
+                            })
+                            .map((user) => (
+                                <option key={user.id} value={user.email}>
+                                    {user.name && user.name.trim() ? user.name : user.email} {user.name && user.name.trim() ? `(${user.email})` : ''}
+                                </option>
+                            ))}
                     </select>
                     <button
                         onClick={handleAssignClick}
                         disabled={!selectedUserEmail || assignStatus === "loading"}
-                        className={`w-full px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                            !selectedUserEmail || assignStatus === "loading"
+                        className={`w-full px-4 py-2 rounded-md text-sm font-medium transition-colors ${!selectedUserEmail || assignStatus === "loading"
                                 ? "bg-gray-300 text-gray-600 cursor-not-allowed"
                                 : "bg-green-600 text-white hover:bg-green-700"
-                        }`}
+                            }`}
                     >
                         {assignStatus === "loading" ? "Assigning..." : "Assign Resume to User"}
                     </button>
                     {assignMessage && (
-                        <p className={`text-xs mt-1 ${
-                            assignStatus === "success" 
-                                ? "text-green-600" 
+                        <p className={`text-xs mt-1 ${assignStatus === "success"
+                                ? "text-green-600"
                                 : assignStatus === "error"
-                                ? "text-red-600"
-                                : "text-gray-600"
-                        }`}>
+                                    ? "text-red-600"
+                                    : "text-gray-600"
+                            }`}>
                             {assignMessage}
                         </p>
                     )}
@@ -472,7 +476,7 @@ function App() {
     const { jobId } = useParams<{ jobId: string }>();
     const startWithEditor = searchParams.get("view") === "editor";
     const emailFromUrl = searchParams.get("email"); // Extract email from URL
-    
+
     // Check if we're in the optimize route to show print buttons
     const isOptimizeRoute = window.location.pathname.includes('/optimize/');
 
@@ -545,7 +549,7 @@ function App() {
     const [showParseModal, setShowParseModal] = useState(false);
     const [storeHydrated, setStoreHydrated] = useState(false);
     const [isInitializing, setIsInitializing] = useState(true);
-    
+
     // Additional state variables for job details and optimization
     const [companyName, setCompanyName] = useState<string>("");
     const [jobTitle, setJobTitle] = useState<string>("");
@@ -560,7 +564,7 @@ function App() {
     useEffect(() => {
         setCurrentResumeView("editor");
     }, []);
-    let opp 
+    let opp
     // Debug: Log store state on mount
     useEffect(() => {
         console.log("Optimizer component mounted. Store state:", {
@@ -586,7 +590,7 @@ function App() {
                 console.log(
                     "Resume name in localStorage:",
                     parsed.state?.lastSelectedResume?.personalInfo?.name ||
-                        "No name"
+                    "No name"
                 );
             } catch (e) {
                 console.error("Failed to parse localStorage data:", e);
@@ -733,13 +737,13 @@ function App() {
                 "Leadership:",
                 resumeData.checkboxStates.showLeadership
             );
-            
+
             // Handle sectionOrder if it exists
             if (resumeData.sectionOrder && Array.isArray(resumeData.sectionOrder)) {
                 console.log("Found saved sectionOrder:", resumeData.sectionOrder);
                 setSectionOrder(resumeData.sectionOrder);
             }
-            
+
             return;
         }
 
@@ -1032,18 +1036,18 @@ function App() {
     // Load assigned resume when email is present in URL or when user is authenticated
     useEffect(() => {
         const emailToUse = emailFromUrl || (isAuthenticated ? localStorage.getItem("userEmail") : null);
-        
+
         // Only load if email exists, user is authenticated, store is hydrated, and we haven't loaded this email yet
         if (emailToUse && isAuthenticated && storeHydrated && loadedEmailRef.current !== emailToUse) {
             console.log("📧 Loading assigned resume for:", emailToUse);
             loadedEmailRef.current = emailToUse;
-            
+
             const loadAssignedResume = async () => {
                 try {
                     const apiUrl =
                         import.meta.env.VITE_API_URL ||
                         "https://resume-maker-backend-lf5z.onrender.com";
-                    
+
                     const response = await fetch(`${apiUrl}/api/resume-by-email`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -1087,10 +1091,10 @@ function App() {
                     loadedEmailRef.current = null;
                 }
             };
-            
+
             loadAssignedResume();
         }
-        
+
         // Reset the ref when email is cleared
         if (!emailToUse) {
             loadedEmailRef.current = null;
@@ -1153,7 +1157,7 @@ function App() {
             } else {
                 console.log("⚠️ No job description found for this job");
             }
-            
+
             // Set company name and job title
             if (data.companyName) {
                 setCompanyName(data.companyName);
@@ -1202,9 +1206,9 @@ function App() {
             setOptimizedData((prev) =>
                 prev
                     ? {
-                          ...prev,
-                          publications: data,
-                      }
+                        ...prev,
+                        publications: data,
+                    }
                     : null
             );
         }
@@ -1233,7 +1237,7 @@ function App() {
                         import.meta.env.VITE_API_URL ||
                         (import.meta.env.DEV
                             ? import.meta.env.VITE_DEV_API_URL ||
-                              "https://resume-maker-backend-lf5z.onrender.com"
+                            "https://resume-maker-backend-lf5z.onrender.com"
                             : "");
                     const response = await fetch(
                         `${apiUrl}/api/default-resume/${userEmail}`
@@ -1336,9 +1340,9 @@ function App() {
             setOptimizedData((prev) =>
                 prev
                     ? {
-                          ...prev,
-                          summary: value,
-                      }
+                        ...prev,
+                        summary: value,
+                    }
                     : null
             );
         }
@@ -1349,9 +1353,9 @@ function App() {
             setOptimizedData((prev) =>
                 prev
                     ? {
-                          ...prev,
-                          workExperience: data,
-                      }
+                        ...prev,
+                        workExperience: data,
+                    }
                     : null
             );
         }
@@ -1362,9 +1366,9 @@ function App() {
             setOptimizedData((prev) =>
                 prev
                     ? {
-                          ...prev,
-                          projects: data,
-                      }
+                        ...prev,
+                        projects: data,
+                    }
                     : null
             );
         }
@@ -1374,9 +1378,9 @@ function App() {
             setOptimizedData((prev) =>
                 prev
                     ? {
-                          ...prev,
-                          skills: data,
-                      }
+                        ...prev,
+                        skills: data,
+                    }
                     : null
             );
         }
@@ -1386,9 +1390,9 @@ function App() {
             setOptimizedData((prev) =>
                 prev
                     ? {
-                          ...prev,
-                          education: data,
-                      }
+                        ...prev,
+                        education: data,
+                    }
                     : null
             );
         }
@@ -1502,12 +1506,12 @@ function App() {
         // Simple print with instructions
         const shouldPrint = window.confirm(
             `📄 PRINT SETTINGS:\n\n` +
-                `• Filename: ${filename}\n` +
-                `• Set Margins to "None"\n` +
-                `• Disable "Headers and footers"\n` +
-                `• Set Scale to 100%\n` +
-                `• Use "Save as PDF" for best quality\n\n` +
-                `Click OK to print your resume.`
+            `• Filename: ${filename}\n` +
+            `• Set Margins to "None"\n` +
+            `• Disable "Headers and footers"\n` +
+            `• Set Scale to 100%\n` +
+            `• Use "Save as PDF" for best quality\n\n` +
+            `Click OK to print your resume.`
         );
 
         if (shouldPrint) {
@@ -1529,12 +1533,12 @@ function App() {
                         if (resumeHeight > maxSinglePageHeight) {
                             alert(
                                 `📄 PRINT COMPLETED\n\n` +
-                                    `If you got a 2-page PDF instead of 1-page:\n\n` +
-                                    `Next time, in the print dialog:\n` +
-                                    `1. Click on "Pages" dropdown\n` +
-                                    `2. Select "Current" or enter "1"\n` +
-                                    `3. This ensures you get only the first page\n\n` +
-                                    `This helps avoid accidentally downloading multi-page resumes for job applications.`
+                                `If you got a 2-page PDF instead of 1-page:\n\n` +
+                                `Next time, in the print dialog:\n` +
+                                `1. Click on "Pages" dropdown\n` +
+                                `2. Select "Current" or enter "1"\n` +
+                                `3. This ensures you get only the first page\n\n` +
+                                `This helps avoid accidentally downloading multi-page resumes for job applications.`
                             );
                         }
                     }
@@ -1640,12 +1644,12 @@ function App() {
             setOptimizedData((prev) =>
                 prev
                     ? {
-                          ...prev,
-                          personalInfo: {
-                              ...prev.personalInfo,
-                              [field]: value,
-                          },
-                      }
+                        ...prev,
+                        personalInfo: {
+                            ...prev.personalInfo,
+                            [field]: value,
+                        },
+                    }
                     : null
             );
         }
@@ -1656,9 +1660,9 @@ function App() {
             setOptimizedData((prev) =>
                 prev
                     ? {
-                          ...prev,
-                          leadership: data,
-                      }
+                        ...prev,
+                        leadership: data,
+                    }
                     : null
             );
         }
@@ -1680,10 +1684,10 @@ function App() {
                 ).filter(
                     (key) =>
                         originalData.personalInfo[
-                            key as keyof typeof originalData.personalInfo
+                        key as keyof typeof originalData.personalInfo
                         ] !==
                         optimizedData.personalInfo[
-                            key as keyof typeof optimizedData.personalInfo
+                        key as keyof typeof optimizedData.personalInfo
                         ]
                 );
 
@@ -1952,15 +1956,15 @@ function App() {
                         showProjects: showProjects,
                         showLeadership: showLeadership,
                         showPublications: showPublications,
-                            version: versionV,
-                            sectionOrder: sectionOrder
+                        version: versionV,
+                        sectionOrder: sectionOrder
                     }
                 }),
             });
 
             if (response.ok) {
                 console.log("Changes auto-saved successfully, now refreshing job data...");
-                
+
                 // After saving successfully, refresh the job from backend
                 if (jobId && refreshJobByMongoId) {
                     try {
@@ -2030,7 +2034,7 @@ function App() {
                 // Store optimized data temporarily and show comparison view
                 const newOptimizedData = {
                     ...resumeData,
-                    
+
                     summary: showSummary
                         ? optimizedDataResult.summary || resumeData.summary
                         : resumeData.summary,
@@ -2052,18 +2056,18 @@ function App() {
 
                 setOptimizedData(newOptimizedData);
                 setCurrentResumeView("optimized"); // Automatically switch to optimized view
-                
+
                 // Update job in session storage to reflect changes immediately
                 if (jobId) {
-                    updateJob(jobId, { 
+                    updateJob(jobId, {
                         updatedAt: new Date().toISOString()
                     });
                     console.log("Updated job in session storage to trigger re-render");
                 }
-                
-                
+
+
                 const saveSuccess = await autoSaveChangesToDashboard(resumeData, newOptimizedData);
-                
+
                 if (saveSuccess) {
                     alert(
                         'AI optimization complete and changes saved to dashboard! Check the "Optimized Resume" tab to see and edit the enhanced content.'
@@ -2077,12 +2081,12 @@ function App() {
                 alert(
                     "AI optimization failed. Please try again or edit your resume content manually."
                 );
-                
+
             }
         } catch (error) {
             console.error("Error optimizing resume:", error);
             alert("Error optimizing resume: " + error);
-            
+
         } finally {
             setIsOptimizing(false);
         }
@@ -2191,11 +2195,10 @@ function App() {
                                             onClick={() =>
                                                 setShowChanges(!showChanges)
                                             }
-                                            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                                                showChanges
+                                            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${showChanges
                                                     ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
                                                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                            }`}
+                                                }`}
                                         >
                                             {showChanges
                                                 ? " Hide Changes"
@@ -2260,20 +2263,20 @@ function App() {
                                             if (userRole === "admin") {
                                                 checkAdminAndUnlock();
                                             }
-                                            
+
                                             console.log("Resume V field:", resume.V);
                                             if (resume.V !== undefined) {
                                                 setVersion(resume.V);
                                                 console.log("Set versionV to:", resume.V);
                                             }
-                                            
+
                                             // Update resume ID in store if available
                                             const resumeIdToUse = resume.resumeId || (resume as any)._id;
                                             if (resumeIdToUse) {
                                                 setResumeId(resumeIdToUse);
                                                 setLastSelectedResume(resume, resumeIdToUse);
                                             }
-                                            
+
                                             setCurrentResumeView("editor");
 
                                             // setModalVersion(null);
@@ -2287,11 +2290,10 @@ function App() {
                                             setCurrentResumeView("editor");
                                             setShowChanges(false);
                                         }}
-                                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                                            currentResumeView === "editor"
+                                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${currentResumeView === "editor"
                                                 ? "bg-blue-600 text-white"
                                                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                        }`}
+                                            }`}
                                     >
                                         Resume Editor
                                     </button>
@@ -2306,12 +2308,11 @@ function App() {
                                             if (!optimizedData)
                                                 setShowChanges(false);
                                         }}
-                                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                                            currentResumeView === "optimized" ||
-                                            currentResumeView === "changes"
+                                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${currentResumeView === "optimized" ||
+                                                currentResumeView === "changes"
                                                 ? "bg-blue-600 text-white"
                                                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                        }`}
+                                            }`}
                                     >
                                         {optimizedData
                                             ? "Optimized Resume"
@@ -2447,11 +2448,10 @@ function App() {
 
                                     <button
                                         onClick={handleSave}
-                                        className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-colors font-medium ${
-                                            isSaved
+                                        className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-colors font-medium ${isSaved
                                                 ? "bg-green-600 text-white"
                                                 : "bg-blue-600 text-white hover:bg-blue-700"
-                                        }`}
+                                            }`}
                                     >
                                         {isSaved ? (
                                             <Check size={18} />
@@ -2537,7 +2537,7 @@ function App() {
                                         onClick={() => {
                                             // Warning modal completely disabled - always proceed to optimization
                                             setShowOptimizeConfirmation(true);
-                                            
+
                                             // COMMENTED OUT: Resume mismatch warning modal
                                             // if (assignedResumeId && typeof assignedResumeId === 'string' && assignedResumeId.trim() !== '') {
                                             //     const currentResumeId = resume_id || lastSelectedResumeId;
@@ -2551,12 +2551,11 @@ function App() {
                                             isOptimizing ||
                                             !jobDescription.trim()
                                         }
-                                        className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-colors font-medium ${
-                                            isOptimizing ||
-                                            !jobDescription.trim()
+                                        className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-colors font-medium ${isOptimizing ||
+                                                !jobDescription.trim()
                                                 ? "bg-gray-400 text-white cursor-not-allowed"
                                                 : "bg-purple-600 text-white hover:bg-purple-700"
-                                        }`}
+                                            }`}
                                     >
                                         {isOptimizing ? (
                                             <>
@@ -2580,7 +2579,7 @@ function App() {
                                                         d="M13 10V3L4 14h7v7l9-11h-7z"
                                                     />
                                                 </svg>
-                                                Optimize 
+                                                Optimize
                                             </>
                                         )}
                                     </button>
@@ -2590,7 +2589,7 @@ function App() {
                                             optimization
                                         </p>
                                     )}
-                                    
+
                                     {/* Job Details Display */}
                                     {jobTitle && companyName && (
                                         <div className="mt-4 p-3 bg-gray-50 rounded-md text-center">
@@ -3173,7 +3172,7 @@ function App() {
                     )}
                 </div>
             </div>
-            
+
             {/* Optimize Confirmation Dialog */}
             {showOptimizeConfirmation && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -3207,7 +3206,7 @@ function App() {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             {/* Job Description Preview */}
                             {jobDescription && (
                                 <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -3217,7 +3216,7 @@ function App() {
                                     </p>
                                 </div>
                             )}
-                            
+
                             <p className="text-sm text-gray-500 text-center mt-4">
                                 Please verify the name, role, and company name are correct before proceeding
                             </p>

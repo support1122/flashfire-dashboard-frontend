@@ -2,6 +2,8 @@ import React, {useState, useEffect} from 'react';
 import { Calendar } from 'lucide-react';
 import { Job } from '../types';
 import { getTimeAgo } from '../utils/getTimeAgo';
+import { useDownloadHighlightStore } from '../state_management/DownloadHighlightStore.ts';
+import { useOperationsStore } from '../state_management/Operations.ts';
 interface JobCardProps {
   job: Job;
   onDragStart: (e: React.DragEvent, job: Job) => void;
@@ -22,6 +24,9 @@ const JobCard: React.FC<JobCardProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const { isHighlighting } = useDownloadHighlightStore();
+  const { role } = useOperationsStore();
+  
   const handleClick = () => {
     setShowJobModal(true);
     setSelectedJob(job);
@@ -29,6 +34,9 @@ const JobCard: React.FC<JobCardProps> = ({
   const getCompanyDomain = (companyName: string) => {
     return companyName.replace(/\s+/g, '').toLowerCase();
   };
+  const shouldHighlight = isHighlighting && 
+    (role === "operator" || role === "operations") && 
+    !job.downloaded;
   const sanitizeCompanyDomain = (name) => {
   if (!name) return "example.com";
 
@@ -50,7 +58,11 @@ const JobCard: React.FC<JobCardProps> = ({
       draggable
       onDragStart={(e) => onDragStart(e, job)}
       onDragEnd={onDragEnd}
-      className="bg-white rounded-lg border w-full border-gray-200 p-2 shadow-sm hover:shadow-md transition-all duration-200 cursor-move hover:scale-[1.02] hover:-rotate-1"
+      className={`rounded-lg border w-full border-gray-200 p-2 shadow-sm hover:shadow-md transition-all duration-200 cursor-move hover:scale-[1.02] hover:-rotate-1 ${
+        shouldHighlight 
+          ? "bg-red-100 border-red-300" 
+          : "bg-white"
+      }`}
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
