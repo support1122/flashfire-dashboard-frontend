@@ -641,6 +641,9 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 window.URL.revokeObjectURL(pdfUrl);
 
                 toastUtils.success("✅ PDF downloaded successfully!");
+                if (onDownloadClick) {
+                    onDownloadClick();
+                }
                 return;
             }
 

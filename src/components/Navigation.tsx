@@ -17,6 +17,7 @@ import {
 import { UserContext } from "../state_management/UserContext.tsx";
 import { useUserProfile } from "../state_management/ProfileContext.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
+import { useDownloadHighlightStore } from "../state_management/DownloadHighlightStore.ts";
 import { toastUtils, toastMessages } from "../utils/toast.ts";
 
 interface NavigationProps {
@@ -42,6 +43,10 @@ const Navigation: React.FC<NavigationProps> = ({
   const [user, setUser] = useState(userDetails?.name || "");
   const [profileDropDown, setProfileDropDown] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showRemovedJobsModal, setShowRemovedJobsModal] = useState(false);
+  const [removedJobsCount, setRemovedJobsCount] = useState<number | null>(null);
+  const [removedJobsLoading, setRemovedJobsLoading] = useState(false);
+  const [removedJobsError, setRemovedJobsError] = useState<string | null>(null);
 
   // Refs
   const desktopDropdownRef = useRef<HTMLDivElement>(null);   // desktop profile dropdown area
@@ -50,7 +55,81 @@ const Navigation: React.FC<NavigationProps> = ({
 
   const { userProfile } = useUserProfile();
   const { role } = useOperationsStore();
+  const { triggerHighlight } = useDownloadHighlightStore();
   const hasProfile = !!userProfile?.email;
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTargetRef = useRef<string | null>(null);
+
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+
+  const openRemovedJobsModal = async () => {
+    if (role !== "operations") return;
+
+    const email = userDetails?.email;
+    if (!email || !API_BASE) {
+      setRemovedJobsError("User email or API URL not available.");
+      setRemovedJobsCount(null);
+      setShowRemovedJobsModal(true);
+      return;
+    }
+
+    setShowRemovedJobsModal(true);
+    setRemovedJobsLoading(true);
+    setRemovedJobsError(null);
+    setRemovedJobsCount(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/get-removed-jobs-count`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.message || `Request failed (${res.status})`);
+      }
+
+      setRemovedJobsCount(Number(data?.removedJobsCount ?? 0));
+    } catch (e: any) {
+      setRemovedJobsError(e?.message || "Failed to load removed jobs count.");
+    } finally {
+      setRemovedJobsLoading(false);
+    }
+  };
+  
+  const handleLongPressStart = (tabId: string) => {
+    if (tabId === "jobs" && (role === "operator" || role === "operations")) {
+      longPressTargetRef.current = tabId;
+      longPressTimerRef.current = setTimeout(() => {
+        triggerHighlight();
+        longPressTargetRef.current = null;
+      }, 1500);
+    }
+    if (tabId === "optimizer" && role === "operations") {
+      longPressTargetRef.current = tabId;
+      longPressTimerRef.current = setTimeout(() => {
+        openRemovedJobsModal();
+        longPressTargetRef.current = null;
+      }, 1500);
+    }
+  };
+  
+  const handleLongPressEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressTargetRef.current = null;
+  };
+  
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+    };
+  }, []);
 
   const tabs: TabItem[] = [
     { id: "dashboard", label: "Dashboard", icon: Home },
@@ -128,6 +207,61 @@ const Navigation: React.FC<NavigationProps> = ({
 
   return (
     <nav className="bg-card border-b border-border sticky top-0 z-50 backdrop-blur-sm bg-card/95">
+      {/* Operations-only: long-press Documents modal */}
+      {showRemovedJobsModal && role === "operations" && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowRemovedJobsModal(false);
+          }}
+        >
+          <div className="w-full max-w-md rounded-xl bg-white shadow-xl border border-gray-200 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div className="font-semibold text-gray-900">Removed Jobs</div>
+              <button
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                onClick={() => setShowRemovedJobsModal(false)}
+                aria-label="Close"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            <div className="px-5 py-4">
+              <div className="text-sm text-gray-600 mb-3">
+                {userDetails?.email ? (
+                  <span>
+                    User: <span className="font-medium text-gray-900">{userDetails.email}</span>
+                  </span>
+                ) : (
+                  <span>User: <span className="font-medium text-gray-900">Unknown</span></span>
+                )}
+              </div>
+
+              {removedJobsLoading ? (
+                <div className="text-sm text-gray-700">Loading…</div>
+              ) : removedJobsError ? (
+                <div className="text-sm text-red-600">{removedJobsError}</div>
+              ) : (
+                <div className="text-sm text-gray-800">
+                  User removed{" "}
+                  <span className="font-bold text-gray-900">
+                    {removedJobsCount ?? 0}
+                  </span>{" "}
+                  jobs.
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-gray-100 flex justify-end">
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+                onClick={() => setShowRemovedJobsModal(false)}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -149,7 +283,14 @@ const Navigation: React.FC<NavigationProps> = ({
               <Link
                 key={id}
                 to="/"
-                onClick={() => onTabChange(id)}
+                onClick={() => {
+                  onTabChange(id);
+                }}
+                onMouseDown={() => handleLongPressStart(id)}
+                onMouseUp={handleLongPressEnd}
+                onMouseLeave={handleLongPressEnd}
+                onTouchStart={() => handleLongPressStart(id)}
+                onTouchEnd={handleLongPressEnd}
                 className={`relative flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 overflow-hidden group ${
                   activeTab === id
                     ? "bg-gradient-to-r from-orange-500 to-red-500 text-white border shadow-md"
@@ -345,6 +486,11 @@ const Navigation: React.FC<NavigationProps> = ({
                 onTabChange(id);
                 setMenuOpen(false);
               }}
+              onMouseDown={() => handleLongPressStart(id)}
+              onMouseUp={handleLongPressEnd}
+              onMouseLeave={handleLongPressEnd}
+              onTouchStart={() => handleLongPressStart(id)}
+              onTouchEnd={handleLongPressEnd}
               className={`w-full flex items-center gap-3 px-5 py-3 text-sm font-medium text-left transition-all ${
                 activeTab === id
                   ? "bg-gradient-to-r from-orange-100 to-red-100 text-gray-900"
