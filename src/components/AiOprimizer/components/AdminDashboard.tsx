@@ -23,10 +23,13 @@ interface User {
 
 interface Resume {
   _id: string;
-  name: string;
+  name?: string;
   firstName?: string;
   lastName?: string;
   email?: string;
+  personalInfo?: {
+    name?: string;
+  };
 }
 
 interface LoginEvent {
@@ -123,11 +126,19 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
   const loadResumes = async () => {
     try {
       // Fetch all resumes to map IDs to names
-      // Try v1 and v2 endpoints if 'all' isn't available or structure differs
+      // The /api/resumes/all endpoint returns ResumeIndex documents with _id, firstName, lastName
       const response = await authFetch(API_OPTIMIZER, '/api/resumes/all');
       if (response.ok) {
         const data = await response.json();
-        setResumes(Array.isArray(data) ? data : []);
+        const resumesList = Array.isArray(data) ? data : [];
+        // Ensure _id is converted to string for consistent matching
+        const normalizedResumes = resumesList.map((r: any) => ({
+          ...r,
+          _id: r._id?.toString() || r._id,
+          firstName: r.firstName || '',
+          lastName: r.lastName || ''
+        }));
+        setResumes(normalizedResumes);
       }
     } catch (error) {
       console.error('Failed to load resumes:', error);
@@ -948,15 +959,15 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                         {users.map((user) => {
                           // Use verified assignment if available, fallback to user.assignedResumeId
                           const verifiedResumeId = verifiedAssignments[user.email];
-                          // If verifiedAssignments has an entry (even if null/undefined explicitly), use it? 
-                          // Actually logic: verifiedAssignments is populated with found IDs.
-                          // If verifiedAssignments[user.email] exists, use it.
-                          // If not, use user.assignedResumeId (legacy/fallback)
-                          // But if API returns nothing, verifiedAssignments won't have the key.
                           const effectiveResumeId = verifiedResumeId || user.assignedResumeId;
 
+                          // Match by _id (convert both to strings for reliable comparison)
                           const assignedResume = effectiveResumeId
-                            ? resumes.find((r) => r._id === effectiveResumeId)
+                            ? resumes.find((r) => {
+                                const resumeId = r._id?.toString() || r._id;
+                                const targetId = effectiveResumeId?.toString() || effectiveResumeId;
+                                return resumeId === targetId;
+                              })
                             : null;
 
                           return (
@@ -979,9 +990,24 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                                   <div className="flex items-center space-x-2">
                                     <FileText className="h-4 w-4 text-blue-500" />
                                     <span className="text-sm text-gray-900 font-medium">
-                                      {assignedResume.firstName && assignedResume.lastName
-                                        ? `${assignedResume.firstName} ${assignedResume.lastName}`
-                                        : assignedResume.name || "Untitled Resume"}
+                                      {(() => {
+                                        // Prioritize firstName + lastName (even if lastName is empty)
+                                        if (assignedResume.firstName) {
+                                          const lastName = assignedResume.lastName?.trim() || '';
+                                          return lastName 
+                                            ? `${assignedResume.firstName} ${lastName}`
+                                            : assignedResume.firstName;
+                                        }
+                                        // Fallback to name field if firstName not available
+                                        if (assignedResume.name) {
+                                          return assignedResume.name;
+                                        }
+                                        // Last resort: try to extract from personalInfo if available
+                                        if (assignedResume.personalInfo?.name) {
+                                          return assignedResume.personalInfo.name;
+                                        }
+                                        return "Untitled Resume";
+                                      })()}
                                     </span>
                                     <span className="text-xs text-gray-400">({effectiveResumeId})</span>
                                   </div>
