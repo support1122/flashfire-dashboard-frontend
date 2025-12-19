@@ -1450,6 +1450,7 @@ import { UserContext } from "../state_management/UserContext";
 import { CarTaxiFront, X, Check } from "lucide-react";
 import { useUserProfile } from "../state_management/ProfileContext";
 import { useNavigate } from 'react-router-dom';
+import SecretKeyModal from "./SecretKeyModal";
 
 /** ---------- STEPS ---------- */
 const STEPS = [
@@ -1818,6 +1819,9 @@ const [showPasscode, setShowPasscode] = useState(false);
 const [passcode, setPasscode] = useState("");
 const [passErr, setPassErr] = useState("");
 const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+const [showSecretKeyModal, setShowSecretKeyModal] = useState(false);
+const [secretKeyError, setSecretKeyError] = useState<string>("");
+const [pendingSubmit, setPendingSubmit] = useState(false);
 
   const [data, setData] = useState<FormData>({ ...initialData });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -2157,7 +2161,7 @@ useEffect(() => {
 
 
   // replace your handleSubmit with this pair:
-const submitForm = async () => {
+const submitForm = async (secretKey?: string) => {
   try {
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
     const { coverLetterFile, resumeFile, transcriptFile, ...payload } = data;
@@ -2186,7 +2190,15 @@ const submitForm = async () => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ ...payload, firstName, lastName, email, token, userDetails: ctx?.userDetails }),
+      body: JSON.stringify({ 
+        ...payload, 
+        firstName, 
+        lastName, 
+        email, 
+        token, 
+        userDetails: ctx?.userDetails,
+        secretKey: secretKey, // Include secret key for validation
+      }),
     });
 
     const resJson = await res.json();
@@ -2219,13 +2231,23 @@ const submitForm = async () => {
   }
 };
 
+const handleSecretKeyConfirm = async (secretKey: string) => {
+  if (secretKey !== "flashfire@2025") {
+    setSecretKeyError("Incorrect secret key. Please try again.");
+    return;
+  }
+
+  setShowSecretKeyModal(false);
+  setSecretKeyError("");
+  setPendingSubmit(true);
+  await submitForm(secretKey);
+  setPendingSubmit(false);
+};
+
 const handleSubmit = () => {
-  // Remove passcode requirement for development
-  // if (mode === "edit") {
-  //   const pin = window.prompt("Enter passcode to update profile:");
-  //   if (pin !== EDIT_PASSCODE) return alert("Incorrect passcode");
-  // }
-  submitForm();
+  // Show secret key modal for all profile saves
+  setSecretKeyError("");
+  setShowSecretKeyModal(true);
 };
 
   // Handler to collect and log all info from the first step when Next is clicked
@@ -2904,6 +2926,17 @@ const handleSubmit = () => {
           </div>
         </div>
       </div>
+
+      {/* Secret Key Modal */}
+      <SecretKeyModal
+        isOpen={showSecretKeyModal}
+        onClose={() => {
+          setShowSecretKeyModal(false);
+          setSecretKeyError("");
+        }}
+        onConfirm={handleSecretKeyConfirm}
+        error={secretKeyError}
+      />
     </div>
   );
 }

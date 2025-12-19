@@ -4,7 +4,7 @@ import {
   FileText, TrendingUp, Search, Filter,
   Calendar, Clock, MapPin, Settings,
   BarChart3, RefreshCw, CheckCircle,
-  Mail, LogOut, Key
+  Mail, LogOut, Key, ChevronDown, ChevronRight
 } from 'lucide-react';
 import RegisterOPS from './Operations/RegisterOPS';
 import AddignUser from './Operations/AddignUser';
@@ -85,6 +85,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
   const [assignModalUserEmail, setAssignModalUserEmail] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [isActiveSessionsExpanded, setIsActiveSessionsExpanded] = useState(false);
 
   const [formData, setFormData] = useState({
     username: '',
@@ -638,65 +639,89 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                   </button>
                 </div>
 
-                {/* Active Sessions */}
-                <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                    <Activity className="h-5 w-5 text-blue-600" />
-                    <span>Active Sessions</span>
-                  </h4>
-
-                  {loginHistory && loginHistory.length > 0 ? (
-                    <div className="space-y-4">
-                      {loginHistory.map((session) => (
-                        <div key={session._id} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-3 mb-2">
-                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                <span className="font-semibold text-gray-900">{session.username}</span>
-                                <span className="text-sm text-gray-500">•</span>
-                                <span className="text-sm text-gray-500">{session.ipAddress}</span>
-                              </div>
-                              <div className="text-sm text-gray-600 space-y-1">
-                                <div>Location: {session.location}</div>
-                                <div>Last Activity: {new Date(session.lastActivity).toLocaleString()}</div>
-                                <div>Session Started: {new Date(session.createdAt).toLocaleString()}</div>
-                              </div>
-                            </div>
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => handleRevokeSession(session._id)}
-                                className="px-3 py-1 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors"
-                              >
-                                Revoke
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                {/* Active Sessions - Collapsible */}
+                <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 overflow-hidden">
+                  <button
+                    onClick={() => setIsActiveSessionsExpanded(!isActiveSessionsExpanded)}
+                    className="w-full p-6 flex items-center justify-between hover:bg-gray-50/50 transition-colors duration-200 group"
+                  >
+                    <div className="flex items-center space-x-3">
+                      {isActiveSessionsExpanded ? (
+                        <ChevronDown className="h-5 w-5 text-gray-500 group-hover:text-gray-700 transition-colors" />
+                      ) : (
+                        <ChevronRight className="h-5 w-5 text-gray-500 group-hover:text-gray-700 transition-colors" />
+                      )}
+                      <Activity className="h-5 w-5 text-blue-600" />
+                      <h4 className="text-lg font-semibold text-gray-900">Active Sessions</h4>
+                      {loginHistory && loginHistory.length > 0 && (
+                        <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+                          {loginHistory.length}
+                        </span>
+                      )}
                     </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <Activity className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <p>No active sessions found.</p>
+                  </button>
+
+                  {isActiveSessionsExpanded && (
+                    <div className="px-6 pb-6">
+                      {loginHistory && loginHistory.length > 0 ? (
+                        <div className="space-y-4">
+                          {loginHistory.map((session) => (
+                            <div key={session._id} className="bg-gray-50 rounded-2xl p-4 border border-gray-100 hover:border-gray-200 transition-colors">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-3 mb-2">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                    <span className="font-semibold text-gray-900">{session.username}</span>
+                                    <span className="text-sm text-gray-500">•</span>
+                                    <span className="text-sm text-gray-500">{session.ipAddress}</span>
+                                  </div>
+                                  <div className="text-sm text-gray-600 space-y-1">
+                                    <div>Location: {session.location}</div>
+                                    <div>Last Activity: {new Date(session.lastActivity).toLocaleString()}</div>
+                                    <div>Session Started: {new Date(session.createdAt).toLocaleString()}</div>
+                                  </div>
+                                </div>
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => handleRevokeSession(session._id)}
+                                    className="px-3 py-1 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors"
+                                  >
+                                    Revoke
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <Activity className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                          <p>No active sessions found.</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
-                {/* Session Keys */}
+                {/* Session Keys - Fixed Height with Scroll */}
                 <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6">
                   <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
                     <Key className="h-5 w-5 text-purple-600" />
                     <span>Generated Session Keys</span>
+                    {sessionKeys && sessionKeys.length > 0 && (
+                      <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
+                        {sessionKeys.length}
+                      </span>
+                    )}
                   </h4>
 
                   {sessionKeys && sessionKeys.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="max-h-[600px] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
                       {sessionKeys.map((sessionKey) => (
-                        <div key={sessionKey._id} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                        <div key={sessionKey._id} className="bg-gray-50 rounded-2xl p-4 border border-gray-100 hover:border-gray-200 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
-                              <div className="flex items-center space-x-3 mb-2">
+                              <div className="flex items-center space-x-3 mb-2 flex-wrap gap-2">
                                 <span className="font-semibold text-gray-900">{sessionKey.username}</span>
                                 <span className="text-sm text-gray-500">•</span>
                                 <span className="text-sm text-gray-500">{sessionKey.duration}h</span>

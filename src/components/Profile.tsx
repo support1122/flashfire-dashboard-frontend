@@ -4,6 +4,7 @@ import { useUserProfile, UserProfile } from "../state_management/ProfileContext"
 import { UserContext } from "../state_management/UserContext";
 import { Link } from "react-router-dom";
 import { toastUtils, toastMessages } from "../utils/toast";
+import SecretKeyModal from "./SecretKeyModal";
 
 /* ---------------- Helper Components ----------------- */
 function Placeholder({ label }: { label?: string }) {
@@ -250,13 +251,13 @@ function Card({
                     <div className="flex flex-wrap items-center gap-3">
                         <button
                             onClick={onSave}
-                            className="inline-flex items-center gap-2 bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700 rounded-lg"
+                            className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-600 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 rounded-lg shadow-md transition-all"
                         >
                             <Save size={16} /> Save
                         </button>
                         <button
                             onClick={onCancel}
-                            className="inline-flex items-center gap-2 border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 rounded-lg"
+                            className="inline-flex items-center gap-2 border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 rounded-lg transition-all"
                         >
                             <X size={16} /> Cancel
                         </button>
@@ -265,7 +266,7 @@ function Card({
                     onEdit && (
                         <button
                             onClick={onEdit}
-                            className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-rose-600 px-3 py-2 text-sm font-semibold text-white hover:opacity-90 rounded-lg"
+                            className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-600 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 rounded-lg shadow-md transition-all"
                         >
                             <Pencil size={16} /> Edit
                         </button>
@@ -288,6 +289,8 @@ export default function ProfilePage() {
     const [editingSection, setEditingSection] = useState<string | null>(null);
     const [editData, setEditData] = useState<Partial<UserProfile>>({});
     const ctx = useContext(UserContext);
+    const [showSecretKeyModal, setShowSecretKeyModal] = useState(false);
+    const [secretKeyError, setSecretKeyError] = useState<string>("");
 
     useEffect(() => {
         const fetchLatestProfile = async () => {
@@ -321,14 +324,21 @@ export default function ProfilePage() {
         setEditData(data);
     };
 
-    const handleSave = async () => {
-        try {
-            const userKey = prompt("Enter the edit key to save changes:");
-            if (userKey !== "flashfire2025") {
-                toastUtils.error("Incorrect edit key. Changes not saved.");
-                return;
-            }
+    const handleSaveClick = () => {
+        setSecretKeyError("");
+        setShowSecretKeyModal(true);
+    };
 
+    const handleSecretKeyConfirm = async (secretKey: string) => {
+        if (secretKey !== "flashfire@2025") {
+            setSecretKeyError("Incorrect secret key. Please try again.");
+            return;
+        }
+
+        setShowSecretKeyModal(false);
+        setSecretKeyError("");
+
+        try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
             const token = ctx?.token;
             const email = ctx?.userDetails?.email;
@@ -344,18 +354,22 @@ export default function ProfilePage() {
                     email,
                     token,
                     userDetails: ctx?.userDetails,
+                    secretKey: secretKey, // Send secret key to backend for validation
                 }),
             });
 
-            if (!res.ok) throw new Error("Failed to update profile");
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || "Failed to update profile");
+            }
 
             await res.json();
             updateProfile(editData);
             setEditingSection(null);
             setEditData({});
             toastUtils.success(toastMessages.profileUpdated);
-        } catch {
-            toastUtils.error(toastMessages.profileError);
+        } catch (error: any) {
+            toastUtils.error(error.message || toastMessages.profileError);
         }
     };
 
@@ -416,9 +430,9 @@ export default function ProfilePage() {
                 {/* Personal */}
                 <Card
                     title="Personal Details"
-                    onEdit={ctx?.userDetails?.role === 'operations' ? () => handleEditClick("personal") : undefined}
+                    onEdit={() => handleEditClick("personal")}
                     isEditing={editingSection === "personal"}
-                    onSave={handleSave}
+                    onSave={handleSaveClick}
                     onCancel={handleCancel}
                 >
                     <InfoRow
@@ -475,9 +489,9 @@ export default function ProfilePage() {
                 {/* Educations */}
                 <Card
                     title="Education"
-                    onEdit={ctx?.userDetails?.role === 'operations' ? () => handleEditClick("education") : undefined}
+                    onEdit={() => handleEditClick("education")}
                     isEditing={editingSection === "education"}
-                    onSave={handleSave}
+                    onSave={handleSaveClick}
                     onCancel={handleCancel}
                 >
                     <InfoRow
@@ -549,9 +563,9 @@ export default function ProfilePage() {
                 {/* Professional */}
                 <Card
                     title="Professional"
-                    onEdit={ctx?.userDetails?.role === 'operations' ? () => handleEditClick("professional") : undefined}
+                    onEdit={() => handleEditClick("professional")}
                     isEditing={editingSection === "professional"}
-                    onSave={handleSave}
+                    onSave={handleSaveClick}
                     onCancel={handleCancel}
                 >
                     <InfoRow
@@ -631,9 +645,9 @@ export default function ProfilePage() {
                 {/* Links & Documents */}
                 <Card
                     title="Links & Documents"
-                    onEdit={ctx?.userDetails?.role === 'operations' ? () => handleEditClick("links") : undefined}
+                    onEdit={() => handleEditClick("links")}
                     isEditing={editingSection === "links"}
-                    onSave={handleSave}
+                    onSave={handleSaveClick}
                     onCancel={handleCancel}
                 >
                     <InfoRow
@@ -687,9 +701,9 @@ export default function ProfilePage() {
                 {/* Terms & Accuracy */}
                 <Card
                     title="Terms & Accuracy"
-                    onEdit={ctx?.userDetails?.role === 'operations' ? () => handleEditClick("compliance") : undefined}
+                    onEdit={() => handleEditClick("compliance")}
                     isEditing={editingSection === "compliance"}
-                    onSave={handleSave}
+                    onSave={handleSaveClick}
                     onCancel={handleCancel}
                 >
                     <InfoRow
@@ -803,6 +817,17 @@ export default function ProfilePage() {
                     </div>
                 </Card>
             </div>
+
+            {/* Secret Key Modal */}
+            <SecretKeyModal
+                isOpen={showSecretKeyModal}
+                onClose={() => {
+                    setShowSecretKeyModal(false);
+                    setSecretKeyError("");
+                }}
+                onConfirm={handleSecretKeyConfirm}
+                error={secretKeyError}
+            />
         </div>
     );
 }
