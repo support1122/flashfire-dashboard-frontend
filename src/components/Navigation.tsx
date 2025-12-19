@@ -381,59 +381,55 @@ const Navigation: React.FC<NavigationProps> = ({
                     </div>
                     </Link>
                     {/* User Details */}
-                    {role == "operations" ? null : (
-                      <div className="py-6 space-y-4">
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                            Email Address
-                          </p>
-                          <p className="text-sm text-gray-900 font-medium bg-gray-50 px-3 py-2 rounded-lg">
-                            {userDetails?.email}
-                          </p>
-                        </div>
-                        {/* <div className='flex justify-between'> */}
-                        {!hasProfile && (
-                          <div
-                            className="w-fit"
-                            onClick={() => {
-                              if (setUserProfileFormVisibility) {
-                                setUserProfileFormVisibility(true);
-                              } else {
-                                navigate('/profile');
-                              }
-                            }}
-                          >
-                            <div className="hover:cursor-pointer inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-200 text-amber-700 border-2 border-amber-200">
-                              <Edit2Icon className="h-3 w-3 m-2" />{" "}
-                              Edit/ Setup Profile
-                            </div>
+                    <div className="py-6 space-y-4">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                          Email Address
+                        </p>
+                        <p className="text-sm text-gray-900 font-medium bg-gray-50 px-3 py-2 rounded-lg">
+                          {userDetails?.email}
+                        </p>
+                      </div>
+                      {/* <div className='flex justify-between'> */}
+                      {!hasProfile && (
+                        <div
+                          className="w-fit"
+                          onClick={() => {
+                            if (setUserProfileFormVisibility) {
+                              setUserProfileFormVisibility(true);
+                            } else {
+                              navigate('/profile');
+                            }
+                          }}
+                        >
+                          <div className="hover:cursor-pointer inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-200 text-amber-700 border-2 border-amber-200">
+                            <Edit2Icon className="h-3 w-3 m-2" />{" "}
+                            Edit/ Setup Profile
                           </div>
-                        )}
-                        {/* <Link to="/profile" target="_blank" rel="noopener noreferrer">
+                        </div>
+                      )}
+                      {/* <Link to="/profile" target="_blank" rel="noopener noreferrer">
   <h1><User2Icon /></h1>
 </Link> */}
 
-                        {role == "operations" ? null : (
-                          <div>
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                              Current Plan
-                            </p>
-                            <div className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border-2 border-amber-200">
-                              <div className="w-2 h-2 bg-amber-500 rounded-full mr-3"></div>
-                              {userDetails?.planType ||
-                                "Free"}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Dashboard Manager Dropdown - HIDDEN */}
-                        {/* {role == "operations" ? null : (
-                          <div className="space-y-3">
-                            Dashboard Manager section is now hidden
-                          </div>
-                        )} */}
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                          Current Plan
+                        </p>
+                        <div className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border-2 border-amber-200">
+                          <div className="w-2 h-2 bg-amber-500 rounded-full mr-3"></div>
+                          {userDetails?.planType ||
+                            "Free"}
+                        </div>
                       </div>
-                    )}
+
+                      {/* Dashboard Manager Dropdown - HIDDEN */}
+                      {/* {role == "operations" ? null : (
+                        <div className="space-y-3">
+                          Dashboard Manager section is now hidden
+                        </div>
+                      )} */}
+                    </div>
 
                     {/* Action Buttons */}
                     {role == "operations" ? (
@@ -524,60 +520,56 @@ const Navigation: React.FC<NavigationProps> = ({
                     </div>
                     </Link>
                     {/* User Details */}
-                    {role == "operations" ? null : (
-                      <div className="py-6 space-y-4">
-                        <div>
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                            Email Address
-                          </p>
-                          <p className="text-sm text-gray-900 font-medium bg-gray-50 px-3 py-2 rounded-lg">
-                            {userDetails?.email}
-                          </p>
-                        </div>
-                        {/* <div className='flex justify-between'> */}
-                        {!hasProfile && (
-                          <div
-                            className="w-fit"
-                            onClick={() => {
-                              // Navigate to profile page or trigger modal
-                              if (setUserProfileFormVisibility) {
-                                setUserProfileFormVisibility(true);
-                              } else {
-                                navigate('/profile');
-                              }
-                            }}
-                          >
-                            <div className="hover:cursor-pointer inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-200 text-amber-700 border-2 border-amber-200">
-                              <Edit2Icon className="h-3 w-3 m-2" />{" "}
-                              Edit/ Setup Profile
-                            </div>
+                    <div className="py-6 space-y-4">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                          Email Address
+                        </p>
+                        <p className="text-sm text-gray-900 font-medium bg-gray-50 px-3 py-2 rounded-lg">
+                          {userDetails?.email}
+                        </p>
+                      </div>
+                      {/* <div className='flex justify-between'> */}
+                      {!hasProfile && (
+                        <div
+                          className="w-fit"
+                          onClick={() => {
+                            // Navigate to profile page or trigger modal
+                            if (setUserProfileFormVisibility) {
+                              setUserProfileFormVisibility(true);
+                            } else {
+                              navigate('/profile');
+                            }
+                          }}
+                        >
+                          <div className="hover:cursor-pointer inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-200 text-amber-700 border-2 border-amber-200">
+                            <Edit2Icon className="h-3 w-3 m-2" />{" "}
+                            Edit/ Setup Profile
                           </div>
-                        )}
-                        {/* <Link to="/profile" target="_blank" rel="noopener noreferrer">
+                        </div>
+                      )}
+                      {/* <Link to="/profile" target="_blank" rel="noopener noreferrer">
   <h1><User2Icon /></h1>
 </Link> */}
 
-                        {role == "operations" ? null : (
-                          <div>
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                              Current Plan
-                            </p>
-                            <div className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border-2 border-amber-200">
-                              <div className="w-2 h-2 bg-amber-500 rounded-full mr-3"></div>
-                              {userDetails?.planType ||
-                                "Free"}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Dashboard Manager Dropdown - HIDDEN */}
-                        {/* {role == "operations" ? null : (
-                          <div className="space-y-3">
-                            Dashboard Manager section is now hidden
-                          </div>
-                        )} */}
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                          Current Plan
+                        </p>
+                        <div className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border-2 border-amber-200">
+                          <div className="w-2 h-2 bg-amber-500 rounded-full mr-3"></div>
+                          {userDetails?.planType ||
+                            "Free"}
+                        </div>
                       </div>
-                    )}
+
+                      {/* Dashboard Manager Dropdown - HIDDEN */}
+                      {/* {role == "operations" ? null : (
+                        <div className="space-y-3">
+                          Dashboard Manager section is now hidden
+                        </div>
+                      )} */}
+                    </div>
 
                     {/* Action Buttons */}
                     {role == "operations" ? (

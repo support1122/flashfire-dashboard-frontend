@@ -42,14 +42,28 @@ const AddignUser: React.FC<RegisterFormProps> = ({ }) => {
 
     const visibleUsers = useMemo(() => {
         const q = userQuery.trim().toLowerCase();
-        if (!q) return users;
-        return users.filter((u) => (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q));
+        let filtered = users;
+        if (q) {
+            filtered = users.filter((u) => (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q));
+        }
+        return [...filtered].sort((a, b) => {
+            const nameA = (a.name && a.name.trim()) ? a.name : a.email;
+            const nameB = (b.name && b.name.trim()) ? b.name : b.email;
+            return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+        });
     }, [users, userQuery]);
 
     const visibleOps = useMemo(() => {
         const q = opQuery.trim().toLowerCase();
-        if (!q) return ops;
-        return ops.filter((o) => (o.name || "").toLowerCase().includes(q) || (o.email || "").toLowerCase().includes(q));
+        let filtered = ops;
+        if (q) {
+            filtered = ops.filter((o) => (o.name || "").toLowerCase().includes(q) || (o.email || "").toLowerCase().includes(q));
+        }
+        return [...filtered].sort((a, b) => {
+            const nameA = (a.name && a.name.trim()) ? a.name : a.email;
+            const nameB = (b.name && b.name.trim()) ? b.name : b.email;
+            return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+        });
     }, [ops, opQuery]);
 
     const handleSubmit = async (e: React.FormEvent) => {

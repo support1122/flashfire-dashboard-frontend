@@ -37,10 +37,18 @@ export default function OperationsDirectory() {
   const filteredManaged = useMemo(() => {
     if (!openOp) return [];
     const q = query.trim().toLowerCase();
-    if (!q) return openOp.managedUsers;
-    return openOp.managedUsers.filter((u) =>
-      (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q)
-    );
+    let filtered = openOp.managedUsers;
+    if (q) {
+      filtered = openOp.managedUsers.filter((u) =>
+        (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q)
+      );
+    }
+    // Sort alphabetically by name (or email if name is not available)
+    return [...filtered].sort((a, b) => {
+      const nameA = (a.name && a.name.trim()) ? a.name : a.email;
+      const nameB = (b.name && b.name.trim()) ? b.name : b.email;
+      return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+    });
   }, [openOp, query]);
 
   const handleRemove = async (opId: string, userId: string) => {
@@ -74,8 +82,16 @@ export default function OperationsDirectory() {
 
   const visibleOps = useMemo(() => {
     const q = opsQuery.trim().toLowerCase();
-    if (!q) return ops;
-    return ops.filter((o) => (o.name || "").toLowerCase().includes(q) || (o.email || "").toLowerCase().includes(q));
+    let filtered = ops;
+    if (q) {
+      filtered = ops.filter((o) => (o.name || "").toLowerCase().includes(q) || (o.email || "").toLowerCase().includes(q));
+    }
+    // Sort alphabetically by name (or email if name is not available)
+    return [...filtered].sort((a, b) => {
+      const nameA = (a.name && a.name.trim()) ? a.name : a.email;
+      const nameB = (b.name && b.name.trim()) ? b.name : b.email;
+      return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+    });
   }, [ops, opsQuery]);
 
   const handleRemoveOp = async (opId: string) => {
