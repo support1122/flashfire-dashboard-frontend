@@ -9,8 +9,10 @@ import LoadingScreen from "./LoadingScreen.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
 import { toastUtils, toastMessages } from "../utils/toast.ts";
 import { useJobsSessionStore } from "../state_management/JobsSessionStore.ts";
+import { useUserProfile } from "../state_management/ProfileContext.tsx";
 const JobModal = lazy(() => import("./JobModal.tsx"));
 const RemovalLimitModal = lazy(() => import("./RemovalLimitModal.tsx"));
+const RemovalReasonModal = lazy(() => import("./RemovalReasonModal.tsx"));
 
 const JOBS_PER_PAGE = 30;
 
@@ -21,8 +23,11 @@ const JobTracker = () => {
     const [showJobModal, setShowJobModal] = useState(false);
     const [selectedJob, setSelectedJob] = useState<Job | null>(null);
     const [showRemovalLimitModal, setShowRemovalLimitModal] = useState(false);
+    const [showRemovalReasonModal, setShowRemovalReasonModal] = useState(false);
+    const [pendingRemovalJob, setPendingRemovalJob] = useState<Job | null>(null);
     const { userJobs, setUserJobs } = useUserJobs();
     const { userDetails, token } = useContext(UserContext) || {};
+    const { userProfile } = useUserProfile();
     const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
     const { clearPendingUpdate } = useJobsSessionStore();
 
@@ -513,7 +518,69 @@ const JobTracker = () => {
     };
 
 
-    const onUpdateJobStatus = async (jobID: string, status: JobStatus, userDetails: any) => {
+    // Function to send Discord webhook notification
+    const sendDiscordNotification = async (job: Job, reason: string) => {
+        try {
+            // Get client name from multiple sources for robustness
+            let clientName = userDetails?.name;
+            if (!clientName && userProfile) {
+                clientName = userProfile.firstName && userProfile.lastName
+                    ? `${userProfile.firstName} ${userProfile.lastName}`
+                    : userProfile.firstName || userProfile.lastName || null;
+            }
+            if (!clientName && userDetails) {
+                clientName = userDetails.firstName && userDetails.lastName
+                    ? `${userDetails.firstName} ${userDetails.lastName}`
+                    : userDetails.firstName || userDetails.lastName || null;
+            }
+            clientName = clientName || userDetails?.email || 'Unknown Client';
+            
+            const webhookUrl = 'https://discord.com/api/webhooks/1451819292730331187/M2VUhqMXa-oycbS8qLXlfdqnI4Q1d5yv-gucriMy_W4JrLi02fcUlGx7TYjgUlEgXIqG';
+            
+            const message = {
+                embeds: [{
+                    title: 'Job Card Moved to Removed',
+                    color: 0xff6b35, // Orange color
+                    fields: [
+                        {
+                            name: 'Job Title',
+                            value: job.jobTitle || 'N/A',
+                            inline: true
+                        },
+                        {
+                            name: 'Company Name',
+                            value: job.companyName || 'N/A',
+                            inline: true
+                        },
+                        {
+                            name: 'Client Name',
+                            value: clientName,
+                            inline: true
+                        },
+                        {
+                            name: 'Reason',
+                            value: reason || 'No reason provided',
+                            inline: false
+                        }
+                    ],
+                    timestamp: new Date().toISOString()
+                }]
+            };
+
+            await fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(message),
+            });
+        } catch (error) {
+            console.error('Failed to send Discord notification:', error);
+            // Don't throw - this is non-blocking
+        }
+    };
+
+    const onUpdateJobStatus = async (jobID: string, status: JobStatus, userDetails: any, removalReason?: string) => {
         const originalJob = userJobs?.find((job) => job.jobID === jobID);
         if (!originalJob) return;
 
@@ -574,6 +641,11 @@ const JobTracker = () => {
                 clearPendingUpdate(jobID);
                 toastUtils.success("Job status updated successfully!");
                 console.log("Job status updated:", resFromServer?.updatedJobs);
+                
+                // Send Discord notification if job was moved to deleted and reason is provided
+                if (status === "deleted" && removalReason && role !== "operations") {
+                    await sendDiscordNotification(originalJob, removalReason);
+                }
             } else if (resFromServer.message === "Removal limit exceeded") {
                 // Handle removal limit exceeded
                 setUserJobs((prevJobs) =>
@@ -626,6 +698,13 @@ const JobTracker = () => {
         const job = userJobs?.find((j) => j.jobID === jobID);
         if (!job) return;
 
+        // Check if user (not operations) is moving job to deleted - show removal reason modal
+        if (status === 'deleted' && role !== 'operations') {
+            setPendingRemovalJob(job);
+            setShowRemovalReasonModal(true);
+            return;
+        }
+
         // Gate only when moving out of "saved" to a real status (not deleted/saved)
         if (job.currentStatus === 'saved' && status !== 'deleted' && status !== 'saved') {
             setSelectedJob(job);
@@ -636,6 +715,15 @@ const JobTracker = () => {
 
         // INSTANT UPDATE: Move immediately in UI, then sync with server
         onUpdateJobStatus(jobID, status, userDetails);
+    };
+
+    // Handle removal reason confirmation
+    const handleRemovalReasonConfirm = async (reason: string) => {
+        if (!pendingRemovalJob) return;
+        
+        await onUpdateJobStatus(pendingRemovalJob.jobID, 'deleted', userDetails, reason);
+        setShowRemovalReasonModal(false);
+        setPendingRemovalJob(null);
     };
 
 
@@ -972,6 +1060,20 @@ const JobTracker = () => {
                     <RemovalLimitModal
                         isOpen={showRemovalLimitModal}
                         onClose={() => setShowRemovalLimitModal(false)}
+                    />
+                </Suspense>
+            )}
+            {showRemovalReasonModal && pendingRemovalJob && (
+                <Suspense fallback={<LoadingScreen />}>
+                    <RemovalReasonModal
+                        isOpen={showRemovalReasonModal}
+                        onClose={() => {
+                            setShowRemovalReasonModal(false);
+                            setPendingRemovalJob(null);
+                        }}
+                        onConfirm={handleRemovalReasonConfirm}
+                        jobTitle={pendingRemovalJob.jobTitle}
+                        companyName={pendingRemovalJob.companyName}
                     />
                 </Suspense>
             )}
