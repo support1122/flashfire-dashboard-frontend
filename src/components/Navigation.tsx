@@ -13,6 +13,7 @@ import {
   CreditCard,
   Menu,
   X,
+  Settings,
 } from "lucide-react";
 import { UserContext } from "../state_management/UserContext.tsx";
 import { useUserProfile } from "../state_management/ProfileContext.tsx";
@@ -135,7 +136,7 @@ const Navigation: React.FC<NavigationProps> = ({
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "jobs", label: "Job Tracker", icon: Briefcase },
     { id: "optimizer", label: "Documents", icon: FileText },
-    // ...(role === "operations" ? [{ id: "resume-optimizer", label: "Resume Optimizer", icon: FileText }] : []),
+    ...(role === "operations" ? [{ id: "operations", label: "Operations", icon: Settings }] : []),
   ];
 
   useEffect(() => {
