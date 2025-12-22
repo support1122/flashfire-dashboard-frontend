@@ -59,6 +59,36 @@ export default function ManagedUsers() {
             userDetails: data?.userDetails ?? null,
             userProfile: data?.userProfile ?? null,
         }));
+        
+        // Fetch and show TODOs as toast notifications
+        try {
+          const todosRes = await fetch(`${API_BASE_URL}/operations/client-operations`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientEmail: user.email }),
+          });
+          
+          const todosData = await todosRes.json();
+          if (todosData.success && todosData.data?.todos) {
+            const incompleteTodos = todosData.data.todos.filter((todo: any) => !todo.completed);
+            if (incompleteTodos.length > 0) {
+              // Show first TODO immediately
+              const { toastUtils } = await import('../../utils/toast');
+              toastUtils.custom(`📋 TODO: ${incompleteTodos[0].title}`, 'info');
+              
+              // Show remaining TODOs after a delay
+              incompleteTodos.slice(1).forEach((todo: any, index: number) => {
+                setTimeout(() => {
+                  toastUtils.custom(`📋 TODO: ${todo.title}`, 'info');
+                }, (index + 1) * 2000); // 2 seconds between each
+              });
+            }
+          }
+        } catch (todosError) {
+          console.error('Error fetching TODOs:', todosError);
+          // Don't block navigation if TODO fetch fails
+        }
+        
         navigate("/");
        }
 

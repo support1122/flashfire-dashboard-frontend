@@ -106,6 +106,7 @@ const Dashboard = lazy(()=>import('./Dashboard'))
 const JobTracker = lazy(()=>import('./JobTracker'))
 const ResumeOptimizer = lazy(()=>import('./ResumeOptimizer1'))
 const ResumeOptimizerDashboard = lazy(()=>import('./ResumeOptimizerDashboard'))
+const OperationsManagement = lazy(()=>import('./OperationsManagement'))
 import { UserContext } from '../state_management/UserContext';
 import LoadingScreen from './LoadingScreen';
 import { useOperationsStore } from "../state_management/Operations";
@@ -199,6 +200,12 @@ useEffect(() => {
           {activeTab === 'resume-optimizer' && (
             <Suspense fallback={<LoadingScreen />}>
             <ResumeOptimizerDashboard />
+            </Suspense>
+          )}
+
+          {activeTab === 'operations' && (
+            <Suspense fallback={<LoadingScreen />}>
+            <OperationsManagement />
             </Suspense>
           )}
         </main>

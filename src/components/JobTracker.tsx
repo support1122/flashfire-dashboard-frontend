@@ -680,7 +680,37 @@ const JobTracker = () => {
         }
     };
 
-    const handleDrop = (e: React.DragEvent, status: JobStatus) => {
+    const checkLockPeriod = async (): Promise<{ isLocked: boolean; message: string | null }> => {
+        if (role !== 'operations' || !userDetails?.email) {
+            return { isLocked: false, message: null };
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/operations/check-lock-period`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    clientEmail: userDetails.email
+                }),
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                return {
+                    isLocked: result.isLocked || false,
+                    message: result.message || null
+                };
+            }
+        } catch (error) {
+            console.error('Error checking lock period:', error);
+        }
+
+        return { isLocked: false, message: null };
+    };
+
+    const handleDrop = async (e: React.DragEvent, status: JobStatus) => {
         e.preventDefault();
 
         // Reset visual feedback
@@ -703,6 +733,15 @@ const JobTracker = () => {
             setPendingRemovalJob(job);
             setShowRemovalReasonModal(true);
             return;
+        }
+
+        // Check lock period for operations moving from saved to applied
+        if (role === 'operations' && job.currentStatus === 'saved' && status === 'applied') {
+            const lockCheck = await checkLockPeriod();
+            if (lockCheck.isLocked) {
+                toastUtils.error(lockCheck.message || 'Job card movement is locked during this period');
+                return;
+            }
         }
 
         // Gate only when moving out of "saved" to a real status (not deleted/saved)

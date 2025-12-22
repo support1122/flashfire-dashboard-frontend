@@ -35,7 +35,7 @@ export const toastUtils = {
   },
 
   // Custom toasts
-  custom: (message: string, type: 'success' | 'error' | 'loading' = 'success') => {
+  custom: (message: string, type: 'success' | 'error' | 'loading' | 'info' = 'success') => {
     switch (type) {
       case 'success':
         return toast.success(message);
@@ -43,6 +43,11 @@ export const toastUtils = {
         return toast.error(message);
       case 'loading':
         return toast.loading(message);
+      case 'info':
+        return toast(message, {
+          icon: 'ℹ️',
+          duration: 4000,
+        });
       default:
         return toast(message);
     }
