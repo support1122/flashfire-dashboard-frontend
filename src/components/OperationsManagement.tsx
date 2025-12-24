@@ -1,15 +1,15 @@
-import { useState, useEffect, useContext } from 'react';
-import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, Save, X, ChevronDown, ChevronUp, Edit2 } from 'lucide-react';
+import { useState, useEffect, useContext, useCallback, useRef } from 'react';
+import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, X, ChevronDown, ChevronUp, Edit2 } from 'lucide-react';
 import { UserContext } from '../state_management/UserContext.tsx';
 import { toastUtils, toastMessages } from '../utils/toast.ts';
 import { useOperationsStore } from '../state_management/Operations.ts';
-import SecretKeyModal from './SecretKeyModal.tsx';
 
 interface Todo {
   id: string;
   title: string;
   notes?: string;
   completed: boolean;
+  createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -29,13 +29,11 @@ interface ClientOperationsData {
 
 const OperationsManagement = () => {
   const { userDetails, token } = useContext(UserContext) || {};
-  const { role } = useOperationsStore();
+  const { role, name: operatorName } = useOperationsStore();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [lockPeriods, setLockPeriods] = useState<LockPeriod[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showSecretKeyModal, setShowSecretKeyModal] = useState(false);
-  const [secretKeyError, setSecretKeyError] = useState('');
   const [newTodoTitle, setNewTodoTitle] = useState('');
   const [newTodoNotes, setNewTodoNotes] = useState('');
   const [showAddTodo, setShowAddTodo] = useState(false);
@@ -47,6 +45,7 @@ const OperationsManagement = () => {
     reason: ''
   });
   const [showAddLockPeriod, setShowAddLockPeriod] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -87,56 +86,64 @@ const OperationsManagement = () => {
         setTodos(result.data.todos || []);
         setLockPeriods(result.data.lockPeriods || []);
       } else {
-        toastUtils.error('Failed to load operations data');
+        // toastUtils.error('Failed to load operations data');
       }
     } catch (error) {
       console.error('Error fetching client operations:', error);
-      toastUtils.error('Failed to load operations data');
+      // toastUtils.error('Failed to load operations data');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSave = () => {
-    setShowSecretKeyModal(true);
-  };
-
-  const handleSecretKeyConfirm = async (secretKey: string) => {
-    if (secretKey !== 'flashfire@2025') {
-      setSecretKeyError('Incorrect secret key. Please try again.');
-      return;
+  // Auto-save function with debouncing
+  const autoSave = useCallback(async () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
 
-    setShowSecretKeyModal(false);
-    setSecretKeyError('');
-    setSaving(true);
+    saveTimeoutRef.current = setTimeout(async () => {
+      setSaving(true);
+      try {
+        const opsName = operatorName || 'operations';
+        const response = await fetch(`${API_BASE_URL}/operations/client-operations`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            clientEmail: userDetails?.email,
+            todos,
+            lockPeriods,
+            operatorName: opsName
+          }),
+        });
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/operations/client-operations`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          clientEmail: userDetails?.email,
-          todos,
-          lockPeriods
-        }),
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        toastUtils.success('Operations data saved successfully!');
-      } else {
-        toastUtils.error(result.message || 'Failed to save operations data');
+        const result = await response.json();
+        if (result.success) {
+          // Silent save - no toast notification for auto-save
+        } else {
+          console.error('Auto-save failed:', result.message);
+        }
+      } catch (error) {
+        console.error('Error auto-saving client operations:', error);
+      } finally {
+        setSaving(false);
       }
-    } catch (error) {
-      console.error('Error saving client operations:', error);
-      toastUtils.error('Failed to save operations data');
-    } finally {
-      setSaving(false);
+    }, 1000); // Debounce for 1 second
+  }, [todos, lockPeriods, userDetails?.email, operatorName, API_BASE_URL]);
+
+  // Auto-save whenever todos or lockPeriods change
+  useEffect(() => {
+    if (!loading && userDetails?.email) {
+      autoSave();
     }
-  };
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [todos, lockPeriods, loading, userDetails?.email, autoSave]);
 
   const toggleTodo = (todoId: string) => {
     setTodos(todos.map(todo =>
@@ -149,11 +156,13 @@ const OperationsManagement = () => {
   const addTodo = () => {
     if (!newTodoTitle.trim()) return;
 
+    const opsName = operatorName || 'operations';
     const newTodo: Todo = {
       id: `todo-${Date.now()}`,
       title: newTodoTitle.trim(),
       notes: newTodoNotes.trim() || '',
       completed: false,
+      createdBy: opsName,
       createdAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
       updatedAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
     };
@@ -392,11 +401,21 @@ const OperationsManagement = () => {
                               <ChevronDown className="w-4 h-4 text-gray-400" />
                             )}
                           </div>
-                          {hasNotes && !isExpanded && (
-                            <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                              {todo.notes}
-                            </p>
-                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            {todo.createdBy && (
+                              <span className="text-xs text-gray-500">
+                                Created by {todo.createdBy}
+                              </span>
+                            )}
+                            {hasNotes && !isExpanded && (
+                              <span className="text-xs text-gray-500">•</span>
+                            )}
+                            {hasNotes && !isExpanded && (
+                              <p className="text-xs text-gray-500 line-clamp-1">
+                                {todo.notes}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                         <button
@@ -590,31 +609,16 @@ const OperationsManagement = () => {
           </div>
         </div>
 
-        {/* Save Button */}
-        <div className="mt-8 flex justify-end">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-5 h-5" />
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
+        {/* Auto-save indicator */}
+        {saving && (
+          <div className="mt-6 flex justify-end">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500"></div>
+              <span>Saving...</span>
+            </div>
+          </div>
+        )}
       </div>
-
-      {/* Secret Key Modal */}
-      {showSecretKeyModal && (
-        <SecretKeyModal
-          isOpen={showSecretKeyModal}
-          onClose={() => {
-            setShowSecretKeyModal(false);
-            setSecretKeyError('');
-          }}
-          onConfirm={handleSecretKeyConfirm}
-          error={secretKeyError}
-        />
-      )}
     </div>
   );
 };
