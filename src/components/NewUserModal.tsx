@@ -1450,7 +1450,6 @@ import { UserContext } from "../state_management/UserContext";
 import { CarTaxiFront, X, Check } from "lucide-react";
 import { useUserProfile } from "../state_management/ProfileContext";
 import { useNavigate } from 'react-router-dom';
-import SecretKeyModal from "./SecretKeyModal";
 
 /** ---------- STEPS ---------- */
 const STEPS = [
@@ -1819,9 +1818,6 @@ const [showPasscode, setShowPasscode] = useState(false);
 const [passcode, setPasscode] = useState("");
 const [passErr, setPassErr] = useState("");
 const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-const [showSecretKeyModal, setShowSecretKeyModal] = useState(false);
-const [secretKeyError, setSecretKeyError] = useState<string>("");
-const [pendingSubmit, setPendingSubmit] = useState(false);
 
   const [data, setData] = useState<FormData>({ ...initialData });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -2161,7 +2157,7 @@ useEffect(() => {
 
 
   // replace your handleSubmit with this pair:
-const submitForm = async (secretKey?: string) => {
+const submitForm = async () => {
   try {
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
     const { coverLetterFile, resumeFile, transcriptFile, ...payload } = data;
@@ -2197,7 +2193,6 @@ const submitForm = async (secretKey?: string) => {
         email, 
         token, 
         userDetails: ctx?.userDetails,
-        secretKey: secretKey, // Include secret key for validation
       }),
     });
 
@@ -2231,23 +2226,8 @@ const submitForm = async (secretKey?: string) => {
   }
 };
 
-const handleSecretKeyConfirm = async (secretKey: string) => {
-  if (secretKey !== "flashfire@2025") {
-    setSecretKeyError("Incorrect secret key. Please try again.");
-    return;
-  }
-
-  setShowSecretKeyModal(false);
-  setSecretKeyError("");
-  setPendingSubmit(true);
-  await submitForm(secretKey);
-  setPendingSubmit(false);
-};
-
 const handleSubmit = () => {
-  // Show secret key modal for all profile saves
-  setSecretKeyError("");
-  setShowSecretKeyModal(true);
+  submitForm();
 };
 
   // Handler to collect and log all info from the first step when Next is clicked
@@ -2926,17 +2906,6 @@ const handleSubmit = () => {
           </div>
         </div>
       </div>
-
-      {/* Secret Key Modal */}
-      <SecretKeyModal
-        isOpen={showSecretKeyModal}
-        onClose={() => {
-          setShowSecretKeyModal(false);
-          setSecretKeyError("");
-        }}
-        onConfirm={handleSecretKeyConfirm}
-        error={secretKeyError}
-      />
     </div>
   );
 }
