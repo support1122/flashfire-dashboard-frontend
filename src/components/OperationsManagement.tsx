@@ -418,13 +418,13 @@ const OperationsManagement = () => {
                           </div>
                         </div>
                       </div>
-                        <button
+                        {/* <button
                           onClick={() => deleteTodo(todo.id)}
                           className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-all"
                           aria-label="Delete TODO"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        </button> */}
                       </div>
 
                       {/* Expanded Notes Section */}
