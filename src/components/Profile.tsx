@@ -5,6 +5,7 @@ import { UserContext } from "../state_management/UserContext";
 import { Link } from "react-router-dom";
 import { toastUtils, toastMessages } from "../utils/toast";
 import SecretKeyModal from "./SecretKeyModal";
+import { useOperationsStore } from "../state_management/Operations";
 
 /* ---------------- Helper Components ----------------- */
 function Placeholder({ label }: { label?: string }) {
@@ -291,6 +292,7 @@ export default function ProfilePage() {
     const ctx = useContext(UserContext);
     const [showSecretKeyModal, setShowSecretKeyModal] = useState(false);
     const [secretKeyError, setSecretKeyError] = useState<string>("");
+    const { role } = useOperationsStore();
 
     useEffect(() => {
         const fetchLatestProfile = async () => {
@@ -325,19 +327,16 @@ export default function ProfilePage() {
     };
 
     const handleSaveClick = () => {
-        setSecretKeyError("");
-        setShowSecretKeyModal(true);
+        if (role === "operations") {
+            setSecretKeyError("");
+            setShowSecretKeyModal(true);
+        } else {
+            // For normal users, save directly without secret key
+            handleSaveProfile();
+        }
     };
 
-    const handleSecretKeyConfirm = async (secretKey: string) => {
-        if (secretKey !== "flashfire@2025") {
-            setSecretKeyError("Incorrect secret key. Please try again.");
-            return;
-        }
-
-        setShowSecretKeyModal(false);
-        setSecretKeyError("");
-
+    const handleSaveProfile = async () => {
         try {
             const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
             const token = ctx?.token;
@@ -354,7 +353,7 @@ export default function ProfilePage() {
                     email,
                     token,
                     userDetails: ctx?.userDetails,
-                    secretKey: secretKey, // Send secret key to backend for validation
+                    secretKey: role === "operations" ? "flashfire@2025" : undefined,
                 }),
             });
 
@@ -371,6 +370,16 @@ export default function ProfilePage() {
         } catch (error: any) {
             toastUtils.error(error.message || toastMessages.profileError);
         }
+    };
+
+    const handleSecretKeyConfirm = async (secretKey: string) => {
+        if (secretKey !== "flashfire@2025") {
+            setSecretKeyError("Incorrect secret key. Please try again.");
+            return;
+        }
+        setShowSecretKeyModal(false);
+        setSecretKeyError("");
+        await handleSaveProfile();
     };
 
     const handleCancel = () => {
