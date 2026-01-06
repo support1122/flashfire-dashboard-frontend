@@ -254,12 +254,14 @@ export default function JobModal({
     initialSection, // ⬅️ NEW (optional)
     onResumeUploaded,
     onAutoCheckDone,
+    onAttachmentUploaded,
 }: {
     setShowJobModal: (v: boolean) => void;
     jobDetails: any;
     initialSection?: Sections; // ⬅️ NEW
     onResumeUploaded?: (url?: string) => void;
     onAutoCheckDone?: (exists: boolean) => void;
+    onAttachmentUploaded?: (updatedJob?: any) => void;
 }) {
     const ctx = useContext(UserContext);
     const token = ctx?.token ?? null;
@@ -620,6 +622,9 @@ export default function JobModal({
                     if (updated?.attachments) {
                         // ✅ Reflect full attachments array returned by backend
                         setAttachments(updated.attachments);
+                        if (updated.attachments.length > 0) {
+                            onAttachmentUploaded?.(updated);
+                        }
                     }
                 }
             }
@@ -695,6 +700,10 @@ export default function JobModal({
                 const updated = resp.updatedJobs.find((j) => j.jobID === jobID);
                 if (updated?.attachments) {
                     setAttachments(updated.attachments);
+                    // ✅ Call callback if attachment was uploaded successfully
+                    if (updated.attachments.length > 0) {
+                        onAttachmentUploaded?.();
+                    }
                 }
             }
 

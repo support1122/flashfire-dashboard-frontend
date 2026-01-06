@@ -735,6 +735,19 @@ const JobTracker = () => {
             return;
         }
 
+        // Check if operations role is moving job to deleted - require at least one attachment
+        if (status === 'deleted' && role === 'operations') {
+            const hasAttachments = job.attachments && Array.isArray(job.attachments) && job.attachments.length > 0;
+            if (!hasAttachments) {
+                // Open JobModal with attachments section and set pending move
+                setSelectedJob(job);
+                setPendingMove({ jobID, status });
+                setShowJobModal(true);
+                toastUtils.error("Please upload at least one image attachment before moving this job card to Removed.");
+                return;
+            }
+        }
+
         // Check lock period for operations moving from saved to applied
         if (role === 'operations' && job.currentStatus === 'saved' && status === 'applied') {
             const lockCheck = await checkLockPeriod();
@@ -1073,6 +1086,27 @@ const JobTracker = () => {
                                 );
                                 setPendingMove(null);
                                 setShowJobModal(false);
+                            }
+                        }}
+                        onAttachmentUploaded={(updatedJob) => {
+                            // When attachment is uploaded and there's a pending move to 'deleted' status
+                            if (
+                                pendingMove &&
+                                selectedJob &&
+                                pendingMove.jobID === selectedJob.jobID &&
+                                pendingMove.status === 'deleted'
+                            ) {
+                                // Verify the job now has attachments before moving (use updatedJob from callback)
+                                if (updatedJob?.attachments && Array.isArray(updatedJob.attachments) && updatedJob.attachments.length > 0) {
+                                    onUpdateJobStatus(
+                                        pendingMove.jobID,
+                                        pendingMove.status,
+                                        userDetails
+                                    );
+                                    setPendingMove(null);
+                                    setShowJobModal(false);
+                                    toastUtils.success("Attachment uploaded! Job card moved to Removed.");
+                                }
                             }
                         }}
                     />
