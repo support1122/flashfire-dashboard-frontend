@@ -2093,6 +2093,7 @@ function App() {
     };
 
     const [showModal, setShowModal] = useState(false);
+    const [modalVersion, setModalVersion] = useState<number | undefined>(undefined);
 
     // Show loading state during initialization
     if (isInitializing) {
@@ -2221,7 +2222,8 @@ function App() {
                                             </button> */}
                                             <button
                                                 onClick={() => {
-                                                    setVersion(2);
+                                                    // Set modal version to 2 for medical resumes, but don't change current version
+                                                    setModalVersion(2);
                                                     setShowModal(true);
                                                 }}
                                                 className="px-4 py-2 rounded-md text-sm font-medium transition-colors bg-orange-600 text-white hover:bg-orange-700"
@@ -2234,7 +2236,8 @@ function App() {
                                     {/* All Resumes Button */}
                                     <button
                                         onClick={() => {
-                                            setVersion(0);
+                                            // Set modal version to 0 for all resumes, but don't change current version
+                                            setModalVersion(0);
                                             setShowModal(true);
                                         }}
                                         className="px-4 py-2 rounded-md text-sm font-medium transition-colors bg-orange-600 text-white hover:bg-orange-700"
@@ -2244,7 +2247,9 @@ function App() {
                                     <ResumeSelectorModal
                                         open={showModal}
                                         onClose={() => {
+                                            // Simply close modal without changing version
                                             setShowModal(false);
+                                            setModalVersion(undefined);
                                             setCurrentResumeView("editor");
                                         }}
                                         onSelect={(
@@ -2265,6 +2270,7 @@ function App() {
                                             }
 
                                             console.log("Resume V field:", resume.V);
+                                            // Only change version when a resume is actually selected
                                             if (resume.V !== undefined) {
                                                 setVersion(resume.V);
                                                 console.log("Set versionV to:", resume.V);
@@ -2278,10 +2284,11 @@ function App() {
                                             }
 
                                             setCurrentResumeView("editor");
-
-                                            // setModalVersion(null);
+                                            
+                                            // Clear modal version after selection
+                                            setModalVersion(undefined);
                                         }}
-                                        version={versionV}
+                                        version={modalVersion}
                                     />
 
                                     {/* Other nav buttons */}

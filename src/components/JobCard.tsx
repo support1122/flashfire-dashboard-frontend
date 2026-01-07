@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import { Calendar } from 'lucide-react';
 import { Job } from '../types';
 import { getTimeAgo } from '../utils/getTimeAgo';
@@ -13,6 +13,7 @@ interface JobCardProps {
   showJobModal: boolean;
   setSelectedJob: React.Dispatch<React.SetStateAction<Job | null>>;
   setShowJobModal: React.Dispatch<React.SetStateAction<boolean>>;
+  onShowRemovalReason?: (job: Job) => void;
 }
 
 const JobCard: React.FC<JobCardProps> = ({
@@ -23,14 +24,67 @@ const JobCard: React.FC<JobCardProps> = ({
   onDragEnd,
   onEdit,
   onDelete,
+  onShowRemovalReason,
 }) => {
   const { isHighlighting } = useDownloadHighlightStore();
   const { role } = useOperationsStore();
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const isRemoved = job.currentStatus?.toLowerCase().startsWith('deleted') || 
+                    job.currentStatus?.toLowerCase().startsWith('removed');
   
   const handleClick = () => {
     setShowJobModal(true);
     setSelectedJob(job);
   };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!isRemoved || !onShowRemovalReason) return;
+    
+    longPressTimer.current = setTimeout(() => {
+      if (onShowRemovalReason) {
+        onShowRemovalReason(job);
+      }
+    }, 5000);
+  };
+
+  const handleMouseUp = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isRemoved || !onShowRemovalReason) return;
+    
+    longPressTimer.current = setTimeout(() => {
+      if (onShowRemovalReason) {
+        onShowRemovalReason(job);
+      }
+    }, 5000);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+      }
+    };
+  }, []);
   const getCompanyDomain = (companyName: string) => {
     return companyName.replace(/\s+/g, '').toLowerCase();
   };
@@ -58,6 +112,11 @@ const JobCard: React.FC<JobCardProps> = ({
       draggable
       onDragStart={(e) => onDragStart(e, job)}
       onDragEnd={onDragEnd}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       className={`rounded-lg border w-full border-gray-200 p-2 shadow-sm hover:shadow-md transition-all duration-200 cursor-move hover:scale-[1.02] hover:-rotate-1 ${
         shouldHighlight 
           ? "bg-red-100 border-red-300" 
