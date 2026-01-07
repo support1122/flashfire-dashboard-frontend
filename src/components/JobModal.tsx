@@ -305,6 +305,10 @@ export default function JobModal({
         const saved = localStorage.getItem('resumePreview_lastScale');
         return saved ? parseFloat(saved) : 1.0;
     });
+    const [removalReasonData, setRemovalReasonData] = useState<{
+        removalReason: string;
+        removalDate: string;
+    } | null>(null);
 
 
     const handleDownloadClick = async () => {
@@ -356,6 +360,44 @@ export default function JobModal({
             }
         }
     }, [jobDetails?.jobID, activeSection, getJobDescription, isJobDescriptionLoading, loadJobDescription]);
+
+    useEffect(() => {
+        if (role === "operations" && jobDetails?.jobID && jobDetails?.userID) {
+            const isRemoved = jobDetails?.currentStatus?.toLowerCase().startsWith('deleted') || 
+                             jobDetails?.currentStatus?.toLowerCase().startsWith('removed');
+            
+            if (isRemoved) {
+                setRemovalReasonData(null);
+                
+                fetch(`${API_BASE}/get-removal-reason`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        jobID: jobDetails.jobID,
+                        userEmail: jobDetails.userID
+                    }),
+                })
+                .then(res => res.json())
+                .then(result => {
+                    if (result.success && result.removalReason) {
+                        setRemovalReasonData({
+                            removalReason: result.removalReason,
+                            removalDate: result.removalDate || ''
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching removal reason:', error);
+                });
+            } else {
+                setRemovalReasonData(null);
+            }
+        } else {
+            setRemovalReasonData(null);
+        }
+    }, [jobDetails?.jobID, jobDetails?.userID, jobDetails?.currentStatus, role]);
 
 
 
@@ -1516,9 +1558,9 @@ export default function JobModal({
                             <h4 className="text-lg font-semibold text-gray-900 mb-4">
                                 📈 Application Timeline
                             </h4>
-                            {jobDetails?.timeline?.length > 0 ? (
+                            {(jobDetails?.timeline?.length > 0 || (role === "operations" && removalReasonData)) ? (
                                 <ol className="relative border-s border-gray-200">
-                                    {jobDetails.timeline.map(
+                                    {jobDetails?.timeline?.map(
                                         (event: string, idx: number) => (
                                             <li
                                                 key={idx}
@@ -1545,6 +1587,36 @@ export default function JobModal({
                                                 </p>
                                             </li>
                                         )
+                                    )}
+                                    {role === "operations" && removalReasonData && (
+                                        <li className="mb-10 ms-6">
+                                            <span className="absolute flex items-center justify-center w-6 h-6 bg-red-100 rounded-full -start-3 ring-8 ring-white">
+                                                <svg
+                                                    className="w-3 h-3 text-red-600"
+                                                    fill="currentColor"
+                                                    viewBox="0 0 20 20"
+                                                >
+                                                    <path
+                                                        fillRule="evenodd"
+                                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                                        clipRule="evenodd"
+                                                    />
+                                                </svg>
+                                            </span>
+                                            <h3 className="flex items-center mb-1 text-md font-semibold text-red-800">
+                                                🚨 Removed
+                                            </h3>
+                                            <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r mt-2">
+                                                <p className="text-sm text-red-700">
+                                                    {removalReasonData.removalReason}
+                                                </p>
+                                                {removalReasonData.removalDate && (
+                                                    <p className="mt-1 text-xs text-red-600">
+                                                        Removed on: {removalReasonData.removalDate}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </li>
                                     )}
                                 </ol>
                             ) : (

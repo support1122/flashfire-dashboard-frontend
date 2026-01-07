@@ -13,6 +13,7 @@ import { useUserProfile } from "../state_management/ProfileContext.tsx";
 const JobModal = lazy(() => import("./JobModal.tsx"));
 const RemovalLimitModal = lazy(() => import("./RemovalLimitModal.tsx"));
 const RemovalReasonModal = lazy(() => import("./RemovalReasonModal.tsx"));
+const RemovalReasonDisplayModal = lazy(() => import("./RemovalReasonDisplayModal.tsx"));
 
 const JOBS_PER_PAGE = 30;
 
@@ -25,6 +26,13 @@ const JobTracker = () => {
     const [showRemovalLimitModal, setShowRemovalLimitModal] = useState(false);
     const [showRemovalReasonModal, setShowRemovalReasonModal] = useState(false);
     const [pendingRemovalJob, setPendingRemovalJob] = useState<Job | null>(null);
+    const [showRemovalReasonDisplayModal, setShowRemovalReasonDisplayModal] = useState(false);
+    const [removalReasonData, setRemovalReasonData] = useState<{
+        removalReason: string;
+        removalDate: string;
+        jobTitle: string;
+        companyName: string;
+    } | null>(null);
     const { userJobs, setUserJobs } = useUserJobs();
     const { userDetails, token } = useContext(UserContext) || {};
     const { userProfile } = useUserProfile();
@@ -621,10 +629,11 @@ const JobTracker = () => {
                 },
                 body: JSON.stringify({
                     action: "UpdateStatus",
-                    status: newStatus,
+                    status: status,
                     userDetails,
                     token: role !== "operations" ? token : undefined,
                     jobID,
+                    removalReason: removalReason || undefined,
                     // Send operations user name and email when operations member updates status
                     ...(role === "operations" && {
                         role: "operations",
@@ -776,6 +785,37 @@ const JobTracker = () => {
         await onUpdateJobStatus(pendingRemovalJob.jobID, 'deleted', userDetails, reason);
         setShowRemovalReasonModal(false);
         setPendingRemovalJob(null);
+    };
+
+    const handleShowRemovalReason = async (job: Job) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/get-removal-reason`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    jobID: job.jobID,
+                    userEmail: userDetails?.email
+                }),
+            });
+
+            const result = await response.json();
+            if (result.success && result.removalReason) {
+                setRemovalReasonData({
+                    removalReason: result.removalReason,
+                    removalDate: result.removalDate || '',
+                    jobTitle: result.jobTitle || job.jobTitle,
+                    companyName: result.companyName || job.companyName
+                });
+                setShowRemovalReasonDisplayModal(true);
+            } else {
+                toastUtils.error(result.message || 'No removal reason found');
+            }
+        } catch (error) {
+            console.error('Error fetching removal reason:', error);
+            toastUtils.error('Failed to fetch removal reason');
+        }
     };
 
 
@@ -981,6 +1021,7 @@ const JobTracker = () => {
                                                 onDelete={() =>
                                                     onDeleteJob(job.jobID)
                                                 }
+                                                onShowRemovalReason={handleShowRemovalReason}
                                             />
                                         </div>
                                     ))}
@@ -1147,6 +1188,21 @@ const JobTracker = () => {
                         onConfirm={handleRemovalReasonConfirm}
                         jobTitle={pendingRemovalJob.jobTitle}
                         companyName={pendingRemovalJob.companyName}
+                    />
+                </Suspense>
+            )}
+            {showRemovalReasonDisplayModal && removalReasonData && (
+                <Suspense fallback={<LoadingScreen />}>
+                    <RemovalReasonDisplayModal
+                        isOpen={showRemovalReasonDisplayModal}
+                        onClose={() => {
+                            setShowRemovalReasonDisplayModal(false);
+                            setRemovalReasonData(null);
+                        }}
+                        removalReason={removalReasonData.removalReason}
+                        removalDate={removalReasonData.removalDate}
+                        jobTitle={removalReasonData.jobTitle}
+                        companyName={removalReasonData.companyName}
                     />
                 </Suspense>
             )}
