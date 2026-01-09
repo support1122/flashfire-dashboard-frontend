@@ -61,27 +61,47 @@ export default function AssignResumeModal({ open, onClose, onAssignSuccess, defa
             ]);
 
             const allResumes: any[] = [];
+            const seenIds = new Set<string>();  
 
             if (resAll && resAll.ok) {
                 const data = await resAll.json();
                 if (Array.isArray(data)) {
-                    allResumes.push(...data.map((r: any) => ({ ...r, V: r.V || 0 })));
+                    data.forEach((r: any) => {
+                        const resumeId = r._id?.toString();
+                        if (resumeId && !seenIds.has(resumeId)) {
+                            seenIds.add(resumeId);
+                            allResumes.push({ ...r, V: r.V || 0 });
+                        }
+                    });
                 }
             }
 
             if (resV1 && resV1.ok) {
                 const data = await resV1.json();
                 if (Array.isArray(data)) {
-                    allResumes.push(...data.map((r: any) => ({ ...r, V: 1 })));
+                    data.forEach((r: any) => {
+                        const resumeId = r._id?.toString();
+                        if (resumeId && !seenIds.has(resumeId)) {
+                            seenIds.add(resumeId);
+                            allResumes.push({ ...r, V: 1 });
+                        }
+                    });
                 }
             }
 
             if (resV2 && resV2.ok) {
                 const data = await resV2.json();
                 if (Array.isArray(data)) {
-                    allResumes.push(...data.map((r: any) => ({ ...r, V: 2 })));
+                    data.forEach((r: any) => {
+                        const resumeId = r._id?.toString();
+                        if (resumeId && !seenIds.has(resumeId)) {
+                            seenIds.add(resumeId);
+                            allResumes.push({ ...r, V: 2 });
+                        }
+                    });
                 }
             }
+            
             // Sort resumes alphabetically
             const sortedResumes = allResumes.sort((a, b) => {
                 const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase() || a.name?.toLowerCase() || '';
@@ -89,6 +109,7 @@ export default function AssignResumeModal({ open, onClose, onAssignSuccess, defa
                 return nameA.localeCompare(nameB);
             });
 
+            console.log(`[AssignResumeModal] Fetched ${sortedResumes.length} unique resumes (deduplicated by _id)`);
             setResumes(sortedResumes);
         } catch (err) {
             console.error("Error fetching resumes:", err);
