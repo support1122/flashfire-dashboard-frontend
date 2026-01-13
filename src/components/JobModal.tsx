@@ -308,6 +308,7 @@ export default function JobModal({
     const [removalReasonData, setRemovalReasonData] = useState<{
         removalReason: string;
         removalDate: string;
+        removedBy: string;
     } | null>(null);
 
 
@@ -384,7 +385,8 @@ export default function JobModal({
                     if (result.success && result.removalReason) {
                         setRemovalReasonData({
                             removalReason: result.removalReason,
-                            removalDate: result.removalDate || ''
+                            removalDate: result.removalDate || '',
+                            removedBy: result.removedBy || 'user'
                         });
                     }
                 })
@@ -1604,7 +1606,7 @@ export default function JobModal({
                                                 </svg>
                                             </span>
                                             <h3 className="flex items-center mb-1 text-md font-semibold text-red-800">
-                                                🚨 Removed
+                                                🚨 Removed by {removalReasonData.removedBy}
                                             </h3>
                                             <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r mt-2">
                                                 <p className="text-sm text-red-700">

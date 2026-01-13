@@ -5,6 +5,7 @@ interface RemovalReasonDisplayModalProps {
   onClose: () => void;
   removalReason: string;
   removalDate: string;
+  removedBy?: string;
   jobTitle: string;
   companyName: string;
 }
@@ -14,6 +15,7 @@ export default function RemovalReasonDisplayModal({
   onClose,
   removalReason,
   removalDate,
+  removedBy,
   jobTitle,
   companyName
 }: RemovalReasonDisplayModalProps) {
@@ -61,12 +63,19 @@ export default function RemovalReasonDisplayModal({
             </p>
           </div>
 
-          {removalDate && (
-            <div className="flex items-center gap-2 mb-4 text-sm text-gray-600">
-              <Calendar className="w-4 h-4" />
-              <span>Removed on: {removalDate}</span>
-            </div>
-          )}
+          <div className="mb-4 space-y-2">
+            {removedBy && (
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Removed by:</span> {removedBy}
+              </div>
+            )}
+            {removalDate && (
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Calendar className="w-4 h-4" />
+                <span>Removed on: {removalDate}</span>
+              </div>
+            )}
+          </div>
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -30,6 +30,7 @@ const JobTracker = () => {
     const [removalReasonData, setRemovalReasonData] = useState<{
         removalReason: string;
         removalDate: string;
+        removedBy: string;
         jobTitle: string;
         companyName: string;
     } | null>(null);
@@ -805,6 +806,7 @@ const JobTracker = () => {
                 setRemovalReasonData({
                     removalReason: result.removalReason,
                     removalDate: result.removalDate || '',
+                    removedBy: result.removedBy || 'user',
                     jobTitle: result.jobTitle || job.jobTitle,
                     companyName: result.companyName || job.companyName
                 });
@@ -1201,6 +1203,7 @@ const JobTracker = () => {
                         }}
                         removalReason={removalReasonData.removalReason}
                         removalDate={removalReasonData.removalDate}
+                        removedBy={removalReasonData.removedBy}
                         jobTitle={removalReasonData.jobTitle}
                         companyName={removalReasonData.companyName}
                     />
