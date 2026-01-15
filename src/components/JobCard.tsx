@@ -125,7 +125,7 @@ const JobCard: React.FC<JobCardProps> = ({
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-gray-900 ">{job.jobTitle}</h4>
+          <h4 className="font-semibold text-gray-900 line-clamp-2">{job.jobTitle}</h4>
           <div className="flex items-center text-sm text-gray-600 mt-1">
   {job.companyName && (
               <img
@@ -147,7 +147,7 @@ const JobCard: React.FC<JobCardProps> = ({
               }}
             />
             )}
-            <span className="">{job.companyName}</span> <hr />
+            <span className="truncate max-w-full block">{job.companyName}</span> <hr />
           </div>
         </div>
       </div>
