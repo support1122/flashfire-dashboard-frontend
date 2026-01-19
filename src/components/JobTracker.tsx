@@ -749,11 +749,13 @@ const JobTracker = () => {
         if (status === 'deleted' && role === 'operations') {
             const hasAttachments = job.attachments && Array.isArray(job.attachments) && job.attachments.length > 0;
             if (!hasAttachments) {
-                // Open JobModal with attachments section and set pending move
                 setSelectedJob(job);
-                setPendingMove({ jobID, status });
+                setPendingMove({ jobID, status: 'deleted' });
                 setShowJobModal(true);
                 toastUtils.error("Please upload at least one image attachment before moving this job card to Removed.");
+                return;
+            } else {
+                onUpdateJobStatus(jobID, 'deleted', userDetails);
                 return;
             }
         }
@@ -1105,7 +1107,8 @@ const JobTracker = () => {
                                 exists &&
                                 pendingMove &&
                                 selectedJob &&
-                                pendingMove.jobID === selectedJob.jobID
+                                pendingMove.jobID === selectedJob.jobID &&
+                                pendingMove.status !== 'deleted'
                             ) {
                                 onUpdateJobStatus(
                                     pendingMove.jobID,
@@ -1120,7 +1123,8 @@ const JobTracker = () => {
                             if (
                                 pendingMove &&
                                 selectedJob &&
-                                pendingMove.jobID === selectedJob.jobID
+                                pendingMove.jobID === selectedJob.jobID &&
+                                pendingMove.status !== 'deleted'
                             ) {
                                 onUpdateJobStatus(
                                     pendingMove.jobID,
@@ -1132,15 +1136,18 @@ const JobTracker = () => {
                             }
                         }}
                         onAttachmentUploaded={(updatedJob) => {
-                            // When attachment is uploaded and there's a pending move to 'deleted' status
+                            if (!updatedJob) return;
+                            
+                            if (selectedJob && updatedJob.jobID === selectedJob.jobID) {
+                                setSelectedJob(updatedJob);
+                            }
+                            
                             if (
                                 pendingMove &&
-                                selectedJob &&
-                                pendingMove.jobID === selectedJob.jobID &&
+                                pendingMove.jobID === updatedJob.jobID &&
                                 pendingMove.status === 'deleted'
                             ) {
-                                // Verify the job now has attachments before moving (use updatedJob from callback)
-                                if (updatedJob?.attachments && Array.isArray(updatedJob.attachments) && updatedJob.attachments.length > 0) {
+                                if (updatedJob.attachments && Array.isArray(updatedJob.attachments) && updatedJob.attachments.length > 0) {
                                     onUpdateJobStatus(
                                         pendingMove.jobID,
                                         pendingMove.status,
