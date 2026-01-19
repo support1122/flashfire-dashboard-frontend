@@ -993,7 +993,11 @@ The resume will print across multiple pages if needed, ensuring no content is cu
         if (!skillsString) return "";
         return skillsString
             .split(",")
-            .map((skill) => skill.trim())
+            .map((skill) => {
+                const trimmed = skill.trim();
+                if (!trimmed) return trimmed;
+                return trimmed.split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+            })
             .join(", ");
     };
 

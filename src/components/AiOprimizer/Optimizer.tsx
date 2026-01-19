@@ -2032,6 +2032,19 @@ function App() {
                 (optimizedDataResult.summary || optimizedDataResult.workExperience)
             ) {
                 // Store optimized data temporarily and show comparison view
+                const processSkills = (skills: any) => {
+                    if (!skills || !Array.isArray(skills)) return skills;
+                    return skills.map((skill: any) => ({
+                        ...skill,
+                        category: skill.category ? skill.category.split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ") : skill.category,
+                        skills: skill.skills ? skill.skills.split(",").map((s: string) => {
+                            const trimmed = s.trim();
+                            if (!trimmed) return trimmed;
+                            return trimmed.split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+                        }).join(", ") : skill.skills
+                    }));
+                };
+
                 const newOptimizedData = {
                     ...resumeData,
 
@@ -2041,7 +2054,7 @@ function App() {
                     workExperience:
                         optimizedDataResult.workExperience ||
                         resumeData.workExperience,
-                    skills: optimizedDataResult.skills || resumeData.skills,
+                    skills: processSkills(optimizedDataResult.skills || resumeData.skills),
                     education: optimizedDataResult.education || resumeData.education,
                     projects: showProjects
                         ? optimizedDataResult.projects || resumeData.projects

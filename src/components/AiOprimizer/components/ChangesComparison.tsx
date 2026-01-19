@@ -2,6 +2,7 @@ import React from "react";
 import { useParams } from "react-router-dom";
 import { useResumeStore } from "../store/useResumeStore";
 import { useJobsSessionStore } from "../../../state_management/JobsSessionStore";
+import { capitalizeWords, capitalizeSkillsString } from "../../../utils/capitalizeWords";
 
 interface WorkExperienceItem {
     id: string;
@@ -879,7 +880,7 @@ export const ChangesComparison: React.FC<ChangesComparisonProps> = ({
                                             {original.category}:
                                         </div>
                                         <div className="text-sm text-gray-700">
-                                            {original.skills}
+                                            {capitalizeSkillsString(original.skills)}
                                         </div>
                                     </div>
                                 ))}
@@ -899,7 +900,7 @@ export const ChangesComparison: React.FC<ChangesComparisonProps> = ({
                                             {optimized.category}:
                                         </div>
                                         <div className="text-sm text-gray-700">
-                                            {optimized.skills}
+                                            {capitalizeSkillsString(optimized.skills)}
                                         </div>
                                     </div>
                                 ))}
