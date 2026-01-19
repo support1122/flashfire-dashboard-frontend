@@ -749,13 +749,11 @@ const JobTracker = () => {
         if (status === 'deleted' && role === 'operations') {
             const hasAttachments = job.attachments && Array.isArray(job.attachments) && job.attachments.length > 0;
             if (!hasAttachments) {
+                // Open JobModal with attachments section and set pending move
                 setSelectedJob(job);
-                setPendingMove({ jobID, status: 'deleted' });
+                setPendingMove({ jobID, status });
                 setShowJobModal(true);
                 toastUtils.error("Please upload at least one image attachment before moving this job card to Removed.");
-                return;
-            } else {
-                onUpdateJobStatus(jobID, 'deleted', userDetails);
                 return;
             }
         }
@@ -1107,8 +1105,7 @@ const JobTracker = () => {
                                 exists &&
                                 pendingMove &&
                                 selectedJob &&
-                                pendingMove.jobID === selectedJob.jobID &&
-                                pendingMove.status !== 'deleted'
+                                pendingMove.jobID === selectedJob.jobID
                             ) {
                                 onUpdateJobStatus(
                                     pendingMove.jobID,
@@ -1123,8 +1120,7 @@ const JobTracker = () => {
                             if (
                                 pendingMove &&
                                 selectedJob &&
-                                pendingMove.jobID === selectedJob.jobID &&
-                                pendingMove.status !== 'deleted'
+                                pendingMove.jobID === selectedJob.jobID
                             ) {
                                 onUpdateJobStatus(
                                     pendingMove.jobID,
@@ -1136,18 +1132,32 @@ const JobTracker = () => {
                             }
                         }}
                         onAttachmentUploaded={(updatedJob) => {
-                            if (!updatedJob) return;
-                            
-                            if (selectedJob && updatedJob.jobID === selectedJob.jobID) {
-                                setSelectedJob(updatedJob);
-                            }
-                            
+                            // When attachment is uploaded and there's a pending move
                             if (
                                 pendingMove &&
-                                pendingMove.jobID === updatedJob.jobID &&
-                                pendingMove.status === 'deleted'
+                                selectedJob &&
+                                pendingMove.jobID === selectedJob.jobID
                             ) {
-                                if (updatedJob.attachments && Array.isArray(updatedJob.attachments) && updatedJob.attachments.length > 0) {
+                                // Get the updated job - prefer updatedJob parameter, then find from userJobs state, then fallback to selectedJob
+                                const jobToCheck = updatedJob || userJobs?.find(j => j.jobID === pendingMove.jobID) || selectedJob;
+                                
+                                // Verify the job has attachments
+                                const hasAttachments = jobToCheck?.attachments && Array.isArray(jobToCheck.attachments) && jobToCheck.attachments.length > 0;
+                                
+                                if (hasAttachments) {
+                                    // Status labels for toast messages
+                                    const statusLabels: Record<JobStatus, string> = {
+                                        'saved': 'Saved',
+                                        'applied': 'Applied',
+                                        'interviewing': 'Interviewing',
+                                        'offer': 'Offers',
+                                        'rejected': 'Rejected',
+                                        'deleted': 'Removed'
+                                    };
+                                    
+                                    const statusLabel = statusLabels[pendingMove.status] || pendingMove.status;
+                                    
+                                    // Complete the move for any status (applied, interviewing, offer, rejected, deleted)
                                     onUpdateJobStatus(
                                         pendingMove.jobID,
                                         pendingMove.status,
@@ -1155,7 +1165,7 @@ const JobTracker = () => {
                                     );
                                     setPendingMove(null);
                                     setShowJobModal(false);
-                                    toastUtils.success("Attachment uploaded! Job card moved to Removed.");
+                                    toastUtils.success(`Attachment uploaded! Job card moved to ${statusLabel}.`);
                                 }
                             }
                         }}
