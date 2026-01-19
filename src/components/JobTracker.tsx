@@ -768,7 +768,17 @@ const JobTracker = () => {
         }
 
         // Gate only when moving out of "saved" to a real status (not deleted/saved)
+        // Only ask for attachments if the job doesn't already have them
         if (job.currentStatus === 'saved' && status !== 'deleted' && status !== 'saved') {
+            const hasAttachments = job.attachments && Array.isArray(job.attachments) && job.attachments.length > 0;
+            
+            // If job already has attachments, move directly without opening modal
+            if (hasAttachments) {
+                onUpdateJobStatus(jobID, status, userDetails);
+                return;
+            }
+            
+            // If no attachments, open modal to ask for them
             setSelectedJob(job);
             setPendingMove({ jobID, status });
             setShowJobModal(true);
