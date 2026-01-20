@@ -1142,7 +1142,15 @@ const JobTracker = () => {
                             }
                         }}
                         onAttachmentUploaded={(updatedJob) => {
-                            // When attachment is uploaded and there's a pending move
+                            if (!updatedJob) return;
+                            
+                            if (selectedJob && updatedJob.jobID === selectedJob.jobID) {
+                                setSelectedJob(updatedJob);
+                            }
+                            
+                            const currentStatus = updatedJob.currentStatus?.toLowerCase() || '';
+                            const isSavedStatus = currentStatus === 'saved' || currentStatus.includes('saved');
+                            
                             if (
                                 pendingMove &&
                                 pendingMove.jobID === updatedJob.jobID
@@ -1176,6 +1184,13 @@ const JobTracker = () => {
                                     };
                                     toastUtils.success(statusMessages[pendingMove.status] || "Attachment uploaded! Job card moved.");
                                 }
+                            } else if (isSavedStatus && updatedJob.attachments && Array.isArray(updatedJob.attachments) && updatedJob.attachments.length > 0) {
+                                onUpdateJobStatus(
+                                    updatedJob.jobID,
+                                    'applied',
+                                    userDetails
+                                );
+                                toastUtils.success("Attachment uploaded! Job card automatically moved to Applied.");
                             }
                         }}
                     />
