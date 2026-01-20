@@ -1144,10 +1144,20 @@ const JobTracker = () => {
                             
                             if (
                                 pendingMove &&
-                                pendingMove.jobID === updatedJob.jobID &&
-                                pendingMove.status === 'deleted'
+                                pendingMove.jobID === updatedJob.jobID
                             ) {
-                                if (updatedJob.attachments && Array.isArray(updatedJob.attachments) && updatedJob.attachments.length > 0) {
+                                if (pendingMove.status === 'deleted') {
+                                    if (updatedJob.attachments && Array.isArray(updatedJob.attachments) && updatedJob.attachments.length > 0) {
+                                        onUpdateJobStatus(
+                                            pendingMove.jobID,
+                                            pendingMove.status,
+                                            userDetails
+                                        );
+                                        setPendingMove(null);
+                                        setShowJobModal(false);
+                                        toastUtils.success("Attachment uploaded! Job card moved to Removed.");
+                                    }
+                                } else {
                                     onUpdateJobStatus(
                                         pendingMove.jobID,
                                         pendingMove.status,
@@ -1155,7 +1165,15 @@ const JobTracker = () => {
                                     );
                                     setPendingMove(null);
                                     setShowJobModal(false);
-                                    toastUtils.success("Attachment uploaded! Job card moved to Removed.");
+                                    const statusMessages: Record<JobStatus, string> = {
+                                        'saved': 'Job card moved to Saved.',
+                                        'applied': 'Attachment uploaded! Job card moved to Applied.',
+                                        'interviewing': 'Attachment uploaded! Job card moved to Interviewing.',
+                                        'offer': 'Attachment uploaded! Job card moved to Offer.',
+                                        'rejected': 'Attachment uploaded! Job card moved to Rejected.',
+                                        'deleted': 'Attachment uploaded! Job card moved to Removed.'
+                                    };
+                                    toastUtils.success(statusMessages[pendingMove.status] || "Attachment uploaded! Job card moved.");
                                 }
                             }
                         }}
