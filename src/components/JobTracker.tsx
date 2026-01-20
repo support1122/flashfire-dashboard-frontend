@@ -1145,29 +1145,20 @@ const JobTracker = () => {
                             // When attachment is uploaded and there's a pending move
                             if (
                                 pendingMove &&
-                                selectedJob &&
-                                pendingMove.jobID === selectedJob.jobID
+                                pendingMove.jobID === updatedJob.jobID
                             ) {
-                                // Get the updated job - prefer updatedJob parameter, then find from userJobs state, then fallback to selectedJob
-                                const jobToCheck = updatedJob || userJobs?.find(j => j.jobID === pendingMove.jobID) || selectedJob;
-                                
-                                // Verify the job has attachments
-                                const hasAttachments = jobToCheck?.attachments && Array.isArray(jobToCheck.attachments) && jobToCheck.attachments.length > 0;
-                                
-                                if (hasAttachments) {
-                                    // Status labels for toast messages
-                                    const statusLabels: Record<JobStatus, string> = {
-                                        'saved': 'Saved',
-                                        'applied': 'Applied',
-                                        'interviewing': 'Interviewing',
-                                        'offer': 'Offers',
-                                        'rejected': 'Rejected',
-                                        'deleted': 'Removed'
-                                    };
-                                    
-                                    const statusLabel = statusLabels[pendingMove.status] || pendingMove.status;
-                                    
-                                    // Complete the move for any status (applied, interviewing, offer, rejected, deleted)
+                                if (pendingMove.status === 'deleted') {
+                                    if (updatedJob.attachments && Array.isArray(updatedJob.attachments) && updatedJob.attachments.length > 0) {
+                                        onUpdateJobStatus(
+                                            pendingMove.jobID,
+                                            pendingMove.status,
+                                            userDetails
+                                        );
+                                        setPendingMove(null);
+                                        setShowJobModal(false);
+                                        toastUtils.success("Attachment uploaded! Job card moved to Removed.");
+                                    }
+                                } else {
                                     onUpdateJobStatus(
                                         pendingMove.jobID,
                                         pendingMove.status,
@@ -1175,7 +1166,15 @@ const JobTracker = () => {
                                     );
                                     setPendingMove(null);
                                     setShowJobModal(false);
-                                    toastUtils.success(`Attachment uploaded! Job card moved to ${statusLabel}.`);
+                                    const statusMessages: Record<JobStatus, string> = {
+                                        'saved': 'Job card moved to Saved.',
+                                        'applied': 'Attachment uploaded! Job card moved to Applied.',
+                                        'interviewing': 'Attachment uploaded! Job card moved to Interviewing.',
+                                        'offer': 'Attachment uploaded! Job card moved to Offer.',
+                                        'rejected': 'Attachment uploaded! Job card moved to Rejected.',
+                                        'deleted': 'Attachment uploaded! Job card moved to Removed.'
+                                    };
+                                    toastUtils.success(statusMessages[pendingMove.status] || "Attachment uploaded! Job card moved.");
                                 }
                             }
                         }}
