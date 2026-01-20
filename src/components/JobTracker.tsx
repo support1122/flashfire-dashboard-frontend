@@ -1156,16 +1156,16 @@ const JobTracker = () => {
                                 pendingMove.jobID === updatedJob.jobID
                             ) {
                                 if (pendingMove.status === 'deleted') {
-                                    if (updatedJob.attachments && Array.isArray(updatedJob.attachments) && updatedJob.attachments.length > 0) {
-                                        onUpdateJobStatus(
-                                            pendingMove.jobID,
-                                            pendingMove.status,
-                                            userDetails
-                                        );
-                                        setPendingMove(null);
-                                        setShowJobModal(false);
-                                        toastUtils.success("Attachment uploaded! Job card moved to Removed.");
-                                    }
+                                if (updatedJob.attachments && Array.isArray(updatedJob.attachments) && updatedJob.attachments.length > 0) {
+                                    onUpdateJobStatus(
+                                        pendingMove.jobID,
+                                        pendingMove.status,
+                                        userDetails
+                                    );
+                                    setPendingMove(null);
+                                    setShowJobModal(false);
+                                    toastUtils.success("Attachment uploaded! Job card moved to Removed.");
+                                }
                                 } else {
                                     onUpdateJobStatus(
                                         pendingMove.jobID,
