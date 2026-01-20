@@ -749,13 +749,11 @@ const JobTracker = () => {
         if (status === 'deleted' && role === 'operations') {
             const hasAttachments = job.attachments && Array.isArray(job.attachments) && job.attachments.length > 0;
             if (!hasAttachments) {
+                // Open JobModal with attachments section and set pending move
                 setSelectedJob(job);
-                setPendingMove({ jobID, status: 'deleted' });
+                setPendingMove({ jobID, status });
                 setShowJobModal(true);
                 toastUtils.error("Please upload at least one image attachment before moving this job card to Removed.");
-                return;
-            } else {
-                onUpdateJobStatus(jobID, 'deleted', userDetails);
                 return;
             }
         }
@@ -770,7 +768,17 @@ const JobTracker = () => {
         }
 
         // Gate only when moving out of "saved" to a real status (not deleted/saved)
+        // Only ask for attachments if the job doesn't already have them
         if (job.currentStatus === 'saved' && status !== 'deleted' && status !== 'saved') {
+            const hasAttachments = job.attachments && Array.isArray(job.attachments) && job.attachments.length > 0;
+            
+            // If job already has attachments, move directly without opening modal
+            if (hasAttachments) {
+                onUpdateJobStatus(jobID, status, userDetails);
+                return;
+            }
+            
+            // If no attachments, open modal to ask for them
             setSelectedJob(job);
             setPendingMove({ jobID, status });
             setShowJobModal(true);
@@ -1107,8 +1115,7 @@ const JobTracker = () => {
                                 exists &&
                                 pendingMove &&
                                 selectedJob &&
-                                pendingMove.jobID === selectedJob.jobID &&
-                                pendingMove.status !== 'deleted'
+                                pendingMove.jobID === selectedJob.jobID
                             ) {
                                 onUpdateJobStatus(
                                     pendingMove.jobID,
@@ -1123,8 +1130,7 @@ const JobTracker = () => {
                             if (
                                 pendingMove &&
                                 selectedJob &&
-                                pendingMove.jobID === selectedJob.jobID &&
-                                pendingMove.status !== 'deleted'
+                                pendingMove.jobID === selectedJob.jobID
                             ) {
                                 onUpdateJobStatus(
                                     pendingMove.jobID,
@@ -1136,12 +1142,7 @@ const JobTracker = () => {
                             }
                         }}
                         onAttachmentUploaded={(updatedJob) => {
-                            if (!updatedJob) return;
-                            
-                            if (selectedJob && updatedJob.jobID === selectedJob.jobID) {
-                                setSelectedJob(updatedJob);
-                            }
-                            
+                            // When attachment is uploaded and there's a pending move
                             if (
                                 pendingMove &&
                                 pendingMove.jobID === updatedJob.jobID
