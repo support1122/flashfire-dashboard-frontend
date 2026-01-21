@@ -293,6 +293,7 @@ export default function ProfilePage() {
     const [showSecretKeyModal, setShowSecretKeyModal] = useState(false);
     const [secretKeyError, setSecretKeyError] = useState<string>("");
     const { role } = useOperationsStore();
+    const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
 
     useEffect(() => {
         const fetchLatestProfile = async () => {
@@ -318,6 +319,40 @@ export default function ProfilePage() {
 
         fetchLatestProfile();
     }, []);
+
+    useEffect(() => {
+        const checkGmailStatus = async () => {
+            try {
+                const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
+                if (!ctx?.userDetails?.email) return;
+                const response = await fetch(`${API_BASE_URL}/gmail/status`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ email: ctx.userDetails.email })
+                });
+                if (!response.ok) {
+                    setGmailConnected(false);
+                    return;
+                }
+                const data = await response.json();
+                setGmailConnected(!!data.connected);
+            } catch {
+                setGmailConnected(false);
+            }
+        };
+        checkGmailStatus();
+    }, [ctx?.userDetails?.email]);
+
+    const handleConnectGmail = () => {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
+        if (!ctx?.userDetails?.email) return;
+        const url = `${API_BASE_URL}/gmail/auth/google?email=${encodeURIComponent(
+            ctx.userDetails.email
+        )}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+    };
 
     const data = userProfile ?? ({} as UserProfile);
 
@@ -431,6 +466,25 @@ export default function ProfilePage() {
                             {fullName}
                         </h1>
                     </div>
+
+                    {gmailConnected !== null && (
+                        <div className="flex justify-center sm:justify-end w-full sm:w-auto">
+                            {gmailConnected ? (
+                                <div className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-emerald-50 border border-emerald-300/60 shadow-sm">
+                                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+                                    <span>Gmail connected for recruiter outreach</span>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={handleConnectGmail}
+                                    className="inline-flex items-center gap-2 rounded-lg bg-white text-sm font-semibold text-orange-600 px-4 py-2 shadow-md hover:shadow-lg hover:bg-orange-50 transition-all"
+                                >
+                                    <span className="inline-block h-2 w-2 rounded-full bg-red-400" />
+                                    <span>Connect Gmail for recruiter emails</span>
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 

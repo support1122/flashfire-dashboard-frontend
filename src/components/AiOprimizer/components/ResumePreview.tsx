@@ -88,6 +88,29 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     showPrintButtons = true,
     sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education", "publications"],
 }) => {
+    const renderMarkedText = (text: string) => {
+        if (!text) return null;
+        const regex = /\*\*\{(.*?)\}\*\*|\*\*(.+?)\*\*/g;
+        const elements: React.ReactNode[] = [];
+        let lastIndex = 0;
+        let match: RegExpExecArray | null;
+        while ((match = regex.exec(text)) !== null) {
+            if (match.index > lastIndex) {
+                elements.push(text.slice(lastIndex, match.index));
+            }
+            const boldText = match[1] !== undefined ? match[1] : match[2];
+            elements.push(
+                <strong key={elements.length}>
+                    {boldText}
+                </strong>
+            );
+            lastIndex = regex.lastIndex;
+        }
+        if (lastIndex < text.length) {
+            elements.push(text.slice(lastIndex));
+        }
+        return elements;
+    };
     const [scalingFactor, setScalingFactor] = useState(1);
     const [showWarningModal, setShowWarningModal] = useState(false);
     const [showScaleModal, setShowScaleModal] = useState(false);
@@ -1057,8 +1080,10 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 letterSpacing: "-0.025em",
                             }}
                         >
-                            {data.summary ||
-                                "Your professional summary will appear here..."}
+                            {renderMarkedText(
+                                data.summary ||
+                                    "Your professional summary will appear here..."
+                            )}
                         </div>
                     </div>
                 );
@@ -1191,7 +1216,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                             letterSpacing: "-0.025em",
                                                         }}
                                                     >
-                                                        {resp}
+                                                        {renderMarkedText(resp)}
                                                     </div>
                                                 </div>
                                             )
@@ -1359,7 +1384,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                         letterSpacing: "-0.025em",
                                                     }}
                                                 >
-                                                    {resp}
+                                                    {renderMarkedText(resp)}
                                                 </div>
                                             </div>
                                         )
@@ -1466,7 +1491,9 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                             textAlign: "justify",
                                         }}
                                     >
-                                        {formatSkills(category.skills)}
+                                        {renderMarkedText(
+                                            formatSkills(category.skills)
+                                        )}
                                     </span>
                                 </div>
                             ))
