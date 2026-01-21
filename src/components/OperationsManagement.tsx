@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext, useCallback, useRef } from 'react';
-import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, X, ChevronDown, ChevronUp, Edit2 } from 'lucide-react';
+import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, X, ChevronDown, ChevronUp, Edit2, Mail, Paperclip, Send } from 'lucide-react';
 import { UserContext } from '../state_management/UserContext.tsx';
 import { toastUtils, toastMessages } from '../utils/toast.ts';
 import { useOperationsStore } from '../state_management/Operations.ts';
@@ -46,7 +46,18 @@ const OperationsManagement = () => {
   });
   const [showAddLockPeriod, setShowAddLockPeriod] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
+  const [activeSection, setActiveSection] = useState<"operations" | "email">("operations");
+  const [gmailStatus, setGmailStatus] = useState<"unknown" | "connected" | "disconnected">("unknown");
+  const [emailForm, setEmailForm] = useState({
+    to: "",
+    subject: "",
+    text: ""
+  });
+  const [sending, setSending] = useState(false);
+  const [emailResult, setEmailResult] = useState<string | null>(null);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [availableAccounts, setAvailableAccounts] = useState<string[]>([]);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   // Only allow operations role
@@ -95,6 +106,43 @@ const OperationsManagement = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const loadGmailState = async () => {
+      try {
+        if (!userDetails?.email) return;
+        const statusRes = await fetch(`${API_BASE_URL}/gmail/status`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ email: userDetails.email })
+        });
+        if (!statusRes.ok) {
+          setGmailStatus("disconnected");
+        } else {
+          const statusJson = await statusRes.json();
+          setGmailStatus(statusJson.connected ? "connected" : "disconnected");
+        }
+        const accountsRes = await fetch(`${API_BASE_URL}/gmail/accounts`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ email: userDetails.email })
+        });
+        if (accountsRes.ok) {
+          const accountsJson = await accountsRes.json();
+          const accounts = (accountsJson.accounts || []).map((a: { email: string }) => a.email);
+          setAvailableAccounts(accounts);
+          setSelectedAccounts(accounts);
+        }
+      } catch {
+        setGmailStatus("disconnected");
+      }
+    };
+    loadGmailState();
+  }, [API_BASE_URL, userDetails?.email]);
 
   // Auto-save function with debouncing
   const autoSave = useCallback(async () => {
@@ -237,6 +285,92 @@ const OperationsManagement = () => {
     setLockPeriods(lockPeriods.filter(period => period.id !== periodId));
   };
 
+  const handleAttachmentChange = (file: File | null) => {
+    if (!file) {
+      setAttachment(null);
+      return;
+    }
+    const maxSize = 25 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toastUtils.error("File size exceeds 25MB limit");
+      return;
+    }
+    setAttachment(file);
+  };
+
+  const toggleAccountSelection = (email: string) => {
+    setSelectedAccounts(prev => {
+      if (prev.includes(email)) {
+        return prev.filter(e => e !== email);
+      }
+      return [...prev, email];
+    });
+  };
+
+  const handleSendEmail = async () => {
+    try {
+      if (!userDetails?.email) {
+        toastUtils.error("Missing client email");
+        return;
+      }
+      if (!emailForm.to.trim() || !emailForm.subject.trim() || !emailForm.text.trim()) {
+        toastUtils.error("To, subject and message are required");
+        return;
+      }
+      if (gmailStatus !== "connected" || availableAccounts.length === 0) {
+        toastUtils.error("Client has not connected Gmail yet");
+        return;
+      }
+      setSending(true);
+      setEmailResult(null);
+      const formData = new FormData();
+      formData.append("ownerEmail", userDetails.email);
+      formData.append("to", emailForm.to.trim());
+      formData.append("subject", emailForm.subject.trim());
+      formData.append("text", emailForm.text.trim());
+      const fromList = selectedAccounts.length > 0 ? selectedAccounts : availableAccounts;
+      fromList.forEach(email => {
+        formData.append("fromEmails", email);
+      });
+      if (attachment) {
+        formData.append("attachment", attachment);
+      }
+      const res = await fetch(`${API_BASE_URL}/gmail/send`, {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toastUtils.error(data.error || "Failed to send emails");
+        setEmailResult(null);
+        return;
+      }
+      const lines: string[] = [];
+      const sent = data.sent || 0;
+      const total = data.total || 0;
+      lines.push(`Results: ${sent}/${total} emails sent successfully`);
+      if (data.attachment) {
+        lines.push(`Attachment: ${data.attachment}`);
+      }
+      const results = data.results || [];
+      results.forEach((r: { email: string; status: string; error?: string }) => {
+        if (r.status === "sent") {
+          lines.push(`✔ ${r.email}: Sent successfully`);
+        } else {
+          lines.push(`✖ ${r.email}: ${r.error || "Failed"}`);
+        }
+      });
+      setEmailResult(lines.join("\n"));
+      toastUtils.success("Emails processed");
+    } catch (error) {
+      console.error(error);
+      toastUtils.error("Failed to send emails");
+      setEmailResult(null);
+    } finally {
+      setSending(false);
+    }
+  };
+
   const isDateInLockPeriod = (date: Date) => {
     return lockPeriods.some(period => {
       const start = new Date(period.startDate);
@@ -271,30 +405,59 @@ const OperationsManagement = () => {
     <div className="px-4 sm:px-6 lg:px-8 py-6 min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-4 md:mb-6">
           <h2 className="text-4xl md:text-4xl font-extrabold text-zinc-900 mb-2 tracking-tight leading-[1.1]">
             Operations Management
           </h2>
-          <p className="text-gray-600 text-lg">Manage client TODOs and lock periods</p>
+          <p className="text-gray-600 text-lg">
+            Manage client TODOs, lock periods, and send recruiter emails
+          </p>
         </div>
 
-        {/* Active Lock Period Alert */}
-        {activeLockPeriod && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
-            <div className="flex items-center">
-              <Lock className="w-5 h-5 text-red-500 mr-3" />
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-red-800">Lock Period Active</h3>
-                <p className="text-sm text-red-700 mt-1">
-                  Job cards cannot be moved from "Saved" to "Applied" until {new Date(activeLockPeriod.endDate).toLocaleDateString()}
-                  {activeLockPeriod.reason && ` - ${activeLockPeriod.reason}`}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          <button
+            onClick={() => setActiveSection("operations")}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              activeSection === "operations"
+                ? "bg-orange-500 text-white shadow-md"
+                : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>TODOs & Lock Periods</span>
+          </button>
+          <button
+            onClick={() => setActiveSection("email")}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              activeSection === "email"
+                ? "bg-indigo-600 text-white shadow-md"
+                : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            <Mail className="w-4 h-4" />
+            <span>Send Emails to Recruiters</span>
+          </button>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {activeSection === "operations" && (
+          <>
+            {activeLockPeriod && (
+              <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <Lock className="w-5 h-5 text-red-500 mr-3" />
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold text-red-800">Lock Period Active</h3>
+                    <p className="text-sm text-red-700 mt-1">
+                      Job cards cannot be moved from "Saved" to "Applied" until{" "}
+                      {new Date(activeLockPeriod.endDate).toLocaleDateString()}
+                      {activeLockPeriod.reason && ` - ${activeLockPeriod.reason}`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* TODOs Section */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
@@ -607,7 +770,179 @@ const OperationsManagement = () => {
               )}
             </div>
           </div>
-        </div>
+            </div>
+          </>
+        )}
+
+        {activeSection === "email" && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-indigo-600" />
+                  <span>Send Emails to Recruiters</span>
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Use the client&apos;s connected Gmail accounts to send personalized outreach.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {gmailStatus === "connected" && availableAccounts.length > 0 && (
+                  <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    {availableAccounts.length} Gmail account(s) connected
+                  </span>
+                )}
+                {gmailStatus !== "connected" && (
+                  <span className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700 border border-red-200">
+                    <span className="h-2 w-2 rounded-full bg-red-500" />
+                    Client has not connected Gmail yet
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              <div className="lg:col-span-3 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    To (comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={emailForm.to}
+                    onChange={(e) =>
+                      setEmailForm((prev) => ({ ...prev, to: e.target.value }))
+                    }
+                    placeholder="recruiter1@example.com, recruiter2@example.com"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Subject
+                  </label>
+                  <input
+                    type="text"
+                    value={emailForm.subject}
+                    onChange={(e) =>
+                      setEmailForm((prev) => ({ ...prev, subject: e.target.value }))
+                    }
+                    placeholder="Subject line"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Message
+                  </label>
+                  <textarea
+                    value={emailForm.text}
+                    onChange={(e) =>
+                      setEmailForm((prev) => ({ ...prev, text: e.target.value }))
+                    }
+                    rows={8}
+                    placeholder="Write a clear, personalized message to the recruiter..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
+                  />
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <label className="inline-flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                      <Paperclip className="w-4 h-4 text-gray-500" />
+                      <span>Attach file (optional)</span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*"
+                        onChange={(e) => handleAttachmentChange(e.target.files?.[0] || null)}
+                      />
+                    </label>
+                    {attachment && (
+                      <div className="flex items-center gap-2 text-xs text-gray-600">
+                        <span className="truncate max-w-[160px]">{attachment.name}</span>
+                        <button
+                          onClick={() => setAttachment(null)}
+                          className="p-1 rounded-full hover:bg-gray-100"
+                          aria-label="Remove attachment"
+                        >
+                          <X className="w-3 h-3 text-gray-500" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleSendEmail}
+                      disabled={sending || gmailStatus !== "connected" || !availableAccounts.length}
+                      className={`inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold shadow-md transition-all ${
+                        sending || gmailStatus !== "connected" || !availableAccounts.length
+                          ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                          : "bg-indigo-600 text-white hover:bg-indigo-700"
+                      }`}
+                    >
+                      <Send className="w-4 h-4" />
+                      {sending ? "Sending..." : "Send Emails"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-2 space-y-4">
+                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                    From accounts
+                  </h4>
+                  {availableAccounts.length === 0 ? (
+                    <p className="text-xs text-gray-600">
+                      No Gmail accounts connected for this client. Ask the client to open
+                      their profile and connect Gmail first.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-xs text-gray-600 mb-3">
+                        Select which connected Gmail accounts to send from. Leave all
+                        selected to send from every available account.
+                      </p>
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {availableAccounts.map((email) => (
+                          <label
+                            key={email}
+                            className="flex items-center gap-2 text-sm text-gray-800 bg-white rounded-md px-2 py-1 border border-gray-200 hover:border-indigo-400"
+                          >
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 text-indigo-600 rounded border-gray-300"
+                              checked={selectedAccounts.includes(email)}
+                              onChange={() => toggleAccountSelection(email)}
+                            />
+                            <span className="truncate">{email}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                    Delivery status
+                  </h4>
+                  {emailResult ? (
+                    <pre className="text-xs text-gray-800 whitespace-pre-wrap max-h-52 overflow-y-auto bg-gray-50 rounded-md p-3 border border-gray-100">
+                      {emailResult}
+                    </pre>
+                  ) : (
+                    <p className="text-xs text-gray-600">
+                      Status of the most recent email send will appear here, including which
+                      Gmail accounts succeeded or failed.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Auto-save indicator */}
         {saving && (
