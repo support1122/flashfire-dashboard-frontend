@@ -1,4 +1,10 @@
 import React, { useRef, useEffect, useState } from "react";
+import { toastUtils } from "../../../utils/toast";
+import * as pdfjsLib from 'pdfjs-dist';
+import { savePdf } from "../../../utils/savePdf.ts";
+// import { ResumeScalingModal } from "./ResumeScalingModal";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 interface ResumeData {
     personalInfo: {
@@ -62,12 +68,12 @@ interface ResumePreviewProps {
     showLeadership?: boolean;
     showProjects?: boolean;
     showSummary?: boolean;
-    showPublications?: boolean;
+    showPublications?: boolean; // Added for Publications section
     showChanges?: boolean;
     changedFields?: Set<string>;
-    onDownloadClick?: () => void;
-    showPrintButtons?: boolean;
-    sectionOrder?: string[];
+    onDownloadClick?: () => void; // Add this prop to handle download clicks
+    showPrintButtons?: boolean; // Add this prop to control print buttons visibility
+    sectionOrder?: string[]; // Add section order prop
 }
 
 export const ResumePreview: React.FC<ResumePreviewProps> = ({
@@ -80,31 +86,669 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     changedFields = new Set(),
     onDownloadClick,
     showPrintButtons = true,
-    sectionOrder = [
-        "personalInfo",
-        "summary",
-        "workExperience",
-        "projects",
-        "leadership",
-        "skills",
-        "education",
-        "publications",
-    ],
+    sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education", "publications"],
 }) => {
+    const renderMarkedText = (text: string) => {
+        if (!text) return null;
+        const regex = /\*\*\{(.*?)\}\*\*|\*\*(.+?)\*\*/g;
+        const elements: React.ReactNode[] = [];
+        let lastIndex = 0;
+        let match: RegExpExecArray | null;
+        while ((match = regex.exec(text)) !== null) {
+            if (match.index > lastIndex) {
+                elements.push(text.slice(lastIndex, match.index));
+            }
+            const boldText = match[1] !== undefined ? match[1] : match[2];
+            elements.push(
+                <strong key={elements.length}>
+                    {boldText}
+                </strong>
+            );
+            lastIndex = regex.lastIndex;
+        }
+        if (lastIndex < text.length) {
+            elements.push(text.slice(lastIndex));
+        }
+        return elements;
+    };
     const [scalingFactor, setScalingFactor] = useState(1);
     const [showWarningModal, setShowWarningModal] = useState(false);
+    const [showScaleModal, setShowScaleModal] = useState(false);
+    // Load last selected scale from localStorage
+    const getLastSelectedScale = () => {
+        const saved = localStorage.getItem('resumePreview_lastScale');
+        return saved ? parseFloat(saved) : 1.0;
+    };
+
+    const [selectedScale, setSelectedScale] = useState(getLastSelectedScale());
+    const [downloadFilename, setDownloadFilename] = useState("");
+    const overrideAutoScale = true;
+    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+    const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+    const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
+    const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+    const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+    const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
+
+    const loadingMessages = [
+        "Our PDF engine is optimizing the PDF view...",
+        "Crafting your perfect resume layout...",
+        "Fine-tuning typography and spacing...",
+        "Ensuring pixel-perfect formatting...",
+        "Applying professional styling...",
+        "Optimizing content density...",
+        "Perfecting page breaks and margins...",
+        "Generating high-quality PDF output...",
+    ];
+    // const [showScalingModal, setShowScalingModal] = useState(false);
     const measureRef = useRef<HTMLDivElement>(null);
 
+    // Enhanced print function with automatic settings
     const handlePrint = () => {
+        // Show warning modal first
         setShowWarningModal(true);
+    };
+
+    // Function to handle actual printing after user confirms
+    //     const handlePrintConfirm = () => {
+    //         setShowWarningModal(false);
+
+    //         // Store original title
+    //         const originalTitle = document.title;
+
+    //         // Set document title for the PDF filename
+    //         document.title = `${data.personalInfo.name || "Resume"}_Resume`;
+
+    //         // Create a style element for print-specific settings
+    //         const printStyle = document.createElement("style");
+    //         printStyle.innerHTML = `
+    //   @media print {
+    //     body {
+    //       margin: 0 !important;
+    //       padding: 0 !important;
+    //       -webkit-print-color-adjust: exact !important;
+    //       print-color-adjust: exact !important;
+    //       color-adjust: exact !important;
+    //       height: auto !important;
+    //       max-height: none !important;
+    //       overflow: visible !important;
+    //     }
+
+    //     @page {
+    //       size: letter !important;
+    //       margin: 0 !important;
+    //     }
+
+    //     #resume-print-only {
+    //       display: flex !important;
+    //       flex-direction: column !important;
+    //       font-family: "Times New Roman", Times, serif !important;
+    //       font-size: ${styles.fontSize} !important;
+    //       line-height: ${styles.lineHeight} !important;
+    //       letter-spacing: -0.025em !important;
+    //       color: #000 !important;
+    //       width: 100% !important;
+    //       height: auto !important;
+    //       min-height: auto !important;
+    //       max-height: none !important;
+    //       overflow: visible !important;
+    //       padding: 0.2in 0.5in 0.3in 0.5in !important;
+    //       box-sizing: border-box !important;
+    //       page-break-inside: auto !important;
+    //       page-break-before: auto !important;
+    //       page-break-after: auto !important;
+    //     }
+
+    //     /* Allow natural spacing between sections */
+    //     #resume-print-only > div {
+    //       margin-bottom: 12px !important;
+    //     }
+
+    //     /* Allow page breaks for long content */
+    //     * {
+    //       page-break-before: auto !important;
+    //       page-break-after: auto !important;
+    //       page-break-inside: auto !important;
+    //       break-inside: auto !important;
+    //     }
+
+    //     /* Prevent breaking within individual items */
+    //     .work-experience-item,
+    //     .project-item,
+    //     .education-item {
+    //       page-break-inside: avoid !important;
+    //       break-inside: avoid !important;
+    //     }
+    //   }
+    // `;
+
+    //         document.head.appendChild(printStyle);
+
+    //         // Function to automatically set print dialog settings
+    //         const setupPrintDialog = () => {
+    //             // Store original print function
+    //             const originalPrint = window.print;
+
+    //             // Override the print function
+    //             window.print = function() {
+    //                 // Try to use the modern Print API if available
+    //                 if (navigator.userAgent.includes('Chrome') && window.chrome && window.chrome.runtime) {
+    //                     try {
+    //                         // For Chrome, try to use the Print API
+    //                         if (window.chrome.runtime.getManifest) {
+    //                             // This would require a Chrome extension
+    //                             console.log('Chrome extension required for automatic print settings');
+    //                         }
+    //                     } catch (error) {
+    //                         console.log('Chrome Print API not available:', error);
+    //                     }
+    //                 }
+
+    //                 // Fallback to standard print with enhanced CSS
+    //                 const enhancedPrintStyle = document.createElement("style");
+    //                 enhancedPrintStyle.innerHTML = `
+    //                     @media print {
+    //                         @page {
+    //                             size: letter !important;
+    //                             margin: 0.2in 0.5in 0.5in 0.5in !important;
+    //                         }
+
+    //                         body {
+    //                             margin: 0 !important;
+    //                             padding: 0 !important;
+    //                             -webkit-print-color-adjust: exact !important;
+    //                             print-color-adjust: exact !important;
+    //                         }
+
+    //                         #resume-print-only {
+    //                             display: block !important;
+    //                             width: 100% !important;
+    //                             height: auto !important;
+    //                             overflow: visible !important;
+    //                             page-break-inside: auto !important;
+    //                         }
+
+    //                         /* Force content to start immediately */
+    //                         #resume-print-only > *:first-child {
+    //                             margin-top: 0 !important;
+    //                             padding-top: 0 !important;
+    //                         }
+    //                     }
+    //                 `;
+
+    //                 document.head.appendChild(enhancedPrintStyle);
+
+    //                 // Call original print
+    //                 originalPrint.call(this);
+
+    //                 // Cleanup enhanced styles after print
+    //                 setTimeout(() => {
+    //                     if (document.head.contains(enhancedPrintStyle)) {
+    //                         document.head.removeChild(enhancedPrintStyle);
+    //                     }
+    //                 }, 1000);
+    //             };
+    //         };
+
+    //         // Setup the print dialog override
+    //         setupPrintDialog();
+
+    //         // Small delay to ensure styles are applied
+    //         setTimeout(() => {
+    //             // Open print dialog
+    //             window.print();
+
+    //             // Cleanup: restore original title and remove print styles
+    //             setTimeout(() => {
+    //                 document.title = originalTitle;
+    //                 document.head.removeChild(printStyle);
+    //                 // Restore original print function
+    //                 window.print = window.print;
+    //             }, 1000);
+    //         }, 100);
+
+    //         // Call the optional callback
+    //         if (onDownloadClick) {
+    //             onDownloadClick();
+    //         }
+    //     };
+
+    // Generate preview PDF
+    const generatePreview = async (scale: number) => {
+        let messageInterval: NodeJS.Timeout | null = null;
+        try {
+            setIsGeneratingPreview(true);
+            // Rotate loading messages
+            messageInterval = setInterval(() => {
+                setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
+            }, 2000);
+
+            const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
+
+            const pdfPayload = {
+                personalInfo: data.personalInfo,
+                summary: data.summary || "",
+                workExperience: data.workExperience || [],
+                projects: data.projects || [],
+                leadership: data.leadership || [],
+                skills: data.skills || [],
+                education: data.education || [],
+                publications: data.publications || [],
+                checkboxStates: {
+                    showSummary: showSummary,
+                    showProjects: showProjects,
+                    showLeadership: showLeadership,
+                    showPublications: showPublications,
+                },
+                sectionOrder: sectionOrder,
+                scale: scale,
+                overrideAutoScale: overrideAutoScale,
+            };
+
+            const response = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(pdfPayload),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Preview generation failed: ${response.status}`);
+            }
+
+            const pdfBlob = await response.blob();
+            const pdfUrl = window.URL.createObjectURL(pdfBlob);
+
+            // Get PDF page count
+            try {
+                const arrayBuffer = await pdfBlob.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const numPages = pdf.numPages;
+                setPdfPageCount(numPages);
+            } catch (pdfError) {
+                console.error("Error getting PDF page count:", pdfError);
+                setPdfPageCount(null);
+            }
+
+            // Clean up previous preview
+            if (previewPdfUrl) {
+                window.URL.revokeObjectURL(previewPdfUrl);
+            }
+
+            setPreviewPdfUrl(pdfUrl);
+            setPreviewPdfBlob(pdfBlob); // Store blob for download
+            setIsGeneratingPreview(false);
+            if (messageInterval) clearInterval(messageInterval);
+        } catch (error: any) {
+            console.error("Error generating preview:", error);
+            setIsGeneratingPreview(false);
+            if (messageInterval) clearInterval(messageInterval);
+        }
+    };
+
+    // Handle scale change with debounced preview
+    useEffect(() => {
+        if (showScaleModal && selectedScale) {
+            // Reset page count when scale changes
+            setPdfPageCount(null);
+            const timer = setTimeout(() => {
+                generatePreview(selectedScale);
+            }, 500); // Debounce preview generation
+
+            return () => clearTimeout(timer);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedScale, showScaleModal, overrideAutoScale]);
+
+    // Clean up preview URL when modal closes
+    useEffect(() => {
+        if (!showScaleModal && previewPdfUrl) {
+            window.URL.revokeObjectURL(previewPdfUrl);
+            setPreviewPdfUrl(null);
+            setPreviewPdfBlob(null);
+            setPdfPageCount(null);
+        }
+    }, [showScaleModal, previewPdfUrl]);
+
+    // Generate preview when modal opens
+    useEffect(() => {
+        if (showScaleModal) {
+            generatePreview(selectedScale);
+        } else {
+            // Clean up preview URL when modal closes
+            if (previewPdfUrl) {
+                window.URL.revokeObjectURL(previewPdfUrl);
+                setPreviewPdfUrl(null);
+            }
+        }
+    }, [showScaleModal]);
+
+    useEffect(() => {
+        if (data.personalInfo?.name) {
+            const name = data.personalInfo.name || "Resume";
+            const cleanName = name.replace(/\s+/g, "_");
+            setDownloadFilename(`${cleanName}_Resume.pdf`);
+        }
+    }, [data.personalInfo?.name]);
+
+    // Handle copying JSON with styles
+    const handleCopyJsonWithStyles = () => {
+        try {
+            // Get the computed styles object
+            const computedStyles = {
+                fontSize: styles.fontSize,
+                headerSize: styles.headerSize,
+                contactSize: styles.contactSize,
+                sectionMargin: styles.sectionMargin,
+                itemMargin: styles.itemMargin,
+                bulletSpacing: styles.bulletSpacing,
+                lineHeight: styles.lineHeight,
+                paddingTop: styles.paddingTop,
+                paddingBottom: styles.paddingBottom,
+                paddingSide: styles.paddingSide,
+                scalingFactor: scalingFactor,
+            };
+
+            // Create JSON structure matching PDF payload format + styles
+            const jsonWithStyles = {
+                // Data structure (same as PDF payload)
+                personalInfo: data.personalInfo,
+                summary: data.summary || "",
+                workExperience: data.workExperience || [],
+                projects: data.projects || [],
+                leadership: data.leadership || [],
+                skills: data.skills || [],
+                education: data.education || [],
+                publications: data.publications || [],
+                checkboxStates: {
+                    showSummary: showSummary,
+                    showProjects: showProjects,
+                    showLeadership: showLeadership,
+                    showPublications: showPublications,
+                },
+                sectionOrder: sectionOrder,
+                scale: selectedScale,
+                overrideAutoScale: overrideAutoScale,
+                // Styles information
+                styles: computedStyles,
+                // HTML structure styles - how divs and elements are styled
+                htmlStructure: {
+                    container: {
+                        fontFamily: '"Times New Roman", Times, serif',
+                        fontSize: styles.fontSize,
+                        lineHeight: styles.lineHeight,
+                        color: "#000000",
+                        padding: `${styles.paddingTop} ${styles.paddingSide} ${styles.paddingBottom} ${styles.paddingSide}`,
+                        letterSpacing: "-0.025em",
+                    },
+                    header: {
+                        textAlign: "center",
+                        marginBottom: styles.sectionMargin,
+                    },
+                    name: {
+                        fontSize: styles.headerSize,
+                        marginBottom: "2px",
+                        fontWeight: "bold",
+                        letterSpacing: "-0.025em",
+                    },
+                    title: {
+                        fontSize: styles.contactSize,
+                        marginBottom: "2px",
+                        letterSpacing: "-0.025em",
+                    },
+                    contact: {
+                        fontSize: styles.contactSize,
+                        letterSpacing: "-0.025em",
+                    },
+                    sectionTitle: {
+                        fontSize: styles.fontSize,
+                        borderBottom: "1px solid #000",
+                        paddingBottom: "2px",
+                        marginBottom: styles.itemMargin,
+                        fontWeight: "bold",
+                        letterSpacing: "-0.025em",
+                    },
+                    sectionContent: {
+                        fontSize: styles.fontSize,
+                        lineHeight: styles.lineHeight,
+                        letterSpacing: "-0.025em",
+                    },
+                    workExperienceItem: {
+                        marginBottom: styles.itemMargin,
+                    },
+                    workExperienceHeader: {
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        marginBottom: styles.bulletSpacing,
+                    },
+                    companyName: {
+                        fontSize: styles.fontSize,
+                        fontWeight: "bold",
+                        letterSpacing: "-0.025em",
+                        lineHeight: styles.lineHeight,
+                    },
+                    position: {
+                        fontSize: styles.fontSize,
+                        letterSpacing: "-0.025em",
+                        lineHeight: styles.lineHeight,
+                    },
+                    location: {
+                        textAlign: "right",
+                        marginLeft: "20px",
+                        fontSize: styles.fontSize,
+                        letterSpacing: "-0.025em",
+                        lineHeight: styles.lineHeight,
+                    },
+                    bulletPoint: {
+                        display: "flex",
+                        alignItems: "flex-start",
+                        marginBottom: styles.bulletSpacing,
+                    },
+                    bullet: {
+                        fontSize: styles.fontSize,
+                        marginRight: "4px",
+                        minWidth: "8px",
+                    },
+                    bulletText: {
+                        textAlign: "justify",
+                        fontSize: styles.fontSize,
+                        lineHeight: styles.lineHeight,
+                        letterSpacing: "-0.025em",
+                    },
+                    skillsCategory: {
+                        fontSize: Math.max(11, Math.round(13 * scalingFactor)) + "px",
+                        marginBottom: styles.bulletSpacing,
+                        lineHeight: styles.lineHeight,
+                        letterSpacing: "-0.025em",
+                        display: "flex",
+                        alignItems: "flex-start",
+                    },
+                    skillsLabel: {
+                        width: "160px",
+                        flexShrink: 0,
+                        fontWeight: "bold",
+                        letterSpacing: "-0.025em",
+                    },
+                    link: {
+                        color: "blue",
+                        textDecoration: "none",
+                    },
+                    educationItem: {
+                        marginBottom: styles.itemMargin,
+                    },
+                    educationHeader: {
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        marginBottom: styles.bulletSpacing,
+                    },
+                    institution: {
+                        fontSize: styles.fontSize,
+                        fontWeight: "bold",
+                        letterSpacing: "-0.025em",
+                        lineHeight: styles.lineHeight,
+                    },
+                    degree: {
+                        fontSize: styles.fontSize,
+                        letterSpacing: "-0.025em",
+                        lineHeight: styles.lineHeight,
+                    },
+                    projectItem: {
+                        marginBottom: styles.itemMargin,
+                    },
+                    projectHeader: {
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        marginBottom: styles.bulletSpacing,
+                    },
+                    projectName: {
+                        fontSize: styles.fontSize,
+                        fontWeight: "bold",
+                        letterSpacing: "-0.025em",
+                        lineHeight: styles.lineHeight,
+                        color: "#000",
+                        fontStyle: "normal",
+                    },
+                    publicationItem: {
+                        display: "flex",
+                        alignItems: "flex-start",
+                        marginBottom: styles.bulletSpacing,
+                    },
+                    leadershipItem: {
+                        fontSize: styles.fontSize,
+                        marginBottom: styles.bulletSpacing,
+                        letterSpacing: "-0.025em",
+                        lineHeight: styles.lineHeight,
+                    },
+                },
+            };
+
+            // Convert to JSON string with proper formatting
+            const jsonString = JSON.stringify(jsonWithStyles, null, 2);
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(jsonString).then(() => {
+                toastUtils.success("✅ JSON with styles copied to clipboard!");
+            }).catch((err) => {
+                console.error("Failed to copy:", err);
+                toastUtils.error("Failed to copy JSON to clipboard");
+            });
+        } catch (error: any) {
+            console.error("Error copying JSON with styles:", error);
+            toastUtils.error(`Failed to copy JSON: ${error.message}`);
+        }
+    };
+
+    // Handle PDF download - use the preview PDF if available
+    const handleDownloadResume = async () => {
+        try {
+            // If we have a preview PDF blob, use it directly
+            if (previewPdfBlob) {
+                const pdfUrl = window.URL.createObjectURL(previewPdfBlob);
+                const link = document.createElement("a");
+                link.href = pdfUrl;
+
+                // Generate filename: "{name}_Resume.pdf"
+                // Generate filename: "{name}_Resume.pdf"
+                const name = data.personalInfo?.name || "Resume";
+                const cleanName = name.replace(/\s+/g, "_");
+                // link.download = `${cleanName}_Resume.pdf`;
+
+                // document.body.appendChild(link);
+                // link.click();
+                // document.body.removeChild(link);
+
+                await savePdf(previewPdfBlob, downloadFilename || `${cleanName}_Resume.pdf`);
+
+                window.URL.revokeObjectURL(pdfUrl);
+
+                toastUtils.success("✅ PDF downloaded successfully!");
+                if (onDownloadClick) {
+                    onDownloadClick();
+                }
+                return;
+            }
+
+            // Otherwise generate new PDF
+            setIsGeneratingPDF(true);
+            const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
+            const loadingToast = toastUtils.loading("Making the best optimal PDF... Please wait.");
+
+            // Format data for PDF server
+            const pdfPayload = {
+                personalInfo: data.personalInfo,
+                summary: data.summary || "",
+                workExperience: data.workExperience || [],
+                projects: data.projects || [],
+                leadership: data.leadership || [],
+                skills: data.skills || [],
+                education: data.education || [],
+                publications: data.publications || [],
+                checkboxStates: {
+                    showSummary: showSummary,
+                    showProjects: showProjects,
+                    showLeadership: showLeadership,
+                    showPublications: showPublications,
+                },
+                sectionOrder: sectionOrder,
+                scale: selectedScale,
+                overrideAutoScale: overrideAutoScale,
+            };
+
+            const response = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(pdfPayload),
+            });
+
+            if (!response.ok) {
+                toastUtils.dismissToast(loadingToast);
+                throw new Error(`PDF generation failed: ${response.status}`);
+            }
+
+            // Download PDF
+            const pdfBlob = await response.blob();
+            const pdfUrl = window.URL.createObjectURL(pdfBlob);
+            const link = document.createElement("a");
+            link.href = pdfUrl;
+
+            // Generate filename: "{name}_Resume.pdf"
+            // Generate filename: "{name}_Resume.pdf"
+            const name = data.personalInfo?.name || "Resume";
+            const cleanName = name.replace(/\s+/g, "_");
+            // link.download = `${cleanName}_Resume.pdf`;
+
+            // document.body.appendChild(link);
+            // link.click();
+            // document.body.removeChild(link);
+
+            await savePdf(pdfBlob, downloadFilename || `${cleanName}_Resume.pdf`);
+
+            window.URL.revokeObjectURL(pdfUrl);
+
+            toastUtils.dismissToast(loadingToast);
+            setShowScaleModal(false);
+            setIsGeneratingPDF(false);
+            toastUtils.success("✅ PDF downloaded successfully!");
+            if (onDownloadClick) {
+                onDownloadClick();
+            }
+        } catch (error: any) {
+            console.error("Error generating PDF:", error);
+            setIsGeneratingPDF(false);
+            toastUtils.error(`Failed to generate PDF: ${error.message}`);
+        }
     };
 
     const handlePrintConfirm = () => {
         setShowWarningModal(false);
 
+        // store original document title and set custom print title
         const originalTitle = document.title;
         document.title = `${data.personalInfo.name || "Resume"}_Resume`;
 
+        // create a print style block (keeps your existing print rules but scoped)
         const printStyle = document.createElement("style");
         printStyle.id = "resume-temp-print-style";
         printStyle.innerHTML = `
@@ -116,47 +760,62 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
         #temp-resume-print-wrapper { display: block !important; width: 100% !important; }
         #temp-resume-print-wrapper #resume-print-only { display: block !important; visibility: visible !important; }
       }
+      /* also hide non-print content while we call window.print on screen to avoid layout jumps */
       body.printing-resume > :not(#temp-resume-print-wrapper) { display: none !important; }
       #temp-resume-print-wrapper { display: block !important; width: 100%; background: white; }
     `;
 
         document.head.appendChild(printStyle);
 
+        // find the print-only element in the component
         const originalPrintElem = document.getElementById("resume-print-only");
         if (!originalPrintElem) {
+            // fallback to calling normal print
             window.print();
             document.title = originalTitle;
             if (document.head.contains(printStyle)) document.head.removeChild(printStyle);
             return;
         }
 
+        // create a temporary wrapper and append a deep clone of the print-only element
         const wrapper = document.createElement("div");
         wrapper.id = "temp-resume-print-wrapper";
+        // add the same parent class so scss rules that look for .resume-single-page apply
         wrapper.className = "resume-single-page";
+        // clone deeply so event handlers etc. are not needed
         const clone = originalPrintElem.cloneNode(true) as HTMLElement;
         wrapper.appendChild(clone);
         document.body.appendChild(wrapper);
 
+        // add marker class to body so our print style hides everything else
         document.body.classList.add("printing-resume");
 
+        // Small timeout to let DOM and style apply, then print
         setTimeout(() => {
             try {
                 window.print();
             } finally {
+                // cleanup immediately after printing (give a small delay to avoid cutting off the print job)
                 setTimeout(() => {
+                    // restore title and remove temporary DOM + style + class
                     document.title = originalTitle;
                     document.body.classList.remove("printing-resume");
                     if (document.body.contains(wrapper)) document.body.removeChild(wrapper);
                     const tmpStyle = document.getElementById("resume-temp-print-style");
                     if (tmpStyle && tmpStyle.parentNode) tmpStyle.parentNode.removeChild(tmpStyle);
+                    // remove our printStyle if still present
                     if (document.head.contains(printStyle)) document.head.removeChild(printStyle);
                 }, 700);
             }
         }, 120);
 
+        // optional callback
         if (onDownloadClick) onDownloadClick();
     };
 
+
+
+    // Show instructions for automatic print settings
     const showPrintInstructions = () => {
         alert(`Automatic Print Settings:
         
@@ -171,39 +830,51 @@ Just click "Print" or "Save as PDF" - no manual adjustments needed!
 The resume will print across multiple pages if needed, ensuring no content is cut off and no blank pages appear.`);
     };
 
+    // Calculate content density and determine scaling factor
     useEffect(() => {
         const calculateContentDensity = () => {
             let totalLines = 0;
 
+            // Personal info header (~3-4 lines + space)
             totalLines +=
                 (data.personalInfo.name ? 1 : 1) +
                 (data.personalInfo.title ? 1 : 1) +
                 1 +
-                1;
+                1; // Name, title, contact, space
 
+            // Section titles + space (2 lines each)
             const sections = ["workExperience", "skills", "education"];
-            if (showSummary && data.summary?.trim() !== "") sections.push("summary");
-            if (showProjects && data.projects?.length > 0) sections.push("projects");
-            if (showLeadership && data.leadership?.length > 0) sections.push("leadership");
-            if (showPublications && data.publications?.length > 0) sections.push("publications");
+            if (showSummary && data.summary?.trim() !== "")
+                sections.push("summary");
+            if (showProjects && data.projects?.length > 0)
+                sections.push("projects");
+            if (showLeadership && data.leadership?.length > 0)
+                sections.push("leadership");
+            if (showPublications && data.publications?.length > 0)
+                sections.push("publications"); // Added for Publications
             totalLines += sections.length * 2;
 
+            // Summary (with wrap estimation)
             if (showSummary && data.summary) {
                 totalLines += Math.ceil(data.summary.length / 60);
             } else if (showSummary) {
                 totalLines += 1;
             }
 
-            totalLines = data.workExperience.length;
-            data.workExperience.forEach((exp) => {
-                totalLines += 2;
-                exp.responsibilities
-                    .filter((r) => r.trim())
-                    .forEach((r) => {
-                        totalLines += Math.ceil(r.length / 60);
-                    });
-            });
+            // Work experience
+            if (data.workExperience && data.workExperience.length > 0) {
+                totalLines += data.workExperience.length;
+                data.workExperience.forEach((exp) => {
+                    totalLines += 2; // Header ~2 lines
+                    exp.responsibilities
+                        .filter((r) => r.trim())
+                        .forEach((r) => {
+                            totalLines += Math.ceil(r.length / 60);
+                        });
+                });
+            }
 
+            // Projects if shown
             if (showProjects && data.projects) {
                 data.projects.forEach((proj) => {
                     totalLines += 2;
@@ -215,32 +886,44 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                 });
             }
 
+            // Leadership if shown
             if (showLeadership && data.leadership) {
                 data.leadership.forEach((l) => {
-                    const text = l.title + (l.organization ? `, ${l.organization}` : "");
+                    const text =
+                        l.title + (l.organization ? `, ${l.organization}` : "");
                     totalLines += Math.ceil(text.length / 60);
                 });
             }
 
-            data.skills.forEach((s) => {
-                const text = `${s.category}: ${s.skills}`;
-                totalLines += Math.ceil(text.length / 60);
-            });
+            // Skills
+            if (data.skills && data.skills.length > 0) {
+                data.skills.forEach((s) => {
+                    const text = `${s.category}: ${s.skills}`;
+                    totalLines += Math.ceil(text.length / 60);
+                });
+            }
 
-            data.education.forEach((e) => {
-                const mainText = `${e.institution}${e.location ? `, ${e.location}` : ""} - ${e.degree}${e.field ? `, ${e.field}` : ""}`;
-                totalLines += Math.ceil(mainText.length / 60);
-                if (e.additionalInfo) {
-                    totalLines += Math.ceil(e.additionalInfo.length / 60);
-                }
-            });
+            // Education
+            if (data.education && data.education.length > 0) {
+                data.education.forEach((e) => {
+                    const mainText = `${e.institution}${e.location ? `, ${e.location}` : ""
+                        } - ${e.degree}${e.field ? `, ${e.field}` : ""}`;
+                    totalLines += Math.ceil(mainText.length / 60);
+                    if (e.additionalInfo) {
+                        totalLines += Math.ceil(e.additionalInfo.length / 60);
+                    }
+                });
+            }
 
+            // Publications if shown
             if (showPublications && data.publications) {
                 data.publications.forEach((p) => {
                     totalLines += Math.ceil(p.details.length / 60);
                 });
             }
 
+            // No scaling - let content flow naturally across pages
+            // This allows multi-page resumes without content cutoff
             return 1.0;
         };
 
@@ -248,18 +931,25 @@ The resume will print across multiple pages if needed, ensuring no content is cu
         setScalingFactor(newScaling);
     }, [data, showLeadership, showProjects, showSummary, showPublications]);
 
+    // Dynamic styles based on scaling factor
     const getScaledStyles = () => {
-        const baseFontSize = 10;
+        const baseFontSize = 10; // Increased for better readability
         const baseHeaderSize = 16;
         const baseContactSize = 9;
 
         const fontSize = Math.max(9, Math.round(baseFontSize * scalingFactor));
-        const headerSize = Math.max(12, Math.round(baseHeaderSize * scalingFactor));
-        const contactSize = Math.max(7, Math.round(baseContactSize * scalingFactor));
+        const headerSize = Math.max(
+            12,
+            Math.round(baseHeaderSize * scalingFactor)
+        );
+        const contactSize = Math.max(
+            7,
+            Math.round(baseContactSize * scalingFactor)
+        );
 
-        const sectionMargin = Math.max(6, Math.round(12 * scalingFactor));
-        const itemMargin = Math.max(3, Math.round(8 * scalingFactor));
-        const bulletSpacing = Math.max(1, Math.round(3 * scalingFactor));
+        const sectionMargin = Math.max(2, Math.round(3 * scalingFactor));
+        const itemMargin = Math.max(1, Math.round(2 * scalingFactor));
+        const bulletSpacing = Math.max(0.5, Math.round(1 * scalingFactor));
 
         const lineHeight = Math.max(1.05, 1.15 * scalingFactor);
         const paddingTop = Math.max(0.3, 0.5 * scalingFactor);
@@ -324,7 +1014,14 @@ The resume will print across multiple pages if needed, ensuring no content is cu
 
     const formatSkills = (skillsString: string) => {
         if (!skillsString) return "";
-        return skillsString.split(",").map((skill) => skill.trim()).join(", ");
+        return skillsString
+            .split(",")
+            .map((skill) => {
+                const trimmed = skill.trim();
+                if (!trimmed) return trimmed;
+                return trimmed.split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+            })
+            .join(", ");
     };
 
     const getGithubUrl = (github: string) => {
@@ -335,10 +1032,23 @@ The resume will print across multiple pages if needed, ensuring no content is cu
         return `https://github.com/${github}`;
     };
 
-    const getHighlightStyle = (fieldPath: string) => {
-        return {};
+    const formatPublications = (publications: string) => {
+        if (!publications) return "";
+        if (publications.startsWith("http")) {
+            return "Publications";
+        }
+        return publications;
     };
 
+    const getPublicationsUrl = (publications: string) => {
+        if (!publications) return "#";
+        if (publications.startsWith("http")) {
+            return publications;
+        }
+        return `https://${publications}`;
+    };
+
+    // Function to render sections based on section order
     const renderSection = (sectionId: string) => {
         switch (sectionId) {
             case "summary":
@@ -370,7 +1080,10 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 letterSpacing: "-0.025em",
                             }}
                         >
-                            {data.summary || "Your professional summary will appear here..."}
+                            {renderMarkedText(
+                                data.summary ||
+                                    "Your professional summary will appear here..."
+                            )}
                         </div>
                     </div>
                 );
@@ -395,7 +1108,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         >
                             WORK EXPERIENCE
                         </div>
-                        {data.workExperience.length > 0 ? (
+                        {data.workExperience && data.workExperience.length > 0 ? (
                             data.workExperience.map((exp, index) => (
                                 <div
                                     key={exp.id}
@@ -407,6 +1120,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                 : styles.itemMargin,
                                     }}
                                 >
+                                    {/* Header with left/right alignment */}
                                     <div
                                         style={{
                                             display: "flex",
@@ -415,6 +1129,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                             marginBottom: styles.bulletSpacing,
                                         }}
                                     >
+                                        {/* Left side */}
                                         <div style={{ flex: "1" }}>
                                             {exp.company && (
                                                 <div
@@ -436,10 +1151,13 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                 }}
                                             >
                                                 {exp.position}
-                                                {exp.roleType && exp.roleType !== "None" && ` – ${exp.roleType}`}
+                                                {exp.roleType &&
+                                                    exp.roleType !== "None" &&
+                                                    ` – ${exp.roleType}`}
                                             </div>
                                         </div>
 
+                                        {/* Right side */}
                                         <div
                                             style={{
                                                 textAlign: "right",
@@ -467,6 +1185,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                         </div>
                                     </div>
 
+                                    {/* Responsibilities */}
                                     {exp.responsibilities.map(
                                         (resp, respIndex) =>
                                             resp.trim() && (
@@ -475,7 +1194,8 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                     style={{
                                                         display: "flex",
                                                         alignItems: "flex-start",
-                                                        marginBottom: styles.bulletSpacing,
+                                                        marginBottom:
+                                                            styles.bulletSpacing,
                                                     }}
                                                 >
                                                     <span
@@ -491,11 +1211,12 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                         style={{
                                                             textAlign: "justify",
                                                             fontSize: styles.fontSize,
-                                                            lineHeight: styles.lineHeight,
+                                                            lineHeight:
+                                                                styles.lineHeight,
                                                             letterSpacing: "-0.025em",
                                                         }}
                                                     >
-                                                        {resp}
+                                                        {renderMarkedText(resp)}
                                                     </div>
                                                 </div>
                                             )
@@ -557,6 +1278,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                         marginBottom: styles.bulletSpacing,
                                     }}
                                 >
+                                    {/* Left side */}
                                     <div style={{ flex: "1" }}>
                                         {project.company && (
                                             <div
@@ -581,23 +1303,31 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                             }}
                                         >
                                             <strong>{project.position}</strong>
-                                            {project.roleType && project.roleType !== "None" && ` – ${project.roleType}`}
-                                            {project.linkName && project.linkUrl && (
-                                                <>
-                                                    {" — "}
-                                                    <a
-                                                        href={project.linkUrl}
-                                                        style={{ color: "blue", textDecoration: "none" }}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                    >
-                                                        {project.linkName}
-                                                    </a>
-                                                </>
-                                            )}
+                                            {project.roleType &&
+                                                project.roleType !== "None" &&
+                                                ` – ${project.roleType}`}
+                                            {project.linkName &&
+                                                project.linkUrl && (
+                                                    <>
+                                                        {" — "}
+                                                        <a
+                                                            href={project.linkUrl}
+                                                            style={{
+                                                                color: "blue",
+                                                                textDecoration:
+                                                                    "none",
+                                                            }}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                        >
+                                                            {project.linkName}
+                                                        </a>
+                                                    </>
+                                                )}
                                         </div>
                                     </div>
 
+                                    {/* Right side */}
                                     <div
                                         style={{
                                             textAlign: "right",
@@ -632,7 +1362,8 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                 style={{
                                                     display: "flex",
                                                     alignItems: "flex-start",
-                                                    marginBottom: styles.bulletSpacing,
+                                                    marginBottom:
+                                                        styles.bulletSpacing,
                                                 }}
                                             >
                                                 <span
@@ -648,11 +1379,12 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                     style={{
                                                         textAlign: "justify",
                                                         fontSize: styles.fontSize,
-                                                        lineHeight: styles.lineHeight,
+                                                        lineHeight:
+                                                            styles.lineHeight,
                                                         letterSpacing: "-0.025em",
                                                     }}
                                                 >
-                                                    {resp}
+                                                    {renderMarkedText(resp)}
                                                 </div>
                                             </div>
                                         )
@@ -700,85 +1432,86 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                     </div>
                 );
 
-                case "skills":
-                    const skillsFontSize = Math.max(11, Math.round(13 * scalingFactor)) + "px";
-                    return (
+            case "skills":
+                const skillsFontSize = Math.max(11, Math.round(13 * scalingFactor)) + "px";
+                return (
+                    <div
+                        style={{
+                            marginBottom: styles.sectionMargin,
+                            ...getHighlightStyle("skills"),
+                        }}
+                    >
                         <div
                             style={{
-                                marginBottom: styles.sectionMargin,
-                                ...getHighlightStyle("skills"),
+                                fontSize: styles.fontSize,
+                                borderBottom: "1px solid #000",
+                                paddingBottom: "2px",
+                                marginBottom: styles.itemMargin,
+                                fontWeight: "bold",
+                                letterSpacing: "-0.025em",
                             }}
                         >
+                            SKILLS
+                        </div>
+                        {data.skills && data.skills.length > 0 ? (
+                            data.skills.map((category) => (
+                                <div
+                                    key={category.id}
+                                    style={{
+                                        fontSize: skillsFontSize,
+                                        marginBottom: styles.bulletSpacing,
+                                        lineHeight: styles.lineHeight,
+                                        letterSpacing: "-0.025em",
+                                        display: "flex",
+                                        alignItems: "flex-start",
+                                    }}
+                                >
+                                    <span
+                                        style={{
+                                            width: "160px",
+                                            flexShrink: 0,
+                                            fontWeight: "bold",
+                                            letterSpacing: "-0.025em",
+                                        }}
+                                    >
+                                        {category.category}
+                                    </span>
+                                    <span
+                                        style={{
+                                            fontWeight: "bold",
+                                            margin: "0 5px",
+                                        }}
+                                    >
+                                        :
+                                    </span>
+                                    <span
+                                        style={{
+                                            flex: "1",
+                                            wordWrap: "break-word",
+                                            textAlign: "justify",
+                                        }}
+                                    >
+                                        {renderMarkedText(
+                                            formatSkills(category.skills)
+                                        )}
+                                    </span>
+                                </div>
+                            ))
+                        ) : (
                             <div
                                 style={{
-                                    fontSize: styles.fontSize,
-                                    borderBottom: "1px solid #000",
-                                    paddingBottom: "8px",
-                                    marginBottom: styles.itemMargin,
-                                    fontWeight: "bold",
+                                    fontSize: skillsFontSize,
+                                    fontStyle: "italic",
+                                    color: "#666",
                                     letterSpacing: "-0.025em",
                                 }}
                             >
-                                SKILLS
+                                Your skills will appear here...
                             </div>
-                            {data.skills && data.skills.length > 0 ? (
-                                data.skills.map((category) => (
-                                    <div
-                                        key={category.id}
-                                        style={{
-                                            fontSize: skillsFontSize,
-                                            marginBottom: styles.bulletSpacing,
-                                            lineHeight: styles.lineHeight,
-                                            letterSpacing: "-0.025em",
-                                            display: "flex",
-                                            alignItems: "flex-start",
-                                        }}
-                                    >
-                                        <span
-                                            style={{
-                                                width: "160px",
-                                                flexShrink: 0,
-                                                fontWeight: "bold",
-                                                letterSpacing: "-0.025em",
-                                            }}
-                                        >
-                                            {category.category}
-                                        </span>
-                                        <span
-                                            style={{
-                                                fontWeight: "bold",
-                                                margin: "0 5px",
-                                            }}
-                                        >
-                                            :
-                                        </span>
-                                        <span
-                                            style={{
-                                                flex: "1",
-                                                wordWrap: "break-word",
-                                                textAlign: "justify",
-                                                textTransform: "none",
-                                            }}
-                                        >
-                                            {formatSkills(category.skills)}
-                                        </span>
-                                    </div>
-                                ))
-                            ) : (
-                                <div
-                                    style={{
-                                        fontSize: skillsFontSize,
-                                        fontStyle: "italic",
-                                        color: "#666",
-                                        letterSpacing: "-0.025em",
-                                    }}
-                                >
-                                    Your skills will appear here...
-                                </div>
-                            )}
-                        </div>
-                    );
-    
+                        )}
+                    </div>
+                );
+
             case "education":
                 return (
                     <div
@@ -801,7 +1534,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             EDUCATION
                         </div>
                         <div>
-                            {data.education.length > 0 ? (
+                            {data.education && data.education.length > 0 ? (
                                 data.education.map((edu, index) => (
                                     <div
                                         key={edu.id}
@@ -813,6 +1546,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                     : styles.itemMargin,
                                         }}
                                     >
+                                        {/* Header with left/right alignment */}
                                         <div
                                             style={{
                                                 display: "flex",
@@ -821,6 +1555,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                 marginBottom: styles.bulletSpacing,
                                             }}
                                         >
+                                            {/* Left side */}
                                             <div style={{ flex: "1" }}>
                                                 <div
                                                     style={{
@@ -831,7 +1566,8 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                     }}
                                                 >
                                                     {edu.institution}
-                                                    {edu.location && `, ${edu.location}`}
+                                                    {edu.location &&
+                                                        `, ${edu.location}`}
                                                 </div>
                                                 <div
                                                     style={{
@@ -845,6 +1581,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                 </div>
                                             </div>
 
+                                            {/* Right side */}
                                             <div
                                                 style={{
                                                     textAlign: "right",
@@ -863,6 +1600,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                             </div>
                                         </div>
 
+                                        {/* Additional Info */}
                                         {edu.additionalInfo && (
                                             <div
                                                 style={{
@@ -948,13 +1686,21 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         )}
                     </div>
                 );
+
             default:
                 return null;
         }
     };
 
+    // Helper function to get highlight style if field is changed
+    const getHighlightStyle = (fieldPath: string) => {
+        // Removed background color highlighting - now returns empty object
+        return {};
+    };
+
     const resumeContent = (
         <>
+            {/* Header - Always first */}
             <div
                 style={{
                     textAlign: "center",
@@ -965,24 +1711,25 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                 <div
                     style={{
                         fontSize: styles.headerSize,
-                        marginBottom: "4px",
+                        marginBottom: "2px",
                         fontWeight: "bold",
                         letterSpacing: "-0.025em",
                     }}
                 >
                     {data.personalInfo.name || "Your Name"}
                 </div>
-                {data.personalInfo.title && data.personalInfo.title.trim() !== "" && (
-                    <div
-                        style={{
-                            fontSize: styles.contactSize,
-                            marginBottom: "4px",
-                            letterSpacing: "-0.025em",
-                        }}
-                    >
-                        {data.personalInfo.title}
-                    </div>
-                )}
+                {data.personalInfo.title &&
+                    data.personalInfo.title.trim() !== "" && (
+                        <div
+                            style={{
+                                fontSize: styles.contactSize,
+                                marginBottom: "2px",
+                                letterSpacing: "-0.025em",
+                            }}
+                        >
+                            {data.personalInfo.title}
+                        </div>
+                    )}
                 <div
                     style={{
                         fontSize: styles.contactSize,
@@ -995,7 +1742,10 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             {" | "}
                             <a
                                 href={`mailto:${data.personalInfo.email}`}
-                                style={{ color: "blue", textDecoration: "none" }}
+                                style={{
+                                    color: "blue",
+                                    textDecoration: "none",
+                                }}
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >
@@ -1013,8 +1763,13 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         <>
                             {" | "}
                             <a
-                                href={getLinkedInUrl(data.personalInfo.linkedin)}
-                                style={{ color: "blue", textDecoration: "none" }}
+                                href={getLinkedInUrl(
+                                    data.personalInfo.linkedin
+                                )}
+                                style={{
+                                    color: "blue",
+                                    textDecoration: "none",
+                                }}
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >
@@ -1026,8 +1781,13 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         <>
                             {" | "}
                             <a
-                                href={getPortfolioUrl(data.personalInfo.portfolio)}
-                                style={{ color: "blue", textDecoration: "none" }}
+                                href={getPortfolioUrl(
+                                    data.personalInfo.portfolio
+                                )}
+                                style={{
+                                    color: "blue",
+                                    textDecoration: "none",
+                                }}
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >
@@ -1040,7 +1800,10 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             {" | "}
                             <a
                                 href={getGithubUrl(data.personalInfo.github)}
-                                style={{ color: "blue", textDecoration: "none" }}
+                                style={{
+                                    color: "blue",
+                                    textDecoration: "none",
+                                }}
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >
@@ -1051,14 +1814,16 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                 </div>
             </div>
 
+            {/* Render sections based on section order */}
             {sectionOrder
-                .filter((sectionId) => sectionId !== "personalInfo")
-                .map((sectionId) => renderSection(sectionId))}
+                .filter(sectionId => sectionId !== "personalInfo") // Skip personal info as it's always first
+                .map(sectionId => renderSection(sectionId))}
         </>
     );
 
     return (
         <div className="resume-single-page">
+            {/* Warning Modal */}
             {showWarningModal && (
                 <div
                     style={{
@@ -1099,77 +1864,78 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 gap: "0.5rem",
                             }}
                         >
-                             ⚠️ AUTOMATIC PRINT SETTINGS ⚠️
-                         </div>
+                            ⚠️ AUTOMATIC PRINT SETTINGS ⚠️
+                        </div>
 
-                         <div
-                             style={{
-                                 fontSize: "1rem",
-                                 lineHeight: "1.6",
-                                 color: "#374151",
-                                 marginBottom: "1.5rem",
-                                 textAlign: "left",
-                             }}
-                         >
-                             <div style={{ marginBottom: "0.75rem" }}>
-                                 <strong>
-                                     Pages:{" "}
-                                     <span
-                                         style={{
-                                             color: "#10b981",
-                                             fontWeight: "bold",
-                                         }}
-                                     >
-                                         AUTO-SET TO 2
-                                     </span>
-                                 </strong>{" "}
-                                 — automatically configured.
-                             </div>
-                             <div style={{ marginBottom: "0.75rem" }}>
-                                 <strong>
-                                     Scale:{" "}
-                                     <span
-                                         style={{
-                                             color: "#10b981",
-                                             fontWeight: "bold",
-                                         }}
-                                     >
-                                         AUTO-OPTIMIZED
-                                     </span>
-                                 </strong>{" "}
-                                 — for best fit.
-                             </div>
-                             <div style={{ marginBottom: "0.75rem" }}>
-                                 <strong>
-                                     Margins:{" "}
-                                     <span
-                                         style={{
-                                             color: "#10b981",
-                                             fontWeight: "bold",
-                                         }}
-                                     >
-                                         AUTO-SET TO MINIMAL
-                                     </span>
-                                 </strong>{" "}
-                                 — maximum content space.
-                             </div>
-                         </div>
+                        <div
+                            style={{
+                                fontSize: "1rem",
+                                lineHeight: "1.6",
+                                color: "#374151",
+                                marginBottom: "1.5rem",
+                                textAlign: "left",
+                            }}
+                        >
+                            <div style={{ marginBottom: "0.75rem" }}>
+                                <strong>
+                                    Pages:{" "}
+                                    <span
+                                        style={{
+                                            color: "#10b981",
+                                            fontWeight: "bold",
+                                        }}
+                                    >
+                                        AUTO-SET TO 2
+                                    </span>
+                                </strong>{" "}
+                                — automatically configured.
+                            </div>
+                            <div style={{ marginBottom: "0.75rem" }}>
+                                <strong>
+                                    Scale:{" "}
+                                    <span
+                                        style={{
+                                            color: "#10b981",
+                                            fontWeight: "bold",
+                                        }}
+                                    >
+                                        AUTO-OPTIMIZED
+                                    </span>
+                                </strong>{" "}
+                                — for best fit.
+                            </div>
+                            <div style={{ marginBottom: "0.75rem" }}>
+                                <strong>
+                                    Margins:{" "}
+                                    <span
+                                        style={{
+                                            color: "#10b981",
+                                            fontWeight: "bold",
+                                        }}
+                                    >
+                                        AUTO-SET TO MINIMAL
+                                    </span>
+                                </strong>{" "}
+                                — maximum content space.
+                            </div>
+                        </div>
 
-                         <div
-                             style={{
-                                 fontSize: "0.9rem",
-                                 color: "#6b7280",
-                                 marginBottom: "1.5rem",
-                                 fontStyle: "italic",
-                             }}
-                         >
-                             The print dialog will open with optimized settings. Just click "Print" or "Save as PDF"!
-                         </div>
+                        <div
+                            style={{
+                                fontSize: "0.9rem",
+                                color: "#6b7280",
+                                marginBottom: "1.5rem",
+                                fontStyle: "italic",
+                            }}
+                        >
+                            The print dialog will open with optimized settings. Just click "Print" or "Save as PDF"!
+                        </div>
 
                         <button
                             onClick={handlePrintConfirm}
                             style={{
                                 backgroundColor: "#10b981",
+
                                 color: "white",
                                 padding: "12px 24px",
                                 border: "none",
@@ -1180,10 +1946,12 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 transition: "background-color 0.2s",
                             }}
                             onMouseOver={(e) => {
-                                e.currentTarget.style.backgroundColor = "#059669";
+                                e.currentTarget.style.backgroundColor =
+                                    "#059669";
                             }}
                             onMouseOut={(e) => {
-                                e.currentTarget.style.backgroundColor = "#10b981";
+                                e.currentTarget.style.backgroundColor =
+                                    "#10b981";
                             }}
                         >
                             OK
@@ -1195,8 +1963,77 @@ The resume will print across multiple pages if needed, ensuring no content is cu
             {showPrintButtons && (
                 <div
                     className="no-print"
+                    style={{
+                        marginBottom: "1rem",
+                        textAlign: "center",
+                        display: "flex",
+                        gap: "10px",
+                        justifyContent: "center",
+                    }}
+                >
+                    <button
+                        onClick={() => setShowScaleModal(true)}
+                        disabled={isGeneratingPDF}
+                        style={{
+                            backgroundColor: isGeneratingPDF ? "#9ca3af" : "#10b981",
+                            color: "white",
+                            padding: "10px 20px",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: isGeneratingPDF ? "not-allowed" : "pointer",
+                            fontWeight: "600",
+                            fontSize: "14px",
+                            transition: "background-color 0.2s",
+                        }}
+                    >
+                        {isGeneratingPDF ? "Generating PDF..." : "Download Resume"}
+                    </button>
+                    {/* <button
+                        onClick={handleCopyJsonWithStyles}
+                        style={{
+                            backgroundColor: "#3b82f6",
+                            color: "white",
+                            padding: "10px 20px",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontWeight: "600",
+                            fontSize: "14px",
+                            transition: "background-color 0.2s",
+                        }}
+                        onMouseOver={(e) => {
+                            e.currentTarget.style.backgroundColor = "#2563eb";
+                        }}
+                        onMouseOut={(e) => {
+                            e.currentTarget.style.backgroundColor = "#3b82f6";
+                        }}
+                    >
+                        Copy JSON with Styles
+                    </button> */}
+                </div>
+            )}
+
+            {/* Print Control Buttons - Add these to your UI */}
+            {showPrintButtons && (
+                <div
+                    className="no-print"
                     style={{ marginBottom: "1rem", textAlign: "center" }}
                 >
+                    {/* <button
+                        onClick={() => setShowScalingModal(true)}
+                        style={{
+                            backgroundColor: "#10b981",
+                            color: "white",
+                            padding: "8px 16px",
+                            border: "none",
+                            borderRadius: "4px",
+                            marginRight: "8px",
+                            cursor: "pointer",
+                            fontWeight: "600",
+                        }}
+                    >
+                        In-House Scaling
+                    </button> */}
                     <button
                         onClick={handlePrint}
                         style={{
@@ -1227,6 +2064,441 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                 </div>
             )}
 
+            {/* Scale Selection Modal */}
+            {showScaleModal && (
+                <div
+                    style={{
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: "rgba(0, 0, 0, 0.5)",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        zIndex: 1000,
+                        padding: "20px",
+                    }}
+                >
+                    <div
+                        style={{
+                            backgroundColor: "white",
+                            borderRadius: "12px",
+                            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                            maxWidth: "1200px",
+                            width: "100%",
+                            maxHeight: "90vh",
+                            display: "flex",
+                            flexDirection: "column",
+                            overflow: "hidden",
+                        }}
+                    >
+                        {/* Header */}
+                        <div style={{ padding: "1.5rem", borderBottom: "1px solid #e5e7eb" }}>
+                            <h2
+                                style={{
+                                    fontSize: "1.5rem",
+                                    fontWeight: "bold",
+                                    marginBottom: "0.5rem",
+                                    color: "#1f2937",
+                                }}
+                            >
+                                Select PDF Scale
+                            </h2>
+                            <p
+                                style={{
+                                    fontSize: "0.9rem",
+                                    color: "#6b7280",
+                                }}
+                            >
+                                Adjust the scale and see a live preview.
+                            </p>
+                        </div>
+
+                        {/* Content Area - Side by Side */}
+                        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+                            {/* Left Side - Controls */}
+                            <div style={{
+                                width: "400px",
+                                padding: "1.5rem",
+                                borderRight: "1px solid #e5e7eb",
+                                display: "flex",
+                                flexDirection: "column",
+                                overflowY: "auto",
+                            }}>
+                                <div style={{ marginBottom: "1.5rem" }}>
+                                    <label
+                                        style={{
+                                            display: "block",
+                                            fontSize: "0.9rem",
+                                            fontWeight: "600",
+                                            marginBottom: "0.75rem",
+                                            color: "#374151",
+                                        }}
+                                    >
+                                        Scale: <span style={{ color: "#10b981", fontSize: "1.1rem", fontWeight: "700" }}>{(selectedScale * 100).toFixed(0)}%</span>
+                                    </label>
+                                    <input
+                                        type="range"
+                                        min="0.5"
+                                        max="1.5"
+                                        step="0.01"
+                                        value={selectedScale}
+                                        onChange={(e) => {
+                                            const newScale = parseFloat(e.target.value);
+                                            setSelectedScale(newScale);
+                                            // Save to localStorage
+                                            localStorage.setItem('resumePreview_lastScale', newScale.toString());
+                                        }}
+                                        style={{
+                                            width: "100%",
+                                            height: "10px",
+                                            borderRadius: "5px",
+                                            outline: "none",
+                                            cursor: "pointer",
+                                            background: `linear-gradient(to right, #10b981 0%, #10b981 ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb 100%)`,
+                                        }}
+                                    />
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            fontSize: "0.75rem",
+                                            color: "#9ca3af",
+                                            marginTop: "0.5rem",
+                                        }}
+                                    >
+                                        <span>50%</span>
+                                        <span>75%</span>
+                                        <span>100%</span>
+                                        <span>125%</span>
+                                        <span>150%</span>
+                                    </div>
+
+                                    {/* Number Input with +/- Buttons */}
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "1rem" }}>
+                                        <button
+                                            onClick={() => {
+                                                const newScale = Math.max(0.5, selectedScale - 0.01);
+                                                setSelectedScale(newScale);
+                                                localStorage.setItem('resumePreview_lastScale', newScale.toString());
+                                            }}
+                                            style={{
+                                                padding: "8px 12px",
+                                                backgroundColor: "#10b981",
+                                                color: "white",
+                                                border: "none",
+                                                borderRadius: "6px",
+                                                cursor: "pointer",
+                                                fontWeight: "bold",
+                                                fontSize: "1rem",
+                                            }}
+                                        >-</button>
+                                        <input
+                                            type="number"
+                                            min="50"
+                                            max="150"
+                                            step="1"
+                                            value={Math.round(selectedScale * 100)}
+                                            onChange={(e) => {
+                                                const val = Math.min(150, Math.max(50, Number(e.target.value)));
+                                                const newScale = val / 100;
+                                                setSelectedScale(newScale);
+                                                localStorage.setItem('resumePreview_lastScale', newScale.toString());
+                                            }}
+                                            style={{
+                                                width: "80px",
+                                                padding: "8px",
+                                                textAlign: "center",
+                                                border: "2px solid #10b981",
+                                                borderRadius: "6px",
+                                                fontSize: "1rem",
+                                                fontWeight: "600",
+                                            }}
+                                        />
+                                        <span style={{ fontWeight: "600", color: "#374151" }}>%</span>
+                                        <button
+                                            onClick={() => {
+                                                const newScale = Math.min(1.5, selectedScale + 0.01);
+                                                setSelectedScale(newScale);
+                                                localStorage.setItem('resumePreview_lastScale', newScale.toString());
+                                            }}
+                                            style={{
+                                                padding: "8px 12px",
+                                                backgroundColor: "#10b981",
+                                                color: "white",
+                                                border: "none",
+                                                borderRadius: "6px",
+                                                cursor: "pointer",
+                                                fontWeight: "bold",
+                                                fontSize: "1rem",
+                                            }}
+                                        >+</button>
+                                    </div>
+                                </div>
+
+                                <div style={{
+                                    marginBottom: "1.5rem",
+                                    padding: "1rem",
+                                    backgroundColor: "#f9fafb",
+                                    borderRadius: "8px",
+                                    border: "1px solid #e5e7eb"
+                                }}>
+                                    <div style={{ fontSize: "0.85rem", color: "#6b7280", lineHeight: "1.5" }}>
+                                        <strong style={{ color: "#374151" }}>Reduce or increase scale to change the PDF scale.</strong>
+                                        <br />
+                                        <span style={{ color: "#6b7280", marginTop: "0.5rem", display: "block" }}>
+                                            If you want a one-page resume, make sure the preview is also one page so you will get the resume as it is.
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Page Count Warning */}
+                                {pdfPageCount !== null && pdfPageCount > 1 && (
+                                    <div style={{
+                                        marginBottom: "1rem",
+                                        padding: "1rem",
+                                        backgroundColor: "#fef3c7",
+                                        borderRadius: "8px",
+                                        border: "2px solid #f59e0b"
+                                    }}>
+                                        <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "0.5rem",
+                                            marginBottom: "0.5rem"
+                                        }}>
+                                            <span style={{ fontSize: "1.25rem" }}>⚠️</span>
+                                            <strong style={{ color: "#92400e", fontSize: "0.9rem" }}>
+                                                PDF is crossing {pdfPageCount} pages
+                                            </strong>
+                                        </div>
+                                        <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
+                                            Please reduce the scale to fit the resume on 1 page before downloading.
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Page Count Success */}
+                                {pdfPageCount !== null && pdfPageCount === 1 && (
+                                    <div style={{
+                                        marginBottom: "1rem",
+                                        padding: "1rem",
+                                        backgroundColor: "#d1fae5",
+                                        borderRadius: "8px",
+                                        border: "2px solid #10b981"
+                                    }}>
+                                        <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "0.5rem"
+                                        }}>
+                                            <span style={{ fontSize: "1.25rem" }}>✅</span>
+                                            <strong style={{ color: "#065f46", fontSize: "0.9rem" }}>
+                                                PDF is 1 page - Ready to download!
+                                            </strong>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Filename Display */}
+                                <div style={{
+                                    marginBottom: "1rem",
+                                    padding: "0.75rem 1rem",
+                                    backgroundColor: "#f3f4f6",
+                                    borderRadius: "8px",
+                                    border: "1px solid #e5e7eb"
+                                }}>
+                                    <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.25rem" }}>
+                                        Download as:
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={downloadFilename}
+                                        onChange={(e) => setDownloadFilename(e.target.value)}
+                                        style={{
+                                            fontSize: "0.9rem",
+                                            fontWeight: "600",
+                                            color: "#1f2937",
+                                            width: "100%",
+                                            padding: "0.25rem 0",
+                                            border: "none",
+                                            background: "transparent",
+                                            borderBottom: "1px solid #d1d5db",
+                                            outline: "none"
+                                        }}
+                                        placeholder="Enter filename..."
+                                    />
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div style={{ display: "flex", gap: "0.75rem", marginTop: "auto", paddingTop: "1rem" }}>
+                                    <button
+                                        onClick={() => {
+                                            setShowScaleModal(false);
+                                            setPdfPageCount(null);
+                                        }}
+                                        disabled={isGeneratingPDF}
+                                        style={{
+                                            flex: 1,
+                                            backgroundColor: "#6b7280",
+                                            color: "white",
+                                            padding: "10px 24px",
+                                            border: "none",
+                                            borderRadius: "8px",
+                                            fontSize: "1rem",
+                                            fontWeight: "600",
+                                            cursor: isGeneratingPDF ? "not-allowed" : "pointer",
+                                            opacity: isGeneratingPDF ? 0.5 : 1,
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleDownloadResume}
+                                        disabled={isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1)}
+                                        style={{
+                                            flex: 1,
+                                            backgroundColor: (isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1)) ? "#9ca3af" : "#10b981",
+                                            color: "white",
+                                            padding: "10px 24px",
+                                            border: "none",
+                                            borderRadius: "8px",
+                                            fontSize: "1rem",
+                                            fontWeight: "600",
+                                            cursor: (isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1)) ? "not-allowed" : "pointer",
+                                            transition: "background-color 0.2s",
+                                        }}
+                                    >
+                                        {isGeneratingPDF ? "Generating..." : (pdfPageCount !== null && pdfPageCount > 1) ? `PDF is ${pdfPageCount} pages - Reduce scale` : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Right Side - PDF Preview */}
+                            <div style={{
+                                flex: 1,
+                                padding: "1.5rem",
+                                backgroundColor: "#f9fafb",
+                                display: "flex",
+                                flexDirection: "column",
+                                overflow: "hidden",
+                                minHeight: 0,
+                            }}>
+                                <div style={{
+                                    marginBottom: "0.75rem",
+                                    fontSize: "0.875rem",
+                                    color: "#6b7280",
+                                    fontWeight: "600",
+                                }}>
+                                    Live PDF Preview
+                                </div>
+
+                                {isGeneratingPreview ? (
+                                    <div style={{
+                                        flex: 1,
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        backgroundColor: "white",
+                                        borderRadius: "8px",
+                                        padding: "2rem",
+                                    }}>
+                                        <div style={{ textAlign: "center" }}>
+                                            <div style={{
+                                                width: "50px",
+                                                height: "50px",
+                                                border: "4px solid #e5e7eb",
+                                                borderTop: "4px solid #10b981",
+                                                borderRadius: "50%",
+                                                animation: "spin 1s linear infinite",
+                                                margin: "0 auto 1.5rem",
+                                            }}></div>
+                                            <div style={{
+                                                color: "#374151",
+                                                fontSize: "1rem",
+                                                fontWeight: "600",
+                                                marginBottom: "0.5rem",
+                                            }}>
+                                                {loadingMessages[loadingMessageIndex]}
+                                            </div>
+                                            <div style={{
+                                                color: "#9ca3af",
+                                                fontSize: "0.85rem",
+                                                fontStyle: "italic",
+                                            }}>
+                                                Please wait while we create your perfect resume...
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : previewPdfUrl ? (
+                                    <div style={{
+                                        flex: 1,
+                                        backgroundColor: "#525252",
+                                        borderRadius: "8px",
+                                        boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                                        overflow: "hidden",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        minHeight: 0,
+                                    }}>
+                                        {/* PDF Viewer - Full scrollable viewer */}
+                                        <iframe
+                                            src={`${previewPdfUrl}#toolbar=1&navpanes=1&scrollbar=1`}
+                                            style={{
+                                                width: "100%",
+                                                height: "100%",
+                                                border: "none",
+                                                flex: 1,
+                                                minHeight: 0,
+                                            }}
+                                            title="PDF Preview"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div style={{
+                                        flex: 1,
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        backgroundColor: "white",
+                                        borderRadius: "8px",
+                                        color: "#9ca3af",
+                                    }}>
+                                        <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>📄</div>
+                                        <div>Preview will appear here</div>
+                                        <div style={{ fontSize: "0.85rem", marginTop: "0.5rem", color: "#9ca3af" }}>
+                                            Adjust the scale slider to generate preview
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add CSS for spinner animation */}
+            <style>{`
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `}</style>
+
+            {/* Scaling Modal */}
+            {/* <ResumeScalingModal
+                isOpen={showScalingModal}
+                onClose={() => setShowScalingModal(false)}
+                resumeContent={resumeContent}
+                resumeData={data}
+                version={0}
+            /> */}
+
+            {/* Screen Preview */}
             <div
                 className="bg-white shadow-lg border border-gray-200 rounded-lg overflow-hidden no-print"
                 style={{ height: "800px", overflow: "auto" }}
@@ -1253,11 +2525,12 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                 </div>
             </div>
 
+            {/* Print-Only Version */}
             <div
                 id="resume-print-only"
                 className="resume-container"
                 style={{
-                    display: "none",
+                    display: "none", // Hidden on screen
                     fontFamily: '"Times New Roman", Times, serif',
                     fontSize: styles.fontSize,
                     lineHeight: styles.lineHeight,
@@ -1276,9 +2549,14 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                 {resumeContent}
             </div>
 
+            {/* Spinner Animation */}
             <style
                 dangerouslySetInnerHTML={{
                     __html: `
+                    @keyframes spin {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(360deg); }
+                    }
            @media print {
                             body {
                                 margin: 0 !important;
@@ -1312,16 +2590,19 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 width: 98% !important;
                             }
                             
+                            /* Force single page layout and prevent breaks */
                             div[style*="marginBottom"] {
                                 page-break-inside: avoid !important;
                                 break-inside: avoid !important;
                             }
                             
+                            /* Additional print optimizations */
                             a {
                                 color: black !important;
                                 text-decoration: none !important;
                             }
                             
+                            /* Ensure proper spacing */
                             body, html {
                                 height: auto !important;
                                 overflow: visible !important;
