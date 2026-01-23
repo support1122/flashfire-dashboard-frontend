@@ -691,7 +691,7 @@ function App() {
 
     // Function to check loaded resume data and set checkboxes accordingly
     const checkLoadedResumeData = (
-        resumeData: ResumeDataType & { checkboxStates?: any; sectionOrder?: string[] }
+        resumeData: ResumeDataType & { checkboxStates?: any; sectionOrder?: string[]; V?: number }
     ) => {
         console.log("Checking loaded resume data for sections...");
 
@@ -710,38 +710,56 @@ function App() {
             setShowLeadership(
                 resumeData.checkboxStates.showLeadership ?? false
             );
-            if (resumeData.checkboxStates.showPublications !== undefined) {
-                setShowPublications(resumeData.checkboxStates.showPublications);
-            } else {
-                const hasValidPublications =
-                    resumeData.publications &&
-                    resumeData.publications.length > 0 &&
-                    resumeData.publications.some(
-                        (item) => item.details && item.details.trim() !== ""
-                    );
-                const hasOnlyEmptyPublications =
-                    resumeData.publications &&
-                    resumeData.publications.length > 0 &&
-                    resumeData.publications.every(
-                        (item) => !item.details || item.details.trim() === ""
-                    );
-                const finalHasPublications =
-                    hasValidPublications && !hasOnlyEmptyPublications;
-                setShowPublications(finalHasPublications);
-            }
+            
+            // Check for publications in data
+            const hasValidPublications =
+                resumeData.publications &&
+                resumeData.publications.length > 0 &&
+                resumeData.publications.some(
+                    (item) => item.details && item.details.trim() !== ""
+                );
+            const hasOnlyEmptyPublications =
+                resumeData.publications &&
+                resumeData.publications.length > 0 &&
+                resumeData.publications.every(
+                    (item) => !item.details || item.details.trim() === ""
+                );
+            const finalHasPublications =
+                hasValidPublications && !hasOnlyEmptyPublications;
+            
+            setShowPublications(finalHasPublications || (resumeData.checkboxStates.showPublications ?? false));
+            
             console.log(
                 "Checkboxes set from saved states - Summary:",
                 resumeData.checkboxStates.showSummary,
                 "Projects:",
                 resumeData.checkboxStates.showProjects,
                 "Leadership:",
-                resumeData.checkboxStates.showLeadership
+                resumeData.checkboxStates.showLeadership,
+                "Publications:",
+                finalHasPublications || (resumeData.checkboxStates.showPublications ?? false)
             );
 
-            // Handle sectionOrder if it exists
+            // Handle sectionOrder if it exists, but ensure publications is included for medical resumes
             if (resumeData.sectionOrder && Array.isArray(resumeData.sectionOrder)) {
                 console.log("Found saved sectionOrder:", resumeData.sectionOrder);
-                setSectionOrder(resumeData.sectionOrder);
+                let updatedSectionOrder = [...resumeData.sectionOrder];
+                if (resumeData.V === 2 && !updatedSectionOrder.includes("publications")) {
+                    updatedSectionOrder.push("publications");
+                }
+                setSectionOrder(updatedSectionOrder);
+            } else {
+                const defaultOrder = [
+                    "personalInfo",
+                    "summary",
+                    "workExperience",
+                    "projects",
+                    "leadership",
+                    "skills",
+                    "education",
+                    "publications"
+                ];
+                setSectionOrder(defaultOrder);
             }
 
             return;
@@ -1414,6 +1432,17 @@ function App() {
             const filename = `${safeName}_resume.pdf`;
             const apiUrl =
                 import.meta.env.VITE_API_URL || "https://resume-maker-backend-lf5z.onrender.com";
+            
+            let finalSectionOrder = [...sectionOrder];
+            if (versionV === 2 && !finalSectionOrder.includes("publications")) {
+                finalSectionOrder.push("publications");
+            }
+            
+            const hasPublications = resumeData.publications && 
+                resumeData.publications.length > 0 && 
+                resumeData.publications.some(pub => pub.details && pub.details.trim() !== "");
+            const finalShowPublications = versionV === 2 ? (hasPublications || showPublications) : showPublications;
+            
             const saveData = {
                 filename,
                 data: resumeData,
@@ -1421,9 +1450,9 @@ function App() {
                     showSummary,
                     showProjects,
                     showLeadership,
-                    showPublications,
+                    showPublications: finalShowPublications,
                 },
-                sectionOrder: sectionOrder,
+                sectionOrder: finalSectionOrder,
                 createdBy: userRole === "admin" ? "admin" : "user",
             };
             console.log("Saving resume with data:", saveData);
@@ -2032,6 +2061,19 @@ function App() {
                 (optimizedDataResult.summary || optimizedDataResult.workExperience)
             ) {
                 // Store optimized data temporarily and show comparison view
+                const processSkills = (skills: any) => {
+                    if (!skills || !Array.isArray(skills)) return skills;
+                    return skills.map((skill: any) => ({
+                        ...skill,
+                        category: skill.category ? skill.category.split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ") : skill.category,
+                        skills: skill.skills ? skill.skills.split(",").map((s: string) => {
+                            const trimmed = s.trim();
+                            if (!trimmed) return trimmed;
+                            return trimmed.split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+                        }).join(", ") : skill.skills
+                    }));
+                };
+
                 const newOptimizedData = {
                     ...resumeData,
 
@@ -2041,7 +2083,7 @@ function App() {
                     workExperience:
                         optimizedDataResult.workExperience ||
                         resumeData.workExperience,
-                    skills: optimizedDataResult.skills || resumeData.skills,
+                    skills: processSkills(optimizedDataResult.skills || resumeData.skills),
                     education: optimizedDataResult.education || resumeData.education,
                     projects: showProjects
                         ? optimizedDataResult.projects || resumeData.projects

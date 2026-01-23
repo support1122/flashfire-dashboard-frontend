@@ -85,6 +85,29 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education", "publications"],
     onDownloadClick,
 }) => {
+    const renderMarkedText = (text: string) => {
+        if (!text) return null;
+        const regex = /\*\*\{(.*?)\}\*\*|\*\*(.+?)\*\*/g;
+        const elements: React.ReactNode[] = [];
+        let lastIndex = 0;
+        let match: RegExpExecArray | null;
+        while ((match = regex.exec(text)) !== null) {
+            if (match.index > lastIndex) {
+                elements.push(text.slice(lastIndex, match.index));
+            }
+            const boldText = match[1] !== undefined ? match[1] : match[2];
+            elements.push(
+                <strong key={elements.length}>
+                    {boldText}
+                </strong>
+            );
+            lastIndex = regex.lastIndex;
+        }
+        if (lastIndex < text.length) {
+            elements.push(text.slice(lastIndex));
+        }
+        return elements;
+    };
     // Load last selected scale from localStorage
     const getLastSelectedScale = () => {
         const saved = localStorage.getItem('resumePreviewMedical_lastScale');
@@ -204,8 +227,10 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                 letterSpacing: "-0.025em",
                             }}
                         >
-                            {data.summary ||
-                                "Your professional summary will appear here..."}
+                            {renderMarkedText(
+                                data.summary ||
+                                    "Your professional summary will appear here..."
+                            )}
                         </div>
                     </div>
                 );
@@ -303,7 +328,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                             lineHeight: "1.3",
                                                         }}
                                                     >
-                                                        {resp}
+                                                        {renderMarkedText(resp)}
                                                     </div>
                                                 </div>
                                             )
@@ -434,7 +459,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                         lineHeight: "1.3",
                                                     }}
                                                 >
-                                                    {resp}
+                                                    {renderMarkedText(resp)}
                                                 </div>
                                             </div>
                                         )
@@ -526,7 +551,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                 textAlign: "justify",
                                             }}
                                         >
-                                            {category.skills}
+                                            {renderMarkedText(category.skills)}
                                         </span>
                                     </div>
                                 ))}
@@ -618,7 +643,12 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 );
 
             case "publications":
-                if (!showPublications || !data.publications || data.publications.length === 0) return null;
+                const hasPublications = data.publications && 
+                    data.publications.length > 0 && 
+                    data.publications.some(pub => pub.details && pub.details.trim() !== "");
+                
+                if (!hasPublications) return null;
+                
                 return (
                     <div style={{ marginBottom: "12px" }}>
                         <div
@@ -632,7 +662,9 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                         >
                             PUBLICATIONS
                         </div>
-                        {data.publications.map((publication) => (
+                        {data.publications
+                            .filter(pub => pub.details && pub.details.trim() !== "")
+                            .map((publication) => (
                             <div
                                 key={publication.id}
                                 style={{ marginBottom: "6px" }}
@@ -657,7 +689,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             fontSize: "9pt",
                                             lineHeight: "1.3",
                                             textAlign: "justify",
-                                            flex: 1,
+                                            flex: "1",
                                         }}
                                     >
                                         {publication.details}
@@ -798,6 +830,18 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             const loadingToast = toastUtils.loading("Making the best optimal PDF... Please wait.");
 
             // Format data for /v1/generate-pdf endpoint with scale and override
+            // Auto-enable showPublications if publications exist in data
+            const hasPublications = data.publications && 
+                data.publications.length > 0 && 
+                data.publications.some(pub => pub.details && pub.details.trim() !== "");
+            const finalShowPublications = hasPublications || showPublications;
+            
+            // Ensure publications is in sectionOrder
+            let finalSectionOrder = [...sectionOrder];
+            if (!finalSectionOrder.includes("publications")) {
+                finalSectionOrder.push("publications");
+            }
+            
             const pdfPayload = {
                 personalInfo: data.personalInfo,
                 summary: data.summary || "",
@@ -811,9 +855,9 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                     showSummary: showSummary,
                     showProjects: showProjects,
                     showLeadership: showLeadership,
-                    showPublications: showPublications,
+                    showPublications: finalShowPublications,
                 },
-                sectionOrder: sectionOrder,
+                sectionOrder: finalSectionOrder,
                 scale: selectedScale,
                 overrideAutoScale: overrideAutoScale,
             };
@@ -877,6 +921,18 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
 
             const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
 
+            // Auto-enable showPublications if publications exist in data
+            const hasPublications = data.publications && 
+                data.publications.length > 0 && 
+                data.publications.some(pub => pub.details && pub.details.trim() !== "");
+            const finalShowPublications = hasPublications || showPublications;
+            
+            // Ensure publications is in sectionOrder
+            let finalSectionOrder = [...sectionOrder];
+            if (!finalSectionOrder.includes("publications")) {
+                finalSectionOrder.push("publications");
+            }
+
             const pdfPayload = {
                 personalInfo: data.personalInfo,
                 summary: data.summary || "",
@@ -890,9 +946,9 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                     showSummary: showSummary,
                     showProjects: showProjects,
                     showLeadership: showLeadership,
-                    showPublications: showPublications,
+                    showPublications: finalShowPublications,
                 },
-                sectionOrder: sectionOrder,
+                sectionOrder: finalSectionOrder,
                 scale: scale,
                 overrideAutoScale: overrideAutoScale,
             };

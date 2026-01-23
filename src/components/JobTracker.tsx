@@ -768,7 +768,17 @@ const JobTracker = () => {
         }
 
         // Gate only when moving out of "saved" to a real status (not deleted/saved)
+        // Only ask for attachments if the job doesn't already have them
         if (job.currentStatus === 'saved' && status !== 'deleted' && status !== 'saved') {
+            const hasAttachments = job.attachments && Array.isArray(job.attachments) && job.attachments.length > 0;
+            
+            // If job already has attachments, move directly without opening modal
+            if (hasAttachments) {
+                onUpdateJobStatus(jobID, status, userDetails);
+                return;
+            }
+            
+            // If no attachments, open modal to ask for them
             setSelectedJob(job);
             setPendingMove({ jobID, status });
             setShowJobModal(true);
@@ -1132,15 +1142,21 @@ const JobTracker = () => {
                             }
                         }}
                         onAttachmentUploaded={(updatedJob) => {
-                            // When attachment is uploaded and there's a pending move to 'deleted' status
+                            if (!updatedJob) return;
+                            
+                            if (selectedJob && updatedJob.jobID === selectedJob.jobID) {
+                                setSelectedJob(updatedJob);
+                            }
+                            
+                            const currentStatus = updatedJob.currentStatus?.toLowerCase() || '';
+                            const isSavedStatus = currentStatus === 'saved' || currentStatus.includes('saved');
+                            
                             if (
                                 pendingMove &&
-                                selectedJob &&
-                                pendingMove.jobID === selectedJob.jobID &&
-                                pendingMove.status === 'deleted'
+                                pendingMove.jobID === updatedJob.jobID
                             ) {
-                                // Verify the job now has attachments before moving (use updatedJob from callback)
-                                if (updatedJob?.attachments && Array.isArray(updatedJob.attachments) && updatedJob.attachments.length > 0) {
+                                if (pendingMove.status === 'deleted') {
+                                if (updatedJob.attachments && Array.isArray(updatedJob.attachments) && updatedJob.attachments.length > 0) {
                                     onUpdateJobStatus(
                                         pendingMove.jobID,
                                         pendingMove.status,
@@ -1150,6 +1166,31 @@ const JobTracker = () => {
                                     setShowJobModal(false);
                                     toastUtils.success("Attachment uploaded! Job card moved to Removed.");
                                 }
+                                } else {
+                                    onUpdateJobStatus(
+                                        pendingMove.jobID,
+                                        pendingMove.status,
+                                        userDetails
+                                    );
+                                    setPendingMove(null);
+                                    setShowJobModal(false);
+                                    const statusMessages: Record<JobStatus, string> = {
+                                        'saved': 'Job card moved to Saved.',
+                                        'applied': 'Attachment uploaded! Job card moved to Applied.',
+                                        'interviewing': 'Attachment uploaded! Job card moved to Interviewing.',
+                                        'offer': 'Attachment uploaded! Job card moved to Offer.',
+                                        'rejected': 'Attachment uploaded! Job card moved to Rejected.',
+                                        'deleted': 'Attachment uploaded! Job card moved to Removed.'
+                                    };
+                                    toastUtils.success(statusMessages[pendingMove.status] || "Attachment uploaded! Job card moved.");
+                                }
+                            } else if (isSavedStatus && updatedJob.attachments && Array.isArray(updatedJob.attachments) && updatedJob.attachments.length > 0) {
+                                onUpdateJobStatus(
+                                    updatedJob.jobID,
+                                    'applied',
+                                    userDetails
+                                );
+                                toastUtils.success("Attachment uploaded! Job card automatically moved to Applied.");
                             }
                         }}
                     />

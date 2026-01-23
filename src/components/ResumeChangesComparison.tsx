@@ -61,13 +61,28 @@ const ResumeChangesComparison = ({ changesMade }: any) => {
 
         // Handle skills
         if (item.skills) {
+            const capitalizeWords = (text: string) => {
+                if (!text) return "";
+                return text.split(/\s+/).map(word => {
+                    if (!word) return word;
+                    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+                }).join(" ");
+            };
+            const capitalizeSkills = (skillsString: string) => {
+                if (!skillsString) return "";
+                return skillsString.split(",").map((skill: string) => {
+                    const trimmed = skill.trim();
+                    if (!trimmed) return trimmed;
+                    return capitalizeWords(trimmed);
+                }).join(", ");
+            };
             return (
                 <div>
                     <div className="font-medium text-sm mb-1">
-                        {item.category || "Skills"}
+                        {item.category ? capitalizeWords(item.category) : "Skills"}
                     </div>
                     <div className="text-sm text-gray-600">
-                        {item.skills}
+                        {capitalizeSkills(item.skills)}
                     </div>
                 </div>
             );

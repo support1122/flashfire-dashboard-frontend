@@ -239,7 +239,26 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
       }, 2500);
 
       try {
-        // 2) Immediately POST minimal payload (no attachments) to quickly detect duplicate
+        if (role === "operations" && userDetails?.email) {
+          const lockCheckResponse = await fetch(`${API_BASE_URL}/operations/check-lock-period`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientEmail: userDetails.email })
+          });
+          
+          if (lockCheckResponse.ok) {
+            const lockCheck = await lockCheckResponse.json();
+            if (lockCheck.isLocked) {
+              clearTimeout(closeTimer);
+              toastUtils.dismissToast(loadingToast);
+              toastUtils.error(lockCheck.message || "Client is in lock period");
+              setIsSubmitting(false);
+              setError(lockCheck.message || "Client is in lock period");
+              return;
+            }
+          }
+        }
+        
         const jobDetails = {
           jobID: optimisticId,
           jobTitle: formData.jobTitle,
@@ -249,7 +268,6 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
           dateAdded: formData.dateAdded,
           currentStatus: formData.status,
           userID: userDetails.email,
-          // attachments intentionally omitted for speed
         };
 
         const { status, ok, body } = await createJobPOSTQuick({
@@ -259,8 +277,17 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
             role,
         });
 
-        // If duplicate within 1s -> keep form open and show the message
-        if (status === 403 || body?.message === "Job Already Exist !") {
+        if (status === 403) {
+          clearTimeout(closeTimer);
+          toastUtils.dismissToast(loadingToast);
+          const errorMsg = body?.message || "Client is in lock period";
+          toastUtils.error(errorMsg);
+          setIsSubmitting(false);
+          setError(errorMsg);
+          return;
+        }
+        
+        if (body?.message === "Job Already Exist !") {
           clearTimeout(closeTimer);
           toastUtils.dismissToast(loadingToast);
           toastUtils.error(body.message || "Job already exists!");

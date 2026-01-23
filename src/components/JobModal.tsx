@@ -557,7 +557,6 @@ export default function JobModal({
         }
     }, [activeSection, jobDetails?.jobID, jobDetails?.optimizedResume]);
     useEffect(() => {
-        // Only when opened due to a drag-move (attachments tab)
         if (initialSection !== "attachments") return;
 
         const exists = hasOptimizedResumeLocal(
@@ -565,15 +564,16 @@ export default function JobModal({
             jobDetails?.companyName
         );
 
-        // Update UI hint inside modal
         setHasResumeForJob(exists);
 
-        // Tell the parent (JobTracker) the result so it can move or not
-        onAutoCheckDone?.(exists);
+        const hasAttachments = jobDetails?.attachments && Array.isArray(jobDetails.attachments) && jobDetails.attachments.length > 0;
+        
+        if (!hasAttachments && initialSection === "attachments") {
+            return;
+        }
 
-        // If not exists, we just keep the modal open on attachments so user can upload
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialSection, jobDetails?.jobID, jobDetails?.companyName]);
+        onAutoCheckDone?.(exists);
+    }, [initialSection, jobDetails?.jobID, jobDetails?.companyName, jobDetails?.attachments]);
 
     // const computeHasResumeForJob = () => {
     //   try {
@@ -663,13 +663,23 @@ export default function JobModal({
                 if (resp?.updatedJobs) {
                     setUserJobs(resp.updatedJobs);
                     const updated = resp.updatedJobs.find((j) => j.jobID === jobID);
-                    if (updated?.attachments) {
-                        // ✅ Reflect full attachments array returned by backend
-                        setAttachments(updated.attachments);
-                        if (updated.attachments.length > 0) {
-                            onAttachmentUploaded?.(updated);
+                    if (updated) {
+                        if (updated.attachments && Array.isArray(updated.attachments) && updated.attachments.length > 0) {
+                            setAttachments(updated.attachments);
+                        } else {
+                            setAttachments(urls);
+                            updated.attachments = urls;
                         }
+                        onAttachmentUploaded?.(updated);
+                    } else {
+                        const fallbackJob = { ...jobDetails, jobID, attachments: urls };
+                        setAttachments(urls);
+                        onAttachmentUploaded?.(fallbackJob);
                     }
+                } else {
+                    const fallbackJob = { ...jobDetails, jobID, attachments: urls };
+                    setAttachments(urls);
+                    onAttachmentUploaded?.(fallbackJob);
                 }
             }
 
@@ -725,9 +735,6 @@ export default function JobModal({
             });
             const url = up.secure_url as string;
 
-            setAttachments([url]); // ✅ replace array with just this one
-
-
             const resp = await persistAttachmentsToJob({
                 jobID,
                 userEmail,
@@ -742,13 +749,23 @@ export default function JobModal({
             if (resp?.updatedJobs) {
                 setUserJobs(resp.updatedJobs);
                 const updated = resp.updatedJobs.find((j) => j.jobID === jobID);
-                if (updated?.attachments) {
-                    setAttachments(updated.attachments);
-                    // ✅ Call callback if attachment was uploaded successfully
-                    if (updated.attachments.length > 0) {
-                        onAttachmentUploaded?.();
+                if (updated) {
+                    if (updated.attachments && Array.isArray(updated.attachments) && updated.attachments.length > 0) {
+                        setAttachments(updated.attachments);
+                    } else {
+                        setAttachments([url]);
+                        updated.attachments = [url];
                     }
+                    onAttachmentUploaded?.(updated);
+                } else {
+                    const fallbackJob = { ...jobDetails, jobID, attachments: [url] };
+                    setAttachments([url]);
+                    onAttachmentUploaded?.(fallbackJob);
                 }
+            } else {
+                const fallbackJob = { ...jobDetails, jobID, attachments: [url] };
+                setAttachments([url]);
+                onAttachmentUploaded?.(fallbackJob);
             }
 
             setImgFile(null);
