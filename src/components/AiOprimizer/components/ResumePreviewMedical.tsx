@@ -643,7 +643,12 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 );
 
             case "publications":
-                if (!showPublications || !data.publications || data.publications.length === 0) return null;
+                const hasPublications = data.publications && 
+                    data.publications.length > 0 && 
+                    data.publications.some(pub => pub.details && pub.details.trim() !== "");
+                
+                if (!hasPublications) return null;
+                
                 return (
                     <div style={{ marginBottom: "12px" }}>
                         <div
@@ -657,7 +662,9 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                         >
                             PUBLICATIONS
                         </div>
-                        {data.publications.map((publication) => (
+                        {data.publications
+                            .filter(pub => pub.details && pub.details.trim() !== "")
+                            .map((publication) => (
                             <div
                                 key={publication.id}
                                 style={{ marginBottom: "6px" }}
@@ -682,7 +689,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             fontSize: "9pt",
                                             lineHeight: "1.3",
                                             textAlign: "justify",
-                                            flex: 1,
+                                            flex: "1",
                                         }}
                                     >
                                         {publication.details}
@@ -823,6 +830,18 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             const loadingToast = toastUtils.loading("Making the best optimal PDF... Please wait.");
 
             // Format data for /v1/generate-pdf endpoint with scale and override
+            // Auto-enable showPublications if publications exist in data
+            const hasPublications = data.publications && 
+                data.publications.length > 0 && 
+                data.publications.some(pub => pub.details && pub.details.trim() !== "");
+            const finalShowPublications = hasPublications || showPublications;
+            
+            // Ensure publications is in sectionOrder
+            let finalSectionOrder = [...sectionOrder];
+            if (!finalSectionOrder.includes("publications")) {
+                finalSectionOrder.push("publications");
+            }
+            
             const pdfPayload = {
                 personalInfo: data.personalInfo,
                 summary: data.summary || "",
@@ -836,9 +855,9 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                     showSummary: showSummary,
                     showProjects: showProjects,
                     showLeadership: showLeadership,
-                    showPublications: showPublications,
+                    showPublications: finalShowPublications,
                 },
-                sectionOrder: sectionOrder,
+                sectionOrder: finalSectionOrder,
                 scale: selectedScale,
                 overrideAutoScale: overrideAutoScale,
             };
@@ -902,6 +921,18 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
 
             const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
 
+            // Auto-enable showPublications if publications exist in data
+            const hasPublications = data.publications && 
+                data.publications.length > 0 && 
+                data.publications.some(pub => pub.details && pub.details.trim() !== "");
+            const finalShowPublications = hasPublications || showPublications;
+            
+            // Ensure publications is in sectionOrder
+            let finalSectionOrder = [...sectionOrder];
+            if (!finalSectionOrder.includes("publications")) {
+                finalSectionOrder.push("publications");
+            }
+
             const pdfPayload = {
                 personalInfo: data.personalInfo,
                 summary: data.summary || "",
@@ -915,9 +946,9 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                     showSummary: showSummary,
                     showProjects: showProjects,
                     showLeadership: showLeadership,
-                    showPublications: showPublications,
+                    showPublications: finalShowPublications,
                 },
-                sectionOrder: sectionOrder,
+                sectionOrder: finalSectionOrder,
                 scale: scale,
                 overrideAutoScale: overrideAutoScale,
             };
