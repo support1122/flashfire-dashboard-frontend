@@ -327,7 +327,7 @@ const Navigation: React.FC<NavigationProps> = ({
                   setProfileDropDown(false);
                   setMenuOpen(false);
                 }}
-                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                 title="Refer and Earn"
               >
                 <Gift className="w-4 h-4" />

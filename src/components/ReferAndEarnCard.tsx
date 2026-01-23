@@ -1,208 +1,161 @@
-import React, { useState, useContext } from "react";
-import { X, Copy, Check, Gift, Users, Share2, Award } from "lucide-react";
-import { UserContext } from "../state_management/UserContext";
-import { useUserProfile } from "../state_management/ProfileContext";
-import { generateReferralIdentifier } from "../utils/generateUsername";
-import { toastUtils } from "../utils/toast";
+'use client'
 
-interface ReferAndEarnCardProps {
-  isOpen: boolean;
-  onClose: () => void;
+import { Copy, Users, Gift, CreditCard, X, Check } from "lucide-react"
+import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
+
+interface ReferAndEarnModalProps {
+  isOpen: boolean
+  onClose: () => void
 }
 
-const ReferAndEarnCard: React.FC<ReferAndEarnCardProps> = ({ isOpen, onClose }) => {
-  const { userDetails } = useContext(UserContext);
-  const { userProfile } = useUserProfile();
-  const [copied, setCopied] = useState(false);
+export default function ReferAndEarnModal({
+  isOpen,
+  onClose,
+}: ReferAndEarnModalProps) {
+  const [copied, setCopied] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
-  if (!isOpen) return null;
+  // Ensure component is mounted before using portal
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
-  // Generate referral code from user's name
-  const firstName = userProfile?.firstName || userDetails?.name?.split(" ")?.[0] || "";
-  const lastName = userProfile?.lastName || userDetails?.name?.split(" ")?.[1] || "";
-  const referralCode = generateReferralIdentifier(firstName, lastName);
+  if (!isOpen) return null
 
-  // Construct referral link
-  const referralLink = `${window.location.origin}/register?ref=${referralCode}`;
+  const referralLink = "https://flashfirejobs.com/ref/FFJ123"
 
-  const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(referralLink);
-      setCopied(true);
-      toastUtils.success("Referral link copied to clipboard!");
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      toastUtils.error("Failed to copy link");
-    }
-  };
+  const copyLink = () => {
+    navigator.clipboard.writeText(referralLink)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
-  const handleCopyCode = async () => {
-    try {
-      await navigator.clipboard.writeText(referralCode);
-      setCopied(true);
-      toastUtils.success("Referral code copied to clipboard!");
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      toastUtils.error("Failed to copy code");
-    }
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-[60] mt-68 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center bg-black/40 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+  const modalContent = (
+    <div 
+      className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-md overflow-y-auto-hidden"
+      onClick={onClose}
     >
-      <div className="w-full max-w-2xl rounded-xl bg-white shadow-2xl border border-gray-200 overflow-hidden animate-fade-in">
-        {/* Header */}
-        <div className="relative bg-gradient-to-r from-orange-500 to-red-500 px-6 py-5">
+      <div 
+        className="min-h-screen flex items-center justify-center px-4 py-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        
+        {/* CARD */}
+        <div className="relative w-full max-w-md mx-auto rounded-2xl bg-white shadow-2xl overflow-hidden animate-in zoom-in duration-300">
+          
+          {/* CLOSE BUTTON */}
           <button
-            className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/20 transition-colors"
             onClick={onClose}
-            aria-label="Close"
+            className="absolute top-4 right-4 z-10 rounded-full p-2 text-gray-400 hover:text-[#ff4c00] hover:bg-orange-50 transition-all duration-200"
           >
-            <X className="w-5 h-5 text-white" />
+            <X size={18} />
           </button>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-              <Gift className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-white">Refer and Earn</h2>
-              <p className="text-orange-100 text-sm">Share FlashFire and earn rewards!</p>
-            </div>
-          </div>
-        </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* How it works */}
-          <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg p-5 border border-orange-100">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Users className="w-5 h-5 text-orange-600" />
-              How It Works
-            </h3>
-            <ul className="space-y-2 text-sm text-gray-700">
-              <li className="flex items-start gap-2">
-                <span className="text-orange-600 font-bold">1.</span>
-                <span>Share your unique referral link with friends and colleagues</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-orange-600 font-bold">2.</span>
-                <span>They sign up using your link and get started</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-orange-600 font-bold">3.</span>
-                <span>You both earn rewards when they become active users!</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Referral Code */}
-          <div className="bg-gray-50 rounded-lg p-5 border border-gray-200">
-            <label className="text-sm font-semibold text-gray-700 mb-2 block">
-              Your Referral Code
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={referralCode}
-                readOnly
-                className="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-lg text-lg font-mono font-semibold text-gray-900"
-              />
-              <button
-                onClick={handleCopyCode}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg transition-colors flex items-center gap-2"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span className="text-sm">Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    <span className="text-sm">Copy</span>
-                  </>
-                )}
-              </button>
+          {/* CONTENT */}
+          <div className="p-6">
+            
+            {/* HEADER */}
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-1">
+                Refer & Earn Free Applications
+              </h2>
+              <p className="text-sm text-gray-600">
+                Invite friends to Flashfire and get{" "}
+                <span className="font-semibold text-[#ff4c00]">
+                  bonus job applications added to your plan automatically.
+                </span>
+              </p>
             </div>
-          </div>
 
-          {/* Referral Link */}
-          <div className="bg-gray-50 rounded-lg p-5 border border-gray-200">
-            <label className="text-sm font-semibold text-gray-700 mb-2 block">
-              Your Referral Link
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={referralLink}
-                readOnly
-                className="flex-1 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 break-all"
-              />
-              <button
-                onClick={handleCopyLink}
-                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors flex items-center gap-2"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span className="text-sm">Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    <span className="text-sm">Copy</span>
-                  </>
-                )}
-              </button>
+            {/* REFERRAL LINK */}
+            {/* <div className="mb-6">
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                Your FlashFire Referral Link
+              </label>
+
+              <div className="flex items-center gap-2 group">
+                <input
+                  readOnly
+                  value={referralLink}
+                  className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs bg-gray-50 text-gray-700 focus:outline-none focus:border-[#ff4c00] focus:bg-white transition-all duration-200 group-hover:border-[#ff4c00]/50"
+                />
+
+                <button
+                  onClick={copyLink}
+                  className={`flex items-center justify-center rounded-lg px-3 py-2 transition-all duration-300 ${
+                    copied
+                      ? "bg-green-500 text-white"
+                      : "bg-[#ff4c00] text-white hover:bg-[#e64400] active:scale-95"
+                  }`}
+                >
+                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                </button>
+              </div>
+            </div> */}
+
+            {/* HOW IT WORKS */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
+                How it works (3 steps)
+              </h3>
+
+              <div className="space-y-2">
+                {/* Step 1 */}
+                <div className="flex items-start gap-2 p-2 rounded-lg hover:bg-orange-50/50 transition-colors duration-200">
+                  <div className="w-6 h-6 rounded-full bg-[#ff4c00]/10 flex items-center justify-center mt-0.5">
+                    <Users size={14} className="text-[#ff4c00]" />
+                  </div>
+                  <p className="text-xs font-medium text-gray-900">
+                    <span className="font-semibold">Share your referral link</span> with a friend who’s actively job searching.
+                  </p>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex items-start gap-2 p-2 rounded-lg hover:bg-orange-50/50 transition-colors duration-200">
+                  <div className="w-6 h-6 rounded-full bg-[#ff4c00]/10 flex items-center justify-center mt-0.5">
+                    <Gift size={14} className="text-[#ff4c00]" />
+                  </div>
+                  <p className="text-xs font-medium text-gray-900">
+                    <span className="font-semibold">Friend enrolls</span> in an eligible Flashfire plan.
+                  </p>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex items-start gap-2 p-2 rounded-lg hover:bg-orange-50/50 transition-colors duration-200">
+                  <div className="w-6 h-6 rounded-full bg-[#ff4c00]/10 flex items-center justify-center mt-0.5">
+                    <CreditCard size={14} className="text-[#ff4c00]" />
+                  </div>
+                  <p className="text-xs font-medium text-gray-900">
+                    <span className="font-semibold">Bonus applications are added</span> to your job tracker automatically.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-lg bg-orange-50 px-3 py-2 text-[11px] text-gray-700">
+                <p className="font-semibold text-[#ff4c00] mb-1">
+                  Referral rewards
+                </p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>
+                    <span className="font-semibold">Professional plan:</span> +200 applications per referral
+                  </li>
+                  <li>
+                    <span className="font-semibold">Executive plan:</span> +300 applications per referral
+                  </li>
+                </ul>
+              </div>
+
+              <p className="text-[11px] text-gray-500 pt-2 text-center">
+                Refer a friend. Get free applications. We’ll handle the tracking and credits for you.
+              </p>
             </div>
-          </div>
-
-          {/* Rewards Info */}
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-5 border border-green-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Award className="w-5 h-5 text-green-600" />
-              Rewards
-            </h3>
-            <div className="space-y-2 text-sm text-gray-700">
-              <p className="font-medium">🎁 For You:</p>
-              <ul className="list-disc list-inside ml-2 space-y-1">
-                <li>Get premium features when your referrals become active</li>
-                <li>Earn credits for every successful referral</li>
-                <li>Unlock exclusive benefits as you refer more users</li>
-              </ul>
-              <p className="font-medium mt-3">🎁 For Your Friends:</p>
-              <ul className="list-disc list-inside ml-2 space-y-1">
-                <li>Special welcome bonus when they sign up</li>
-                <li>Access to premium features at a discount</li>
-                <li>Priority support during onboarding</li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Share Buttons */}
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={handleCopyLink}
-              className="flex-1 min-w-[140px] px-4 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-2 shadow-md"
-            >
-              <Share2 className="w-4 h-4" />
-              Share Link
-            </button>
-            <button
-              onClick={onClose}
-              className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
-            >
-              Close
-            </button>
           </div>
         </div>
       </div>
     </div>
-  );
-};
+  )
 
-export default ReferAndEarnCard;
+  // Render modal using portal to document.body to ensure it's above everything
+  return mounted ? createPortal(modalContent, document.body) : null
+}
