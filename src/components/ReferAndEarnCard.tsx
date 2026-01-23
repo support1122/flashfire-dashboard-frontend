@@ -1,35 +1,32 @@
 'use client'
 
-import { Copy, Users, Gift, CreditCard, X, Check } from "lucide-react"
+import React from "react"
+import { Users, Gift, CreditCard, X } from "lucide-react"
 import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
+
 
 interface ReferAndEarnModalProps {
   isOpen: boolean
   onClose: () => void
 }
 
+
 export default function ReferAndEarnModal({
   isOpen,
   onClose,
 }: ReferAndEarnModalProps) {
-  const [copied, setCopied] = useState(false)
   const [mounted, setMounted] = useState(false)
+
 
   // Ensure component is mounted before using portal
   useEffect(() => {
     setMounted(true)
   }, [])
 
+
   if (!isOpen) return null
 
-  const referralLink = "https://flashfirejobs.com/ref/FFJ123"
-
-  const copyLink = () => {
-    navigator.clipboard.writeText(referralLink)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
 
   const modalContent = (
     <div 
@@ -38,12 +35,14 @@ export default function ReferAndEarnModal({
     >
       <div 
         className="min-h-screen flex items-center justify-center px-4 py-8"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
-        
+
+
         {/* CARD */}
         <div className="relative w-full max-w-md mx-auto rounded-2xl bg-white shadow-2xl overflow-hidden animate-in zoom-in duration-300">
-          
+
+
           {/* CLOSE BUTTON */}
           <button
             onClick={onClose}
@@ -52,9 +51,11 @@ export default function ReferAndEarnModal({
             <X size={18} />
           </button>
 
+
           {/* CONTENT */}
           <div className="p-6">
-            
+
+
             {/* HEADER */}
             <div className="mb-6">
               <h2 className="text-xl font-bold text-gray-900 mb-1">
@@ -67,6 +68,7 @@ export default function ReferAndEarnModal({
                 </span>
               </p>
             </div>
+
 
             {/* REFERRAL LINK */}
             {/* <div className="mb-6">
@@ -94,11 +96,13 @@ export default function ReferAndEarnModal({
               </div>
             </div> */}
 
+
             {/* HOW IT WORKS */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide">
                 How it works (3 steps)
               </h3>
+
 
               <div className="space-y-2">
                 {/* Step 1 */}
@@ -107,9 +111,10 @@ export default function ReferAndEarnModal({
                     <Users size={14} className="text-[#ff4c00]" />
                   </div>
                   <p className="text-xs font-medium text-gray-900">
-                    <span className="font-semibold">Share your referral link</span> with a friend who’s actively job searching.
+                    Share your referral link with a friend who's actively job searching.
                   </p>
                 </div>
+
 
                 {/* Step 2 */}
                 <div className="flex items-start gap-2 p-2 rounded-lg hover:bg-orange-50/50 transition-colors duration-200">
@@ -117,9 +122,10 @@ export default function ReferAndEarnModal({
                     <Gift size={14} className="text-[#ff4c00]" />
                   </div>
                   <p className="text-xs font-medium text-gray-900">
-                    <span className="font-semibold">Friend enrolls</span> in an eligible Flashfire plan.
+                    Friend enrolls in an eligible Flashfire plan.
                   </p>
                 </div>
+
 
                 {/* Step 3 */}
                 <div className="flex items-start gap-2 p-2 rounded-lg hover:bg-orange-50/50 transition-colors duration-200">
@@ -127,10 +133,11 @@ export default function ReferAndEarnModal({
                     <CreditCard size={14} className="text-[#ff4c00]" />
                   </div>
                   <p className="text-xs font-medium text-gray-900">
-                    <span className="font-semibold">Bonus applications are added</span> to your job tracker automatically.
+                    Bonus applications are added to your job tracker automatically.
                   </p>
                 </div>
               </div>
+
 
               <div className="mt-3 rounded-lg bg-orange-50 px-3 py-2 text-[11px] text-gray-700">
                 <p className="font-semibold text-[#ff4c00] mb-1">
@@ -146,8 +153,9 @@ export default function ReferAndEarnModal({
                 </ul>
               </div>
 
+
               <p className="text-[11px] text-gray-500 pt-2 text-center">
-                Refer a friend. Get free applications. We’ll handle the tracking and credits for you.
+                Refer a friend. Get free applications. We'll handle the tracking and credits for you.
               </p>
             </div>
           </div>
@@ -155,6 +163,7 @@ export default function ReferAndEarnModal({
       </div>
     </div>
   )
+
 
   // Render modal using portal to document.body to ensure it's above everything
   return mounted ? createPortal(modalContent, document.body) : null
