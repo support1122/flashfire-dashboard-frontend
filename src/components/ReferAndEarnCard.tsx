@@ -158,7 +158,7 @@ export default function ReferAndEarnModal({
                 Refer a friend. Get free applications. We'll handle the tracking and credits for you.
               </p>
               <p className="text-[11px] text-gray-500 pt-1 text-center">
-                * Applicable from 24th jab 2025
+                * Applicable from 24th jan 2026
               </p>
             </div>
           </div>
