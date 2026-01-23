@@ -14,12 +14,14 @@ import {
   Menu,
   X,
   Settings,
+  Gift,
 } from "lucide-react";
 import { UserContext } from "../state_management/UserContext.tsx";
 import { useUserProfile } from "../state_management/ProfileContext.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
 import { useDownloadHighlightStore } from "../state_management/DownloadHighlightStore.ts";
 import { toastUtils, toastMessages } from "../utils/toast.ts";
+import ReferAndEarnCard from "./ReferAndEarnCard.tsx";
 
 interface NavigationProps {
   activeTab: string;
@@ -48,6 +50,7 @@ const Navigation: React.FC<NavigationProps> = ({
   const [removedJobsCount, setRemovedJobsCount] = useState<number | null>(null);
   const [removedJobsLoading, setRemovedJobsLoading] = useState(false);
   const [removedJobsError, setRemovedJobsError] = useState<string | null>(null);
+  const [showReferAndEarnCard, setShowReferAndEarnCard] = useState(false);
 
   // Refs
   const desktopDropdownRef = useRef<HTMLDivElement>(null);   // desktop profile dropdown area
@@ -316,8 +319,39 @@ const Navigation: React.FC<NavigationProps> = ({
 
           {/* Right Section */}
           <div className="flex items-center gap-3">
+            {/* Refer and Earn Button - Desktop */}
+            {user && (
+              <button
+                onClick={() => {
+                  setShowReferAndEarnCard(true);
+                  setProfileDropDown(false);
+                  setMenuOpen(false);
+                }}
+                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                title="Refer and Earn"
+              >
+                <Gift className="w-4 h-4" />
+                <span className="hidden lg:inline">Refer & Earn</span>
+              </button>
+            )}
+
             {/* Mobile Buttons */}
             <div className="flex md:hidden items-center gap-2">
+              {/* Refer and Earn Button - Mobile */}
+              {user && (
+                <button
+                  onClick={() => {
+                    setShowReferAndEarnCard(true);
+                    setProfileDropDown(false);
+                    setMenuOpen(false);
+                  }}
+                  className="p-2 rounded-md bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition-all duration-200"
+                  title="Refer and Earn"
+                >
+                  <Gift className="w-5 h-5" />
+                </button>
+              )}
+
               <button
                 data-nav-trigger
                 onClick={() => {
@@ -498,8 +532,26 @@ const Navigation: React.FC<NavigationProps> = ({
               {label}
             </button>
           ))}
+          {user && (
+            <button
+              onClick={() => {
+                setShowReferAndEarnCard(true);
+                setMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-5 py-3 text-sm font-medium text-left transition-all text-gray-600 hover:bg-gray-50 border-t border-gray-200"
+            >
+              <Gift className="w-4 h-4" />
+              Refer & Earn
+            </button>
+          )}
         </div>
       )}
+
+      {/* Refer and Earn Card */}
+      <ReferAndEarnCard
+        isOpen={showReferAndEarnCard}
+        onClose={() => setShowReferAndEarnCard(false)}
+      />
 
       {/* Absolute Mobile Profile Dropdown */}
       {profileDropDown && (
