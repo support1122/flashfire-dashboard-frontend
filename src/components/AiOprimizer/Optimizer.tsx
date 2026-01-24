@@ -25,6 +25,7 @@ import { Publications } from "./components/Publications";
 import { ResumePreviewMedical } from "./components/ResumePreviewMedical";
 import { useJobsSessionStore } from "../../state_management/JobsSessionStore";
 import "./index.css"; //
+import { convertDoubleDashToHyphen, convertDoubleHyphenToHyphen } from "../../utils/generatehypesn";
 
 // Type definitions remain the same
 interface WorkExperienceItem {
@@ -2037,6 +2038,10 @@ function App() {
                 leadership: showLeadership ? resumeData.leadership : [],
                 publications: showPublications ? (resumeData as any).publications : [],
             } as typeof resumeData;
+            const t = convertDoubleHyphenToHyphen(filteredResumeForOptimization.summary);
+            // console.log("filteredResumeForOptimization", t);
+            const t2 = convertDoubleDashToHyphen(filteredResumeForOptimization.projects.map((project: any) => project.company).join(", "));
+            // console.log("filteredResumeForOptimization", t2);
 
             const response = await fetch(`${apiUrl}/api/optimize-with-gemini`, {
                 method: "POST",
