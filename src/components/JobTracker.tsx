@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, Suspense, lazy, useRef } from "react";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, MessageSquare, Loader2, Clock } from "lucide-react";
 import { Job, JobStatus } from "../types/index.ts";
 const JobForm = lazy(() => import("./JobForm.tsx"));
 const JobCard = lazy(() => import("./JobCard.tsx"));
@@ -10,6 +10,7 @@ import { useOperationsStore } from "../state_management/Operations.ts";
 import { toastUtils, toastMessages } from "../utils/toast.ts";
 import { useJobsSessionStore } from "../state_management/JobsSessionStore.ts";
 import { useUserProfile } from "../state_management/ProfileContext.tsx";
+import NotifyClientPasswordModal from "./NotifyClientPasswordModal.tsx";
 const JobModal = lazy(() => import("./JobModal.tsx"));
 const RemovalLimitModal = lazy(() => import("./RemovalLimitModal.tsx"));
 const RemovalReasonModal = lazy(() => import("./RemovalReasonModal.tsx"));
@@ -39,6 +40,10 @@ const JobTracker = () => {
     const { userProfile } = useUserProfile();
     const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
     const { clearPendingUpdate } = useJobsSessionStore();
+    const [notifyLoading, setNotifyLoading] = useState(false);
+    const [notifyCooldown, setNotifyCooldown] = useState(0);
+    const [showNotifyPasswordModal, setShowNotifyPasswordModal] = useState(false);
+    const [notifyPasswordError, setNotifyPasswordError] = useState('');
 
     // Handle URL parameters for opening job modal with specific section
     useEffect(() => {
@@ -60,6 +65,20 @@ const JobTracker = () => {
         }
     }, [userJobs]);
 
+    useEffect(() => {
+        if (notifyCooldown > 0) {
+            const timer = setInterval(() => {
+                setNotifyCooldown((prev) => {
+                    if (prev <= 1) {
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+    }, [notifyCooldown]);
+
     // near other useState hooks
     const [pendingMove, setPendingMove] = useState<{ jobID: string; status: JobStatus } | null>(null);
 
@@ -74,6 +93,36 @@ const JobTracker = () => {
     const operationsEmail = useOperationsStore((state) => state.email);
 
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+    useEffect(() => {
+        const checkCooldown = async () => {
+            if (!userDetails?.email) return;
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/whatsapp/check-cooldown`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userEmail: userDetails.email
+                    }),
+                });
+                const result = await response.json();
+                if (result.success && !result.canSend && result.remainingHours) {
+                    const hours = result.remainingHours;
+                    const minutes = Math.ceil((hours - Math.floor(hours)) * 60);
+                    setNotifyCooldown(Math.floor(hours) * 3600 + minutes * 60);
+                } else {
+                    setNotifyCooldown(0);
+                }
+            } catch (error) {
+                console.error('Error checking cooldown:', error);
+            }
+        };
+        checkCooldown();
+        const interval = setInterval(checkCooldown, 60000);
+        return () => clearInterval(interval);
+    }, [userDetails?.email, API_BASE_URL]);
 
     const statusColumns: { status: JobStatus; label: string; color: string }[] = [
         { status: "saved", label: "Saved", color: "bg-gray-50" },
@@ -877,6 +926,41 @@ const JobTracker = () => {
                     <p className="text-gray-600 text-3x1 ">Track your job applications and manage your career pipeline</p>
                 </div>
                 <div className="mt-4 sm:mt-0 flex items-center justify-end gap-4 w-full">
+                    {role === "operations" && userDetails?.email && (
+                        <button
+                            onClick={() => {
+                                if (notifyCooldown > 0 || notifyLoading) return;
+                                setShowNotifyPasswordModal(true);
+                            }}
+                            disabled={notifyCooldown > 0 || notifyLoading}
+                            className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm flex items-center gap-2 ${
+                                notifyCooldown > 0
+                                    ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                                    : notifyLoading
+                                    ? 'bg-green-400 text-white cursor-wait'
+                                    : 'bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white hover:shadow-md'
+                            }`}
+                        >
+                            {notifyLoading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <span>Sending...</span>
+                                </>
+                            ) : notifyCooldown > 0 ? (
+                                <>
+                                    <Clock className="w-4 h-4" />
+                                    <span>
+                                        {Math.floor(notifyCooldown / 3600)}h {Math.floor((notifyCooldown % 3600) / 60)}m
+                                    </span>
+                                </>
+                            ) : (
+                                <>
+                                    <MessageSquare className="w-4 h-4" />
+                                    <span>Notify Client</span>
+                                </>
+                            )}
+                        </button>
+                    )}
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
@@ -1250,6 +1334,61 @@ const JobTracker = () => {
                     />
                 </Suspense>
             )}
+
+            <NotifyClientPasswordModal
+                isOpen={showNotifyPasswordModal}
+                onClose={() => {
+                    setShowNotifyPasswordModal(false);
+                    setNotifyPasswordError('');
+                }}
+                onConfirm={async (password) => {
+                    if (password !== "flashfire@W") {
+                        setNotifyPasswordError("Incorrect password. Please try again.");
+                        return;
+                    }
+                    setShowNotifyPasswordModal(false);
+                    setNotifyPasswordError('');
+                    
+                    if (!userDetails?.email) {
+                        toastUtils.error('User email not found');
+                        return;
+                    }
+                    
+                    setNotifyLoading(true);
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/api/whatsapp/send-notification`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                userEmail: userDetails.email,
+                                message: `Great news! We've added new job opportunities to your dashboard.\n\nCheck your Job Tracker to review the details.\n\n🔗 Access your dashboard: https://portal.flashfirejobs.com/?tab=jobtracker\n\n✨ We're here to support your career journey!\n\nThank you!`,
+                                sentBy: name || 'operations'
+                            }),
+                        });
+                        const result = await response.json();
+                        if (result.success) {
+                            setNotifyCooldown(24 * 3600);
+                            toastUtils.success('✅ Notification sent successfully! Client will receive WhatsApp message.');
+                        } else {
+                            if (response.status === 429) {
+                                const remainingHours = result.remainingHours || 24;
+                                setNotifyCooldown(Math.ceil(remainingHours) * 3600);
+                                toastUtils.error(result.message || 'Notification already sent. Please wait 24 hours.');
+                            } else {
+                                toastUtils.error(result.message || 'Failed to send notification');
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error sending notification:', error);
+                        toastUtils.error('Failed to send notification. Please try again.');
+                    } finally {
+                        setNotifyLoading(false);
+                    }
+                }}
+                error={notifyPasswordError}
+            />
 
             {/* TESTING: Temporary button to test the modal
             <button

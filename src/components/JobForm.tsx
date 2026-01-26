@@ -82,7 +82,7 @@ async function createJobPOSTQuick({
         const res = await fetch(`${API_BASE_URL}/operations/jobs`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ jobDetails, userDetails }),
+            body: JSON.stringify({ jobDetails, userDetails, role: "operations" }),
         });
         const body = await res.json().catch(() => ({}));
         return { status: res.status, ok: res.ok, body };

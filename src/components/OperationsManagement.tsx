@@ -1,8 +1,9 @@
 import { useState, useEffect, useContext, useCallback, useRef } from 'react';
-import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, X, ChevronDown, ChevronUp, Edit2, Mail, Paperclip, Send } from 'lucide-react';
+import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, X, ChevronDown, ChevronUp, Edit2, Mail, Paperclip, Send, MessageSquare, Link2, Loader2 } from 'lucide-react';
 import { UserContext } from '../state_management/UserContext.tsx';
 import { toastUtils, toastMessages } from '../utils/toast.ts';
 import { useOperationsStore } from '../state_management/Operations.ts';
+import SecretKeyModal from './SecretKeyModal.tsx';
 
 interface Todo {
   id: string;
@@ -46,7 +47,7 @@ const OperationsManagement = () => {
   });
   const [showAddLockPeriod, setShowAddLockPeriod] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [activeSection, setActiveSection] = useState<"operations" | "email">("operations");
+  const [activeSection, setActiveSection] = useState<"operations" | "email" | "whatsapp">("operations");
   const [gmailStatus, setGmailStatus] = useState<"unknown" | "connected" | "disconnected">("unknown");
   const [emailForm, setEmailForm] = useState({
     to: "",
@@ -58,6 +59,14 @@ const OperationsManagement = () => {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [availableAccounts, setAvailableAccounts] = useState<string[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+  const [whatsappGroups, setWhatsappGroups] = useState<any[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<string>('');
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [linkingUser, setLinkingUser] = useState(false);
+  const [userGroupMapping, setUserGroupMapping] = useState<any>(null);
+  const [whatsappUnlocked, setWhatsappUnlocked] = useState(false);
+  const [showWhatsappSecretModal, setShowWhatsappSecretModal] = useState(false);
+  const [whatsappSecretError, setWhatsappSecretError] = useState('');
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   // Only allow operations role
@@ -76,8 +85,15 @@ const OperationsManagement = () => {
   useEffect(() => {
     if (userDetails?.email) {
       fetchClientOperations();
+      fetchUserGroupMapping();
     }
   }, [userDetails?.email]);
+
+  useEffect(() => {
+    if (activeSection === "whatsapp" && whatsappGroups.length === 0) {
+      fetchWhatsAppGroups();
+    }
+  }, [activeSection]);
 
   const fetchClientOperations = async () => {
     try {
@@ -307,6 +323,98 @@ const OperationsManagement = () => {
     });
   };
 
+  const fetchWhatsAppGroups = async () => {
+    try {
+      setLoadingGroups(true);
+      const response = await fetch(`${API_BASE_URL}/api/whatsapp/groups`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+      if (result.success && result.data) {
+        setWhatsappGroups(result.data);
+        if (userGroupMapping && userGroupMapping.groupId) {
+          setSelectedGroup(userGroupMapping.groupId);
+        }
+      } else {
+        toastUtils.error(result.message || 'Failed to load WhatsApp groups');
+      }
+    } catch (error) {
+      console.error('Error fetching WhatsApp groups:', error);
+      toastUtils.error('Failed to load WhatsApp groups');
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
+  const fetchUserGroupMapping = async () => {
+    try {
+      if (!userDetails?.email) return;
+      const response = await fetch(`${API_BASE_URL}/api/whatsapp/user-mapping`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userEmail: userDetails.email
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success && result.data) {
+        setUserGroupMapping(result.data);
+        setSelectedGroup(result.data.groupId);
+      }
+    } catch (error) {
+      console.error('Error fetching user group mapping:', error);
+    }
+  };
+
+  const handleLinkUserToGroup = async () => {
+    if (!selectedGroup) {
+      toastUtils.error('Please select a WhatsApp group');
+      return;
+    }
+
+    if (!userDetails?.email) {
+      toastUtils.error('User email not found');
+      return;
+    }
+
+    try {
+      setLinkingUser(true);
+      const selectedGroupData = whatsappGroups.find(g => g.id === selectedGroup);
+      const response = await fetch(`${API_BASE_URL}/api/whatsapp/link-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userEmail: userDetails.email,
+          groupId: selectedGroup,
+          groupName: selectedGroupData?.name || '',
+          linkedBy: operatorName || 'operations'
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        toastUtils.success('User linked to WhatsApp group successfully');
+        setUserGroupMapping(result.data);
+      } else {
+        toastUtils.error(result.message || 'Failed to link user to group');
+      }
+    } catch (error) {
+      console.error('Error linking user to group:', error);
+      toastUtils.error('Failed to link user to group');
+    } finally {
+      setLinkingUser(false);
+    }
+  };
+
   const handleSendEmail = async () => {
     try {
       if (!userDetails?.email) {
@@ -436,6 +544,26 @@ const OperationsManagement = () => {
           >
             <Mail className="w-4 h-4" />
             <span>Send Emails to Recruiters</span>
+          </button>
+          <button
+            onClick={() => {
+              if (!whatsappUnlocked) {
+                setShowWhatsappSecretModal(true);
+              } else {
+                setActiveSection("whatsapp");
+              }
+            }}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              activeSection === "whatsapp"
+                ? "bg-green-600 text-white shadow-md"
+                : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>WhatsApp Notifications</span>
+            {!whatsappUnlocked && (
+              <Lock className="w-3 h-3 text-gray-500" />
+            )}
           </button>
         </div>
 
@@ -944,6 +1072,129 @@ const OperationsManagement = () => {
           </div>
         )}
 
+        {activeSection === "whatsapp" && whatsappUnlocked && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-green-600" />
+                  <span>WhatsApp Group Notifications</span>
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Link the client to a WhatsApp group to receive notifications when job cards are added.
+                </p>
+              </div>
+              {userGroupMapping && (
+                <span className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700 border border-green-200">
+                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                  Linked to: {userGroupMapping.groupName || userGroupMapping.groupId}
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select WhatsApp Group
+                </label>
+                <div className="flex gap-3">
+                  <select
+                    value={selectedGroup}
+                    onChange={(e) => setSelectedGroup(e.target.value)}
+                    disabled={loadingGroups || linkingUser}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white"
+                  >
+                    <option value="">Choose a group...</option>
+                    {whatsappGroups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={fetchWhatsAppGroups}
+                    disabled={loadingGroups}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors text-sm flex items-center gap-2"
+                  >
+                    {loadingGroups ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <span>Refresh</span>
+                    )}
+                  </button>
+                </div>
+                {loadingGroups && (
+                  <p className="text-xs text-gray-500 mt-1">Loading groups...</p>
+                )}
+              </div>
+
+              {selectedGroup && (
+                <div>
+                  <button
+                    onClick={handleLinkUserToGroup}
+                    disabled={linkingUser || !selectedGroup}
+                    className={`inline-flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold shadow-md transition-all ${
+                      linkingUser || !selectedGroup
+                        ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                        : "bg-green-600 text-white hover:bg-green-700"
+                    }`}
+                  >
+                    {linkingUser ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Linking...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Link2 className="w-4 h-4" />
+                        <span>Link User to This Group</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {userGroupMapping && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                    Current Mapping
+                  </h4>
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <p><span className="font-medium">Group:</span> {userGroupMapping.groupName || userGroupMapping.groupId}</p>
+                    <p><span className="font-medium">Linked at:</span> {userGroupMapping.linkedAt}</p>
+                    {userGroupMapping.linkedBy && (
+                      <p><span className="font-medium">Linked by:</span> {userGroupMapping.linkedBy}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeSection === "whatsapp" && !whatsappUnlocked && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
+            <div className="text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-green-100 to-emerald-100 mb-6">
+                <Lock className="h-8 w-8 text-green-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                WhatsApp Notifications Locked
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Please enter the secret key to access WhatsApp notifications
+              </p>
+              <button
+                onClick={() => setShowWhatsappSecretModal(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-all shadow-md"
+              >
+                <Lock className="w-4 h-4" />
+                <span>Unlock WhatsApp</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Auto-save indicator */}
         {saving && (
           <div className="mt-6 flex justify-end">
@@ -954,6 +1205,25 @@ const OperationsManagement = () => {
           </div>
         )}
       </div>
+
+      <SecretKeyModal
+        isOpen={showWhatsappSecretModal}
+        onClose={() => {
+          setShowWhatsappSecretModal(false);
+          setWhatsappSecretError('');
+        }}
+        onConfirm={(secretKey) => {
+          if (secretKey !== "flashfire@2025") {
+            setWhatsappSecretError("Incorrect secret key. Please try again.");
+            return;
+          }
+          setWhatsappUnlocked(true);
+          setShowWhatsappSecretModal(false);
+          setWhatsappSecretError('');
+          setActiveSection("whatsapp");
+        }}
+        error={whatsappSecretError}
+      />
     </div>
   );
 };
