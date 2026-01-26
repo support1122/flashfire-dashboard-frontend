@@ -123,6 +123,15 @@ export default function MainContent() {
   const userDetails = context?.userDetails;
   const token = context?.token;
   const setData = context?.setData;
+  
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam === 'jobtracker' || tabParam === 'jobs') {
+      setActiveTab('jobs');
+    }
+  }, []);
+
   useEffect(()=>{
   if ((!token || token.length == 0) && role != "operations") {
       console.log("navigating to login");

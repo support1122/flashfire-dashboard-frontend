@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, Suspense, lazy, useRef } from "react";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, MessageSquare, Loader2, Clock } from "lucide-react";
 import { Job, JobStatus } from "../types/index.ts";
 const JobForm = lazy(() => import("./JobForm.tsx"));
 const JobCard = lazy(() => import("./JobCard.tsx"));
@@ -39,6 +39,9 @@ const JobTracker = () => {
     const { userProfile } = useUserProfile();
     const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
     const { clearPendingUpdate } = useJobsSessionStore();
+    const [notifyLoading, setNotifyLoading] = useState(false);
+    const [notifyCooldown, setNotifyCooldown] = useState(0);
+    const [lastNotifyTime, setLastNotifyTime] = useState<number | null>(null);
 
     // Handle URL parameters for opening job modal with specific section
     useEffect(() => {
@@ -59,6 +62,39 @@ const JobTracker = () => {
             }
         }
     }, [userJobs]);
+
+    useEffect(() => {
+        const storedTime = localStorage.getItem('lastNotifyTime');
+        if (storedTime) {
+            const timeDiff = Date.now() - parseInt(storedTime);
+            const cooldownMs = 5 * 60 * 1000;
+            if (timeDiff < cooldownMs) {
+                const remaining = Math.ceil((cooldownMs - timeDiff) / 1000);
+                setNotifyCooldown(remaining);
+                setLastNotifyTime(parseInt(storedTime));
+            } else {
+                localStorage.removeItem('lastNotifyTime');
+                setNotifyCooldown(0);
+                setLastNotifyTime(null);
+            }
+        }
+    }, []);
+
+    useEffect(() => {
+        if (notifyCooldown > 0) {
+            const timer = setInterval(() => {
+                setNotifyCooldown((prev) => {
+                    if (prev <= 1) {
+                        localStorage.removeItem('lastNotifyTime');
+                        setLastNotifyTime(null);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+    }, [notifyCooldown]);
 
     // near other useState hooks
     const [pendingMove, setPendingMove] = useState<{ jobID: string; status: JobStatus } | null>(null);
@@ -877,6 +913,67 @@ const JobTracker = () => {
                     <p className="text-gray-600 text-3x1 ">Track your job applications and manage your career pipeline</p>
                 </div>
                 <div className="mt-4 sm:mt-0 flex items-center justify-end gap-4 w-full">
+                    {role === "operations" && userDetails?.email && (
+                        <button
+                            onClick={async () => {
+                                if (notifyCooldown > 0 || notifyLoading) return;
+                                
+                                setNotifyLoading(true);
+                                try {
+                                    const response = await fetch(`${API_BASE_URL}/api/whatsapp/send-notification`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                            userEmail: userDetails.email,
+                                            message: `🎯 Great news! We've added new job opportunities to your dashboard.\n\n📋 Check your Job Tracker to review the details and take action on positions that match your profile.\n\n🔗 Access your dashboard: https://portal.flashfirejobs.com/?tab=jobtracker\n\n✨ We're here to support your career journey!\n\nThank you!`
+                                        }),
+                                    });
+                                    const result = await response.json();
+                                    if (result.success) {
+                                        const now = Date.now();
+                                        localStorage.setItem('lastNotifyTime', now.toString());
+                                        setLastNotifyTime(now);
+                                        setNotifyCooldown(300);
+                                        toastUtils.success('✅ Notification sent successfully! Client will receive WhatsApp message.');
+                                    } else {
+                                        toastUtils.error(result.message || 'Failed to send notification');
+                                    }
+                                } catch (error) {
+                                    console.error('Error sending notification:', error);
+                                    toastUtils.error('Failed to send notification. Please try again.');
+                                } finally {
+                                    setNotifyLoading(false);
+                                }
+                            }}
+                            disabled={notifyCooldown > 0 || notifyLoading}
+                            className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm flex items-center gap-2 ${
+                                notifyCooldown > 0
+                                    ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                                    : notifyLoading
+                                    ? 'bg-green-400 text-white cursor-wait'
+                                    : 'bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white hover:shadow-md'
+                            }`}
+                        >
+                            {notifyLoading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <span>Sending...</span>
+                                </>
+                            ) : notifyCooldown > 0 ? (
+                                <>
+                                    <Clock className="w-4 h-4" />
+                                    <span>Wait {Math.floor(notifyCooldown / 60)}:{(notifyCooldown % 60).toString().padStart(2, '0')}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <MessageSquare className="w-4 h-4" />
+                                    <span>Notify Client</span>
+                                </>
+                            )}
+                        </button>
+                    )}
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
