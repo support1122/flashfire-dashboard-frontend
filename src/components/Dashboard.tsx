@@ -15,6 +15,7 @@ import { useUserProfile } from "../state_management/ProfileContext.tsx";
 import LoadingScreen from "./LoadingScreen.tsx";
 import NewUserModal from "./NewUserModal.tsx";
 import DashboardManagerDisplay from "./DashboardManagerDisplay.tsx";
+import ReferralBenefitsDisplay from "./ReferralBenefitsDisplay.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
 import { useJobsSessionStore } from "../state_management/JobsSessionStore.ts";
 
@@ -397,9 +398,10 @@ const Dashboard: React.FC = () => {
               </p>
             </div>
 
-            {/* Dashboard Manager Display */}
-            <div className="w-full md:w-auto">
+            {/* Dashboard Manager and Referral Benefits */}
+            <div className="w-full md:w-auto flex flex-col md:flex-row items-start md:items-center gap-3">
               <DashboardManagerDisplay />
+              <ReferralBenefitsDisplay />
             </div>
           </div>
         </div>
