@@ -81,7 +81,7 @@ const ReferralBenefitsDisplay: React.FC = () => {
       {/* Referral Info */}
       <div className="flex flex-col items-start">
         <span className="text-sm font-medium text-gray-900">
-          +{applicationsCount}  Applications
+          + {applicationsCount}  Applications
         </span>
         <span className="text-xs text-gray-500">
           From Referrals
