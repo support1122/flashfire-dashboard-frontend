@@ -335,7 +335,18 @@ const OperationsManagement = () => {
 
       const result = await response.json();
       if (result.success && result.data) {
-        setWhatsappGroups(result.data);
+        // Sort WhatsApp groups so they appear in clean ascending order
+        const sortedGroups = [...result.data].sort(
+          (a: { name?: string }, b: { name?: string }) => {
+            const nameA = (a?.name || '').trim();
+            const nameB = (b?.name || '').trim();
+            return nameA.localeCompare(nameB, undefined, {
+              numeric: true,
+              sensitivity: 'base',
+            });
+          }
+        );
+        setWhatsappGroups(sortedGroups);
         if (userGroupMapping && userGroupMapping.groupId) {
           setSelectedGroup(userGroupMapping.groupId);
         }
@@ -1102,7 +1113,7 @@ const OperationsManagement = () => {
                     value={selectedGroup}
                     onChange={(e) => setSelectedGroup(e.target.value)}
                     disabled={loadingGroups || linkingUser}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white"
+                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white"
                   >
                     <option value="">Choose a group...</option>
                     {whatsappGroups.map((group) => (
