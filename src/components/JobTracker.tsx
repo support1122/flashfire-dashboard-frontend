@@ -1363,7 +1363,7 @@ const JobTracker = () => {
                             },
                             body: JSON.stringify({
                                 userEmail: userDetails.email,
-                                message: `Great news! We've added new job opportunities to your dashboard.\n\nCheck your Job Tracker to review the details.\n\n🔗 Access your dashboard: https://portal.flashfirejobs.com/?tab=jobtracker\n\n✨ We're here to support your career journey!\n\nThank you!`,
+                                message: `We have added the job cards, Could you please check them once and let me know.\n\nCheck your Job Tracker to review the details.\n\n🔗 Access your dashboard: https://portal.flashfirejobs.com/?tab=jobtracker\n\n✨ We're here to support your career journey!\n\nThank you!`,
                                 sentBy: name || 'operations'
                             }),
                         });
