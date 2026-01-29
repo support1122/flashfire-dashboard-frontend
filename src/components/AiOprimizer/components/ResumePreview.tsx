@@ -16,6 +16,7 @@ interface ResumeData {
         linkedin: string;
         portfolio: string;
         github: string;
+        publications?: string;
     };
     summary: string;
     workExperience: Array<{
@@ -1014,14 +1015,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
 
     const formatSkills = (skillsString: string) => {
         if (!skillsString) return "";
-        return skillsString
-            .split(",")
-            .map((skill) => {
-                const trimmed = skill.trim();
-                if (!trimmed) return trimmed;
-                return trimmed.split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
-            })
-            .join(", ");
+        return skillsString.split(",").map((skill) => skill.trim()).join(", ");
     };
 
     const getGithubUrl = (github: string) => {
@@ -1808,6 +1802,22 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 rel="noopener noreferrer"
                             >
                                 {formatGithub(data.personalInfo.github)}
+                            </a>
+                        </>
+                    )}
+                    {data.personalInfo.publications && (
+                        <>
+                            {" | "}
+                            <a
+                                href={getPublicationsUrl(data.personalInfo.publications)}
+                                style={{
+                                    color: "blue",
+                                    textDecoration: "none",
+                                }}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                {formatPublications(data.personalInfo.publications)}
                             </a>
                         </>
                     )}
