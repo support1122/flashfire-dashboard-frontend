@@ -16,7 +16,6 @@ interface ResumeData {
         linkedin: string;
         portfolio: string;
         github: string;
-        publications?: string;
     };
     summary: string;
     workExperience: Array<{
@@ -345,10 +344,6 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 scale: scale,
                 overrideAutoScale: overrideAutoScale,
             };
-
-            // Debug: Verify publications is in personalInfo (should be included in header contact line)
-            console.log("PDF Preview Payload personalInfo:", pdfPayload.personalInfo);
-            console.log("Publications in personalInfo:", pdfPayload.personalInfo.publications);
 
             const response = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
                 method: "POST",
@@ -701,10 +696,6 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 overrideAutoScale: overrideAutoScale,
             };
 
-            // Debug: Verify publications is in personalInfo (should be included in header contact line)
-            console.log("PDF Payload personalInfo:", pdfPayload.personalInfo);
-            console.log("Publications in personalInfo:", pdfPayload.personalInfo.publications);
-
             const response = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -1023,7 +1014,14 @@ The resume will print across multiple pages if needed, ensuring no content is cu
 
     const formatSkills = (skillsString: string) => {
         if (!skillsString) return "";
-        return skillsString.split(",").map((skill) => skill.trim()).join(", ");
+        return skillsString
+            .split(",")
+            .map((skill) => {
+                const trimmed = skill.trim();
+                if (!trimmed) return trimmed;
+                return trimmed.split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+            })
+            .join(", ");
     };
 
     const getGithubUrl = (github: string) => {
@@ -1810,22 +1808,6 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 rel="noopener noreferrer"
                             >
                                 {formatGithub(data.personalInfo.github)}
-                            </a>
-                        </>
-                    )}
-                    {data.personalInfo.publications && (
-                        <>
-                            {" | "}
-                            <a
-                                href={getPublicationsUrl(data.personalInfo.publications)}
-                                style={{
-                                    color: "blue",
-                                    textDecoration: "none",
-                                }}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                {formatPublications(data.personalInfo.publications)}
                             </a>
                         </>
                     )}
