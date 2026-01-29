@@ -1811,6 +1811,24 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             </a>
                         </>
                     )}
+                    {data.personalInfo.publications && (
+                        <>
+                            {" | "}
+                            <a
+                                href={getPublicationsUrl(
+                                    data.personalInfo.publications
+                                )}
+                                style={{
+                                    color: "blue",
+                                    textDecoration: "none",
+                                }}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                {formatPublications(data.personalInfo.publications)}
+                            </a>
+                        </>
+                    )}
                 </div>
             </div>
 
