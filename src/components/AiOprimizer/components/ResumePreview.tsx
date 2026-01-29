@@ -346,6 +346,10 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 overrideAutoScale: overrideAutoScale,
             };
 
+            // Debug: Verify publications is in personalInfo (should be included in header contact line)
+            console.log("PDF Preview Payload personalInfo:", pdfPayload.personalInfo);
+            console.log("Publications in personalInfo:", pdfPayload.personalInfo.publications);
+
             const response = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -696,6 +700,10 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 scale: selectedScale,
                 overrideAutoScale: overrideAutoScale,
             };
+
+            // Debug: Verify publications is in personalInfo (should be included in header contact line)
+            console.log("PDF Payload personalInfo:", pdfPayload.personalInfo);
+            console.log("Publications in personalInfo:", pdfPayload.personalInfo.publications);
 
             const response = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
                 method: "POST",
