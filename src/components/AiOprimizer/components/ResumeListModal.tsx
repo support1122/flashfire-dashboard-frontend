@@ -53,6 +53,7 @@ interface ResumeData {
         linkedin: string;
         portfolio: string;
         github: string;
+        publications?: string;
     };
     summary: string;
     workExperience: WorkExperienceItem[];
