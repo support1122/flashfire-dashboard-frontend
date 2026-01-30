@@ -17,6 +17,7 @@ interface ResumeData {
         linkedin: string;
         portfolio: string;
         github: string;
+        publications: string;
     };
     summary: string;
     workExperience: Array<{
@@ -1121,6 +1122,22 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                 rel="noopener noreferrer"
                             >
                                 {formatGithub(data.personalInfo.github)}
+                            </a>
+                        </>
+                    )}
+                    {data.personalInfo.publications && (
+                        <>
+                            {" | "}
+                            <a
+                                href={getPublicationsUrl(data.personalInfo.publications)}
+                                style={{
+                                    color: "blue",
+                                    textDecoration: "none",
+                                }}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                {formatPublications(data.personalInfo.publications)}
                             </a>
                         </>
                     )}
