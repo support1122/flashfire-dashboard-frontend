@@ -7,7 +7,63 @@ import { toastUtils, toastMessages } from "../utils/toast";
 import SecretKeyModal from "./SecretKeyModal";
 import { useOperationsStore } from "../state_management/Operations";
 import { DatePicker } from "./DatePicker";
-import { format, parse } from "date-fns";
+import { format, parse, isValid } from "date-fns";
+
+// Helper function to format date string (removes time component)
+const formatDateOnly = (dateString: string | undefined): string => {
+  if (!dateString) return "";
+  
+  try {
+    // If it's an ISO string with time, extract just the date part
+    let datePart = dateString;
+    if (dateString.includes('T')) {
+      datePart = dateString.split('T')[0]; // Get YYYY-MM-DD part
+    }
+    
+    // Parse and format
+    const date = parse(datePart, "yyyy-MM-dd", new Date());
+    if (isValid(date)) {
+      return format(date, "dd/MM/yyyy");
+    }
+    
+    // Try parsing as ISO date string directly
+    const isoDate = new Date(dateString);
+    if (isValid(isoDate)) {
+      return format(isoDate, "dd/MM/yyyy");
+    }
+    
+    return dateString; // Return as-is if parsing fails
+  } catch {
+    return dateString; // Return as-is if any error
+  }
+};
+
+// Helper function to extract date part from ISO datetime string for date inputs
+const extractDatePart = (dateString: string | undefined): string => {
+  if (!dateString) return "";
+  
+  try {
+    // If it's an ISO string with time, extract just the date part
+    if (dateString.includes('T')) {
+      return dateString.split('T')[0]; // Get YYYY-MM-DD part
+    }
+    
+    // If it's already in YYYY-MM-DD format, return as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+    
+    // Try to parse and extract date
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      return format(date, "yyyy-MM-dd");
+    }
+    
+    return dateString; // Return as-is if parsing fails
+  } catch {
+    return dateString; // Return as-is if any error
+  }
+};
 
 /* ---------------- Helper Components ----------------- */
 function Placeholder({ label }: { label?: string }) {
@@ -520,7 +576,7 @@ export default function ProfilePage() {
                     />
                     <InfoRow
                         title="Date of Birth"
-                        value={editingSection === "personal" ? editData.dob : data.dob}
+                        value={editingSection === "personal" ? formatDateOnly(editData.dob) : formatDateOnly(data.dob)}
                         isEditing={editingSection === "personal"}
                         onValueChange={(v) => setEditData({ ...editData, dob: v })}
                     />
@@ -576,31 +632,19 @@ export default function ProfilePage() {
                             </div>
                             <div className="w-full md:w-2/3">
                                 <DatePicker
-                                    value={editData.bachelorsStartDate || data.bachelorsStartDate || ""}
+                                    value={extractDatePart(editData.bachelorsStartDate || data.bachelorsStartDate)}
                                     onChange={(v) => setEditData({ ...editData, bachelorsStartDate: v })}
                                     placeholder="dd/mm/yyyy"
                                 />
                             </div>
                         </div>
                     ) : (
-                        data.bachelorsStartDate && (() => {
-                            try {
-                                const date = parse(data.bachelorsStartDate, "yyyy-MM-dd", new Date());
-                                return (
-                                    <InfoRow
-                                        title="Bachelor's Start Date"
-                                        value={format(date, "dd/MM/yyyy")}
-                                    />
-                                );
-                            } catch {
-                                return (
-                                    <InfoRow
-                                        title="Bachelor's Start Date"
-                                        value={data.bachelorsStartDate}
-                                    />
-                                );
-                            }
-                        })()
+                        data.bachelorsStartDate && (
+                            <InfoRow
+                                title="Bachelor's Start Date"
+                                value={formatDateOnly(data.bachelorsStartDate)}
+                            />
+                        )
                     )}
                     {editingSection === "education" ? (
                         <div className="flex flex-col md:flex-row md:items-center py-3 border-b border-gray-100">
@@ -609,7 +653,12 @@ export default function ProfilePage() {
                             </div>
                             <div className="w-full md:w-2/3">
                                 <DatePicker
-                                    value={editData.bachelorsEndDate || (editData.bachelorsGradMonthYear ? editData.bachelorsGradMonthYear + '-01' : '') || data.bachelorsEndDate || (data.bachelorsGradMonthYear ? data.bachelorsGradMonthYear + '-01' : '')}
+                                    value={extractDatePart(
+                                        editData.bachelorsEndDate || 
+                                        (editData.bachelorsGradMonthYear ? editData.bachelorsGradMonthYear + '-01' : '') || 
+                                        data.bachelorsEndDate || 
+                                        (data.bachelorsGradMonthYear ? data.bachelorsGradMonthYear + '-01' : '')
+                                    )}
                                     onChange={(v) => {
                                         setEditData({ 
                                             ...editData, 
@@ -618,7 +667,7 @@ export default function ProfilePage() {
                                         });
                                     }}
                                     placeholder="dd/mm/yyyy"
-                                    minDate={editData.bachelorsStartDate || data.bachelorsStartDate || undefined}
+                                    minDate={extractDatePart(editData.bachelorsStartDate || data.bachelorsStartDate)}
                                 />
                             </div>
                         </div>
@@ -628,10 +677,12 @@ export default function ProfilePage() {
                             value={
                                 data.bachelorsEndDate 
                                     ? (() => {
+                                        const datePart = extractDatePart(data.bachelorsEndDate);
                                         try {
-                                            return format(parse(data.bachelorsEndDate, "yyyy-MM-dd", new Date()), "MM/yyyy");
+                                            const date = parse(datePart, "yyyy-MM-dd", new Date());
+                                            return format(date, "MM/yyyy");
                                         } catch {
-                                            return data.bachelorsEndDate.slice(0, 7);
+                                            return datePart.slice(0, 7); // Return YYYY-MM part
                                         }
                                     })()
                                     : data.bachelorsGradMonthYear || ""
@@ -665,7 +716,7 @@ export default function ProfilePage() {
                             </div>
                             <div className="w-full md:w-2/3">
                                 <DatePicker
-                                    value={editData.mastersStartDate || data.mastersStartDate || ""}
+                                    value={extractDatePart(editData.mastersStartDate || data.mastersStartDate)}
                                     onChange={(v) => setEditData({ ...editData, mastersStartDate: v })}
                                     placeholder="dd/mm/yyyy"
                                     required={false}
@@ -673,24 +724,12 @@ export default function ProfilePage() {
                             </div>
                         </div>
                     ) : (
-                        data.mastersStartDate && (() => {
-                            try {
-                                const date = parse(data.mastersStartDate, "yyyy-MM-dd", new Date());
-                                return (
-                                    <InfoRow
-                                        title="Master's Start Date"
-                                        value={format(date, "dd/MM/yyyy")}
-                                    />
-                                );
-                            } catch {
-                                return (
-                                    <InfoRow
-                                        title="Master's Start Date"
-                                        value={data.mastersStartDate}
-                                    />
-                                );
-                            }
-                        })()
+                        data.mastersStartDate && (
+                            <InfoRow
+                                title="Master's Start Date"
+                                value={formatDateOnly(data.mastersStartDate)}
+                            />
+                        )
                     )}
                     {editingSection === "education" ? (
                         <div className="flex flex-col md:flex-row md:items-center py-3 border-b border-gray-100">
@@ -699,7 +738,12 @@ export default function ProfilePage() {
                             </div>
                             <div className="w-full md:w-2/3">
                                 <DatePicker
-                                    value={editData.mastersEndDate || (editData.mastersGradMonthYear ? editData.mastersGradMonthYear + '-01' : '') || data.mastersEndDate || (data.mastersGradMonthYear ? data.mastersGradMonthYear + '-01' : '')}
+                                    value={extractDatePart(
+                                        editData.mastersEndDate || 
+                                        (editData.mastersGradMonthYear ? editData.mastersGradMonthYear + '-01' : '') || 
+                                        data.mastersEndDate || 
+                                        (data.mastersGradMonthYear ? data.mastersGradMonthYear + '-01' : '')
+                                    )}
                                     onChange={(v) => {
                                         setEditData({ 
                                             ...editData, 
@@ -709,7 +753,7 @@ export default function ProfilePage() {
                                     }}
                                     placeholder="dd/mm/yyyy"
                                     required={false}
-                                    minDate={editData.mastersStartDate || data.mastersStartDate || undefined}
+                                    minDate={extractDatePart(editData.mastersStartDate || data.mastersStartDate)}
                                 />
                             </div>
                         </div>
@@ -720,10 +764,12 @@ export default function ProfilePage() {
                                 value={
                                     data.mastersEndDate 
                                         ? (() => {
+                                            const datePart = extractDatePart(data.mastersEndDate);
                                             try {
-                                                return format(parse(data.mastersEndDate, "yyyy-MM-dd", new Date()), "MM/yyyy");
+                                                const date = parse(datePart, "yyyy-MM-dd", new Date());
+                                                return format(date, "MM/yyyy");
                                             } catch {
-                                                return data.mastersEndDate.slice(0, 7);
+                                                return datePart.slice(0, 7); // Return YYYY-MM part
                                             }
                                         })()
                                         : data.mastersGradMonthYear || ""
