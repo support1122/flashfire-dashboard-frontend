@@ -26,19 +26,34 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   const [displayValue, setDisplayValue] = useState("");
   const dateInputRef = useRef<HTMLInputElement>(null);
 
-  // Convert ISO date (YYYY-MM-DD) to display format (dd/MM/yyyy)
+  // Convert ISO date (YYYY-MM-DD or ISO datetime) to display format (dd/MM/yyyy)
   const formatDisplayDate = (isoDate: string): string => {
     if (!isoDate) return "";
     try {
-      const date = parse(isoDate, "yyyy-MM-dd", new Date());
+      // Extract date part if it's an ISO datetime string (e.g., "2001-06-06T00:00:00.000Z")
+      let datePart = isoDate;
+      if (isoDate.includes('T')) {
+        datePart = isoDate.split('T')[0]; // Get YYYY-MM-DD part
+      }
+      
+      const date = parse(datePart, "yyyy-MM-dd", new Date());
       return format(date, "dd/MM/yyyy");
     } catch {
+      // If parsing fails, try to extract date part and return as-is
+      if (isoDate.includes('T')) {
+        return isoDate.split('T')[0];
+      }
       return isoDate;
     }
   };
 
   useEffect(() => {
-    setDisplayValue(formatDisplayDate(value));
+    // Extract date part from value if it contains time component
+    let dateValue = value;
+    if (value && value.includes('T')) {
+      dateValue = value.split('T')[0]; // Get YYYY-MM-DD part
+    }
+    setDisplayValue(formatDisplayDate(dateValue));
   }, [value]);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,10 +126,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         <input
           ref={dateInputRef}
           type="date"
-          value={value || ""}
+          value={value && value.includes('T') ? value.split('T')[0] : (value || "")}
           onChange={handleDateChange}
-          min={minDate}
-          max={maxDate}
+          min={minDate && minDate.includes('T') ? minDate.split('T')[0] : minDate}
+          max={maxDate && maxDate.includes('T') ? maxDate.split('T')[0] : maxDate}
           className="absolute inset-0 opacity-0 cursor-pointer z-10"
           style={{ 
             width: 'calc(100% - 40px)', // Leave space for calendar button
