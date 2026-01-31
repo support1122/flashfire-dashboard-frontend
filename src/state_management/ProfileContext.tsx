@@ -288,10 +288,14 @@ export interface UserProfile {
 
   // Education
   bachelorsUniDegree: string;
-  bachelorsGradMonthYear: string; // ISO (YYYY-MM)
+  bachelorsStartDate?: string; // ISO date string (YYYY-MM-DD)
+  bachelorsGradMonthYear: string; // ISO (YYYY-MM) - kept for backward compatibility
+  bachelorsEndDate?: string; // ISO date string (YYYY-MM-DD) - preferred
   bachelorsGPA: string; // GPA field for bachelor's degree
   mastersUniDegree: string;
-  mastersGradMonthYear: string; // ISO (YYYY-MM)
+  mastersStartDate?: string; // ISO date string (YYYY-MM-DD)
+  mastersGradMonthYear: string; // ISO (YYYY-MM) - kept for backward compatibility
+  mastersEndDate?: string; // ISO date string (YYYY-MM-DD) - preferred
   mastersGPA: string; // GPA field for master's degree
   transcriptUrl: string; // URL for uploaded transcript
 
@@ -466,10 +470,14 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       contactNumber: payload.contactNumber || "",
       dob: safeIsoFromDateLike(payload.dob),
       bachelorsUniDegree: payload.bachelorsUniDegree || "",
+      bachelorsStartDate: safeIsoFromDateLike(payload.bachelorsStartDate) || "",
       bachelorsGradMonthYear: safeIsoFromDateLike(payload.bachelorsGradMonthYear),
+      bachelorsEndDate: safeIsoFromDateLike(payload.bachelorsEndDate) || "",
       bachelorsGPA: payload.bachelorsGPA || "",
       mastersUniDegree: payload.mastersUniDegree || "",
+      mastersStartDate: safeIsoFromDateLike(payload.mastersStartDate) || "",
       mastersGradMonthYear: safeIsoFromDateLike(payload.mastersGradMonthYear),
+      mastersEndDate: safeIsoFromDateLike(payload.mastersEndDate) || "",
       mastersGPA: payload.mastersGPA || "",
       transcriptUrl: payload.transcriptUrl || "",
       visaStatus: payload.visaStatus || "Other",

@@ -6,6 +6,8 @@ import { Link } from "react-router-dom";
 import { toastUtils, toastMessages } from "../utils/toast";
 import SecretKeyModal from "./SecretKeyModal";
 import { useOperationsStore } from "../state_management/Operations";
+import { DatePicker } from "./DatePicker";
+import { format, parse } from "date-fns";
 
 /* ---------------- Helper Components ----------------- */
 function Placeholder({ label }: { label?: string }) {
@@ -567,18 +569,75 @@ export default function ProfilePage() {
                         isEditing={editingSection === "education"}
                         onValueChange={(v) => setEditData({ ...editData, bachelorsUniDegree: v })}
                     />
-                    <InfoRow
-                        title="Bachelor's Grad (MM-YYYY)"
-                        value={
-                            editingSection === "education"
-                                ? editData.bachelorsGradMonthYear
-                                : data.bachelorsGradMonthYear
-                        }
-                        isEditing={editingSection === "education"}
-                        onValueChange={(v) =>
-                            setEditData({ ...editData, bachelorsGradMonthYear: v })
-                        }
-                    />
+                    {editingSection === "education" ? (
+                        <div className="flex flex-col md:flex-row md:items-center py-3 border-b border-gray-100">
+                            <div className="w-full md:w-1/3 text-sm font-semibold text-gray-700 mb-2 md:mb-0">
+                                Bachelor's Start Date
+                            </div>
+                            <div className="w-full md:w-2/3">
+                                <DatePicker
+                                    value={editData.bachelorsStartDate || data.bachelorsStartDate || ""}
+                                    onChange={(v) => setEditData({ ...editData, bachelorsStartDate: v })}
+                                    placeholder="dd/mm/yyyy"
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        data.bachelorsStartDate && (() => {
+                            try {
+                                const date = parse(data.bachelorsStartDate, "yyyy-MM-dd", new Date());
+                                return (
+                                    <InfoRow
+                                        title="Bachelor's Start Date"
+                                        value={format(date, "dd/MM/yyyy")}
+                                    />
+                                );
+                            } catch {
+                                return (
+                                    <InfoRow
+                                        title="Bachelor's Start Date"
+                                        value={data.bachelorsStartDate}
+                                    />
+                                );
+                            }
+                        })()
+                    )}
+                    {editingSection === "education" ? (
+                        <div className="flex flex-col md:flex-row md:items-center py-3 border-b border-gray-100">
+                            <div className="w-full md:w-1/3 text-sm font-semibold text-gray-700 mb-2 md:mb-0">
+                                Bachelor's End Date (Graduation)
+                            </div>
+                            <div className="w-full md:w-2/3">
+                                <DatePicker
+                                    value={editData.bachelorsEndDate || (editData.bachelorsGradMonthYear ? editData.bachelorsGradMonthYear + '-01' : '') || data.bachelorsEndDate || (data.bachelorsGradMonthYear ? data.bachelorsGradMonthYear + '-01' : '')}
+                                    onChange={(v) => {
+                                        setEditData({ 
+                                            ...editData, 
+                                            bachelorsEndDate: v,
+                                            bachelorsGradMonthYear: v ? v.slice(0, 7) : ''
+                                        });
+                                    }}
+                                    placeholder="dd/mm/yyyy"
+                                    minDate={editData.bachelorsStartDate || data.bachelorsStartDate || undefined}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <InfoRow
+                            title="Bachelor's End Date (MM-YYYY)"
+                            value={
+                                data.bachelorsEndDate 
+                                    ? (() => {
+                                        try {
+                                            return format(parse(data.bachelorsEndDate, "yyyy-MM-dd", new Date()), "MM/yyyy");
+                                        } catch {
+                                            return data.bachelorsEndDate.slice(0, 7);
+                                        }
+                                    })()
+                                    : data.bachelorsGradMonthYear || ""
+                            }
+                        />
+                    )}
                     <InfoRow
                         title="Bachelor's GPA"
                         value={
@@ -599,18 +658,79 @@ export default function ProfilePage() {
                         isEditing={editingSection === "education"}
                         onValueChange={(v) => setEditData({ ...editData, mastersUniDegree: v })}
                     />
-                    <InfoRow
-                        title="Master's Grad (MM-YYYY)"
-                        value={
-                            editingSection === "education"
-                                ? editData.mastersGradMonthYear
-                                : data.mastersGradMonthYear
-                        }
-                        isEditing={editingSection === "education"}
-                        onValueChange={(v) =>
-                            setEditData({ ...editData, mastersGradMonthYear: v })
-                        }
-                    />
+                    {editingSection === "education" ? (
+                        <div className="flex flex-col md:flex-row md:items-center py-3 border-b border-gray-100">
+                            <div className="w-full md:w-1/3 text-sm font-semibold text-gray-700 mb-2 md:mb-0">
+                                Master's Start Date (Optional)
+                            </div>
+                            <div className="w-full md:w-2/3">
+                                <DatePicker
+                                    value={editData.mastersStartDate || data.mastersStartDate || ""}
+                                    onChange={(v) => setEditData({ ...editData, mastersStartDate: v })}
+                                    placeholder="dd/mm/yyyy"
+                                    required={false}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        data.mastersStartDate && (() => {
+                            try {
+                                const date = parse(data.mastersStartDate, "yyyy-MM-dd", new Date());
+                                return (
+                                    <InfoRow
+                                        title="Master's Start Date"
+                                        value={format(date, "dd/MM/yyyy")}
+                                    />
+                                );
+                            } catch {
+                                return (
+                                    <InfoRow
+                                        title="Master's Start Date"
+                                        value={data.mastersStartDate}
+                                    />
+                                );
+                            }
+                        })()
+                    )}
+                    {editingSection === "education" ? (
+                        <div className="flex flex-col md:flex-row md:items-center py-3 border-b border-gray-100">
+                            <div className="w-full md:w-1/3 text-sm font-semibold text-gray-700 mb-2 md:mb-0">
+                                Master's End Date (Graduation) (Optional)
+                            </div>
+                            <div className="w-full md:w-2/3">
+                                <DatePicker
+                                    value={editData.mastersEndDate || (editData.mastersGradMonthYear ? editData.mastersGradMonthYear + '-01' : '') || data.mastersEndDate || (data.mastersGradMonthYear ? data.mastersGradMonthYear + '-01' : '')}
+                                    onChange={(v) => {
+                                        setEditData({ 
+                                            ...editData, 
+                                            mastersEndDate: v,
+                                            mastersGradMonthYear: v ? v.slice(0, 7) : ''
+                                        });
+                                    }}
+                                    placeholder="dd/mm/yyyy"
+                                    required={false}
+                                    minDate={editData.mastersStartDate || data.mastersStartDate || undefined}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        (data.mastersEndDate || data.mastersGradMonthYear) && (
+                            <InfoRow
+                                title="Master's End Date (MM-YYYY)"
+                                value={
+                                    data.mastersEndDate 
+                                        ? (() => {
+                                            try {
+                                                return format(parse(data.mastersEndDate, "yyyy-MM-dd", new Date()), "MM/yyyy");
+                                            } catch {
+                                                return data.mastersEndDate.slice(0, 7);
+                                            }
+                                        })()
+                                        : data.mastersGradMonthYear || ""
+                                }
+                            />
+                        )
+                    )}
                     <InfoRow
                         title="Master's GPA"
                         value={

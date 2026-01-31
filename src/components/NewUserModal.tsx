@@ -1450,6 +1450,7 @@ import { UserContext } from "../state_management/UserContext";
 import { CarTaxiFront, X, Check } from "lucide-react";
 import { useUserProfile } from "../state_management/ProfileContext";
 import { useNavigate } from 'react-router-dom';
+import { DatePicker } from "./DatePicker";
 
 /** ---------- STEPS ---------- */
 const STEPS = [
@@ -1483,10 +1484,14 @@ type FormData = {
   contactNumber: string;
   dob: string;
   bachelorsUniDegree: string;
-  bachelorsGradMonthYear: string;
+  bachelorsStartDate: string; // ISO format (YYYY-MM-DD)
+  bachelorsGradMonthYear: string; // Keep for backward compatibility, but use as end date
+  bachelorsEndDate: string; // ISO format (YYYY-MM-DD) - preferred
   bachelorsGPA: string;
   mastersUniDegree: string;
-  mastersGradMonthYear: string;
+  mastersStartDate: string; // ISO format (YYYY-MM-DD)
+  mastersGradMonthYear: string; // Keep for backward compatibility, but use as end date
+  mastersEndDate: string; // ISO format (YYYY-MM-DD) - preferred
   mastersGPA: string;
   visaStatus: string;
   otherVisaType?: string;
@@ -1524,10 +1529,14 @@ const initialData: FormData = {
   contactNumber: "",
   dob: "",
   bachelorsUniDegree: "",
+  bachelorsStartDate: "",
   bachelorsGradMonthYear: "",
+  bachelorsEndDate: "",
   bachelorsGPA: "",
   mastersUniDegree: "",
+  mastersStartDate: "",
   mastersGradMonthYear: "",
+  mastersEndDate: "",
   mastersGPA: "",
   visaStatus: "",
   otherVisaType: "", 
@@ -1881,10 +1890,14 @@ useEffect(() => {
     contactNumber: p.contactNumber ?? "",
     dob: toDate(p.dob),
     bachelorsUniDegree: p.bachelorsUniDegree ?? "",
+    bachelorsStartDate: p.bachelorsStartDate ? toDate(p.bachelorsStartDate) : "",
     bachelorsGradMonthYear: toMonth(p.bachelorsGradMonthYear),
+    bachelorsEndDate: p.bachelorsEndDate ? toDate(p.bachelorsEndDate) : (p.bachelorsGradMonthYear ? toDate(p.bachelorsGradMonthYear + '-01') : ""),
     bachelorsGPA: p.bachelorsGPA ?? "",
     mastersUniDegree: p.mastersUniDegree ?? "",
+    mastersStartDate: p.mastersStartDate ? toDate(p.mastersStartDate) : "",
     mastersGradMonthYear: toMonth(p.mastersGradMonthYear),
+    mastersEndDate: p.mastersEndDate ? toDate(p.mastersEndDate) : (p.mastersGradMonthYear ? toDate(p.mastersGradMonthYear + '-01') : ""),
     mastersGPA: p.mastersGPA ?? "",
     visaStatus: p.visaStatus ?? "",
     visaExpiry: toDate(p.visaExpiry),
@@ -1978,18 +1991,47 @@ useEffect(() => {
         e.bachelorsUniDegree = "Please provide complete degree information";
       }
       
-      if (!data.bachelorsGradMonthYear) {
-        e.bachelorsGradMonthYear = "Bachelor's graduation date is required";
+      // Validate start date
+      if (!data.bachelorsStartDate) {
+        e.bachelorsStartDate = "Bachelor's start date is required";
       } else {
-        const gradDate = new Date(data.bachelorsGradMonthYear);
+        const startDate = new Date(data.bachelorsStartDate);
         const today = new Date();
         const maxFutureDate = new Date();
-        maxFutureDate.setFullYear(today.getFullYear() + 10); // Allow up to 10 years in the future
+        maxFutureDate.setFullYear(today.getFullYear() + 10);
         
-        // Allow future dates (for students who haven't graduated yet) but prevent dates too far in the future
-        if (gradDate > maxFutureDate) {
-          e.bachelorsGradMonthYear = "Graduation date cannot be more than 10 years in the future";
+        if (startDate > maxFutureDate) {
+          e.bachelorsStartDate = "Start date cannot be more than 10 years in the future";
         }
+      }
+      
+      // Validate end date (graduation)
+      const endDateValue = data.bachelorsEndDate || (data.bachelorsGradMonthYear ? data.bachelorsGradMonthYear + '-01' : '');
+      if (!endDateValue) {
+        e.bachelorsEndDate = "Bachelor's end date (graduation) is required";
+      } else {
+        const endDate = new Date(endDateValue);
+        const today = new Date();
+        const maxFutureDate = new Date();
+        maxFutureDate.setFullYear(today.getFullYear() + 10);
+        
+        if (endDate > maxFutureDate) {
+          e.bachelorsEndDate = "End date cannot be more than 10 years in the future";
+        }
+        
+        // Check if end date is after start date
+        if (data.bachelorsStartDate) {
+          const startDate = new Date(data.bachelorsStartDate);
+          if (endDate < startDate) {
+            e.bachelorsEndDate = "End date must be after start date";
+          }
+        }
+      }
+      
+      // Keep backward compatibility with bachelorsGradMonthYear
+      if (!data.bachelorsGradMonthYear && endDateValue) {
+        // Auto-populate from end date
+        data.bachelorsGradMonthYear = endDateValue.slice(0, 7);
       }
       
       // Master's degree validation - optional but if provided, must be valid
@@ -1997,34 +2039,71 @@ useEffect(() => {
         e.mastersUniDegree = "Please provide complete degree information";
       }
       
-      // Master's graduation validation - optional but if provided, must be valid
-      if (data.mastersGradMonthYear) {
-        const gradDate = new Date(data.mastersGradMonthYear);
+      // Master's start date validation - optional but if provided, must be valid
+      if (data.mastersStartDate) {
+        const startDate = new Date(data.mastersStartDate);
         const today = new Date();
         const maxFutureDate = new Date();
-        maxFutureDate.setFullYear(today.getFullYear() + 10); // Allow up to 10 years in the future
+        maxFutureDate.setFullYear(today.getFullYear() + 10);
         
-        // Allow future dates (for students who haven't graduated yet) but prevent dates too far in the future
-        if (gradDate > maxFutureDate) {
-          e.mastersGradMonthYear = "Graduation date cannot be more than 10 years in the future";
+        if (startDate > maxFutureDate) {
+          e.mastersStartDate = "Start date cannot be more than 10 years in the future";
         }
-        // Check if master's graduation is after bachelor's
-        if (data.bachelorsGradMonthYear) {
-          const bachelorsGrad = new Date(data.bachelorsGradMonthYear);
-          if (gradDate < bachelorsGrad) {
-            e.mastersGradMonthYear = "Master's graduation must be after bachelor's graduation";
+        
+        // Check if master's start is after bachelor's end
+        const bachelorsEnd = data.bachelorsEndDate || (data.bachelorsGradMonthYear ? data.bachelorsGradMonthYear + '-01' : '');
+        if (bachelorsEnd) {
+          const bachelorsEndDate = new Date(bachelorsEnd);
+          if (startDate < bachelorsEndDate) {
+            e.mastersStartDate = "Master's start date should be after bachelor's graduation";
           }
         }
       }
       
-      // If master's degree is provided, graduation date should also be provided
-      if (data.mastersUniDegree.trim() && !data.mastersGradMonthYear) {
-        e.mastersGradMonthYear = "Please provide graduation date if you have a master's degree";
+      // Master's end date validation - optional but if provided, must be valid
+      const mastersEndValue = data.mastersEndDate || (data.mastersGradMonthYear ? data.mastersGradMonthYear + '-01' : '');
+      if (mastersEndValue) {
+        const endDate = new Date(mastersEndValue);
+        const today = new Date();
+        const maxFutureDate = new Date();
+        maxFutureDate.setFullYear(today.getFullYear() + 10);
+        
+        if (endDate > maxFutureDate) {
+          e.mastersEndDate = "End date cannot be more than 10 years in the future";
+        }
+        
+        // Check if end date is after start date
+        if (data.mastersStartDate) {
+          const startDate = new Date(data.mastersStartDate);
+          if (endDate < startDate) {
+            e.mastersEndDate = "End date must be after start date";
+          }
+        }
+        
+        // Check if master's graduation is after bachelor's
+        const bachelorsEnd = data.bachelorsEndDate || (data.bachelorsGradMonthYear ? data.bachelorsGradMonthYear + '-01' : '');
+        if (bachelorsEnd) {
+          const bachelorsEndDate = new Date(bachelorsEnd);
+          if (endDate < bachelorsEndDate) {
+            e.mastersEndDate = "Master's graduation must be after bachelor's graduation";
+          }
+        }
       }
       
-      // If master's graduation is provided, degree should also be provided
-      if (data.mastersGradMonthYear && !data.mastersUniDegree.trim()) {
-        e.mastersUniDegree = "Please provide degree information if you have a graduation date";
+      // If master's degree is provided, end date should also be provided
+      if (data.mastersUniDegree.trim() && !mastersEndValue) {
+        e.mastersEndDate = "Please provide end date (graduation) if you have a master's degree";
+      }
+      
+      // If master's end date is provided, degree should also be provided
+      if (mastersEndValue && !data.mastersUniDegree.trim()) {
+        e.mastersUniDegree = "Please provide degree information if you have an end date";
+      }
+      
+      // Keep backward compatibility with mastersGradMonthYear
+      if (!data.mastersGradMonthYear && mastersEndValue) {
+        // Auto-populate from end date
+        data.mastersGradMonthYear = mastersEndValue.slice(0, 7);
       }
       
       // GPA Validation (optional but if provided, must be valid)
@@ -2331,24 +2410,44 @@ const handleSubmit = () => {
                   />
                   <ErrorText>{errors.bachelorsUniDegree}</ErrorText>
                 </div>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <FieldLabel>Graduation Month & Year</FieldLabel>
-                    <TextInput 
-                      hasError={!!errors.bachelorsGradMonthYear}
-                      type="month" 
-                      placeholder="Graduation month & year" 
-                      value={data.bachelorsGradMonthYear} 
-                      onChange={(e) => {
-                        set({ bachelorsGradMonthYear: e.target.value });
-                        if (errors.bachelorsGradMonthYear) {
-                          setErrors(prev => ({ ...prev, bachelorsGradMonthYear: '' }));
-                        }
-                      }} 
-                    />
-                    <ErrorText>{errors.bachelorsGradMonthYear}</ErrorText>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <DatePicker
+                        label="Start Date"
+                        value={data.bachelorsStartDate}
+                        onChange={(value) => {
+                          set({ bachelorsStartDate: value });
+                          if (errors.bachelorsStartDate) {
+                            setErrors(prev => ({ ...prev, bachelorsStartDate: '' }));
+                          }
+                        }}
+                        placeholder="dd/mm/yyyy"
+                        hasError={!!errors.bachelorsStartDate}
+                        required={true}
+                        maxDate={data.bachelorsEndDate || undefined}
+                      />
+                      <ErrorText>{errors.bachelorsStartDate}</ErrorText>
+                    </div>
+                    <div>
+                      <DatePicker
+                        label="End Date (Graduation)"
+                        value={data.bachelorsEndDate || data.bachelorsGradMonthYear ? (data.bachelorsEndDate || (data.bachelorsGradMonthYear ? data.bachelorsGradMonthYear + '-01' : '')) : ''}
+                        onChange={(value) => {
+                          set({ bachelorsEndDate: value, bachelorsGradMonthYear: value ? value.slice(0, 7) : '' });
+                          if (errors.bachelorsEndDate || errors.bachelorsGradMonthYear) {
+                            setErrors(prev => ({ ...prev, bachelorsEndDate: '', bachelorsGradMonthYear: '' }));
+                          }
+                        }}
+                        placeholder="dd/mm/yyyy"
+                        hasError={!!errors.bachelorsEndDate || !!errors.bachelorsGradMonthYear}
+                        required={true}
+                        minDate={data.bachelorsStartDate || undefined}
+                      />
+                      <ErrorText>{errors.bachelorsEndDate || errors.bachelorsGradMonthYear}</ErrorText>
+                    </div>
                   </div>
-                  <div className="flex-1">
+                  <div>
                     <FieldLabel>GPA</FieldLabel>
                     <TextInput 
                       hasError={!!errors.bachelorsGPA}
@@ -2380,24 +2479,44 @@ const handleSubmit = () => {
                   />
                   <ErrorText>{errors.mastersUniDegree}</ErrorText>
                 </div>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <FieldLabel required={false}>Graduation Month & Year (Optional)</FieldLabel>
-                    <TextInput 
-                      hasError={!!errors.mastersGradMonthYear}
-                      type="month" 
-                      placeholder="Master's graduation month & year" 
-                      value={data.mastersGradMonthYear} 
-                      onChange={(e) => {
-                        set({ mastersGradMonthYear: e.target.value });
-                        if (errors.mastersGradMonthYear) {
-                          setErrors(prev => ({ ...prev, mastersGradMonthYear: '' }));
-                        }
-                      }} 
-                    />
-                    <ErrorText>{errors.mastersGradMonthYear}</ErrorText>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <DatePicker
+                        label="Start Date (Optional)"
+                        value={data.mastersStartDate}
+                        onChange={(value) => {
+                          set({ mastersStartDate: value });
+                          if (errors.mastersStartDate) {
+                            setErrors(prev => ({ ...prev, mastersStartDate: '' }));
+                          }
+                        }}
+                        placeholder="dd/mm/yyyy"
+                        hasError={!!errors.mastersStartDate}
+                        required={false}
+                        maxDate={data.mastersEndDate || data.mastersGradMonthYear ? (data.mastersEndDate || (data.mastersGradMonthYear ? data.mastersGradMonthYear + '-01' : '')) : undefined}
+                      />
+                      <ErrorText>{errors.mastersStartDate}</ErrorText>
+                    </div>
+                    <div>
+                      <DatePicker
+                        label="End Date (Graduation) (Optional)"
+                        value={data.mastersEndDate || data.mastersGradMonthYear ? (data.mastersEndDate || (data.mastersGradMonthYear ? data.mastersGradMonthYear + '-01' : '')) : ''}
+                        onChange={(value) => {
+                          set({ mastersEndDate: value, mastersGradMonthYear: value ? value.slice(0, 7) : '' });
+                          if (errors.mastersEndDate || errors.mastersGradMonthYear) {
+                            setErrors(prev => ({ ...prev, mastersEndDate: '', mastersGradMonthYear: '' }));
+                          }
+                        }}
+                        placeholder="dd/mm/yyyy"
+                        hasError={!!errors.mastersEndDate || !!errors.mastersGradMonthYear}
+                        required={false}
+                        minDate={data.mastersStartDate || undefined}
+                      />
+                      <ErrorText>{errors.mastersEndDate || errors.mastersGradMonthYear}</ErrorText>
+                    </div>
                   </div>
-                  <div className="flex-1">
+                  <div>
                     <FieldLabel>GPA</FieldLabel>
                     <TextInput 
                       hasError={!!errors.mastersGPA}
