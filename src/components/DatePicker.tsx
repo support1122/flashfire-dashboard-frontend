@@ -50,14 +50,31 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     if (dateInputRef.current) {
       // Try showPicker() first (modern browsers)
       if (typeof dateInputRef.current.showPicker === 'function') {
-        dateInputRef.current.showPicker().catch(() => {
-          // Fallback if showPicker fails or is not allowed
-          dateInputRef.current?.focus();
-          // Small delay to ensure focus works
+        try {
+          const pickerPromise = dateInputRef.current.showPicker();
+          // Check if showPicker returns a promise
+          if (pickerPromise && typeof pickerPromise.catch === 'function') {
+            pickerPromise.catch(() => {
+              // Fallback if showPicker fails or is not allowed
+              dateInputRef.current?.focus();
+              setTimeout(() => {
+                dateInputRef.current?.click();
+              }, 10);
+            });
+          } else {
+            // If showPicker doesn't return a promise, use fallback
+            dateInputRef.current.focus();
+            setTimeout(() => {
+              dateInputRef.current?.click();
+            }, 10);
+          }
+        } catch (error) {
+          // If showPicker throws an error, use fallback
+          dateInputRef.current.focus();
           setTimeout(() => {
             dateInputRef.current?.click();
           }, 10);
-        });
+        }
       } else {
         // Fallback for older browsers - focus then click
         dateInputRef.current.focus();
