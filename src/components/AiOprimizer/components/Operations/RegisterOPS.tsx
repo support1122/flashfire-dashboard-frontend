@@ -8,7 +8,7 @@ interface RegisterFormProps {
 
 const RegisterOPS: React.FC<RegisterFormProps> = ({  }) => {
 
-    const [formData, setFormData] = useState({ email: "", password: "" });
+    const [formData, setFormData] = useState({ email: "", password: "", otpEmail: "" });
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
@@ -36,6 +36,7 @@ const RegisterOPS: React.FC<RegisterFormProps> = ({  }) => {
                 body: JSON.stringify({
                     email: normalizedEmail,
                     password: formData.password,
+                    otpEmail: formData.otpEmail?.trim() || undefined,
                 }),
             });
 
@@ -47,7 +48,7 @@ const RegisterOPS: React.FC<RegisterFormProps> = ({  }) => {
 
             toastUtils.dismissToast(loadingToast);
             toastUtils.success(result?.message || "Operation user created successfully");
-            setFormData({ email: "", password: "" });
+            setFormData({ email: "", password: "", otpEmail: "" });
         } catch (error: any) {
             toastUtils.dismissToast(loadingToast);
             toastUtils.error(error?.message || "Registration failed");
@@ -82,6 +83,28 @@ const RegisterOPS: React.FC<RegisterFormProps> = ({  }) => {
                             placeholder="user@flashfirehq"
                         />
                     </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        OTP Email
+                    </label>
+                    <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                            type="email"
+                            value={formData.otpEmail}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    otpEmail: e.target.value,
+                                })
+                            }
+                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="user@gmail.com or your@flashfirehq.com"
+                        />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">OTP will be sent to this email at login. Gmail or any domain allowed.</p>
                 </div>
 
                 <div>

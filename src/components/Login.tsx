@@ -385,13 +385,77 @@ export default function Login() {
   const [googleButtonKey, setGoogleButtonKey] = useState<number>(Date.now())
   const [requireSessionKey, setRequireSessionKey] = useState<boolean>(false)
   const [sessionKeyInput, setSessionKeyInput] = useState<string>("")
+  const [otpInput, setOtpInput] = useState<string>("")
+  const [otpSent, setOtpSent] = useState<boolean>(false)
+  const [sendingOtp, setSendingOtp] = useState<boolean>(false)
+  const [useSessionKey, setUseSessionKey] = useState<boolean>(false)
 
   const navigate = useNavigate()
   const { setName, setEmailOperations, setRole, setManagedUsers } = useOperationsStore()
   const userContext = useContext(UserContext)
   const setData = userContext?.setData
   const { setProfileFromApi } = useUserProfile()
-  
+
+  const requestOtp = async () => {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+    setSendingOtp(true)
+    const loadingToast = toastUtils.loading('Sending OTP...')
+    try {
+      const res = await fetch(`${API_BASE_URL}/operations/request-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.toLowerCase(), password })
+      })
+      const data = await res.json()
+      toastUtils.dismissToast(loadingToast)
+      if (data?.success) {
+        toastUtils.success('OTP sent to your email')
+        setOtpSent(true)
+      } else {
+        toastUtils.error(data?.error || 'Failed to send OTP')
+      }
+    } catch (e) {
+      toastUtils.dismissToast(loadingToast)
+      toastUtils.error('Network error while sending OTP')
+    } finally {
+      setSendingOtp(false)
+    }
+  }
+
+  const verifyOtp = async () => {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+    const loadingToast = toastUtils.loading('Verifying OTP...')
+    try {
+      const res = await fetch(`${API_BASE_URL}/operations/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.toLowerCase(), otp: otpInput })
+      })
+      const data = await res.json()
+      if (res.ok && data?.success) {
+        toastUtils.dismissToast(loadingToast)
+        toastUtils.success('Verified. Welcome to Operations Dashboard!')
+        if (data?.trustToken) {
+          localStorage.setItem('opsOtpTrust', JSON.stringify({
+            email: email.toLowerCase(),
+            trustToken: data.trustToken,
+            verifiedAt: Date.now(),
+          }))
+        }
+        setRequireSessionKey(false)
+        setOtpInput("")
+        setOtpSent(false)
+        navigate('/manage')
+      } else {
+        toastUtils.dismissToast(loadingToast)
+        toastUtils.error(data?.error || 'Invalid or expired OTP')
+      }
+    } catch (e) {
+      toastUtils.dismissToast(loadingToast)
+      toastUtils.error('Network error while verifying OTP')
+    }
+  }
+
   const verifySessionKey = async () => {
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
     const loadingToast = toastUtils.loading('Verifying session key...')
@@ -467,14 +531,15 @@ export default function Login() {
           setRole(data.user.role)
           setManagedUsers(data.user.managedUsers)
           toastUtils.dismissToast(loadingToast)
-          // Auto-verify with stored key if available
-          const stored = localStorage.getItem('opsSessionKey')
-          if (stored) {
+          const operatorEmail = (data?.user?.email || email || '').toLowerCase()
+          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+
+          const storedSessionKey = localStorage.getItem('opsSessionKey')
+          if (storedSessionKey) {
             try {
-              const parsed = JSON.parse(stored)
-              const operatorEmail = (data?.user?.email || email || '').toLowerCase()
+              const parsed = JSON.parse(storedSessionKey)
               if (parsed?.sessionKey && parsed?.email && parsed.email === operatorEmail) {
-                const resVerify = await fetch(`${import.meta.env.VITE_API_BASE_URL}/operations/verify-session-key`, {
+                const resVerify = await fetch(`${API_BASE_URL}/operations/verify-session-key`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ email: operatorEmail, sessionKey: parsed.sessionKey })
@@ -487,7 +552,27 @@ export default function Login() {
               }
             } catch {}
           }
-          // Otherwise show session key prompt
+
+          const storedOtpTrust = localStorage.getItem('opsOtpTrust')
+          if (storedOtpTrust) {
+            try {
+              const parsed = JSON.parse(storedOtpTrust)
+              if (parsed?.trustToken && parsed?.email && parsed.email === operatorEmail) {
+                const resTrust = await fetch(`${API_BASE_URL}/operations/validate-otp-trust`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email: operatorEmail, trustToken: parsed.trustToken })
+                })
+                const trustData = await resTrust.json()
+                if (resTrust.ok && trustData?.valid) {
+                  toastUtils.success('Welcome back! (Trusted for 30 days)')
+                  navigate('/manage')
+                  return
+                }
+              }
+            } catch {}
+          }
+
           setRequireSessionKey(true)
         } else {
           toastUtils.dismissToast(loadingToast)
@@ -899,25 +984,57 @@ export default function Login() {
 
         </div>
       </div>
-      {/* Session Key Modal */}
       <SessionKeyModal 
         visible={requireSessionKey}
-        onClose={() => { setRequireSessionKey(false); setSessionKeyInput("") }}
-        onSubmit={verifySessionKey}
+        onClose={() => { setRequireSessionKey(false); setSessionKeyInput(""); setOtpInput(""); setOtpSent(false); setUseSessionKey(false) }}
+        onVerifyOtp={verifyOtp}
+        onVerifySessionKey={verifySessionKey}
+        onRequestOtp={requestOtp}
+        otpInput={otpInput}
+        setOtpInput={setOtpInput}
+        otpSent={otpSent}
+        sendingOtp={sendingOtp}
         sessionKeyInput={sessionKeyInput}
         setSessionKeyInput={setSessionKeyInput}
+        useSessionKey={useSessionKey}
+        setUseSessionKey={setUseSessionKey}
         email={email}
       />
     </div>
   )
 }
 
-// Session Key Modal
-// Placed at end to avoid layout shifts
-// Render conditionally when requireSessionKey is true
-// Note: preserving existing design language
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function SessionKeyModal({ visible, onClose, onSubmit, sessionKeyInput, setSessionKeyInput, email }: { visible: boolean, onClose: () => void, onSubmit: () => void, sessionKeyInput: string, setSessionKeyInput: (v: string) => void, email: string }) {
+function SessionKeyModal({
+  visible,
+  onClose,
+  onVerifyOtp,
+  onVerifySessionKey,
+  onRequestOtp,
+  otpInput,
+  setOtpInput,
+  otpSent,
+  sendingOtp,
+  sessionKeyInput,
+  setSessionKeyInput,
+  useSessionKey,
+  setUseSessionKey,
+  email,
+}: {
+  visible: boolean
+  onClose: () => void
+  onVerifyOtp: () => void
+  onVerifySessionKey: () => void
+  onRequestOtp: () => void
+  otpInput: string
+  setOtpInput: (v: string) => void
+  otpSent: boolean
+  sendingOtp: boolean
+  sessionKeyInput: string
+  setSessionKeyInput: (v: string) => void
+  useSessionKey: boolean
+  setUseSessionKey: (v: boolean) => void
+  email: string
+}) {
   if (!visible) return null
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -925,32 +1042,82 @@ function SessionKeyModal({ visible, onClose, onSubmit, sessionKeyInput, setSessi
         <div className="p-6 border-b border-gray-100">
           <h3 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
             <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700">🔑</span>
-            <span>Enter Session Key</span>
+            <span>Verify access for {email}</span>
           </h3>
-          <p className="text-sm text-gray-500 mt-1">A valid 8-digit key is required to access the dashboard for {email}.</p>
+          <p className="text-sm text-gray-500 mt-1">Use OTP (sent to your email) or session key as backup.</p>
         </div>
-        <form onSubmit={(e)=>{ e.preventDefault(); onSubmit(); }} className="p-6 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Session Key</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="^[0-9]{8}$"
-              maxLength={8}
-              required
-              value={sessionKeyInput}
-              onChange={(e)=> setSessionKeyInput(e.target.value.replace(/[^0-9]/g, '').slice(0,8))}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent tracking-widest text-center"
-              placeholder="########"
-              title="Enter exactly 8 digits"
-              autoComplete="one-time-code"
-            />
-          </div>
-          <div className="flex space-x-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">Cancel</button>
-            <button type="submit" className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:from-emerald-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl">Verify</button>
-          </div>
-        </form>
+        <div className="p-6 space-y-6">
+          {!useSessionKey ? (
+            <>
+              {!otpSent ? (
+                <button
+                  type="button"
+                  onClick={onRequestOtp}
+                  disabled={sendingOtp}
+                  className="w-full px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:from-emerald-600 hover:to-green-700 disabled:opacity-50 transition-all"
+                >
+                  {sendingOtp ? "Sending OTP..." : "Send OTP to my email"}
+                </button>
+              ) : (
+                <form onSubmit={(e)=>{ e.preventDefault(); onVerifyOtp(); }} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">4-digit OTP</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={otpInput}
+                      onChange={(e)=> setOtpInput(e.target.value.replace(/[^0-9]/g, '').slice(0,4))}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent tracking-widest text-center text-lg"
+                      placeholder="••••"
+                      autoComplete="one-time-code"
+                    />
+                  </div>
+                  <button type="submit" className="w-full px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:from-emerald-600 hover:to-green-700">
+                    Verify OTP
+                  </button>
+                </form>
+              )}
+              <button
+                type="button"
+                onClick={() => setUseSessionKey(true)}
+                className="w-full text-sm text-gray-500 hover:text-gray-700 py-2"
+              >
+                Use session key instead
+              </button>
+            </>
+          ) : (
+            <>
+              <form onSubmit={(e)=>{ e.preventDefault(); onVerifySessionKey(); }} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">8-digit Session Key</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={8}
+                    value={sessionKeyInput}
+                    onChange={(e)=> setSessionKeyInput(e.target.value.replace(/[^0-9]/g, '').slice(0,8))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent tracking-widest text-center"
+                    placeholder="########"
+                  />
+                </div>
+                <button type="submit" className="w-full px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:from-emerald-600 hover:to-green-700">
+                  Verify Session Key
+                </button>
+              </form>
+              <button
+                type="button"
+                onClick={() => setUseSessionKey(false)}
+                className="w-full text-sm text-gray-500 hover:text-gray-700 py-2"
+              >
+                ← Back to OTP
+              </button>
+            </>
+          )}
+          <button type="button" onClick={onClose} className="w-full px-4 py-2 text-gray-600 hover:text-gray-800 text-sm">
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   )
