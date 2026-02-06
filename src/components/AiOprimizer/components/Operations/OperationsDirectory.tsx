@@ -1,14 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Search, Users, X, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Search, Users, X, Trash2, Pencil } from "lucide-react";
 import { toastUtils } from "../../../../utils/toast";
 
 type ManagedUser = { id: string; name: string; email: string };
-type OperationUser = { id: string; name: string; email: string; managedUsers: ManagedUser[] };
+type OperationUser = { id: string; name: string; email: string; otpEmail?: string | null; managedUsers: ManagedUser[] };
 
 export default function OperationsDirectory() {
   const [ops, setOps] = useState<OperationUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [openOp, setOpenOp] = useState<OperationUser | null>(null);
+  const [editOp, setEditOp] = useState<OperationUser | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", otpEmail: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
   const [opsQuery, setOpsQuery] = useState("");
   const [query, setQuery] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -94,6 +97,50 @@ export default function OperationsDirectory() {
     });
   }, [ops, opsQuery]);
 
+  const handleEditOpen = (op: OperationUser) => {
+    setEditOp(op);
+    setEditForm({
+      name: op.name || op.email.split("@")[0] || "",
+      otpEmail: op.otpEmail || "",
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editOp) return;
+    setSavingEdit(true);
+    const loadingToast = toastUtils.loading("Saving...");
+    try {
+      const res = await fetch(`${Api}/admin/operations/${editOp.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editForm.name.trim(),
+          otpEmail: editForm.otpEmail.trim() || null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Failed to update");
+      setOps((prev) =>
+        prev.map((o) =>
+          o.id === editOp.id
+            ? { ...o, name: editForm.name.trim(), otpEmail: editForm.otpEmail.trim() || null }
+            : o
+        )
+      );
+      if (openOp && openOp.id === editOp.id) {
+        setOpenOp({ ...openOp, name: editForm.name.trim(), otpEmail: editForm.otpEmail.trim() || null });
+      }
+      toastUtils.dismissToast(loadingToast);
+      toastUtils.success("Operation updated");
+      setEditOp(null);
+    } catch (err: any) {
+      toastUtils.dismissToast(loadingToast);
+      toastUtils.error(err?.message || "Failed to update");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleRemoveOp = async (opId: string) => {
     const loadingToast = toastUtils.loading("Removing operations user...");
     try {
@@ -139,23 +186,89 @@ export default function OperationsDirectory() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {visibleOps.map((op) => (
-            <button
+            <div
               key={op.id}
-              onClick={() => setOpenOp(op)}
-              className="text-left bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl shadow hover:shadow-md transition p-5"
+              className="text-left bg-white/70 backdrop-blur-sm border border-white/20 rounded-2xl shadow hover:shadow-md transition p-5 relative group"
             >
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-                  <Users className="w-4 h-4" />
+              <button
+                onClick={() => setOpenOp(op)}
+                className="block w-full text-left"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-gray-900 truncate">{op.name || op.email}</div>
+                    <div className="text-sm text-gray-600 truncate">{op.email}</div>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <div className="font-semibold text-gray-900 truncate">{op.name || op.email}</div>
-                  <div className="text-sm text-gray-600 truncate">{op.email}</div>
-                </div>
-              </div>
-              <div className="text-xs text-gray-500">Managed users: {op.managedUsers?.length || 0}</div>
-            </button>
+                <div className="text-xs text-gray-500">Managed users: {op.managedUsers?.length || 0}</div>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleEditOpen(op); }}
+                className="absolute top-3 right-3 p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label="Edit"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            </div>
           ))}
+        </div>
+      )}
+
+      {editOp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Edit Operation</h3>
+              <button
+                onClick={() => setEditOp(null)}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Display name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">OTP Email</label>
+                <input
+                  type="email"
+                  value={editForm.otpEmail}
+                  onChange={(e) => setEditForm({ ...editForm, otpEmail: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="user@gmail.com or your@flashfirehq.com"
+                />
+                <p className="text-xs text-gray-500 mt-1">OTP will be sent to this email at login.</p>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setEditOp(null)}
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditSave}
+                disabled={savingEdit}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 disabled:opacity-50"
+              >
+                {savingEdit ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -166,8 +279,17 @@ export default function OperationsDirectory() {
               <div>
                 <div className="text-lg font-semibold text-gray-900">{openOp.name || openOp.email}</div>
                 <div className="text-sm text-gray-600">{openOp.email}</div>
+                {openOp.otpEmail && (
+                  <div className="text-xs text-gray-500 mt-1">OTP email: {openOp.otpEmail}</div>
+                )}
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleEditOpen(openOp)}
+                  className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center gap-1"
+                >
+                  <Pencil className="w-3 h-3" /> Edit
+                </button>
                 <button
                   onClick={() => handleRemoveOp(openOp.id)}
                   className="px-3 py-1.5 text-xs rounded-lg border border-red-200 text-red-600 hover:bg-red-50 flex items-center gap-1"
