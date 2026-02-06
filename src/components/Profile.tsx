@@ -528,10 +528,20 @@ export default function ProfilePage() {
                     {gmailConnected !== null && role === 'operations' && (
                         <div className="flex justify-center sm:justify-end w-full sm:w-auto">
                             {gmailConnected ? (
-                                <div className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-emerald-50 border border-emerald-300/60 shadow-sm">
+                                <button
+                                    type="button"
+                                    onClick={handleConnectGmail}
+                                    className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-emerald-50 border border-emerald-300/60 shadow-sm hover:bg-white/20 hover:border-emerald-200 transition-all"
+                                    title="Click to change or reconnect the Gmail account used for recruiter outreach"
+                                >
                                     <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
-                                    <span>Gmail connected for recruiter outreach</span>
-                                </div>
+                                    <span>
+                                        Gmail connected for recruiter outreach
+                                        <span className="ml-1 underline decoration-emerald-200 decoration-dotted">
+                                            (click to change)
+                                        </span>
+                                    </span>
+                                </button>
                             ) : (
                                 <button
                                     onClick={handleConnectGmail}

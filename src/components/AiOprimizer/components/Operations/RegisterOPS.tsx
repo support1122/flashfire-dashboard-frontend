@@ -9,6 +9,7 @@ interface RegisterFormProps {
 const RegisterOPS: React.FC<RegisterFormProps> = ({  }) => {
 
     const [formData, setFormData] = useState({ email: "", password: "", otpEmail: "" });
+    const [otpTouched, setOtpTouched] = useState(false);
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
@@ -73,12 +74,15 @@ const RegisterOPS: React.FC<RegisterFormProps> = ({  }) => {
                             type="text"
                             required
                             value={formData.email}
-                            onChange={(e) =>
-                                setFormData({
-                                    ...formData,
-                                    email: e.target.value,
-                                })
-                            }
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    email: value,
+                                    // Auto-fill OTP email from main email until user edits OTP field
+                                    otpEmail: otpTouched ? prev.otpEmail : value,
+                                }));
+                            }}
                             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="user@flashfirehq"
                         />
@@ -94,12 +98,14 @@ const RegisterOPS: React.FC<RegisterFormProps> = ({  }) => {
                         <input
                             type="email"
                             value={formData.otpEmail}
-                            onChange={(e) =>
-                                setFormData({
-                                    ...formData,
-                                    otpEmail: e.target.value,
-                                })
-                            }
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setOtpTouched(true);
+                                setFormData((prev) => ({
+                                    ...prev,
+                                    otpEmail: value,
+                                }));
+                            }}
                             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="user@gmail.com or your@flashfirehq.com"
                         />
