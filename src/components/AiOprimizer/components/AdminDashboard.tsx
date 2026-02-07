@@ -9,6 +9,7 @@ import {
 import RegisterOPS from './Operations/RegisterOPS';
 import AddignUser from './Operations/AddignUser';
 import OperationsDirectory from './Operations/OperationsDirectory';
+import RecruiterEmailGroups from './Operations/RecruiterEmailGroups';
 import AssignResumeModal from '../../Admin/AssignResumeModal';
 
 interface User {
@@ -78,7 +79,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
   const [sessionKeys, setSessionKeys] = useState<SessionKey[]>([]);
   const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'history' | 'sessions' | 'Admin' | 'resume'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'history' | 'sessions' | 'Admin' | 'resume' | 'recruiters'>('overview');
   const [showAddUser, setShowAddUser] = useState(false);
   const [showGenerateSessionKey, setShowGenerateSessionKey] = useState(false);
   const [showAssignResumeModal, setShowAssignResumeModal] = useState(false);
@@ -550,11 +551,12 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                 { key: 'history', label: 'Login Activity', icon: Activity },
                 { key: 'sessions', label: 'Session Management', icon: Shield },
                 { key: 'Admin', label: 'Operations management', icon: Shield },
+                { key: 'recruiters', label: 'Recruiter Email Groups', icon: Mail },
                 { key: 'resume', label: 'Resume Management', icon: FileText }
               ].map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
-                  onClick={() => setActiveTab(key as 'overview' | 'users' | 'history' | 'sessions' | 'Admin' | 'resume')}
+                  onClick={() => setActiveTab(key as 'overview' | 'users' | 'history' | 'sessions' | 'Admin' | 'resume' | 'recruiters')}
                   className={`flex items-center space-x-2 py-4 px-6 text-sm font-medium border-b-2 transition-all duration-200 ${activeTab === key
                     ? 'border-blue-500 text-blue-600 bg-blue-50/50'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50/50'
@@ -936,7 +938,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
               <div className="space-y-6">
                 <h3 className="text-2xl font-bold text-gray-900">Operations Management Dashboard</h3>
 
-                <div className='flex flex-wrap gap-1'>
+                <div className="flex flex-wrap gap-1">
                   <RegisterOPS />
                   <AddignUser />
                 </div>
@@ -945,6 +947,16 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                   <h4 className="text-lg font-semibold text-gray-900 mb-4">Operations Directory</h4>
                   <OperationsDirectory />
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'recruiters' && (
+              <div className="space-y-6">
+                <h3 className="text-2xl font-bold text-gray-900">Recruiter Email Groups</h3>
+                <p className="text-sm text-gray-600">
+                  Create themed groups like tech, non-tech, or medical and manage large recruiter email lists for outreach automation.
+                </p>
+                <RecruiterEmailGroups apiDashboardBase={API_DASHBOARD} token={token} />
               </div>
             )}
 

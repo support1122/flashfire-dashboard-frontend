@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext, useCallback, useRef } from 'react';
-import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, X, ChevronDown, ChevronUp, Edit2, Mail, Paperclip, Send, MessageSquare, Link2, Loader2 } from 'lucide-react';
+import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, X, ChevronDown, ChevronUp, Edit2, Mail, Paperclip, Send, MessageSquare, Link2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { UserContext } from '../state_management/UserContext.tsx';
 import { toastUtils, toastMessages } from '../utils/toast.ts';
 import { useOperationsStore } from '../state_management/Operations.ts';
@@ -67,6 +67,27 @@ const OperationsManagement = () => {
   const [whatsappUnlocked, setWhatsappUnlocked] = useState(false);
   const [showWhatsappSecretModal, setShowWhatsappSecretModal] = useState(false);
   const [whatsappSecretError, setWhatsappSecretError] = useState('');
+  const [emailUnlocked, setEmailUnlocked] = useState(false);
+  const [showEmailSecretModal, setShowEmailSecretModal] = useState(false);
+  const [emailSecretError, setEmailSecretError] = useState('');
+  const [emailGroups, setEmailGroups] = useState<{ id: string; name: string; category: string }[]>([]);
+  const [emailTemplates, setEmailTemplates] = useState<{ id: string; name: string; subject: string }[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [automationGroupId, setAutomationGroupId] = useState<string>('');
+  const [automationDailyLimit, setAutomationDailyLimit] = useState<string>('0');
+  const [automationEnabled, setAutomationEnabled] = useState<boolean>(false);
+  const [loadingAutomation, setLoadingAutomation] = useState(false);
+  const [savingAutomation, setSavingAutomation] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [selectedTemplateIdForEdit, setSelectedTemplateIdForEdit] = useState<string | null>(null);
+  const [loadingTemplateForEdit, setLoadingTemplateForEdit] = useState(false);
+  const [emailLogs, setEmailLogs] = useState<{ id: string; fromEmail: string; toEmail: string; subject: string; status: string; errorMessage: string | null; source: string; sentAt: string }[]>([]);
+  const [emailLogsTotal, setEmailLogsTotal] = useState(0);
+  const [emailLogsPage, setEmailLogsPage] = useState(1);
+  const [emailLogsLimit, setEmailLogsLimit] = useState(20);
+  const [emailLogsTotalPages, setEmailLogsTotalPages] = useState(0);
+  const [loadingEmailLogs, setLoadingEmailLogs] = useState(false);
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   // Only allow operations role
@@ -159,6 +180,50 @@ const OperationsManagement = () => {
     };
     loadGmailState();
   }, [API_BASE_URL, userDetails?.email]);
+
+  useEffect(() => {
+    const loadEmailMetadata = async () => {
+      try {
+        if (!userDetails?.email) return;
+        setLoadingAutomation(true);
+        const [groupsRes, templatesRes, configRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/admin/recruiter-groups`),
+          fetch(`${API_BASE_URL}/gmail/templates`),
+          fetch(`${API_BASE_URL}/gmail/automation/config/get`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ ownerEmail: userDetails.email })
+          })
+        ]);
+        if (groupsRes.ok) {
+          const data = await groupsRes.json();
+          const list = Array.isArray(data.groups) ? data.groups : [];
+          setEmailGroups(list.map((g: any) => ({ id: g.id, name: g.name, category: g.category })));
+        }
+        if (templatesRes.ok) {
+          const data = await templatesRes.json();
+          const list = Array.isArray(data.templates) ? data.templates : [];
+          setEmailTemplates(list);
+        }
+        if (configRes.ok) {
+          const data = await configRes.json();
+          if (data.config) {
+            setAutomationGroupId(data.config.groupId || '');
+            setSelectedTemplateId(data.config.templateId || '');
+            setAutomationDailyLimit(String(data.config.dailyLimit || '0'));
+            setAutomationEnabled(!!data.config.enabled);
+          }
+        }
+      } finally {
+        setLoadingAutomation(false);
+      }
+    };
+    if (gmailStatus === "connected") {
+      loadEmailMetadata();
+    }
+  }, [API_BASE_URL, gmailStatus, userDetails?.email]);
 
   // Auto-save function with debouncing
   const autoSave = useCallback(async () => {
@@ -313,6 +378,171 @@ const OperationsManagement = () => {
     }
     setAttachment(file);
   };
+
+  const loadTemplateForEdit = async (id: string) => {
+    try {
+      setLoadingTemplateForEdit(true);
+      const res = await fetch(`${API_BASE_URL}/gmail/templates/${id}`);
+      const data = await res.json();
+      if (!res.ok) {
+        toastUtils.error(data.error || "Failed to load template");
+        return;
+      }
+      setEmailForm(prev => ({
+        ...prev,
+        subject: data.subject || "",
+        text: data.text || ""
+      }));
+      setTemplateName(data.name || "");
+      setSelectedTemplateIdForEdit(id);
+    } catch (error) {
+      toastUtils.error("Failed to load template");
+    } finally {
+      setLoadingTemplateForEdit(false);
+    }
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!userDetails?.email) {
+      toastUtils.error("Missing client email");
+      return;
+    }
+    if (!templateName.trim()) {
+      toastUtils.error("Template name is required");
+      return;
+    }
+    if (!emailForm.subject.trim() || !emailForm.text.trim()) {
+      toastUtils.error("Subject and message are required");
+      return;
+    }
+    try {
+      setSavingTemplate(true);
+      const formData = new FormData();
+      formData.append("ownerEmail", userDetails.email);
+      formData.append("name", templateName.trim());
+      formData.append("subject", emailForm.subject.trim());
+      formData.append("text", emailForm.text.trim());
+      if (attachment) {
+        formData.append("attachment", attachment);
+      }
+      if (selectedTemplateIdForEdit) {
+        const res = await fetch(`${API_BASE_URL}/gmail/templates/${selectedTemplateIdForEdit}`, {
+          method: "PUT",
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          toastUtils.error(data.error || "Failed to update template");
+          return;
+        }
+        setEmailTemplates(prev =>
+          prev.map(t => t.id === selectedTemplateIdForEdit ? { id: t.id, name: data.name, subject: data.subject } : t)
+        );
+        setSelectedTemplateIdForEdit(null);
+        toastUtils.success("Template updated");
+      } else {
+        const res = await fetch(`${API_BASE_URL}/gmail/templates`, {
+          method: "POST",
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          toastUtils.error(data.error || "Failed to save template");
+          return;
+        }
+        const created = { id: data.id, name: data.name, subject: data.subject };
+        setEmailTemplates(prev => [created, ...prev]);
+        setSelectedTemplateId(created.id);
+        toastUtils.success("Template saved");
+      }
+    } catch (error) {
+      toastUtils.error(selectedTemplateIdForEdit ? "Failed to update template" : "Failed to save template");
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const handleSaveAutomation = async () => {
+    if (!userDetails?.email) {
+      toastUtils.error("Missing client email");
+      return;
+    }
+    if (!automationGroupId) {
+      toastUtils.error("Please select a group");
+      return;
+    }
+    if (!selectedTemplateId) {
+      toastUtils.error("Please select a template");
+      return;
+    }
+    const limitNumber = Number(automationDailyLimit || 0);
+    if (!Number.isFinite(limitNumber) || limitNumber <= 0) {
+      toastUtils.error("Daily limit must be greater than zero");
+      return;
+    }
+    try {
+      setSavingAutomation(true);
+      const res = await fetch(`${API_BASE_URL}/gmail/automation/config`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ownerEmail: userDetails.email,
+          groupId: automationGroupId,
+          templateId: selectedTemplateId,
+          dailyLimit: limitNumber,
+          enabled: automationEnabled
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toastUtils.error(data.error || "Failed to save automation");
+        return;
+      }
+      toastUtils.success("Automation settings saved");
+    } catch (error) {
+      toastUtils.error("Failed to save automation");
+    } finally {
+      setSavingAutomation(false);
+    }
+  };
+
+  const fetchEmailLogs = useCallback(async (overridePage?: number) => {
+    if (!userDetails?.email) return;
+    const page = overridePage ?? emailLogsPage;
+    try {
+      setLoadingEmailLogs(true);
+      const res = await fetch(`${API_BASE_URL}/gmail/logs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ownerEmail: userDetails.email,
+          page,
+          limit: emailLogsLimit
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setEmailLogs([]);
+        return;
+      }
+      setEmailLogs(data.logs || []);
+      setEmailLogsTotal(data.total ?? 0);
+      setEmailLogsTotalPages(data.totalPages ?? 0);
+      if (overridePage !== undefined) setEmailLogsPage(overridePage);
+    } catch {
+      setEmailLogs([]);
+    } finally {
+      setLoadingEmailLogs(false);
+    }
+  }, [API_BASE_URL, userDetails?.email, emailLogsPage, emailLogsLimit]);
+
+  useEffect(() => {
+    if (activeSection === "email" && userDetails?.email) {
+      fetchEmailLogs();
+    }
+  }, [activeSection, userDetails?.email, emailLogsPage, emailLogsLimit, fetchEmailLogs]);
 
   const toggleAccountSelection = (email: string) => {
     setSelectedAccounts(prev => {
@@ -481,6 +711,7 @@ const OperationsManagement = () => {
       });
       setEmailResult(lines.join("\n"));
       toastUtils.success("Emails processed");
+      fetchEmailLogs(1);
     } catch (error) {
       console.error(error);
       toastUtils.error("Failed to send emails");
@@ -546,7 +777,12 @@ const OperationsManagement = () => {
             <span>TODOs & Lock Periods</span>
           </button>
           <button
-            onClick={() => setActiveSection("email")}
+            onClick={() => {
+              setActiveSection("email");
+              if (!emailUnlocked) {
+                setShowEmailSecretModal(true);
+              }
+            }}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
               activeSection === "email"
                 ? "bg-indigo-600 text-white shadow-md"
@@ -555,6 +791,9 @@ const OperationsManagement = () => {
           >
             <Mail className="w-4 h-4" />
             <span>Send Emails to Recruiters</span>
+            {!emailUnlocked && (
+              <Lock className="w-3 h-3 text-gray-500" />
+            )}
           </button>
           <button
             onClick={() => {
@@ -913,7 +1152,30 @@ const OperationsManagement = () => {
           </>
         )}
 
-        {activeSection === "email" && (
+        {activeSection === "email" && !emailUnlocked && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
+            <div className="text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 mb-6">
+                <Lock className="h-8 w-8 text-indigo-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Send Emails to Recruiters Locked
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Enter the secret key to access recruiter email sending
+              </p>
+              <button
+                onClick={() => setShowEmailSecretModal(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-all shadow-md"
+              >
+                <Lock className="w-4 h-4" />
+                <span>Unlock Send Emails</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeSection === "email" && emailUnlocked && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               <div>
@@ -1011,6 +1273,24 @@ const OperationsManagement = () => {
                     )}
                   </div>
                   <div className="flex items-center gap-3">
+                      <input
+                        type="text"
+                        value={templateName}
+                        onChange={(e) => setTemplateName(e.target.value)}
+                        placeholder="Template name"
+                        className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                      <button
+                        onClick={handleSaveTemplate}
+                        disabled={savingTemplate}
+                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all ${
+                          savingTemplate
+                            ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                            : "bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50"
+                        }`}
+                      >
+                        {savingTemplate ? "Saving..." : "Save Template"}
+                      </button>
                     <button
                       onClick={handleSendEmail}
                       disabled={sending || gmailStatus !== "connected" || !availableAccounts.length}
@@ -1063,6 +1343,104 @@ const OperationsManagement = () => {
                   )}
                 </div>
 
+                <div className="border border-gray-200 rounded-lg p-4 bg-white space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-gray-900">
+                      Automation
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">Status</span>
+                      <button
+                        type="button"
+                        onClick={() => setAutomationEnabled((v) => !v)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          automationEnabled ? "bg-emerald-500" : "bg-gray-300"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            automationEnabled ? "translate-x-5" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                      <span className="text-xs text-gray-700">
+                        {automationEnabled ? "On" : "Off"}
+                      </span>
+                    </div>
+                  </div>
+                  {loadingAutomation ? (
+                    <p className="text-xs text-gray-500">Loading automation data...</p>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700">
+                          Select group
+                        </label>
+                        <select
+                          value={automationGroupId}
+                          onChange={(e) => setAutomationGroupId(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                          <option value="">Choose group</option>
+                          {emailGroups.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.name} ({g.category})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700">
+                          Select template
+                        </label>
+                        <select
+                          value={selectedTemplateId}
+                          onChange={(e) => setSelectedTemplateId(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                          <option value="">Choose template</option>
+                          {emailTemplates.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700">
+                          How many emails per day
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={automationDailyLimit}
+                          onChange={(e) => setAutomationDailyLimit(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="Example: 25"
+                        />
+                      </div>
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={handleSaveAutomation}
+                          disabled={savingAutomation || loadingAutomation}
+                          className={`inline-flex items-center justify-center w-full px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors ${
+                            savingAutomation || loadingAutomation
+                              ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                              : "bg-indigo-600 text-white hover:bg-indigo-700"
+                          }`}
+                        >
+                          {savingAutomation ? "Saving..." : "Save Automation Settings"}
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-gray-500">
+                        Emails are sent once per day at 11:00 PM IST to random recipients from the
+                        selected group without repeating until the list is exhausted.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 <div className="border border-gray-200 rounded-lg p-4 bg-white">
                   <h4 className="text-sm font-semibold text-gray-900 mb-2">
                     Delivery status
@@ -1079,6 +1457,173 @@ const OperationsManagement = () => {
                   )}
                 </div>
               </div>
+
+              <div className="lg:col-span-5 mt-6 border-t border-gray-200 pt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-gray-900">
+                    Saved templates
+                  </h4>
+                  {selectedTemplateIdForEdit && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTemplateIdForEdit(null);
+                        setTemplateName("");
+                        setEmailForm(prev => ({ ...prev, subject: "", text: "" }));
+                        setAttachment(null);
+                      }}
+                      className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                    >
+                      New template
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-600 mb-3">
+                  Click a template to open it in the form above. Edit and click Save Template to update.
+                </p>
+                {loadingTemplateForEdit ? (
+                  <p className="text-xs text-gray-500 flex items-center gap-2">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Loading template...
+                  </p>
+                ) : emailTemplates.length === 0 ? (
+                  <p className="text-xs text-gray-500">No saved templates yet. Save one using the form above.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {emailTemplates.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => loadTemplateForEdit(t.id)}
+                        className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-all ${
+                          selectedTemplateIdForEdit === t.id
+                            ? "bg-indigo-50 border-indigo-300 text-indigo-800 font-medium"
+                            : "bg-white border-gray-200 text-gray-700 hover:border-indigo-300 hover:bg-indigo-50/50"
+                        }`}
+                      >
+                        <span>{t.name}</span>
+                        {t.subject && (
+                          <span className="text-xs text-gray-500 truncate max-w-[120px]" title={t.subject}>
+                            — {t.subject}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-8 border-t border-gray-200 pt-6">
+              <h4 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Mail className="w-4 h-4 text-indigo-600" />
+                Email send logs
+              </h4>
+              <p className="text-sm text-gray-500 mb-4">
+                Per-recipient send history for this client. Manual and automated sends are both recorded.
+              </p>
+              {loadingEmailLogs ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto rounded-lg border border-gray-200">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & time</th>
+                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">From</th>
+                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">To</th>
+                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Error</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {emailLogs.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                              No send logs yet for this client.
+                            </td>
+                          </tr>
+                        ) : (
+                          emailLogs.map((log) => (
+                            <tr key={log.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                {new Date(log.sentAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600 truncate max-w-[140px]" title={log.fromEmail}>{log.fromEmail}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600 truncate max-w-[140px]" title={log.toEmail}>{log.toEmail}</td>
+                              <td className="px-4 py-3 text-sm text-gray-700 truncate max-w-[180px]" title={log.subject}>{log.subject}</td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${log.source === "automation" ? "bg-amber-100 text-amber-800" : "bg-gray-100 text-gray-700"}`}>
+                                  {log.source}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-full ${log.status === "success" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+                                  {log.status === "success" ? "Success" : "Failed"}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-red-600 max-w-[200px] truncate" title={log.errorMessage || ""}>
+                                {log.errorMessage || "—"}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  {emailLogsTotalPages > 0 && (
+                    <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <span>Rows per page</span>
+                        <select
+                          value={emailLogsLimit}
+                          onChange={(e) => {
+                            const v = Number(e.target.value);
+                            setEmailLogsLimit(v);
+                            setEmailLogsPage(1);
+                          }}
+                          className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                        >
+                          {[10, 20, 50, 100].map((n) => (
+                            <option key={n} value={n}>{n}</option>
+                          ))}
+                        </select>
+                        <span className="text-gray-500">
+                          {emailLogsTotal === 0 ? "0" : (emailLogsPage - 1) * emailLogsLimit + 1}–{Math.min(emailLogsPage * emailLogsLimit, emailLogsTotal)} of {emailLogsTotal}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setEmailLogsPage((p) => Math.max(1, p - 1))}
+                          disabled={emailLogsPage <= 1}
+                          className="p-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          aria-label="Previous page"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <span className="px-3 text-sm text-gray-700">
+                          Page {emailLogsPage} of {emailLogsTotalPages}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEmailLogsPage((p) => Math.min(emailLogsTotalPages, p + 1))}
+                          disabled={emailLogsPage >= emailLogsTotalPages}
+                          className="p-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          aria-label="Next page"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         )}
@@ -1234,6 +1779,23 @@ const OperationsManagement = () => {
           setActiveSection("whatsapp");
         }}
         error={whatsappSecretError}
+      />
+      <SecretKeyModal
+        isOpen={showEmailSecretModal}
+        onClose={() => {
+          setShowEmailSecretModal(false);
+          setEmailSecretError('');
+        }}
+        onConfirm={(secretKey) => {
+          if (secretKey !== "flashfire@2025") {
+            setEmailSecretError("Incorrect secret key. Please try again.");
+            return;
+          }
+          setEmailUnlocked(true);
+          setShowEmailSecretModal(false);
+          setEmailSecretError('');
+        }}
+        error={emailSecretError}
       />
     </div>
   );
