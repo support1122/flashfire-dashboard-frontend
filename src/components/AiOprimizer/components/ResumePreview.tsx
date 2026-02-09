@@ -1462,7 +1462,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 >
                                     <span
                                         style={{
-                                            width: "160px",
+                                            width: "150px",
                                             flexShrink: 0,
                                             fontWeight: "bold",
                                             letterSpacing: "-0.025em",
@@ -1473,7 +1473,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                     <span
                                         style={{
                                             fontWeight: "bold",
-                                            margin: "0 5px",
+                                            margin: "0 3px",
                                         }}
                                     >
                                         :

@@ -515,7 +515,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                             <div
                                 style={{
                                     display: "grid",
-                                    gridTemplateColumns: "160px 20px 1fr",
+                                    gridTemplateColumns: "150px 20px 1fr",
                                     rowGap: "8px",
                                 }}
                             >
@@ -530,7 +530,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                     >
                                         <span
                                             style={{
-                                                width: "160px",
+                                                width: "150px",
                                                 flexShrink: 0,
                                                 fontWeight: "bold",
                                             }}
@@ -540,7 +540,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         <span
                                             style={{
                                                 fontWeight: "bold",
-                                                margin: "0 5px",
+                                                margin: "0 3px",
                                             }}
                                         >
                                             :
