@@ -1303,7 +1303,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                             {project.linkName &&
                                                 project.linkUrl && (
                                                     <>
-                                                        {" — "}
+                                                        {" - "}
                                                         <a
                                                             href={project.linkUrl}
                                                             style={{
