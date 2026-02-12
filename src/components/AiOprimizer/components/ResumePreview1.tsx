@@ -77,6 +77,29 @@ export const ResumePreview1: React.FC<ResumePreviewHybridProps> = ({
     showPrintButtons = true,
     sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education"],
 }) => {
+    const renderMarkedText = (text: string) => {
+        if (!text) return null;
+        const regex = /\*\*\{(.*?)\}\*\*|\*\*(.+?)\*\*/g;
+        const elements: React.ReactNode[] = [];
+        let lastIndex = 0;
+        let match: RegExpExecArray | null;
+        while ((match = regex.exec(text)) !== null) {
+            if (match.index > lastIndex) {
+                elements.push(text.slice(lastIndex, match.index));
+            }
+            const boldText = match[1] !== undefined ? match[1] : match[2];
+            elements.push(
+                <strong key={elements.length}>
+                    {boldText}
+                </strong>
+            );
+            lastIndex = regex.lastIndex;
+        }
+        if (lastIndex < text.length) {
+            elements.push(text.slice(lastIndex));
+        }
+        return elements;
+    };
     const [scalingFactor, setScalingFactor] = useState(1);
     const [showWarningModal, setShowWarningModal] = useState(false);
     const [showScalingModal, setShowScalingModal] = useState(false);
@@ -502,7 +525,7 @@ These settings will give you the best results for your resume PDF.`);
                                                 paddingRight: "10px",
                                             }}
                                         >
-                                            {exp.position}
+                                            {renderMarkedText(exp.position)}
                                             {exp.company && `, ${exp.company}`}
                                             {exp.location && `, ${exp.location}`}
                                             {exp.roleType &&
