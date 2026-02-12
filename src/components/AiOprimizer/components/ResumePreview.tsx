@@ -1144,7 +1144,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                     lineHeight: styles.lineHeight,
                                                 }}
                                             >
-                                                {exp.position}
+                                                {renderMarkedText(exp.position)}
                                                 {exp.roleType &&
                                                     exp.roleType !== "None" &&
                                                     ` – ${exp.roleType}`}
