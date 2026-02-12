@@ -409,7 +409,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             ` – ${project.roleType}`}
                                         {project.linkName && project.linkUrl && (
                                             <>
-                                                {" — "}
+                                                {" - "}
                                                 <a
                                                     href={project.linkUrl}
                                                     style={{
