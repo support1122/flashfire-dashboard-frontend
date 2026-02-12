@@ -701,7 +701,7 @@ These settings will give you the best results for your resume PDF.`);
                                             ` — ${project.roleType}`}
                                         {project.linkName && project.linkUrl && (
                                             <>
-                                                {" — "}
+                                                {" - "}
                                                 <a
                                                     href={project.linkUrl}
                                                     style={{
