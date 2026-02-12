@@ -288,7 +288,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         }}
                                     >
                                         <div style={{ fontSize: "9pt" }}>
-                                            {exp.position}
+                                            {renderMarkedText(exp.position)}
                                             {exp.roleType &&
                                                 exp.roleType !== "None" &&
                                                 ` – ${exp.roleType}`}
