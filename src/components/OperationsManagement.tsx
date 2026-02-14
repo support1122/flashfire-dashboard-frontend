@@ -78,6 +78,8 @@ const OperationsManagement = () => {
   const [automationEnabled, setAutomationEnabled] = useState<boolean>(false);
   const [loadingAutomation, setLoadingAutomation] = useState(false);
   const [savingAutomation, setSavingAutomation] = useState(false);
+  const [togglingAutomation, setTogglingAutomation] = useState(false);
+  const [hasExistingAutomationConfig, setHasExistingAutomationConfig] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [selectedTemplateIdForEdit, setSelectedTemplateIdForEdit] = useState<string | null>(null);
@@ -214,6 +216,9 @@ const OperationsManagement = () => {
             setSelectedTemplateId(data.config.templateId || '');
             setAutomationDailyLimit(String(data.config.dailyLimit || '0'));
             setAutomationEnabled(!!data.config.enabled);
+            setHasExistingAutomationConfig(!!(data.config.groupId && data.config.templateId));
+          } else {
+            setHasExistingAutomationConfig(false);
           }
         }
       } finally {
@@ -500,11 +505,44 @@ const OperationsManagement = () => {
         toastUtils.error(data.error || "Failed to save automation");
         return;
       }
+      setHasExistingAutomationConfig(true);
       toastUtils.success("Automation settings saved");
     } catch (error) {
       toastUtils.error("Failed to save automation");
     } finally {
       setSavingAutomation(false);
+    }
+  };
+
+  const handleAutomationToggle = async () => {
+    if (!userDetails?.email) return;
+    const nextEnabled = !automationEnabled;
+    setAutomationEnabled(nextEnabled);
+    if (!hasExistingAutomationConfig) {
+      return;
+    }
+    try {
+      setTogglingAutomation(true);
+      const res = await fetch(`${API_BASE_URL}/gmail/automation/config`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ownerEmail: userDetails.email, enabled: nextEnabled })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAutomationEnabled(!nextEnabled);
+        if (res.status === 404) {
+          return;
+        }
+        toastUtils.error(data.error || "Failed to update status");
+        return;
+      }
+      toastUtils.success(nextEnabled ? "Automation turned on" : "Automation paused — no emails will be sent");
+    } catch (error) {
+      setAutomationEnabled(!nextEnabled);
+      toastUtils.error("Failed to update automation status");
+    } finally {
+      setTogglingAutomation(false);
     }
   };
 
@@ -1344,18 +1382,28 @@ const OperationsManagement = () => {
                 </div>
 
                 <div className="border border-gray-200 rounded-lg p-4 bg-white space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-3">
                     <h4 className="text-sm font-semibold text-gray-900">
                       Automation
                     </h4>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">Status</span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span
+                        className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                          automationEnabled
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {automationEnabled ? "On — sends at 11 PM IST" : "Off — no emails sent"}
+                      </span>
                       <button
                         type="button"
-                        onClick={() => setAutomationEnabled((v) => !v)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        disabled={togglingAutomation || loadingAutomation}
+                        onClick={handleAutomationToggle}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60 ${
                           automationEnabled ? "bg-emerald-500" : "bg-gray-300"
                         }`}
+                        aria-label={automationEnabled ? "Turn automation off" : "Turn automation on"}
                       >
                         <span
                           className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -1363,11 +1411,13 @@ const OperationsManagement = () => {
                           }`}
                         />
                       </button>
-                      <span className="text-xs text-gray-700">
-                        {automationEnabled ? "On" : "Off"}
-                      </span>
                     </div>
                   </div>
+                  {!automationEnabled && (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                      Automation is off. No emails will be sent at 11 PM IST until you turn it on and save settings.
+                    </p>
+                  )}
                   {loadingAutomation ? (
                     <p className="text-xs text-gray-500">Loading automation data...</p>
                   ) : (
@@ -1434,7 +1484,7 @@ const OperationsManagement = () => {
                         </button>
                       </div>
                       <p className="text-[11px] text-gray-500">
-                        Emails are sent once per day at 11:00 PM IST to random recipients from the
+                        When on, emails are sent once per day at 11:00 PM IST to random recipients from the
                         selected group without repeating until the list is exhausted.
                       </p>
                     </div>

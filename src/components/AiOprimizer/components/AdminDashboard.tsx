@@ -1064,9 +1064,10 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                                     }}
                                     className="px-3 py-1 rounded-lg transition-colors text-green-700 hover:text-green-900 bg-green-50 hover:bg-green-100"
                                   >
-                                    Assign another
+                                    {assignedResume ? 'Assign another' : 'Assign'}
                                   </button>
-                                  {effectiveResumeId && (
+                                  {/* Only show Unlink when we actually display an assigned resume (avoids "No resume assigned" + Unlink) */}
+                                  {assignedResume && (
                                     <button
                                       onClick={async () => {
                                         if (confirm(`Are you sure you want to unlink the assigned resume for ${user.name || user.email}?`)) {
@@ -1080,11 +1081,12 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                                               const newAssignments = { ...verifiedAssignments };
                                               delete newAssignments[user.email];
                                               setVerifiedAssignments(newAssignments);
-
-                                              loadUsers(); // Refresh list to update UI from backend too
+                                              // Refresh list so UI stays in sync with backend (dashboard + resume service)
+                                              await loadUsers();
                                               alert('Resume unlinked successfully');
                                             } else {
-                                              alert('Failed to unlink resume');
+                                              const data = await response.json().catch(() => ({}));
+                                              alert(data.message || 'Failed to unlink resume');
                                             }
                                           } catch (e) {
                                             console.error(e);
