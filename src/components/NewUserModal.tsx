@@ -112,7 +112,7 @@
 // const VISA_OPTIONS = ["CPT", "F1", "F1 OPT", "F1 STEM OPT", "H1B", "Green Card", "U.S. Citizen", "Other"];
 // const EXPERIENCE_OPTIONS = ["0-2 Years", "2-4 Years", "4-6 Years", "6-8 Years", "8+ Years"];
 // const SALARY_OPTIONS = ["60k-100k", "100k-150k", "150k-200k", "Other"];
-// const JOIN_TIME_OPTIONS = ["in 1 week", "in 2 week", "in 3 week", "in 4 week", "in 6-7 week"];
+// const JOIN_TIME_OPTIONS = ["in 1 week", "in 2 weeks", "in 3 weeks", "in 4 weeks", "in 6-7 weeks"];
 
 // /** ---------- UI Helpers ---------- */
 // function Header({ stepIndex }: { stepIndex: number }) {
@@ -1568,7 +1568,7 @@ const initialData: FormData = {
 const VISA_OPTIONS = ["CPT", "F1", "F1 OPT", "F1 STEM OPT", "H1B", "Green Card", "U.S. Citizen", "Other"];
 const EXPERIENCE_OPTIONS = ["0-2 Years", "2-4 Years", "4-6 Years", "6-8 Years", "8+ Years"];
 const SALARY_OPTIONS = ["60k-100k", "100k-150k", "150k-200k", "Other"];
-const JOIN_TIME_OPTIONS = ["in 1 week", "in 2 week", "in 3 week", "in 4 week", "in 6-7 week"];
+const JOIN_TIME_OPTIONS = ["in 1 week", "in 2 weeks", "in 3 weeks", "in 4 weeks", "in 6-7 weeks"];
 
 /** ---------- UI Helpers ---------- */
 function Header({ stepIndex }: { stepIndex: number }) {

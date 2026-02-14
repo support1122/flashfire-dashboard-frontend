@@ -617,7 +617,7 @@ export default function ProfilePage() {
                     )}
                 </Card>
 
-                {/* Educations */}
+                {/* Education */}
                 <Card
                     title="Education"
                     onEdit={() => handleEditClick("education")}
@@ -649,12 +649,10 @@ export default function ProfilePage() {
                             </div>
                         </div>
                     ) : (
-                        data.bachelorsStartDate && (
-                            <InfoRow
-                                title="Bachelor's Start Date"
-                                value={formatDateOnly(data.bachelorsStartDate)}
-                            />
-                        )
+                        <InfoRow
+                            title="Bachelor's Start Date"
+                            value={data.bachelorsStartDate ? formatDateOnly(data.bachelorsStartDate) : undefined}
+                        />
                     )}
                     {editingSection === "education" ? (
                         <div className="flex flex-col md:flex-row md:items-center py-3 border-b border-gray-100">
@@ -734,12 +732,10 @@ export default function ProfilePage() {
                             </div>
                         </div>
                     ) : (
-                        data.mastersStartDate && (
-                            <InfoRow
-                                title="Master's Start Date"
-                                value={formatDateOnly(data.mastersStartDate)}
-                            />
-                        )
+                        <InfoRow
+                            title="Master's Start Date"
+                            value={data.mastersStartDate ? formatDateOnly(data.mastersStartDate) : undefined}
+                        />
                     )}
                     {editingSection === "education" ? (
                         <div className="flex flex-col md:flex-row md:items-center py-3 border-b border-gray-100">
@@ -768,24 +764,22 @@ export default function ProfilePage() {
                             </div>
                         </div>
                     ) : (
-                        (data.mastersEndDate || data.mastersGradMonthYear) && (
-                            <InfoRow
-                                title="Master's End Date (MM-YYYY)"
-                                value={
-                                    data.mastersEndDate 
-                                        ? (() => {
-                                            const datePart = extractDatePart(data.mastersEndDate);
-                                            try {
-                                                const date = parse(datePart, "yyyy-MM-dd", new Date());
-                                                return format(date, "MM/yyyy");
-                                            } catch {
-                                                return datePart.slice(0, 7); // Return YYYY-MM part
-                                            }
-                                        })()
-                                        : data.mastersGradMonthYear || ""
-                                }
-                            />
-                        )
+                        <InfoRow
+                            title="Master's End Date (MM-YYYY)"
+                            value={
+                                data.mastersEndDate 
+                                    ? (() => {
+                                        const datePart = extractDatePart(data.mastersEndDate);
+                                        try {
+                                            const date = parse(datePart, "yyyy-MM-dd", new Date());
+                                            return format(date, "MM/yyyy");
+                                        } catch {
+                                            return datePart.slice(0, 7); // Return YYYY-MM part
+                                        }
+                                    })()
+                                    : data.mastersGradMonthYear || ""
+                            }
+                        />
                     )}
                     <InfoRow
                         title="Master's GPA"
@@ -977,9 +971,9 @@ export default function ProfilePage() {
 
                 {/* Additional */}
                 <Card title="Additional Information">
-                    <InfoRow title="Are you veteran?" value="No" />
-                    <InfoRow title="Do you have disability?" value="No" />
-                    <InfoRow title="Will you require scholarship?" value="No" />
+                    <InfoRow title="Are you a veteran?" value="No" />
+                    <InfoRow title="Do you have a disability?" value="No" />
+                    <InfoRow title="Will you require a scholarship?" value="No" />
                     <InfoRow
                         title="Are you eligible to work in United States?"
                         value="Yes"
@@ -994,9 +988,14 @@ export default function ProfilePage() {
                             const timeMap: Record<string, string> = {
                                 "in 1 week": "I am available to start within 1 week of receiving offer.",
                                 "in 2 week": "I am available to start within 2 weeks of receiving offer.",
+                                "in 2 weeks": "I am available to start within 2 weeks of receiving offer.",
                                 "in 3 week": "I am available to start within 3 weeks of receiving offer.",
+                                "in 3 weeks": "I am available to start within 3 weeks of receiving offer.",
                                 "in 4 week": "I am available to start within 4 weeks of receiving offer.",
+                                "in 4 weeks": "I am available to start within 4 weeks of receiving offer.",
                                 "in 6-7 week":
+                                    "I am available to start within 6-7 weeks of receiving offer.",
+                                "in 6-7 weeks":
                                     "I am available to start within 6-7 weeks of receiving offer.",
                             };
                             return (
