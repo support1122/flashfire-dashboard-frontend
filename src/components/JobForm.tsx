@@ -72,17 +72,27 @@ async function createJobPOSTQuick({
     userDetails,
     token,
     role,
+    operationsName,
+    operationsEmail,
 }: {
     jobDetails: any;
     userDetails: any;
     token?: string | null;
     role?: string;
+    operationsName?: string;
+    operationsEmail?: string;
 }) {
   if (role === "operations") {
         const res = await fetch(`${API_BASE_URL}/operations/jobs`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ jobDetails, userDetails, role: "operations" }),
+            body: JSON.stringify({ 
+                jobDetails, 
+                userDetails, 
+                role: "operations",
+                operationsName,
+                operationsEmail
+            }),
         });
         const body = await res.json().catch(() => ({}));
         return { status: res.status, ok: res.ok, body };
@@ -275,6 +285,8 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
             userDetails,
             token,
             role,
+            operationsName,
+            operationsEmail,
         });
 
         if (status === 403) {

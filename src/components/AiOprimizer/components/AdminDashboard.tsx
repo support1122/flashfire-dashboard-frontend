@@ -54,7 +54,13 @@ interface SessionKey {
   isUsed: boolean;
   isActive: boolean;
   createdAt: string;
-  source?: 'optimizer' | 'dashboard';
+  source?: 'optimizer' | 'dashboard' | 'extension';
+}
+
+interface ExtensionCodeItem {
+  name: string;
+  code: string;
+  createdAt: string;
 }
 
 interface Statistics {
@@ -77,6 +83,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loginHistory, setLoginHistory] = useState<LoginEvent[]>([]);
   const [sessionKeys, setSessionKeys] = useState<SessionKey[]>([]);
+  const [extensionCodes, setExtensionCodes] = useState<ExtensionCodeItem[]>([]);
   const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'history' | 'sessions' | 'Admin' | 'resume' | 'recruiters'>('overview');
@@ -97,9 +104,10 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
 
   const [sessionKeyForm, setSessionKeyForm] = useState({
     username: '',
-    duration: 720, // Always 30 days (720 hours)
-    target: 'optimizer' as 'optimizer' | 'dashboard'
+    duration: 720,
+    target: 'optimizer' as 'optimizer' | 'dashboard' | 'extension'
   });
+  const [extensionForm, setExtensionForm] = useState({ name: '', generatedCode: '' });
 
   const API_OPTIMIZER = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? import.meta.env.VITE_DEV_API_URL || 'http://localhost:8001' : '');
   const API_DASHBOARD = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8086' : '');
@@ -226,11 +234,14 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
   const loadSessionKeys = async () => {
     try {
       const requests: Promise<Response>[] = [];
-      // Optimizer backend (default)
       requests.push(authFetch(API_OPTIMIZER, '/api/sessions/session-keys'));
-      // Dashboard backend (if configured)
       if (API_DASHBOARD) {
         requests.push(authFetch(API_DASHBOARD, '/api/sessions/session-keys'));
+        const extRes = await authFetch(API_DASHBOARD, '/api/extension-codes');
+        if (extRes.ok) {
+          const extList: ExtensionCodeItem[] = await extRes.json();
+          setExtensionCodes(extList);
+        }
       }
 
       const responses = await Promise.allSettled(requests);
@@ -245,7 +256,6 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
           }
         }
       }
-      // Sort by createdAt desc
       merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setSessionKeys(merged);
     } catch (error) {
@@ -323,6 +333,29 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
 
   const handleGenerateSessionKey = async () => {
     try {
+      if (sessionKeyForm.target === 'extension') {
+        if (!extensionForm.name.trim()) {
+          alert('Please enter operator name.');
+          return;
+        }
+        if (!API_DASHBOARD) {
+          alert('Dashboard API not configured.');
+          return;
+        }
+        const response = await authFetch(API_DASHBOARD, '/api/extension-codes/generate', {
+          method: 'POST',
+          body: JSON.stringify({ name: extensionForm.name.trim() })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setExtensionForm((prev) => ({ ...prev, generatedCode: data.code }));
+          loadSessionKeys();
+        } else {
+          const err = await response.json();
+          alert(err.error || 'Failed to generate extension code');
+        }
+        return;
+      }
       const base = sessionKeyForm.target === 'dashboard' && API_DASHBOARD ? API_DASHBOARD : API_OPTIMIZER;
       const response = await authFetch(base, '/api/sessions/generate-session-key', {
         method: 'POST',
@@ -756,6 +789,29 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                       <p>No session keys generated yet.</p>
                     </div>
                   )}
+
+                  {extensionCodes.length > 0 && (
+                    <>
+                      <h4 className="text-lg font-semibold text-gray-900 mt-8 mb-4 flex items-center space-x-2">
+                        <Key className="h-5 w-5 text-amber-600" />
+                        <span>Extension codes (5-digit)</span>
+                        <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">
+                          {extensionCodes.length}
+                        </span>
+                      </h4>
+                      <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+                        {extensionCodes.map((ec, idx) => (
+                          <div key={idx} className="bg-amber-50/70 rounded-2xl p-4 border border-amber-100">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-gray-900">{ec.name}</span>
+                              <code className="bg-amber-100 px-2 py-1 rounded font-mono text-lg">{ec.code}</code>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">Created: {new Date(ec.createdAt).toLocaleString()}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -1143,50 +1199,85 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                     <select
                       value={sessionKeyForm.target}
                       onChange={(e) => {
-                        const nextTarget = e.target.value as 'optimizer' | 'dashboard';
+                        const nextTarget = e.target.value as 'optimizer' | 'dashboard' | 'extension';
                         setSessionKeyForm({ ...sessionKeyForm, target: nextTarget });
+                        if (nextTarget !== 'extension') setExtensionForm({ name: '', generatedCode: '' });
                       }}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="optimizer">Optimizer</option>
                       <option value="dashboard">Dashboard</option>
+                      <option value="extension">Extension</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Username/Email</label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="email"
-                        required
-                        value={sessionKeyForm.username}
-                        onChange={(e) => setSessionKeyForm({ ...sessionKeyForm, username: e.target.value })}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="user@example.com"
-                      />
-                    </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Duration (hours)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="9999"
-                      required
-                      value={sessionKeyForm.duration}
-                      onChange={(e) => setSessionKeyForm({ ...sessionKeyForm, duration: parseInt(e.target.value) || 720 })}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="720 (default: 30 days)"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Default: 720 hours (30 days). You can change this as needed.</p>
-                  </div>
+                  {sessionKeyForm.target === 'extension' ? (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Operator name</label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <input
+                            type="text"
+                            value={extensionForm.name}
+                            onChange={(e) => setExtensionForm((prev) => ({ ...prev, name: e.target.value }))}
+                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="e.g. John Doe"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Generated code (5-digit)</label>
+                        <input
+                          type="text"
+                          readOnly
+                          value={extensionForm.generatedCode}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-mono text-lg"
+                          placeholder="Generate to see code"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Username/Email</label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <input
+                            type="email"
+                            required
+                            value={sessionKeyForm.username}
+                            onChange={(e) => setSessionKeyForm({ ...sessionKeyForm, username: e.target.value })}
+                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="user@example.com"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Duration (hours)</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="9999"
+                          required
+                          value={sessionKeyForm.duration}
+                          onChange={(e) => setSessionKeyForm({ ...sessionKeyForm, duration: parseInt(e.target.value) || 720 })}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="720 (default: 30 days)"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Default: 720 hours (30 days). You can change this as needed.</p>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex space-x-3 pt-4">
                   <button
                     type="button"
-                    onClick={() => setShowGenerateSessionKey(false)}
+                    onClick={() => {
+                      setShowGenerateSessionKey(false);
+                      setExtensionForm({ name: '', generatedCode: '' });
+                    }}
                     className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
                   >
                     Cancel
@@ -1195,7 +1286,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                     type="submit"
                     className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl"
                   >
-                    Generate Key
+                    {sessionKeyForm.target === 'extension' ? 'Generate Code' : 'Generate Key'}
                   </button>
                 </div>
               </form>

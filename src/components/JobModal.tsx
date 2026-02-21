@@ -272,7 +272,7 @@ export default function JobModal({
         return companyName.replace(/\s+/g, '').toLowerCase();
     };
 
-    const { role, name: operationsUserName, email: operationsUserEmail } = useOperationsStore();
+    const { role, name: operationsUserName, email: operationsUserEmail, getOperatorName } = useOperationsStore();
 
     // NEW (paste-to-upload buffer)
     const [pastedImages, setPastedImages] = useState<File[]>([]);
@@ -1580,32 +1580,43 @@ export default function JobModal({
                             {(jobDetails?.timeline?.length > 0 || (role === "operations" && removalReasonData)) ? (
                                 <ol className="relative border-s border-gray-200">
                                     {jobDetails?.timeline?.map(
-                                        (event: string, idx: number) => (
-                                            <li
-                                                key={idx}
-                                                className="mb-10 ms-6"
-                                            >
-                                                <span className="absolute flex items-center justify-center w-6 h-6 bg-purple-100 rounded-full -start-3 ring-8 ring-white">
-                                                    <svg
-                                                        className="w-3 h-3 text-purple-600"
-                                                        fill="currentColor"
-                                                        viewBox="0 0 20 20"
-                                                    >
-                                                        <path
-                                                            fillRule="evenodd"
-                                                            d="M16.707 5.293a1 1 0 00-1.414 0L10 10.586 6.707 7.293A1 1 0 105.293 8.707l4 4a1 1 0 001.414 0l6-6a1 1 0 000-1.414z"
-                                                            clipRule="evenodd"
-                                                        />
-                                                    </svg>
-                                                </span>
-                                                <h3 className="flex items-center mb-1 text-md font-semibold text-purple-800">
-                                                    {event}
-                                                </h3>
-                                                <p className="text-sm text-gray-500">
-                                                    Step {idx + 1}
-                                                </p>
-                                            </li>
-                                        )
+                                        (event: string, idx: number) => {
+                                            let displayEvent = event;
+                                            if (event.toLowerCase().includes('added by')) {
+                                                if (role !== 'operations' && role !== 'operator') {
+                                                    displayEvent = 'Added';
+                                                }
+                                            } else if (event === 'Added' && (role === 'operations' || role === 'operator')) {
+                                                const name = jobDetails?.operatorName || getOperatorName(jobDetails?.operatorEmail || '') || jobDetails?.operatorEmail;
+                                                displayEvent = name ? `Added by ${name}` : 'Added';
+                                            }
+                                            return (
+                                                <li
+                                                    key={idx}
+                                                    className="mb-10 ms-6"
+                                                >
+                                                    <span className="absolute flex items-center justify-center w-6 h-6 bg-purple-100 rounded-full -start-3 ring-8 ring-white">
+                                                        <svg
+                                                            className="w-3 h-3 text-purple-600"
+                                                            fill="currentColor"
+                                                            viewBox="0 0 20 20"
+                                                        >
+                                                            <path
+                                                                fillRule="evenodd"
+                                                                d="M16.707 5.293a1 1 0 00-1.414 0L10 10.586 6.707 7.293A1 1 0 105.293 8.707l4 4a1 1 0 001.414 0l6-6a1 1 0 000-1.414z"
+                                                                clipRule="evenodd"
+                                                            />
+                                                        </svg>
+                                                    </span>
+                                                    <h3 className="flex items-center mb-1 text-md font-semibold text-purple-800">
+                                                        {displayEvent}
+                                                    </h3>
+                                                    <p className="text-sm text-gray-500">
+                                                        Step {idx + 1}
+                                                    </p>
+                                                </li>
+                                            );
+                                        }
                                     )}
                                     {role === "operations" && removalReasonData && (
                                         <li className="mb-10 ms-6">
