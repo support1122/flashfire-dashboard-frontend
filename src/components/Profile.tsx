@@ -416,7 +416,18 @@ export default function ProfilePage() {
 
     const handleEditClick = (section: string) => {
         setEditingSection(section);
-        setEditData(data);
+        // Convert array fields to strings for editing
+        const editDataCopy = { ...data };
+        if (Array.isArray(editDataCopy.preferredRoles)) {
+            editDataCopy.preferredRoles = joinArr(editDataCopy.preferredRoles) as any;
+        }
+        if (Array.isArray(editDataCopy.preferredLocations)) {
+            editDataCopy.preferredLocations = joinArr(editDataCopy.preferredLocations) as any;
+        }
+        if (Array.isArray(editDataCopy.targetCompanies)) {
+            editDataCopy.targetCompanies = joinArr(editDataCopy.targetCompanies) as any;
+        }
+        setEditData(editDataCopy);
     };
 
     const handleSaveClick = () => {
@@ -435,6 +446,18 @@ export default function ProfilePage() {
             const token = ctx?.token;
             const email = ctx?.userDetails?.email;
 
+            // Convert string fields to arrays before saving
+            const dataToSave = { ...editData };
+            if (typeof dataToSave.preferredRoles === 'string') {
+                dataToSave.preferredRoles = dataToSave.preferredRoles.split(',').map(s => s.trim()).filter(s => s.length > 0) as any;
+            }
+            if (typeof dataToSave.preferredLocations === 'string') {
+                dataToSave.preferredLocations = dataToSave.preferredLocations.split(',').map(s => s.trim()).filter(s => s.length > 0) as any;
+            }
+            if (typeof dataToSave.targetCompanies === 'string') {
+                dataToSave.targetCompanies = dataToSave.targetCompanies.split(',').map(s => s.trim()).filter(s => s.length > 0) as any;
+            }
+
             const res = await fetch(`${API_BASE_URL}/setprofile`, {
                 method: "POST",
                 headers: {
@@ -442,7 +465,7 @@ export default function ProfilePage() {
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                    ...editData,
+                    ...dataToSave,
                     email,
                     token,
                     userDetails: ctx?.userDetails,
@@ -456,7 +479,7 @@ export default function ProfilePage() {
             }
 
             await res.json();
-            updateProfile(editData);
+            updateProfile(dataToSave);
             setEditingSection(null);
             setEditData({});
             toastUtils.success(toastMessages.profileUpdated);
@@ -805,12 +828,14 @@ export default function ProfilePage() {
                         title="Preferred Roles"
                         value={
                             editingSection === "professional"
-                                ? joinArr(editData.preferredRoles)
+                                ? (typeof editData.preferredRoles === 'string' 
+                                    ? editData.preferredRoles 
+                                    : joinArr(editData.preferredRoles))
                                 : joinArr(data.preferredRoles)
                         }
                         isEditing={editingSection === "professional"}
                         onValueChange={(v) =>
-                            setEditData({ ...editData, preferredRoles: v.split(",") })
+                            setEditData({ ...editData, preferredRoles: v as any })
                         }
                     />
                     <InfoRow
@@ -841,24 +866,28 @@ export default function ProfilePage() {
                         title="Preferred Locations"
                         value={
                             editingSection === "professional"
-                                ? joinArr(editData.preferredLocations)
+                                ? (typeof editData.preferredLocations === 'string' 
+                                    ? editData.preferredLocations 
+                                    : joinArr(editData.preferredLocations))
                                 : joinArr(data.preferredLocations)
                         }
                         isEditing={editingSection === "professional"}
                         onValueChange={(v) =>
-                            setEditData({ ...editData, preferredLocations: v.split(",") })
+                            setEditData({ ...editData, preferredLocations: v as any })
                         }
                     />
                     <InfoRow
                         title="Target Companies"
                         value={
                             editingSection === "professional"
-                                ? joinArr(editData.targetCompanies)
+                                ? (typeof editData.targetCompanies === 'string' 
+                                    ? editData.targetCompanies 
+                                    : joinArr(editData.targetCompanies))
                                 : joinArr(data.targetCompanies)
                         }
                         isEditing={editingSection === "professional"}
                         onValueChange={(v) =>
-                            setEditData({ ...editData, targetCompanies: v.split(",") })
+                            setEditData({ ...editData, targetCompanies: v as any })
                         }
                     />
                     <TextAreaRow
