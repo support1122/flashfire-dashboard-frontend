@@ -1049,6 +1049,11 @@ export default function ProfilePage() {
                             return `I'm seeking a salary in the range of ${range} annually, depending on the overall compensation package, responsibilities, and growth opportunities within the role.`;
                         })()}
                     />
+                    <InfoRow
+                        title="Referred by"
+                        value={data.referredBy || "—"}
+                        isEditing={false}
+                    />
                 </Card>
 
                 {/* Credentials */}
