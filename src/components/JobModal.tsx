@@ -352,15 +352,17 @@ export default function JobModal({
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [optimizationError, setOptimizationError] = useState<string | null>(null);
 
-    // Load job description when modal opens
+    // Load job description when modal opens (skip if we already know it's empty)
     useEffect(() => {
         if (jobDetails?.jobID && activeSection === 'description') {
+            if (jobDetails.jobDescription === '') return; // Already know it's empty
             const cachedDescription = getJobDescription(jobDetails.jobID);
-            if (!cachedDescription && !isJobDescriptionLoading(jobDetails.jobID)) {
+            if (cachedDescription !== null && cachedDescription !== undefined) return; // Already cached
+            if (!isJobDescriptionLoading(jobDetails.jobID)) {
                 loadJobDescription(jobDetails.jobID);
             }
         }
-    }, [jobDetails?.jobID, activeSection, getJobDescription, isJobDescriptionLoading, loadJobDescription]);
+    }, [jobDetails?.jobID, jobDetails?.jobDescription, activeSection, getJobDescription, isJobDescriptionLoading, loadJobDescription]);
 
     useEffect(() => {
         if (role === "operations" && jobDetails?.jobID && jobDetails?.userID) {
@@ -1211,8 +1213,18 @@ export default function JobModal({
                             <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
                                 {(() => {
                                     const cachedDescription = getJobDescription(jobDetails?.jobID);
-                                    const description = cachedDescription || jobDetails?.jobDescription;
+                                    const description = cachedDescription ?? jobDetails?.jobDescription;
                                     const isLoading = isJobDescriptionLoading(jobDetails?.jobID);
+                                    const isEmpty = description === '' || (description === undefined && jobDetails?.jobDescription === '');
+
+                                    // When we know it's empty, show message instead of loader
+                                    if (isEmpty) {
+                                        return (
+                                            <p className="text-gray-500 italic text-sm">
+                                                No job description available for this job card.
+                                            </p>
+                                        );
+                                    }
 
                                     if (isLoading) {
                                         return (
@@ -1232,7 +1244,7 @@ export default function JobModal({
                                         ></div>
                                     ) : (
                                         <p className="text-gray-500 italic text-sm">
-                                            No job description available.
+                                            No job description available for this job card.
                                         </p>
                                     );
                                 })()}

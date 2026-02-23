@@ -317,7 +317,9 @@ export const useJobsSessionStore = create<JobsSessionState>()(
 
       getJobDescription: (jobId) => {
         const { jobDescriptions } = get();
-        return jobDescriptions.get(jobId) || null;
+        // Return null only when not cached; return "" when cached as empty (so we don't re-fetch)
+        if (!jobDescriptions.has(jobId)) return null;
+        return jobDescriptions.get(jobId) ?? '';
       },
 
       isJobDescriptionLoading: (jobId) => {
@@ -443,9 +445,9 @@ export const useJobDescriptionLoader = () => {
   } = useJobsSessionStore();
 
   const loadJobDescription = async (jobId: string) => {
-    // Check if already cached
+    // Check if already cached (including empty string - no need to re-fetch)
     const cachedDescription = getJobDescription(jobId);
-    if (cachedDescription) {
+    if (cachedDescription !== null) {
       return cachedDescription;
     }
 

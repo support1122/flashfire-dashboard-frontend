@@ -209,6 +209,12 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
       return;
     }
 
+    if (!isEditMode && !formData.jobDescription.trim()) {
+      setError("Job Description (JD) is required.");
+      toastUtils.error("No Job Description (JD). Please add JD before submitting.");
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
     const loadingToast = toastUtils.loading(toastMessages.savingJob);
@@ -467,7 +473,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
         </div>
 
         <div>
-          <label className="block text-sm font-medium">Job Description</label>
+          <label className="block text-sm font-medium">Job Description{!isEditMode ? ' *' : ''}</label>
           <textarea
             disabled={isEditMode}
             readOnly={isEditMode}
