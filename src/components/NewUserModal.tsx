@@ -1520,6 +1520,7 @@ type FormData = {
   ssnNumber: string;               // digits only (we'll keep 0–9)
   availabilityNote: string;
   joinTime: string;                // join time selection
+  referredBy: string;              // optional: "Are you referred by someone?"
 };
 
 const initialData: FormData = {
@@ -1563,6 +1564,7 @@ const initialData: FormData = {
   ssnNumber: '',               // digits only (we'll keep 0–9)
   availabilityNote: '',
   joinTime: 'in 1 week',       // join time selection
+  referredBy: '',              // optional
 };
 
 const VISA_OPTIONS = ["CPT", "F1", "F1 OPT", "F1 STEM OPT", "H1B", "Green Card", "U.S. Citizen", "Other"];
@@ -1923,6 +1925,7 @@ useEffect(() => {
     transcriptUrl: p.transcriptUrl ?? "",
     confirmAccuracy: Boolean(p.confirmAccuracy),
     agreeTos: Boolean(p.agreeTos),
+    referredBy: p.referredBy ?? "",
   }));
 }, [mode, ctxProfile]);
 
@@ -2957,6 +2960,19 @@ const handleSubmit = () => {
                   </label>
                 </div>
                 <ErrorText>{errors.agreeTos}</ErrorText>
+              </div>
+            </div>
+
+            {/* Referred By — optional, last field */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2 pb-2 border-b border-gray-200">Referral</h3>
+              <div>
+                <FieldLabel>Are you referred by someone?</FieldLabel>
+                <TextInput
+                  value={data.referredBy}
+                  onChange={(e) => set({ referredBy: e.target.value })}
+                  placeholder="Name of referrer (optional)"
+                />
               </div>
             </div>
           </div>
