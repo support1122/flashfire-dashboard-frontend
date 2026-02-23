@@ -349,6 +349,7 @@ export interface UserProfile {
   availabilityNote?: string;
   joinTime?: string;
   references?: string;
+  referredBy?: string;
   removedJobsCount?: number;
 }
 
@@ -502,6 +503,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       expectedSalaryNarrative: payload.expectedSalaryNarrative || "",
       availabilityNote: payload.availabilityNote || "in 2 weeks.",
       references: payload.references || "",
+      referredBy: payload.referredBy || "",
       dashboardManager: payload.dashboardManager || "",
       dashboardManagerContact: payload.dashboardManagerContact || "",
       removedJobsCount: payload.removedJobsCount ?? 0,
