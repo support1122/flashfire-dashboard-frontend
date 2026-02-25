@@ -296,6 +296,8 @@ export default function JobModal({
     const [showOptimizeScaleModal, setShowOptimizeScaleModal] = useState(false); // For operations role
     const [showDownloadFilenameModal, setShowDownloadFilenameModal] = useState(false); // For confirmation modal
     const [downloadFilename, setDownloadFilename] = useState("");
+    const [originalFilename, setOriginalFilename] = useState("");
+    const [showFilenameConfirmModal, setShowFilenameConfirmModal] = useState(false);
     const [pendingDownloadBlob, setPendingDownloadBlob] = useState<Blob | null>(null);
     const [optimizedResumeData, setOptimizedResumeData] = useState<any>(null); // To store optimized data for scaling modal
     const [optimizedResumeMetadata, setOptimizedResumeMetadata] = useState<any>(null);
@@ -1775,20 +1777,43 @@ export default function JobModal({
                 publications: resumeData.publications || [],
             };
 
-            const optimizeResponse = await fetch(`${apiUrl}/api/optimize-with-gemini`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    resume_data: filteredResumeForOptimization,
-                    job_description: prompt + jobDesc,
-                }),
-            });
+            let optimizeResponse: Response | null = null;
+            let retryCount = 0;
+            const maxRetries = 1;
 
-            if (!optimizeResponse.ok) {
-                throw new Error(`Optimization failed: ${optimizeResponse.status}`);
+            while (retryCount <= maxRetries) {
+                try {
+                    optimizeResponse = await fetch(`${apiUrl}/api/optimize-with-gemini`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            resume_data: filteredResumeForOptimization,
+                            job_description: prompt + jobDesc,
+                        }),
+                    });
+
+                    if (optimizeResponse.ok) {
+                        break; // Success, exit retry loop
+                    }
+
+                    if (retryCount === maxRetries) {
+                        throw new Error(`Optimization failed: ${optimizeResponse.status}`);
+                    }
+
+                    // Wait before retry
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    retryCount++;
+                } catch (error) {
+                    if (retryCount === maxRetries) {
+                        throw error;
+                    }
+                    // Wait before retry
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    retryCount++;
+                }
             }
 
-            const optimizedData = await optimizeResponse.json();
+            const optimizedData = await optimizeResponse!.json();
 
             if (!optimizedData || (!optimizedData.summary && !optimizedData.workExperience)) {
                 throw new Error("Optimization failed. Data returned was empty.");
@@ -2013,7 +2038,9 @@ export default function JobModal({
 
                             // Open modal instead of direct download
                             setPendingDownloadBlob(pdfBlob);
-                            setDownloadFilename(`${cleanName}_Resume.pdf`);
+                            const filename = `${cleanName}_Resume.pdf`;
+                            setDownloadFilename(filename);
+                            setOriginalFilename(filename);
                             setShowDownloadFilenameModal(true);
 
                             window.URL.revokeObjectURL(pdfUrl);
@@ -2071,7 +2098,9 @@ export default function JobModal({
 
                             // Open modal instead of direct download
                             setPendingDownloadBlob(pdfBlob);
-                            setDownloadFilename(`${cleanName}_Resume.pdf`);
+                            const filename = `${cleanName}_Resume.pdf`;
+                            setDownloadFilename(filename);
+                            setOriginalFilename(filename);
                             setShowDownloadFilenameModal(true);
 
                             window.URL.revokeObjectURL(pdfUrl);
@@ -2463,12 +2492,19 @@ export default function JobModal({
                                 <button
                                     onClick={async () => {
                                         if (pendingDownloadBlob && downloadFilename.trim()) {
+                                            // Check if filename has been changed from original
+                                            if (downloadFilename !== originalFilename) {
+                                                setShowFilenameConfirmModal(true);
+                                                return;
+                                            }
+
                                             try {
                                                 await savePdf(pendingDownloadBlob, downloadFilename.trim());
                                                 // Only close modal if successful or native picker handled it
                                                 setShowDownloadFilenameModal(false);
                                                 setPendingDownloadBlob(null);
                                                 setDownloadFilename("");
+                                                setOriginalFilename("");
                                                 toastUtils.success("✅ Download started!");
                                             } catch (error) {
                                                 console.error("Download failed:", error);
@@ -2695,6 +2731,106 @@ export default function JobModal({
                             >
                                 Close
                             </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Filename Confirmation Modal */}
+                {showFilenameConfirmModal && (
+                    <div
+                        style={{
+                            position: "fixed",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: "rgba(0, 0, 0, 0.5)",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            zIndex: 2000,
+                        }}
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                                setShowFilenameConfirmModal(false);
+                            }
+                        }}
+                    >
+                        <div
+                            style={{
+                                backgroundColor: "white",
+                                padding: "2rem",
+                                borderRadius: "12px",
+                                maxWidth: "400px",
+                                width: "90%",
+                                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                            }}
+                        >
+                            <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.25rem", fontWeight: "600", color: "#1f2937" }}>
+                                Confirm Filename Change
+                            </h3>
+                            <p style={{ margin: "0 0 1.5rem 0", fontSize: "0.875rem", color: "#6b7280", lineHeight: "1.5" }}>
+                                Are you sure you want to download the PDF with the filename:
+                            </p>
+                            <div style={{
+                                backgroundColor: "#f3f4f6",
+                                padding: "0.75rem",
+                                borderRadius: "6px",
+                                marginBottom: "1.5rem",
+                                fontFamily: "monospace",
+                                fontSize: "0.875rem",
+                                color: "#1f2937",
+                                wordBreak: "break-all"
+                            }}>
+                                {downloadFilename}
+                            </div>
+                            <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
+                                <button
+                                    onClick={() => setShowFilenameConfirmModal(false)}
+                                    style={{
+                                        padding: "0.75rem 1.5rem",
+                                        backgroundColor: "#f3f4f6",
+                                        color: "#374151",
+                                        border: "none",
+                                        borderRadius: "6px",
+                                        cursor: "pointer",
+                                        fontSize: "0.875rem",
+                                        fontWeight: "500",
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        setShowFilenameConfirmModal(false);
+                                        if (pendingDownloadBlob && downloadFilename.trim()) {
+                                            try {
+                                                await savePdf(pendingDownloadBlob, downloadFilename.trim());
+                                                setShowDownloadFilenameModal(false);
+                                                setPendingDownloadBlob(null);
+                                                setDownloadFilename("");
+                                                setOriginalFilename("");
+                                                toastUtils.success("✅ Download started!");
+                                            } catch (error) {
+                                                console.error("Download failed:", error);
+                                                toastUtils.error("Failed to save file.");
+                                            }
+                                        }
+                                    }}
+                                    style={{
+                                        padding: "0.75rem 1.5rem",
+                                        backgroundColor: "#3b82f6",
+                                        color: "white",
+                                        border: "none",
+                                        borderRadius: "6px",
+                                        cursor: "pointer",
+                                        fontSize: "0.875rem",
+                                        fontWeight: "500",
+                                    }}
+                                >
+                                    Download
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

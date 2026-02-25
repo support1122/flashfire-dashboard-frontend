@@ -565,6 +565,19 @@ function App() {
     useEffect(() => {
         setCurrentResumeView("editor");
     }, []);
+
+    // Warn user before leaving page if there are unsaved changes
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (!isSaved) {
+                e.preventDefault();
+                return "Are you sure you want to leave this page? You have unsaved changes.";
+            }
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [isSaved]);
+
     let opp
     // Debug: Log store state on mount
     useEffect(() => {
