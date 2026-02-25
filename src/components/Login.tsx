@@ -391,7 +391,7 @@ export default function Login() {
   const [useSessionKey, setUseSessionKey] = useState<boolean>(false)
 
   const navigate = useNavigate()
-  const { setName, setEmailOperations, setRole, setManagedUsers } = useOperationsStore()
+  const { setName, setEmailOperations, setRole, setManagedUsers, setOperatorNamesMap } = useOperationsStore()
   const userContext = useContext(UserContext)
   const setData = userContext?.setData
   const { setProfileFromApi } = useUserProfile()
@@ -530,9 +530,19 @@ export default function Login() {
           setEmailOperations(data.user.email)
           setRole(data.user.role)
           setManagedUsers(data.user.managedUsers)
+          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+          fetch(`${API_BASE_URL}/admin/list/operations`)
+            .then((r) => r.json())
+            .then((d) => {
+              const map: Record<string, string> = {}
+              ;(d.operations || []).forEach((o: { email?: string; name?: string }) => {
+                if (o.email) map[o.email.toLowerCase()] = o.name || o.email
+              })
+              setOperatorNamesMap(map)
+            })
+            .catch(() => {})
           toastUtils.dismissToast(loadingToast)
           const operatorEmail = (data?.user?.email || email || '').toLowerCase()
-          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
           const storedSessionKey = localStorage.getItem('opsSessionKey')
           if (storedSessionKey) {

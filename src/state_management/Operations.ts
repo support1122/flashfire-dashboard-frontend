@@ -13,6 +13,7 @@ interface Operations {
      email: string;
      role: string;
      managedUsers: ManagedUser[];
+     operatorNamesMap: Record<string, string>;
 
      setName: (name: string) => void;
      setEmailOperations: (email: string) => void;
@@ -20,16 +21,19 @@ interface Operations {
      setManagedUsers: (users: ManagedUser[]) => void;
      addManagedUser: (user: ManagedUser) => void;
      removeManagedUser: (id: string) => void;
+     setOperatorNamesMap: (map: Record<string, string>) => void;
+     getOperatorName: (email: string) => string;
      reset: () => void;
 }
 
 export const useOperationsStore = create<Operations>()(
      persist(
-          (set) => ({
+          (set, get) => ({
                name: "",
                email: "",
                role: "",
                managedUsers: [],
+               operatorNamesMap: {},
 
                setName: (name) => set({ name }),
                setEmailOperations: (email) => set({ email }),
@@ -43,12 +47,19 @@ export const useOperationsStore = create<Operations>()(
                     set((state) => ({
                          managedUsers: state.managedUsers.filter((u) => u._id !== id),
                     })),
+               setOperatorNamesMap: (map) => set({ operatorNamesMap: map || {} }),
+               getOperatorName: (email: string) => {
+                    const map = get().operatorNamesMap;
+                    if (!email) return '';
+                    return map[email.toLowerCase()] || '';
+               },
                reset: () =>
                     set({
                          name: "",
                          email: "",
                          role: "",
                          managedUsers: [],
+                         operatorNamesMap: {},
                     }),
           }),
           {

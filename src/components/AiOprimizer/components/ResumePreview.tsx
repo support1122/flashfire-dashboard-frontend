@@ -123,6 +123,8 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
 
     const [selectedScale, setSelectedScale] = useState(getLastSelectedScale());
     const [downloadFilename, setDownloadFilename] = useState("");
+    const [originalFilename, setOriginalFilename] = useState("");
+    const [showFilenameConfirmModal, setShowFilenameConfirmModal] = useState(false);
     const overrideAutoScale = true;
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
     const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
@@ -427,7 +429,9 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
         if (data.personalInfo?.name) {
             const name = data.personalInfo.name || "Resume";
             const cleanName = name.replace(/\s+/g, "_");
-            setDownloadFilename(`${cleanName}_Resume.pdf`);
+            const filename = `${cleanName}_Resume.pdf`;
+            setDownloadFilename(filename);
+            setOriginalFilename(filename);
         }
     }, [data.personalInfo?.name]);
 
@@ -644,26 +648,19 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     // Handle PDF download - use the preview PDF if available
     const handleDownloadResume = async () => {
         try {
+            // Check if filename has been changed from original
+            if (downloadFilename !== originalFilename && downloadFilename.trim()) {
+                setShowFilenameConfirmModal(true);
+                return;
+            }
+
+            const name = data.personalInfo?.name || "Resume";
+            const cleanName = name.replace(/\s+/g, "_");
+            const filename = downloadFilename || `${cleanName}_Resume.pdf`;
+
             // If we have a preview PDF blob, use it directly
             if (previewPdfBlob) {
-                const pdfUrl = window.URL.createObjectURL(previewPdfBlob);
-                const link = document.createElement("a");
-                link.href = pdfUrl;
-
-                // Generate filename: "{name}_Resume.pdf"
-                // Generate filename: "{name}_Resume.pdf"
-                const name = data.personalInfo?.name || "Resume";
-                const cleanName = name.replace(/\s+/g, "_");
-                // link.download = `${cleanName}_Resume.pdf`;
-
-                // document.body.appendChild(link);
-                // link.click();
-                // document.body.removeChild(link);
-
-                await savePdf(previewPdfBlob, downloadFilename || `${cleanName}_Resume.pdf`);
-
-                window.URL.revokeObjectURL(pdfUrl);
-
+                await savePdf(previewPdfBlob, filename);
                 toastUtils.success("✅ PDF downloaded successfully!");
                 if (onDownloadClick) {
                     onDownloadClick();
@@ -708,25 +705,8 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 throw new Error(`PDF generation failed: ${response.status}`);
             }
 
-            // Download PDF
             const pdfBlob = await response.blob();
-            const pdfUrl = window.URL.createObjectURL(pdfBlob);
-            const link = document.createElement("a");
-            link.href = pdfUrl;
-
-            // Generate filename: "{name}_Resume.pdf"
-            // Generate filename: "{name}_Resume.pdf"
-            const name = data.personalInfo?.name || "Resume";
-            const cleanName = name.replace(/\s+/g, "_");
-            // link.download = `${cleanName}_Resume.pdf`;
-
-            // document.body.appendChild(link);
-            // link.click();
-            // document.body.removeChild(link);
-
-            await savePdf(pdfBlob, downloadFilename || `${cleanName}_Resume.pdf`);
-
-            window.URL.revokeObjectURL(pdfUrl);
+            await savePdf(pdfBlob, filename);
 
             toastUtils.dismissToast(loadingToast);
             setShowScaleModal(false);
@@ -1833,6 +1813,75 @@ The resume will print across multiple pages if needed, ensuring no content is cu
         </>
     );
 
+    // Helper function to perform the actual download
+    const performDownload = async () => {
+        try {
+            const name = data.personalInfo?.name || "Resume";
+            const cleanName = name.replace(/\s+/g, "_");
+            const filename = downloadFilename || `${cleanName}_Resume.pdf`;
+
+            // If we have a preview PDF blob, use it directly
+            if (previewPdfBlob) {
+                await savePdf(previewPdfBlob, filename);
+                toastUtils.success("✅ PDF downloaded successfully!");
+                if (onDownloadClick) {
+                    onDownloadClick();
+                }
+                return;
+            }
+
+            // Otherwise generate new PDF
+            setIsGeneratingPDF(true);
+            const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
+            const loadingToast = toastUtils.loading("Making the best optimal PDF... Please wait.");
+
+            const pdfPayload = {
+                personalInfo: data.personalInfo,
+                summary: data.summary || "",
+                workExperience: data.workExperience || [],
+                projects: data.projects || [],
+                leadership: data.leadership || [],
+                skills: data.skills || [],
+                education: data.education || [],
+                publications: data.publications || [],
+                checkboxStates: {
+                    showSummary: showSummary,
+                    showProjects: showProjects,
+                    showLeadership: showLeadership,
+                    showPublications: showPublications,
+                },
+                sectionOrder: sectionOrder,
+                styles: styles,
+                overrideAutoScale: overrideAutoScale,
+                selectedScale: selectedScale,
+            };
+
+            const response = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(pdfPayload),
+            });
+
+            if (!response.ok) {
+                throw new Error(`PDF generation failed: ${response.status}`);
+            }
+
+            const pdfBlob = await response.blob();
+            await savePdf(pdfBlob, filename);
+
+            toastUtils.dismissToast(loadingToast);
+            toastUtils.success("✅ PDF downloaded successfully!");
+            if (onDownloadClick) {
+                onDownloadClick();
+            }
+        } catch (error: any) {
+            console.error("Download failed:", error);
+            toastUtils.error(`Failed to download PDF: ${error.message}`);
+        } finally {
+            setIsGeneratingPDF(false);
+        }
+    };
+
     return (
         <div className="resume-single-page">
             {/* Warning Modal */}
@@ -2622,6 +2671,94 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         }`,
                 }}
             />
+
+            {/* Filename Confirmation Modal */}
+            {showFilenameConfirmModal && (
+                <div
+                    style={{
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: "rgba(0, 0, 0, 0.5)",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        zIndex: 2000,
+                    }}
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                            setShowFilenameConfirmModal(false);
+                        }
+                    }}
+                >
+                    <div
+                        style={{
+                            backgroundColor: "white",
+                            padding: "2rem",
+                            borderRadius: "12px",
+                            maxWidth: "400px",
+                            width: "90%",
+                            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                        }}
+                    >
+                        <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.25rem", fontWeight: "600", color: "#1f2937" }}>
+                            Confirm Filename Change
+                        </h3>
+                        <p style={{ margin: "0 0 1.5rem 0", fontSize: "0.875rem", color: "#6b7280", lineHeight: "1.5" }}>
+                            Are you sure you want to download the PDF with the filename:
+                        </p>
+                        <div style={{
+                            backgroundColor: "#f3f4f6",
+                            padding: "0.75rem",
+                            borderRadius: "6px",
+                            marginBottom: "1.5rem",
+                            fontFamily: "monospace",
+                            fontSize: "0.875rem",
+                            color: "#1f2937",
+                            wordBreak: "break-all"
+                        }}>
+                            {downloadFilename}
+                        </div>
+                        <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
+                            <button
+                                onClick={() => setShowFilenameConfirmModal(false)}
+                                style={{
+                                    padding: "0.75rem 1.5rem",
+                                    backgroundColor: "#f3f4f6",
+                                    color: "#374151",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    cursor: "pointer",
+                                    fontSize: "0.875rem",
+                                    fontWeight: "500",
+                                }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    setShowFilenameConfirmModal(false);
+                                    await performDownload();
+                                }}
+                                style={{
+                                    padding: "0.75rem 1.5rem",
+                                    backgroundColor: "#3b82f6",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    cursor: "pointer",
+                                    fontSize: "0.875rem",
+                                    fontWeight: "500",
+                                }}
+                            >
+                                Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
