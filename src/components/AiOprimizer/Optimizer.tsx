@@ -754,11 +754,11 @@ function App() {
                 finalHasPublications || (resumeData.checkboxStates.showPublications ?? false)
             );
 
-            // Handle sectionOrder if it exists, but ensure publications is included for medical resumes
+            // Handle sectionOrder if it exists; ensure publications is included (after education) for all resumes
             if (resumeData.sectionOrder && Array.isArray(resumeData.sectionOrder)) {
                 console.log("Found saved sectionOrder:", resumeData.sectionOrder);
                 let updatedSectionOrder = [...resumeData.sectionOrder];
-                if (resumeData.V === 2 && !updatedSectionOrder.includes("publications")) {
+                if (!updatedSectionOrder.includes("publications")) {
                     updatedSectionOrder.push("publications");
                 }
                 setSectionOrder(updatedSectionOrder);
@@ -1448,12 +1448,12 @@ function App() {
                 import.meta.env.VITE_API_URL || "https://resume-maker-backend-lf5z.onrender.com";
             
             let finalSectionOrder = [...sectionOrder];
-            if (versionV === 2 && !finalSectionOrder.includes("publications")) {
+            if (!finalSectionOrder.includes("publications")) {
                 finalSectionOrder.push("publications");
             }
-            
-            const hasPublications = resumeData.publications && 
-                resumeData.publications.length > 0 && 
+
+            const hasPublications = resumeData.publications &&
+                resumeData.publications.length > 0 &&
                 resumeData.publications.some(pub => pub.details && pub.details.trim() !== "");
             const finalShowPublications = versionV === 2 ? (hasPublications || showPublications) : showPublications;
             
@@ -2485,7 +2485,7 @@ function App() {
                                                 isEnabled: true,
                                                 showToggle: false,
                                             },
-                                            ...(versionV == 2 ? [{
+                                            {
                                                 id: "publications",
                                                 title: "Publications",
                                                 component: showPublications ? (
@@ -2493,13 +2493,13 @@ function App() {
                                                         data={resumeData.publications}
                                                         onChange={updatePublications}
                                                     />
-                                                ) : <div className="text-gray-500 italic">Publications section is disabled</div>,
+                                                ) : <div className="text-gray-500 italic">Enable Publications above to edit</div>,
                                                 isEnabled: showPublications,
                                                 onToggle: (enabled: boolean) => setShowPublications(enabled),
                                                 showToggle: true,
-                                            }] : []),
+                                            },
                                         ];
-                                        const order = sectionOrder.filter((id) => id !== "personalInfo" && (versionV === 2 || id !== "publications"));
+                                        const order = sectionOrder.filter((id) => id !== "personalInfo");
                                         const ordered = order
                                             .map((id) => definitions.find((d) => d.id === id))
                                             .filter(Boolean) as any[];
@@ -2700,7 +2700,7 @@ function App() {
                                             showLeadership={showLeadership}
                                             showProjects={showProjects}
                                             showSummary={showSummary}
-                                            // showPublications={showPublications}
+                                            showPublications={showPublications}
                                             showChanges={userRole !== "admin"}
                                             changedFields={
                                                 userRole === "admin"
@@ -2718,6 +2718,7 @@ function App() {
                                             showLeadership={showLeadership}
                                             showProjects={showProjects}
                                             showSummary={showSummary}
+                                            showPublications={showPublications}
                                             showChanges={userRole !== "admin"}
                                             changedFields={
                                                 userRole === "admin"
@@ -2874,7 +2875,7 @@ function App() {
                                                                 isEnabled: true,
                                                                 showToggle: false,
                                                             },
-                                                            ...(versionV == 2 ? [{
+                                                            {
                                                                 id: "publications",
                                                                 title: "Publications",
                                                                 component: showPublications ? (
@@ -2882,13 +2883,13 @@ function App() {
                                                                         data={optimizedData.publications}
                                                                         onChange={updateOptimizedPublications}
                                                                     />
-                                                                ) : <div className="text-gray-500 italic">Publications section is disabled</div>,
+                                                                ) : <div className="text-gray-500 italic">Enable Publications above to edit</div>,
                                                                 isEnabled: showPublications,
                                                                 onToggle: (enabled: boolean) => setShowPublications(enabled),
                                                                 showToggle: true,
-                                                            }] : []),
+                                                            },
                                                         ];
-                                                        const order = sectionOrder.filter((id) => id !== "personalInfo" && (versionV === 2 || id !== "publications"));
+                                                        const order = sectionOrder.filter((id) => id !== "personalInfo");
                                                         const ordered = order
                                                             .map((id) => definitions.find((d) => d.id === id))
                                                             .filter(Boolean) as any[];
@@ -2981,6 +2982,9 @@ function App() {
                                                             showSummary={
                                                                 showSummary
                                                             }
+                                                            showPublications={
+                                                                showPublications
+                                                            }
                                                             showChanges={false}
                                                             changedFields={
                                                                 new Set()
@@ -3056,9 +3060,7 @@ function App() {
                                                 showLeadership={showLeadership}
                                                 showProjects={showProjects}
                                                 showSummary={showSummary}
-                                                // showPublications={
-                                                //     showPublications
-                                                // }
+                                                showPublications={showPublications}
                                                 showChanges={false}
                                                 changedFields={new Set()}
                                                 sectionOrder={sectionOrder}
@@ -3070,6 +3072,7 @@ function App() {
                                                 showLeadership={showLeadership}
                                                 showProjects={showProjects}
                                                 showSummary={showSummary}
+                                                showPublications={showPublications}
                                                 showChanges={false}
                                                 changedFields={new Set()}
                                                 sectionOrder={sectionOrder}
@@ -3098,9 +3101,7 @@ function App() {
                                                 showLeadership={showLeadership}
                                                 showProjects={showProjects}
                                                 showSummary={showSummary}
-                                                // showPublications={
-                                                //     showPublications
-                                                // }
+                                                showPublications={showPublications}
                                                 showChanges={true}
                                                 changedFields={changedFields}
                                                 sectionOrder={sectionOrder}
@@ -3112,6 +3113,7 @@ function App() {
                                                 showLeadership={showLeadership}
                                                 showProjects={showProjects}
                                                 showSummary={showSummary}
+                                                showPublications={showPublications}
                                                 showChanges={false}
                                                 changedFields={changedFields}
                                                 sectionOrder={sectionOrder}
@@ -3165,7 +3167,7 @@ function App() {
                                     showLeadership={showLeadership}
                                     showProjects={showProjects}
                                     showSummary={showSummary}
-                                    // showPublications={showPublications}
+                                    showPublications={showPublications}
                                     showChanges={false}
                                     changedFields={new Set()}
                                     sectionOrder={sectionOrder}
@@ -3178,6 +3180,7 @@ function App() {
                                     showLeadership={showLeadership}
                                     showProjects={showProjects}
                                     showSummary={showSummary}
+                                    showPublications={showPublications}
                                     showChanges={false}
                                     changedFields={new Set()}
                                     sectionOrder={sectionOrder}
@@ -3205,7 +3208,7 @@ function App() {
                                     showLeadership={showLeadership}
                                     showProjects={showProjects}
                                     showSummary={showSummary}
-                                    // showPublications={showPublications}
+                                    showPublications={showPublications}
                                     showChanges={false}
                                     changedFields={new Set()}
                                     sectionOrder={sectionOrder}
@@ -3218,6 +3221,7 @@ function App() {
                                     showLeadership={showLeadership}
                                     showProjects={showProjects}
                                     showSummary={showSummary}
+                                    showPublications={showPublications}
                                     showChanges={false}
                                     changedFields={new Set()}
                                     sectionOrder={sectionOrder}

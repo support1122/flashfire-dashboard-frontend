@@ -328,6 +328,14 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
 
             const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
 
+            let finalSectionOrder = [...sectionOrder];
+            if (showPublications && !finalSectionOrder.includes("publications")) {
+                finalSectionOrder.push("publications");
+            }
+            if (!showPublications && finalSectionOrder.includes("publications")) {
+                finalSectionOrder = finalSectionOrder.filter(id => id !== "publications");
+            }
+
             const pdfPayload = {
                 personalInfo: data.personalInfo,
                 summary: data.summary || "",
@@ -343,7 +351,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                     showLeadership: showLeadership,
                     showPublications: showPublications,
                 },
-                sectionOrder: sectionOrder,
+                sectionOrder: finalSectionOrder,
                 scale: scale,
                 overrideAutoScale: overrideAutoScale,
             };
@@ -673,6 +681,14 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
             const loadingToast = toastUtils.loading("Making the best optimal PDF... Please wait.");
 
+            let finalSectionOrder = [...sectionOrder];
+            if (showPublications && !finalSectionOrder.includes("publications")) {
+                finalSectionOrder.push("publications");
+            }
+            if (!showPublications && finalSectionOrder.includes("publications")) {
+                finalSectionOrder = finalSectionOrder.filter(id => id !== "publications");
+            }
+
             // Format data for PDF server
             const pdfPayload = {
                 personalInfo: data.personalInfo,
@@ -689,7 +705,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                     showLeadership: showLeadership,
                     showPublications: showPublications,
                 },
-                sectionOrder: sectionOrder,
+                sectionOrder: finalSectionOrder,
                 scale: selectedScale,
                 overrideAutoScale: overrideAutoScale,
             };
@@ -832,7 +848,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
             if (showLeadership && data.leadership?.length > 0)
                 sections.push("leadership");
             if (showPublications && data.publications?.length > 0)
-                sections.push("publications"); // Added for Publications
+                sections.push("publications");
             totalLines += sections.length * 2;
 
             // Summary (with wrap estimation)
@@ -1387,20 +1403,69 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 letterSpacing: "-0.025em",
                             }}
                         >
-                            LEADERSHIP & ACHIEVEMENTS
+                            LEADERSHIP & VOLUNTEERING
                         </div>
-                        {data.leadership.map((item) => (
+                        {data.leadership.map((item, index) => (
                             <div
                                 key={item.id}
+                                className="leadership-item"
                                 style={{
-                                    fontSize: styles.fontSize,
-                                    marginBottom: styles.bulletSpacing,
-                                    letterSpacing: "-0.025em",
-                                    lineHeight: styles.lineHeight,
+                                    marginBottom:
+                                        index === data.leadership.length - 1
+                                            ? styles.bulletSpacing
+                                            : styles.itemMargin,
                                 }}
                             >
-                                {item.title}
-                                {item.organization && `, ${item.organization}`}
+                                <div
+                                    style={{
+                                        fontSize: styles.fontSize,
+                                        fontWeight: "bold",
+                                        letterSpacing: "-0.025em",
+                                        lineHeight: styles.lineHeight,
+                                        marginBottom: styles.bulletSpacing,
+                                    }}
+                                >
+                                    {item.title}
+                                </div>
+                                {item.organization &&
+                                    item.organization
+                                        .split(/\r?\n/)
+                                        .filter((line) => line.trim())
+                                        .map((line, lineIndex) => (
+                                            <div
+                                                key={lineIndex}
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "flex-start",
+                                                    marginBottom:
+                                                        styles.bulletSpacing,
+                                                }}
+                                            >
+                                                <span
+                                                    style={{
+                                                        fontSize: styles.fontSize,
+                                                        marginRight: "4px",
+                                                        minWidth: "8px",
+                                                    }}
+                                                >
+                                                    •
+                                                </span>
+                                                <div
+                                                    style={{
+                                                        textAlign: "justify",
+                                                        fontSize: styles.fontSize,
+                                                        lineHeight:
+                                                            styles.lineHeight,
+                                                        letterSpacing:
+                                                            "-0.025em",
+                                                    }}
+                                                >
+                                                    {renderMarkedText(
+                                                        line.trim()
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
                             </div>
                         ))}
                     </div>
@@ -1605,58 +1670,72 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                 );
 
             case "publications":
-                if (!showPublications || !data.publications || data.publications.length === 0) return null;
+                if (!showPublications) return null;
+
+                const hasPublications = data.publications &&
+                    data.publications.length > 0 &&
+                    data.publications.some(pub => pub.details && pub.details.trim() !== "");
+
                 return (
-                    <div
-                        style={{
-                            marginBottom: "10px !important",
-                            ...getHighlightStyle("publications"),
-                        }}
-                    >
+                    <div style={{ marginBottom: "12px" }}>
                         <div
                             style={{
-                                fontSize: styles.fontSize,
+                                fontSize: "9pt",
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "2px",
-                                marginBottom: styles.itemMargin,
+                                paddingBottom: "8px",
+                                marginBottom: "6px",
                                 fontWeight: "bold",
-                                letterSpacing: "-0.025em",
                             }}
                         >
                             PUBLICATIONS
                         </div>
-                        {data.publications.map(
-                            (item) =>
-                                item.details.trim() && (
+                        {hasPublications ? (
+                            data.publications
+                                .filter(pub => pub.details && pub.details.trim() !== "")
+                                .map((publication) => (
                                     <div
-                                        key={item.id}
-                                        style={{
-                                            display: "flex",
-                                            alignItems: "flex-start",
-                                            marginBottom: styles.bulletSpacing,
-                                        }}
+                                        key={publication.id}
+                                        style={{ marginBottom: "6px" }}
                                     >
-                                        <span
-                                            style={{
-                                                fontSize: styles.fontSize,
-                                                marginRight: "4px",
-                                                minWidth: "8px",
-                                            }}
-                                        >
-                                            •
-                                        </span>
                                         <div
                                             style={{
-                                                textAlign: "justify",
-                                                fontSize: styles.fontSize,
-                                                lineHeight: styles.lineHeight,
-                                                letterSpacing: "-0.025em",
+                                                display: "flex",
+                                                alignItems: "flex-start",
                                             }}
                                         >
-                                            {item.details}
+                                            <span
+                                                style={{
+                                                    fontSize: "9pt",
+                                                    marginRight: "4px",
+                                                    minWidth: "8px",
+                                                }}
+                                            >
+                                                •
+                                            </span>
+                                            <div
+                                                style={{
+                                                    fontSize: "9pt",
+                                                    lineHeight: "1.3",
+                                                    textAlign: "justify",
+                                                    flex: "1",
+                                                }}
+                                            >
+                                                {publication.details}
+                                            </div>
                                         </div>
                                     </div>
-                                )
+                                ))
+                        ) : (
+                            <div
+                                style={{
+                                    fontSize: "9pt",
+                                    fontStyle: "italic",
+                                    color: "#666",
+                                    lineHeight: "1.3",
+                                }}
+                            >
+                                Your publications will appear here...
+                            </div>
                         )}
                     </div>
                 );
@@ -1806,10 +1885,17 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                 </div>
             </div>
 
-            {/* Render sections based on section order */}
-            {sectionOrder
-                .filter(sectionId => sectionId !== "personalInfo") // Skip personal info as it's always first
-                .map(sectionId => renderSection(sectionId))}
+            {/* Render sections based on section order; include publications only when enabled */}
+            {(() => {
+                const order = sectionOrder.filter(sectionId => sectionId !== "personalInfo");
+                if (showPublications && !order.includes("publications")) {
+                    order.push("publications");
+                }
+                if (!showPublications && order.includes("publications")) {
+                    order.splice(order.indexOf("publications"), 1);
+                }
+                return order.map(sectionId => renderSection(sectionId));
+            })()}
         </>
     );
 
@@ -1835,6 +1921,14 @@ The resume will print across multiple pages if needed, ensuring no content is cu
             const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
             const loadingToast = toastUtils.loading("Making the best optimal PDF... Please wait.");
 
+            let finalSectionOrderForDownload = [...sectionOrder];
+            if (showPublications && !finalSectionOrderForDownload.includes("publications")) {
+                finalSectionOrderForDownload.push("publications");
+            }
+            if (!showPublications && finalSectionOrderForDownload.includes("publications")) {
+                finalSectionOrderForDownload = finalSectionOrderForDownload.filter(id => id !== "publications");
+            }
+
             const pdfPayload = {
                 personalInfo: data.personalInfo,
                 summary: data.summary || "",
@@ -1850,7 +1944,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                     showLeadership: showLeadership,
                     showPublications: showPublications,
                 },
-                sectionOrder: sectionOrder,
+                sectionOrder: finalSectionOrderForDownload,
                 styles: styles,
                 overrideAutoScale: overrideAutoScale,
                 selectedScale: selectedScale,
