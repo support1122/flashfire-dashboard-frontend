@@ -14,6 +14,7 @@ import Navigation from './components/Navigation.tsx';
 import NewUserModal from './components/NewUserModal.tsx';
 import ManagePage from './components/Operations/Manage.tsx';
 import Optimizer from './components/AiOprimizer/Optimizer.tsx';
+import { PostHogSessionControl } from './components/PostHogSessionControl.tsx';
 
 // Component to handle Profile page with proper navigation
 function ProfileWithNavigation() {
@@ -84,6 +85,7 @@ function App() {
             }}
           />
           <Router>
+              {(import.meta.env.VITE_POSTHOG_KEY || import.meta.env.VITE_PUBLIC_POSTHOG_KEY) ? <PostHogSessionControl /> : null}
               <Routes>
                   {/* Public routes */}
                   <Route

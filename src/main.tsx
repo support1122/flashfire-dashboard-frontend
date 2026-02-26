@@ -36,12 +36,10 @@
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { RouterProvider, createBrowserRouter } from 'react-router-dom';
 import App from './App.tsx';
-import Login from './components/Login.tsx';
-import Register from './components/Register.tsx';
 import { UserProvider } from './state_management/UserContext.tsx';
-
+import { PostHogProvider } from '@posthog/react';
+import { posthogClient } from './lib/posthog.ts';
 import './index.css';
 
 // const router = createBrowserRouter([
@@ -59,11 +57,18 @@ import './index.css';
 //   }
 // ]);
 
-createRoot(document.getElementById('root')!).render(
+const root = createRoot(document.getElementById('root')!);
+const app = (
   <StrictMode>
     <UserProvider>
-      {/* <RouterProvider router={router} /> */}
-      <App />
+      {posthogClient ? (
+        <PostHogProvider client={posthogClient}>
+          <App />
+        </PostHogProvider>
+      ) : (
+        <App />
+      )}
     </UserProvider>
   </StrictMode>
 );
+root.render(app);
