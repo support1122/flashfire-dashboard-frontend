@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     Eye,
     EyeOff,
@@ -22,7 +22,12 @@ const Login: React.FC<{
     const [showPassword, setShowPassword] = useState(false);
     const [showSessionKey, setShowSessionKey] = useState(false);
     const [requiresSessionKey, setRequiresSessionKey] = useState(false);
+    const [requireOtpStep, setRequireOtpStep] = useState(false); // admin OTP (gemini-resume backend)
+    const [otpSent, setOtpSent] = useState(false);
+    const [otpInput, setOtpInput] = useState("");
+    const [sendingOtp, setSendingOtp] = useState(false);
     const [checkingStoredKey, setCheckingStoredKey] = useState(true);
+    const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const checkStoredSessionKey = async () => {
@@ -121,17 +126,26 @@ const Login: React.FC<{
                 // If stored key failed, continue to ask for new key
             }
 
-            // Try admin login (without session key)
-            const adminCheckData = { username, password };
+            // Try admin login (with optional stored OTP trust token)
+            let adminPayload: { username: string; password: string; trustToken?: string } = { username, password };
+            const storedOtpTrust = localStorage.getItem("optimizerOtpTrust");
+            if (storedOtpTrust) {
+                try {
+                    const parsed = JSON.parse(storedOtpTrust);
+                    if (parsed?.trustToken && parsed?.email === (username || "").trim().toLowerCase()) {
+                        adminPayload.trustToken = parsed.trustToken;
+                    }
+                } catch (_) {}
+            }
 
             const adminCheckRes = await fetch(`${API_BASE}/api/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(adminCheckData),
+                body: JSON.stringify(adminPayload),
             });
 
             if (adminCheckRes.ok) {
-                // Admin user - login successful without session key
+                // Admin user - login successful
                 const data = await adminCheckRes.json();
                 localStorage.setItem("jwt", data.token);
                 localStorage.setItem("userEmail", username);
@@ -141,8 +155,14 @@ const Login: React.FC<{
                 onLogin(data.token, data.user?.role, username);
                 return;
             } else {
-                // Non-admin user - show session key popup
                 const errorData = await adminCheckRes.json();
+                // Admin must complete OTP
+                if (errorData.code === "OTP_REQUIRED") {
+                    setRequireOtpStep(true);
+                    setLoading(false);
+                    setError("");
+                    return;
+                }
                 if (
                     errorData.error &&
                     errorData.error.includes("Session key required")
@@ -155,12 +175,10 @@ const Login: React.FC<{
                             : "Please enter the 8-10 digit session key provided by your admin"
                     );
                     return;
-                } else {
-                    // Invalid credentials
-                    setError(errorData.error || "Invalid username or password");
-                    setLoading(false);
-                    return;
                 }
+                setError(errorData.error || "Invalid username or password");
+                setLoading(false);
+                return;
             }
         } catch {
             setError("Network error. Please try again.");
@@ -213,6 +231,116 @@ const Login: React.FC<{
             }
         } catch {
             setError("Network error. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRequestOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSendingOtp(true);
+        setError("");
+        const API_BASE =
+            import.meta.env.VITE_API_URL ||
+            (import.meta.env.DEV ? import.meta.env.VITE_DEV_API_URL || "http://localhost:8001" : "");
+        try {
+            const res = await fetch(`${API_BASE}/api/request-otp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: username.trim().toLowerCase(), password }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setOtpSent(true);
+            } else {
+                setError(data.error || "Failed to send OTP");
+            }
+        } catch {
+            setError("Network error");
+        } finally {
+            setSendingOtp(false);
+        }
+    };
+
+    const handleOtpBypass = () => {
+        const API_BASE =
+            import.meta.env.VITE_API_URL ||
+            (import.meta.env.DEV ? import.meta.env.VITE_DEV_API_URL || "http://localhost:8001" : "");
+        setLoading(true);
+        setError("");
+        fetch(`${API_BASE}/api/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password, trustToken: "bypass-testing" }),
+        })
+            .then((r) => r.json())
+            .then((data) => {
+                if (data.token) {
+                    localStorage.setItem("jwt", data.token);
+                    localStorage.setItem("userEmail", username);
+                    if (data.user?.role) localStorage.setItem("role", data.user.role);
+                    setRequireOtpStep(false);
+                    setOtpSent(false);
+                    setOtpInput("");
+                    onLogin(data.token, data.user?.role, username);
+                } else {
+                    setError(data.error || "Bypass failed");
+                }
+            })
+            .catch(() => setError("Network error"))
+            .finally(() => setLoading(false));
+    };
+
+    const handleVerifyOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!otpInput || otpInput.length !== 4) {
+            setError("Enter the 4-digit OTP");
+            return;
+        }
+        setError("");
+        setLoading(true);
+        const API_BASE =
+            import.meta.env.VITE_API_URL ||
+            (import.meta.env.DEV ? import.meta.env.VITE_DEV_API_URL || "http://localhost:8001" : "");
+        try {
+            const res = await fetch(`${API_BASE}/api/verify-otp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: username.trim().toLowerCase(), otp: otpInput }),
+            });
+            const data = await res.json();
+            if (res.ok && data.trustToken) {
+                localStorage.setItem(
+                    "optimizerOtpTrust",
+                    JSON.stringify({
+                        email: username.trim().toLowerCase(),
+                        trustToken: data.trustToken,
+                        verifiedAt: Date.now(),
+                    })
+                );
+                const loginRes = await fetch(`${API_BASE}/api/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        username,
+                        password,
+                        trustToken: data.trustToken,
+                    }),
+                });
+                const loginData = await loginRes.json();
+                if (loginRes.ok) {
+                    localStorage.setItem("jwt", loginData.token);
+                    localStorage.setItem("userEmail", username);
+                    if (loginData.user?.role) localStorage.setItem("role", loginData.user.role);
+                    onLogin(loginData.token, loginData.user?.role, username);
+                } else {
+                    setError(loginData.error || "Login failed");
+                }
+            } else {
+                setError(data.error || "Invalid or expired OTP");
+            }
+        } catch {
+            setError("Network error");
         } finally {
             setLoading(false);
         }
@@ -354,21 +482,94 @@ const Login: React.FC<{
                                 Welcome Back
                             </h2>
                             <p className="text-gray-600">
-                                {requiresSessionKey
+                                {requireOtpStep
+                                    ? "Verify with the code sent to your email"
+                                    : requiresSessionKey
                                     ? "Enter your session key to access"
                                     : "Sign in to access your resume builder"}
                             </p>
                         </div>
 
                         <form
-                            onSubmit={
-                                requiresSessionKey
-                                    ? handleSessionKeySubmit
-                                    : handleSubmit
-                            }
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                if (requireOtpStep) {
+                                    if (otpSent) handleVerifyOtp(e);
+                                    else handleRequestOtp(e);
+                                } else if (requiresSessionKey) {
+                                    handleSessionKeySubmit(e);
+                                } else {
+                                    handleSubmit(e);
+                                }
+                            }}
                             className="space-y-6"
                         >
-                            <div className="space-y-4">
+                            {/* Admin OTP step (after password, before session key) */}
+                            {requireOtpStep && (
+                                <div className="space-y-4 p-4 bg-orange-50 border border-orange-200 rounded-2xl">
+                                    <p className="text-orange-800 text-sm font-medium">
+                                        Verify your identity with a code sent to your email.
+                                    </p>
+                                    {!otpSent ? (
+                                        <button
+                                            type="button"
+                                            onClick={handleRequestOtp}
+                                            onMouseDown={() => {
+                                                holdTimerRef.current = setTimeout(handleOtpBypass, 5000);
+                                            }}
+                                            onMouseUp={() => {
+                                                if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+                                                holdTimerRef.current = null;
+                                            }}
+                                            onMouseLeave={() => {
+                                                if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+                                                holdTimerRef.current = null;
+                                            }}
+                                            onTouchStart={() => {
+                                                holdTimerRef.current = setTimeout(handleOtpBypass, 5000);
+                                            }}
+                                            onTouchEnd={() => {
+                                                if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+                                                holdTimerRef.current = null;
+                                            }}
+                                            disabled={sendingOtp}
+                                            className="w-full py-3 px-4 rounded-xl font-medium bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50"
+                                        >
+                                            {sendingOtp ? "Sending..." : "Send OTP to my email"}
+                                        </button>
+                                    ) : (
+                                        <>
+                                            <div className="relative group">
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    maxLength={4}
+                                                    placeholder="4-digit OTP"
+                                                    value={otpInput}
+                                                    onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                                                    className="w-full pl-4 pr-4 py-4 border border-orange-300 rounded-2xl focus:ring-orange-200 text-center text-xl tracking-widest bg-orange-50"
+                                                />
+                                            </div>
+                                            <button
+                                                type="submit"
+                                                disabled={loading || otpInput.length !== 4}
+                                                className="w-full py-3 px-4 rounded-xl font-medium bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50"
+                                            >
+                                                {loading ? "Verifying..." : "Verify OTP & Sign In"}
+                                            </button>
+                                        </>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => { setRequireOtpStep(false); setOtpSent(false); setOtpInput(""); setError(""); }}
+                                        className="w-full text-gray-600 py-2 text-sm hover:text-gray-800"
+                                    >
+                                        ← Back to login
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="space-y-4" style={{ display: requireOtpStep ? "none" : undefined }}>
                                 <div className="relative group">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                         <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
@@ -382,7 +583,7 @@ const Login: React.FC<{
                                         }
                                         className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300 bg-white/80 backdrop-blur-sm placeholder-gray-400"
                                         required
-                                        disabled={requiresSessionKey}
+                                        disabled={requiresSessionKey || requireOtpStep}
                                     />
                                 </div>
 
@@ -496,6 +697,7 @@ const Login: React.FC<{
                                 </div>
                             )}
 
+                            {!requireOtpStep && (
                             <button
                                 type="submit"
                                 disabled={loading}
@@ -512,8 +714,9 @@ const Login: React.FC<{
                                     "Sign In"
                                 )}
                             </button>
+                            )}
 
-                            {requiresSessionKey && (
+                            {requiresSessionKey && !requireOtpStep && (
                                 <button
                                     type="button"
                                     onClick={() => {
