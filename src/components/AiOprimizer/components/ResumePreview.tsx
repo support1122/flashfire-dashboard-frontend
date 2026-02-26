@@ -1695,7 +1695,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 .map((publication) => (
                                     <div
                                         key={publication.id}
-                                        style={{ marginBottom: "6px" }}
+                                        style={{ marginBottom: "2px" }}
                                     >
                                         <div
                                             style={{
