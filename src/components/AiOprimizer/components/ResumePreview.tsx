@@ -1698,7 +1698,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                         style={{
                                             display: "flex",
                                             alignItems: "flex-start",
-                                            marginBottom: styles.bulletSpacing,
+                                            marginBottom: "0px",
                                         }}
                                     >
                                         <span
