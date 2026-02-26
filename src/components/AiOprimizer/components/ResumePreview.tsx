@@ -1695,33 +1695,31 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 .map((publication) => (
                                     <div
                                         key={publication.id}
-                                        style={{ marginBottom: "-0.025em" }}
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "flex-start",
+                                            marginBottom: styles.bulletSpacing,
+                                        }}
                                     >
-                                        <div
+                                        <span
                                             style={{
-                                                display: "flex",
-                                                alignItems: "flex-start",
+                                                fontSize: styles.fontSize,
+                                                marginRight: "4px",
+                                                minWidth: "8px",
                                             }}
                                         >
-                                            <span
-                                                style={{
-                                                    fontSize: "9pt",
-                                                    marginRight: "4px",
-                                                    minWidth: "8px",
-                                                }}
-                                            >
-                                                •
-                                            </span>
-                                            <div
-                                                style={{
-                                                    fontSize: "9pt",
-                                                    lineHeight: "1.3",
-                                                    textAlign: "justify",
-                                                    flex: "1",
-                                                }}
-                                            >
-                                                {publication.details}
-                                            </div>
+                                            •
+                                        </span>
+                                        <div
+                                            style={{
+                                                fontSize: styles.fontSize,
+                                                lineHeight: styles.lineHeight,
+                                                textAlign: "justify",
+                                                flex: "1",
+                                                letterSpacing: "-0.025em",
+                                            }}
+                                        >
+                                            {publication.details}
                                         </div>
                                     </div>
                                 ))
