@@ -1677,14 +1677,15 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                     data.publications.some(pub => pub.details && pub.details.trim() !== "");
 
                 return (
-                    <div style={{ marginBottom: "12px" }}>
+                    <div style={{ marginBottom: styles.sectionMargin }}>
                         <div
                             style={{
-                                fontSize: "9pt",
+                                fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "8px",
-                                marginBottom: "6px",
+                                paddingBottom: "2px",
+                                marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
+                                letterSpacing: "-0.025em",
                             }}
                         >
                             PUBLICATIONS
@@ -1695,41 +1696,45 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 .map((publication) => (
                                     <div
                                         key={publication.id}
-                                        style={{
-                                            display: "flex",
-                                            alignItems: "flex-start",
-                                            marginBottom: "0px",
-                                        }}
+                                        style={{ marginBottom: styles.bulletSpacing }}
                                     >
-                                        <span
-                                            style={{
-                                                fontSize: styles.fontSize,
-                                                marginRight: "4px",
-                                                minWidth: "8px",
-                                            }}
-                                        >
-                                            •
-                                        </span>
                                         <div
                                             style={{
-                                                fontSize: styles.fontSize,
-                                                lineHeight: styles.lineHeight,
-                                                textAlign: "justify",
-                                                flex: "1",
-                                                letterSpacing: "-0.025em",
+                                                display: "flex",
+                                                alignItems: "flex-start",
                                             }}
                                         >
-                                            {publication.details}
+                                            <span
+                                                style={{
+                                                    fontSize: styles.fontSize,
+                                                    marginRight: "4px",
+                                                    minWidth: "8px",
+                                                }}
+                                            >
+                                                •
+                                            </span>
+                                            <div
+                                                style={{
+                                                    fontSize: styles.fontSize,
+                                                    lineHeight: styles.lineHeight,
+                                                    textAlign: "justify",
+                                                    flex: "1",
+                                                    letterSpacing: "-0.025em",
+                                                }}
+                                            >
+                                                {renderMarkedText(publication.details)}
+                                            </div>
                                         </div>
                                     </div>
                                 ))
                         ) : (
                             <div
                                 style={{
-                                    fontSize: "9pt",
+                                    fontSize: styles.fontSize,
                                     fontStyle: "italic",
                                     color: "#666",
-                                    lineHeight: "1.3",
+                                    lineHeight: styles.lineHeight,
+                                    letterSpacing: "-0.025em",
                                 }}
                             >
                                 Your publications will appear here...

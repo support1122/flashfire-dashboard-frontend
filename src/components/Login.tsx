@@ -389,6 +389,7 @@ export default function Login() {
   const [otpSent, setOtpSent] = useState<boolean>(false)
   const [sendingOtp, setSendingOtp] = useState<boolean>(false)
   const [useSessionKey, setUseSessionKey] = useState<boolean>(false)
+  const [rememberFor30Days, setRememberFor30Days] = useState<boolean>(true)
 
   const navigate = useNavigate()
   const { setName, setEmailOperations, setRole, setManagedUsers, setOperatorNamesMap } = useOperationsStore()
@@ -436,11 +437,15 @@ export default function Login() {
         toastUtils.dismissToast(loadingToast)
         toastUtils.success('Verified. Welcome to Operations Dashboard!')
         if (data?.trustToken) {
-          localStorage.setItem('opsOtpTrust', JSON.stringify({
-            email: email.toLowerCase(),
-            trustToken: data.trustToken,
-            verifiedAt: Date.now(),
-          }))
+          if (rememberFor30Days) {
+            localStorage.setItem('opsOtpTrust', JSON.stringify({
+              email: email.toLowerCase(),
+              trustToken: data.trustToken,
+              verifiedAt: Date.now(),
+            }))
+          } else {
+            localStorage.removeItem('opsOtpTrust')
+          }
         }
         setRequireSessionKey(false)
         setOtpInput("")
@@ -1009,6 +1014,8 @@ export default function Login() {
         useSessionKey={useSessionKey}
         setUseSessionKey={setUseSessionKey}
         email={email}
+        rememberFor30Days={rememberFor30Days}
+        setRememberFor30Days={setRememberFor30Days}
       />
     </div>
   )
@@ -1029,6 +1036,8 @@ function SessionKeyModal({
   useSessionKey,
   setUseSessionKey,
   email,
+  rememberFor30Days,
+  setRememberFor30Days,
 }: {
   visible: boolean
   onClose: () => void
@@ -1044,6 +1053,8 @@ function SessionKeyModal({
   useSessionKey: boolean
   setUseSessionKey: (v: boolean) => void
   email: string
+  rememberFor30Days: boolean
+  setRememberFor30Days: (v: boolean) => void
 }) {
   if (!visible) return null
   return (
@@ -1083,6 +1094,15 @@ function SessionKeyModal({
                       autoComplete="one-time-code"
                     />
                   </div>
+                  <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={rememberFor30Days}
+                      onChange={(e) => setRememberFor30Days(e.target.checked)}
+                      className="rounded"
+                    />
+                    Remember for 30 days (skip OTP next time)
+                  </label>
                   <button type="submit" className="w-full px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:from-emerald-600 hover:to-green-700">
                     Verify OTP
                   </button>

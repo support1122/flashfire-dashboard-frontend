@@ -26,6 +26,7 @@ const Login: React.FC<{
     const [otpSent, setOtpSent] = useState(false);
     const [otpInput, setOtpInput] = useState("");
     const [sendingOtp, setSendingOtp] = useState(false);
+    const [rememberFor30Days, setRememberFor30Days] = useState(true);
     const [checkingStoredKey, setCheckingStoredKey] = useState(true);
     const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -310,14 +311,18 @@ const Login: React.FC<{
             });
             const data = await res.json();
             if (res.ok && data.trustToken) {
-                localStorage.setItem(
-                    "optimizerOtpTrust",
-                    JSON.stringify({
-                        email: username.trim().toLowerCase(),
-                        trustToken: data.trustToken,
-                        verifiedAt: Date.now(),
-                    })
-                );
+                if (rememberFor30Days) {
+                    localStorage.setItem(
+                        "optimizerOtpTrust",
+                        JSON.stringify({
+                            email: username.trim().toLowerCase(),
+                            trustToken: data.trustToken,
+                            verifiedAt: Date.now(),
+                        })
+                    );
+                } else {
+                    localStorage.removeItem("optimizerOtpTrust");
+                }
                 const loginRes = await fetch(`${API_BASE}/api/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -550,6 +555,15 @@ const Login: React.FC<{
                                                     className="w-full pl-4 pr-4 py-4 border border-orange-300 rounded-2xl focus:ring-orange-200 text-center text-xl tracking-widest bg-orange-50"
                                                 />
                                             </div>
+                                            <label className="flex items-center gap-2 cursor-pointer text-sm text-orange-800">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={rememberFor30Days}
+                                                    onChange={(e) => setRememberFor30Days(e.target.checked)}
+                                                    className="rounded"
+                                                />
+                                                Remember for 30 days (skip OTP next time)
+                                            </label>
                                             <button
                                                 type="submit"
                                                 disabled={loading || otpInput.length !== 4}
