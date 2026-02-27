@@ -1677,14 +1677,15 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                     data.publications.some(pub => pub.details && pub.details.trim() !== "");
 
                 return (
-                    <div style={{ marginBottom: "12px" }}>
+                    <div style={{ marginBottom: styles.sectionMargin }}>
                         <div
                             style={{
-                                fontSize: "9pt",
+                                fontSize: styles.fontSize,
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "8px",
-                                marginBottom: "6px",
+                                paddingBottom: "2px",
+                                marginBottom: styles.itemMargin,
                                 fontWeight: "bold",
+                                letterSpacing: "-0.025em",
                             }}
                         >
                             PUBLICATIONS
@@ -1695,7 +1696,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 .map((publication) => (
                                     <div
                                         key={publication.id}
-                                        style={{ marginBottom: "6px" }}
+                                        style={{ marginBottom: styles.bulletSpacing }}
                                     >
                                         <div
                                             style={{
@@ -1705,7 +1706,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                         >
                                             <span
                                                 style={{
-                                                    fontSize: "9pt",
+                                                    fontSize: styles.fontSize,
                                                     marginRight: "4px",
                                                     minWidth: "8px",
                                                 }}
@@ -1714,13 +1715,14 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                             </span>
                                             <div
                                                 style={{
-                                                    fontSize: "9pt",
-                                                    lineHeight: "1.3",
+                                                    fontSize: styles.fontSize,
+                                                    lineHeight: styles.lineHeight,
                                                     textAlign: "justify",
                                                     flex: "1",
+                                                    letterSpacing: "-0.025em",
                                                 }}
                                             >
-                                                {publication.details}
+                                                {renderMarkedText(publication.details)}
                                             </div>
                                         </div>
                                     </div>
@@ -1728,10 +1730,11 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         ) : (
                             <div
                                 style={{
-                                    fontSize: "9pt",
+                                    fontSize: styles.fontSize,
                                     fontStyle: "italic",
                                     color: "#666",
-                                    lineHeight: "1.3",
+                                    lineHeight: styles.lineHeight,
+                                    letterSpacing: "-0.025em",
                                 }}
                             >
                                 Your publications will appear here...
