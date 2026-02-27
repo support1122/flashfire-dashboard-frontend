@@ -1783,7 +1783,7 @@ export default function JobModal({
 
             while (retryCount <= maxRetries) {
                 try {
-                    optimizeResponse = await fetch(`${apiUrl}/api/optimize-with-gemini`, {
+                    optimizeResponse = await fetch(`${apiUrl}/api/optimize-resume`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
