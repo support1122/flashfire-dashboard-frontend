@@ -298,6 +298,10 @@ const JobTracker = () => {
             if (maybeAttachmentTime > 0) return maybeAttachmentTime;
         }
 
+        // For all columns: prefer updatedAt so recently moved cards stay on top (stack behavior)
+        const updatedTime = parseJobDate(job.updatedAt);
+        if (updatedTime > 0) return updatedTime;
+
         return getJobCreationTime(job);
     };
 
@@ -653,7 +657,7 @@ const JobTracker = () => {
                     ? {
                         ...j,
                         currentStatus: newStatus,
-                        // Keep updatedAt for history, but sorting will rely on createdAt/dateAdded.
+                        // Update updatedAt so sorting puts this card on top immediately
                         updatedAt: new Date().toLocaleString("en-IN")
                     }
                     : j

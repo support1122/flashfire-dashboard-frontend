@@ -1,9 +1,11 @@
 import React, {useState, useEffect, useRef} from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, Sparkles } from 'lucide-react';
 import { Job } from '../types';
 import { getTimeAgo } from '../utils/getTimeAgo';
 import { useDownloadHighlightStore } from '../state_management/DownloadHighlightStore.ts';
 import { useOperationsStore } from '../state_management/Operations.ts';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 interface JobCardProps {
   job: Job;
   onDragStart: (e: React.DragEvent, job: Job) => void;
@@ -35,6 +37,11 @@ const JobCard: React.FC<JobCardProps> = ({
   const handleClick = () => {
     setShowJobModal(true);
     setSelectedJob(job);
+    // Mark optimized resume as seen (fire-and-forget)
+    if (hasUnseenResume && job._id) {
+      fetch(`${API_BASE}/api/jobs/${job._id}/mark-resume-seen`, { method: 'PATCH' }).catch(() => {});
+      job.optimizedResumeSeen = true; // Update local object immediately
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -88,9 +95,14 @@ const JobCard: React.FC<JobCardProps> = ({
   const getCompanyDomain = (companyName: string) => {
     return companyName.replace(/\s+/g, '').toLowerCase();
   };
-  const shouldHighlight = isHighlighting && 
-    (role === "operator" || role === "operations") && 
+  const shouldHighlight = isHighlighting &&
+    (role === "operator" || role === "operations") &&
     !job.downloaded;
+
+  const isOps = role === "operator" || role === "operations";
+  const hasUnseenResume = isOps && job.optimizedResume?.hasResume === true && !job.optimizedResumeSeen;
+  const autoOptCompleted = isOps && job.optimizedResume?.hasResume === true;
+  const autoOptFailed = isOps && job.autoOptimization?.status === 'failed';
   const sanitizeCompanyDomain = (name) => {
   if (!name) return "example.com";
 
@@ -118,14 +130,21 @@ const JobCard: React.FC<JobCardProps> = ({
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       className={`rounded-lg border w-full border-gray-200 p-2 shadow-sm hover:shadow-md transition-all duration-200 cursor-move hover:scale-[1.02] hover:-rotate-1 ${
-        shouldHighlight 
-          ? "bg-red-100 border-red-300" 
-          : "bg-white"
+        shouldHighlight
+          ? "bg-red-100 border-red-300"
+          : hasUnseenResume
+            ? "bg-amber-50 border-amber-300 ring-1 ring-amber-200"
+            : "bg-white"
       }`}
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-gray-900 line-clamp-2">{job.jobTitle}</h4>
+          <div className="flex items-center gap-1.5">
+            <h4 className="font-semibold text-gray-900 line-clamp-2">{job.jobTitle}</h4>
+            {autoOptCompleted && !job.optimizedResumeSeen && (
+              <Sparkles className="w-3.5 h-3.5 text-green-600 flex-shrink-0" title="Resume auto optimized" />
+            )}
+          </div>
           <div className="flex items-center text-sm text-gray-600 mt-1">
   {job.companyName && (
               <img
@@ -158,6 +177,17 @@ const JobCard: React.FC<JobCardProps> = ({
          {getTimeAgo(job?.createdAt || job?.dateAdded || job?.updatedAt)}
         </span>
       </div>
+
+      {isOps && !job.optimizedResumeSeen && (autoOptCompleted || autoOptFailed) && (
+        <div className="mb-2">
+          {autoOptCompleted && (
+            <p className="text-xs font-medium text-green-600">Resume auto optimized – download</p>
+          )}
+          {autoOptFailed && !autoOptCompleted && (
+            <p className="text-xs font-medium text-red-600">Resume auto optimization failed</p>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
