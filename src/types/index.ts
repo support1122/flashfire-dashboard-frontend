@@ -21,6 +21,15 @@ export interface Job {
   operatorName?: string;
   operatorEmail?: string;
   appliedDate?: string | null;
+  optimizedResume?: { hasResume?: boolean; [key: string]: any };
+  optimizedResumeSeen?: boolean;
+  downloaded?: boolean;
+  autoOptimization?: {
+    status?: 'pending' | 'processing' | 'completed' | 'failed' | 'skipped';
+    attempts?: number;
+    error?: string;
+    [key: string]: any;
+  };
 }
 
 export interface OptimizedResume {
