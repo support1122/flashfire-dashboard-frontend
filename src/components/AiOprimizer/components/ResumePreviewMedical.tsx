@@ -18,6 +18,7 @@ interface ResumeData {
         portfolio: string;
         github: string;
         publications: string;
+        profileLinks?: Array<{ id: string; label: string; url: string }>;
     };
     summary: string;
     workExperience: Array<{
@@ -1125,6 +1126,22 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                             </a>
                         </>
                     )}
+                    {(data.personalInfo.profileLinks ?? []).filter((l) => l.label?.trim() && l.url?.trim()).map((link) => (
+                        <React.Fragment key={link.id}>
+                            {" | "}
+                            <a
+                                href={link.url.startsWith("http") ? link.url : `https://${link.url}`}
+                                style={{
+                                    color: "blue",
+                                    textDecoration: "none",
+                                }}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                {link.label.trim()}
+                            </a>
+                        </React.Fragment>
+                    ))}
                 </div>
             </div>
 

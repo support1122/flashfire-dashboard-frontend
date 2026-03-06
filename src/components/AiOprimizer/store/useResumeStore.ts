@@ -336,6 +336,17 @@ export const useResumeStore = create<ResumeStore>()(
                          });
                          state.changedFields = new Set(state.changedFields || []);
 
+                         // Ensure personalInfo.profileLinks exists (new scalable links)
+                         if (state.resumeData?.personalInfo && !Array.isArray(state.resumeData.personalInfo.profileLinks)) {
+                              state.resumeData.personalInfo.profileLinks = [];
+                         }
+                         if (state.lastSelectedResume?.personalInfo && !Array.isArray(state.lastSelectedResume.personalInfo.profileLinks)) {
+                              state.lastSelectedResume.personalInfo.profileLinks = [];
+                         }
+                         if (state.baseResume?.personalInfo && !Array.isArray(state.baseResume.personalInfo.profileLinks)) {
+                              state.baseResume.personalInfo.profileLinks = [];
+                         }
+
                          // Ensure boolean values are properly set (fix undefined issues)
                          if (typeof state.showPublications !== 'boolean') {
                               state.showPublications = false;

@@ -1342,6 +1342,17 @@ function App() {
         });
         trackChanges(`personalInfo.${field}`);
     };
+
+    const updateProfileLinks = (links: { id: string; label: string; url: string }[]) => {
+        setResumeData({
+            ...resumeData,
+            personalInfo: {
+                ...resumeData.personalInfo,
+                profileLinks: links,
+            },
+        });
+        trackChanges("personalInfo.profileLinks");
+    };
     const updateSummary = (value: string) => {
         setResumeData({ ...resumeData, summary: value });
         trackChanges("summary");
@@ -1620,7 +1631,14 @@ function App() {
         // Compare personal info
         Object.keys(original.personalInfo).forEach((key) => {
             const typedKey = key as keyof typeof original.personalInfo;
-            if (
+            if (typedKey === "profileLinks") {
+                if (
+                    JSON.stringify(original.personalInfo.profileLinks ?? []) !==
+                    JSON.stringify(optimized.personalInfo.profileLinks ?? [])
+                ) {
+                    changes.add("personalInfo.profileLinks");
+                }
+            } else if (
                 original.personalInfo[typedKey] !==
                 optimized.personalInfo[typedKey]
             ) {
@@ -1698,6 +1716,22 @@ function App() {
         }
     };
 
+    const updateOptimizedProfileLinks = (links: { id: string; label: string; url: string }[]) => {
+        if (optimizedData) {
+            setOptimizedData((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        personalInfo: {
+                            ...prev.personalInfo,
+                            profileLinks: links,
+                        },
+                    }
+                    : null
+            );
+        }
+    };
+
     const updateOptimizedLeadership = (data: LeadershipItem[]) => {
         if (optimizedData) {
             setOptimizedData((prev) =>
@@ -1725,13 +1759,22 @@ function App() {
                 const personalInfoChanged = Object.keys(
                     originalData.personalInfo
                 ).filter(
-                    (key) =>
-                        originalData.personalInfo[
-                        key as keyof typeof originalData.personalInfo
-                        ] !==
-                        optimizedData.personalInfo[
-                        key as keyof typeof optimizedData.personalInfo
-                        ]
+                    (key) => {
+                        if (key === "profileLinks") {
+                            return (
+                                JSON.stringify(originalData.personalInfo.profileLinks ?? []) !==
+                                JSON.stringify(optimizedData.personalInfo.profileLinks ?? [])
+                            );
+                        }
+                        return (
+                            originalData.personalInfo[
+                                key as keyof typeof originalData.personalInfo
+                            ] !==
+                            optimizedData.personalInfo[
+                                key as keyof typeof optimizedData.personalInfo
+                            ]
+                        );
+                    }
                 );
 
                 if (personalInfoChanged.length > 0) {
@@ -2405,6 +2448,7 @@ function App() {
                                     <PersonalInfo
                                         data={resumeData.personalInfo}
                                         onChange={updatePersonalInfo}
+                                        onProfileLinksChange={updateProfileLinks}
                                     />
 
                                     {/* Draggable Sections */}
@@ -2798,6 +2842,7 @@ function App() {
                                                     <PersonalInfo
                                                         data={optimizedData.personalInfo}
                                                         onChange={updateOptimizedPersonalInfo}
+                                                        onProfileLinksChange={updateOptimizedProfileLinks}
                                                     />
                                                     {(() => {
                                                         const definitions = [

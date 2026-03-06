@@ -11,6 +11,7 @@ const emptyInitialData: ResumeData = {
         portfolio: "",
         github: "",
         publications: "",
+        profileLinks: [],
     },
     summary: "",
     workExperience: [
