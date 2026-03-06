@@ -44,6 +44,13 @@ export interface SkillCategory {
     skills: string;
 }
 
+/** Single entry for scalable profile links (e.g. LeetCode, personal site). */
+export interface ProfileLink {
+    id: string;
+    label: string;
+    url: string;
+}
+
 export interface PersonalInfo {
     name: string;
     title: string;
@@ -54,6 +61,8 @@ export interface PersonalInfo {
     portfolio: string;
     github: string;
     publications: string;
+    /** Additional profile links (LeetCode, etc.) – scalable, do not change existing fields. */
+    profileLinks?: ProfileLink[];
 }
 
 export interface PublicationItem{
