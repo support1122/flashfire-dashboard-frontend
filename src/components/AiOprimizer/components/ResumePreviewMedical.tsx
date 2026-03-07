@@ -1440,12 +1440,12 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         <strong style={{ color: "#374151" }}>Reduce or increase scale to change the PDF scale.</strong>
                                         <br />
                                         <span style={{ color: "#6b7280", marginTop: "0.5rem", display: "block" }}>
-                                            Medical resumes must span more than 1 page. Make sure the preview shows multiple pages before downloading.
+                                            Medical resumes must be exactly 2 pages. Adjust the scale until the preview shows exactly 2 pages before downloading.
                                         </span>
                                     </div>
                                 </div>
 
-                                {/* Page Count Warning - Medical resume must be more than 1 page */}
+                                {/* Page Count Warning - Medical resume must be exactly 2 pages (1 page) */}
                                 {pdfPageCount !== null && pdfPageCount === 1 && (
                                     <div style={{
                                         marginBottom: "1rem",
@@ -1462,17 +1462,43 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>⚠️</span>
                                             <strong style={{ color: "#92400e", fontSize: "0.9rem" }}>
-                                                Medical resume must be more than 1 page
+                                                Medical resume must be exactly 2 pages
                                             </strong>
                                         </div>
                                         <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
-                                            Please increase the scale so the resume spans multiple pages before downloading.
+                                            PDF is 1 page. Please increase the scale so the resume spans exactly 2 pages before downloading.
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Page Count Success - Medical resume should have more than 1 page */}
-                                {pdfPageCount !== null && pdfPageCount > 1 && (
+                                {/* Page Count Warning - Medical resume must be exactly 2 pages (more than 2) */}
+                                {pdfPageCount !== null && pdfPageCount > 2 && (
+                                    <div style={{
+                                        marginBottom: "1rem",
+                                        padding: "1rem",
+                                        backgroundColor: "#fef3c7",
+                                        borderRadius: "8px",
+                                        border: "2px solid #f59e0b"
+                                    }}>
+                                        <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "0.5rem",
+                                            marginBottom: "0.5rem"
+                                        }}>
+                                            <span style={{ fontSize: "1.25rem" }}>⚠️</span>
+                                            <strong style={{ color: "#92400e", fontSize: "0.9rem" }}>
+                                                Medical resume must be exactly 2 pages
+                                            </strong>
+                                        </div>
+                                        <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
+                                            PDF is {pdfPageCount} pages. Please reduce the scale so the resume fits exactly 2 pages before downloading.
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Page Count Success - Medical resume exactly 2 pages */}
+                                {pdfPageCount !== null && pdfPageCount === 2 && (
                                     <div style={{
                                         marginBottom: "1rem",
                                         padding: "1rem",
@@ -1487,7 +1513,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>✅</span>
                                             <strong style={{ color: "#065f46", fontSize: "0.9rem" }}>
-                                                PDF is {pdfPageCount} pages - Ready to download!
+                                                PDF is 2 pages - Ready to download!
                                             </strong>
                                         </div>
                                     </div>
@@ -1548,21 +1574,21 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                     </button>
                                     <button
                                         onClick={handleDownloadResume}
-                                        disabled={isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount === 1)}
+                                        disabled={isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== 2)}
                                         style={{
                                             flex: 1,
-                                            backgroundColor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount === 1)) ? "#9ca3af" : "#10b981",
+                                            backgroundColor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== 2)) ? "#9ca3af" : "#10b981",
                                             color: "white",
                                             padding: "10px 24px",
                                             border: "none",
                                             borderRadius: "8px",
                                             fontSize: "1rem",
                                             fontWeight: "600",
-                                            cursor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount === 1)) ? "not-allowed" : "pointer",
+                                            cursor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== 2)) ? "not-allowed" : "pointer",
                                             transition: "background-color 0.2s",
                                         }}
                                     >
-                                        {isPrinting ? "Generating..." : (pdfPageCount !== null && pdfPageCount === 1) ? "Medical resume must be more than 1 page - Increase scale" : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
+                                        {isPrinting ? "Generating..." : (pdfPageCount !== null && pdfPageCount === 1) ? "Medical resume must be 2 pages - Increase scale" : (pdfPageCount !== null && pdfPageCount > 2) ? "Medical resume must be 2 pages - Reduce scale" : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
                                     </button>
                                 </div>
                             </div>
