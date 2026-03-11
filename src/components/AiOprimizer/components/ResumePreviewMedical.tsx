@@ -802,7 +802,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     };
 
     const handleDownloadPDF = () => {
-        handlePrint();
+        setShowScaleModal(true);
     };
 
     // Handle direct PDF download - use the preview PDF if available
@@ -1271,7 +1271,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                         display: "flex",
                         justifyContent: "center",
                         alignItems: "center",
-                        zIndex: 1000,
+                        zIndex: 2100,
                         padding: "20px",
                     }}
                 >
@@ -1814,7 +1814,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                         display: "flex",
                         justifyContent: "center",
                         alignItems: "center",
-                        zIndex: 2000,
+                        zIndex: 2200,
                     }}
                     onClick={(e) => {
                         if (e.target === e.currentTarget) {

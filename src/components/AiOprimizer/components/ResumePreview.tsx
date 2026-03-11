@@ -2011,7 +2011,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         display: "flex",
                         justifyContent: "center",
                         alignItems: "center",
-                        zIndex: 1000,
+                        zIndex: 2100,
                     }}
                 >
                     <div
@@ -2210,7 +2210,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         In-House Scaling
                     </button> */}
                     <button
-                        onClick={handlePrint}
+                        onClick={() => setShowScaleModal(true)}
                         style={{
                             backgroundColor: "#3b82f6",
                             color: "white",
@@ -2252,7 +2252,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         display: "flex",
                         justifyContent: "center",
                         alignItems: "center",
-                        zIndex: 1000,
+                        zIndex: 2100,
                         padding: "20px",
                     }}
                 >
