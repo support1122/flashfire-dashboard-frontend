@@ -153,6 +153,17 @@ const Login: React.FC<{
                 if (data.user?.role) {
                     localStorage.setItem("role", data.user.role);
                 }
+                // Re-sync trust token to localStorage from backend DB fallback
+                if (data.otpTrust?.trustToken) {
+                    localStorage.setItem(
+                        "optimizerOtpTrust",
+                        JSON.stringify({
+                            email: (username || "").trim().toLowerCase(),
+                            trustToken: data.otpTrust.trustToken,
+                            verifiedAt: Date.now(),
+                        })
+                    );
+                }
                 onLogin(data.token, data.user?.role, username);
                 return;
             } else {

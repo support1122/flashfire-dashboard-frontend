@@ -7,6 +7,8 @@ import { savePdf } from "../../../utils/savePdf.ts";
 // Set up PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
+const REQUIRED_MEDICAL_PDF_PAGES = 2;
+
 interface ResumeData {
     personalInfo: {
         name: string;
@@ -800,7 +802,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     };
 
     const handleDownloadPDF = () => {
-        handlePrint();
+        setShowScaleModal(true);
     };
 
     // Handle direct PDF download - use the preview PDF if available
@@ -950,7 +952,6 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             const pdfBlob = await response.blob();
             const pdfUrl = window.URL.createObjectURL(pdfBlob);
 
-            // Get PDF page count
             try {
                 const arrayBuffer = await pdfBlob.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -991,18 +992,20 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedScale, showScaleModal, overrideAutoScale]);
 
+    // Clean up preview URL when modal closes
+    useEffect(() => {
+        if (!showScaleModal && previewPdfUrl) {
+            window.URL.revokeObjectURL(previewPdfUrl);
+            setPreviewPdfUrl(null);
+            setPreviewPdfBlob(null);
+            setPdfPageCount(null);
+        }
+    }, [showScaleModal, previewPdfUrl]);
+
     // Generate preview when modal opens
     useEffect(() => {
         if (showScaleModal) {
             generatePreview(selectedScale);
-        } else {
-            // Clean up preview URL when modal closes
-            if (previewPdfUrl) {
-                window.URL.revokeObjectURL(previewPdfUrl);
-                setPreviewPdfUrl(null);
-                setPreviewPdfBlob(null);
-                setPdfPageCount(null);
-            }
         }
     }, [showScaleModal]);
 
@@ -1268,7 +1271,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                         display: "flex",
                         justifyContent: "center",
                         alignItems: "center",
-                        zIndex: 1000,
+                        zIndex: 2100,
                         padding: "20px",
                     }}
                 >
@@ -1446,7 +1449,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                 </div>
 
                                 {/* Page Count Warning - Medical resume must be exactly 2 pages (1 page) */}
-                                {pdfPageCount !== null && pdfPageCount === 1 && (
+                                {pdfPageCount !== null && pdfPageCount < REQUIRED_MEDICAL_PDF_PAGES && (
                                     <div style={{
                                         marginBottom: "1rem",
                                         padding: "1rem",
@@ -1466,13 +1469,13 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             </strong>
                                         </div>
                                         <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
-                                            PDF is 1 page. Please increase the scale so the resume spans exactly 2 pages before downloading.
+                                            PDF is {pdfPageCount} page{pdfPageCount === 1 ? '' : 's'}. Please increase the scale so the resume spans exactly {REQUIRED_MEDICAL_PDF_PAGES} pages before downloading.
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Page Count Warning - Medical resume must be exactly 2 pages (more than 2) */}
-                                {pdfPageCount !== null && pdfPageCount > 2 && (
+                                {pdfPageCount !== null && pdfPageCount > REQUIRED_MEDICAL_PDF_PAGES && (
                                     <div style={{
                                         marginBottom: "1rem",
                                         padding: "1rem",
@@ -1492,13 +1495,13 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             </strong>
                                         </div>
                                         <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
-                                            PDF is {pdfPageCount} pages. Please reduce the scale so the resume fits exactly 2 pages before downloading.
+                                            PDF is {pdfPageCount} pages. Please reduce the scale so the resume fits exactly {REQUIRED_MEDICAL_PDF_PAGES} pages before downloading.
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Page Count Success - Medical resume exactly 2 pages */}
-                                {pdfPageCount !== null && pdfPageCount === 2 && (
+                                {pdfPageCount !== null && pdfPageCount === REQUIRED_MEDICAL_PDF_PAGES && (
                                     <div style={{
                                         marginBottom: "1rem",
                                         padding: "1rem",
@@ -1513,7 +1516,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>✅</span>
                                             <strong style={{ color: "#065f46", fontSize: "0.9rem" }}>
-                                                PDF is 2 pages - Ready to download!
+                                                PDF is {REQUIRED_MEDICAL_PDF_PAGES} pages - Ready to download!
                                             </strong>
                                         </div>
                                     </div>
@@ -1574,21 +1577,21 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                     </button>
                                     <button
                                         onClick={handleDownloadResume}
-                                        disabled={isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== 2)}
+                                        disabled={isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES)}
                                         style={{
                                             flex: 1,
-                                            backgroundColor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== 2)) ? "#9ca3af" : "#10b981",
+                                            backgroundColor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES)) ? "#9ca3af" : "#10b981",
                                             color: "white",
                                             padding: "10px 24px",
                                             border: "none",
                                             borderRadius: "8px",
                                             fontSize: "1rem",
                                             fontWeight: "600",
-                                            cursor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== 2)) ? "not-allowed" : "pointer",
+                                            cursor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES)) ? "not-allowed" : "pointer",
                                             transition: "background-color 0.2s",
                                         }}
                                     >
-                                        {isPrinting ? "Generating..." : (pdfPageCount !== null && pdfPageCount === 1) ? "Medical resume must be 2 pages - Increase scale" : (pdfPageCount !== null && pdfPageCount > 2) ? "Medical resume must be 2 pages - Reduce scale" : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
+                                        {isPrinting ? "Generating..." : (pdfPageCount !== null && pdfPageCount < REQUIRED_MEDICAL_PDF_PAGES) ? `Medical resume must be ${REQUIRED_MEDICAL_PDF_PAGES} pages - Increase scale` : (pdfPageCount !== null && pdfPageCount > REQUIRED_MEDICAL_PDF_PAGES) ? `Medical resume must be ${REQUIRED_MEDICAL_PDF_PAGES} pages - Reduce scale` : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
                                     </button>
                                 </div>
                             </div>
@@ -1811,7 +1814,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                         display: "flex",
                         justifyContent: "center",
                         alignItems: "center",
-                        zIndex: 2000,
+                        zIndex: 2200,
                     }}
                     onClick={(e) => {
                         if (e.target === e.currentTarget) {
