@@ -2210,7 +2210,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         In-House Scaling
                     </button> */}
                     <button
-                        onClick={() => setShowScaleModal(true)}
+                        onClick={handlePrint}
                         style={{
                             backgroundColor: "#3b82f6",
                             color: "white",

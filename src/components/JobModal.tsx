@@ -1443,47 +1443,38 @@ export default function JobModal({
 
                             {resumeData && !resumeLoading && (
                                 <div className="resume-preview-container">
-                                    {resumeData.version === 0 && (
-                                        <ResumePreview
-                                            data={resumeData.resumeData}
-                                            showLeadership={resumeData.showLeadership}
-                                            showProjects={resumeData.showProjects}
-                                            showSummary={resumeData.showSummary}
-                                            showPublications={resumeData.showPublications}
-                                            showChanges={false}
-                                            changedFields={new Set()}
-                                            showPrintButtons={role === "operations"}
-                                            sectionOrder={resumeData.sectionOrder}
-                                            onDownloadClick={handleDownloadClick}
-                                        />
-                                    )}
-
-                                    {resumeData.version === 1 && (
-                                        <ResumePreview
-                                            data={resumeData.resumeData}
-                                            showLeadership={resumeData.showLeadership}
-                                            showProjects={resumeData.showProjects}
-                                            showSummary={resumeData.showSummary}
-                                            showChanges={false}
-                                            changedFields={new Set()}
-                                            showPrintButtons={role === "operations"}
-                                            sectionOrder={resumeData.sectionOrder}
-                                            onDownloadClick={handleDownloadClick}
-                                        />
-                                    )}
-
-                                    {resumeData.version === 2 && (
-                                        <ResumePreviewMedical
-                                            data={resumeData.resumeData}
-                                            showLeadership={resumeData.showLeadership}
-                                            showProjects={resumeData.showProjects}
-                                            showSummary={resumeData.showSummary}
-                                            showPublications={resumeData.showPublications}
-                                            showPrintButtons={role === "operations"}
-                                            sectionOrder={resumeData.sectionOrder}
-                                            onDownloadClick={handleDownloadClick}
-                                        />
-                                    )}
+                                    {(() => {
+                                        // Use V from API for resume type: V=0 normal 1-pager, V=2 medical (V can be on optimizedResume or inside resumeData)
+                                        const resumeVersion = resumeData.resumeData?.V ?? resumeData.V ?? resumeData.version ?? 0;
+                                        if (resumeVersion === 2) {
+                                            return (
+                                                <ResumePreviewMedical
+                                                    data={resumeData.resumeData}
+                                                    showLeadership={resumeData.showLeadership}
+                                                    showProjects={resumeData.showProjects}
+                                                    showSummary={resumeData.showSummary}
+                                                    showPublications={resumeData.showPublications}
+                                                    showPrintButtons={role === "operations"}
+                                                    sectionOrder={resumeData.sectionOrder}
+                                                    onDownloadClick={handleDownloadClick}
+                                                />
+                                            );
+                                        }
+                                        return (
+                                            <ResumePreview
+                                                data={resumeData.resumeData}
+                                                showLeadership={resumeData.showLeadership}
+                                                showProjects={resumeData.showProjects}
+                                                showSummary={resumeData.showSummary}
+                                                showPublications={resumeData.showPublications}
+                                                showChanges={false}
+                                                changedFields={new Set()}
+                                                showPrintButtons={role === "operations"}
+                                                sectionOrder={resumeData.sectionOrder}
+                                                onDownloadClick={handleDownloadClick}
+                                            />
+                                        );
+                                    })()}
                                 </div>
                             )}
 
