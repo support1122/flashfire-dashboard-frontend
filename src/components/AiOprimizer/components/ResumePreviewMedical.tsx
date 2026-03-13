@@ -801,10 +801,6 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
         }
     };
 
-    const handleDownloadPDF = () => {
-        setShowScaleModal(true);
-    };
-
     // Handle direct PDF download - use the preview PDF if available
     const handleDownloadResume = async () => {
         try {
@@ -1719,7 +1715,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                         In-House Scaling
                     </button> */}
                     <button
-                        onClick={handleDownloadPDF}
+                        onClick={handlePrint}
                         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
                     >
                         Download PDF
