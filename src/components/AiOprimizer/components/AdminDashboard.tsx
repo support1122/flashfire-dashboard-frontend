@@ -4,7 +4,7 @@ import {
   FileText, TrendingUp, Search, Filter,
   Calendar, Clock, MapPin, Settings,
   BarChart3, RefreshCw, CheckCircle,
-  Mail, LogOut, Key, ChevronDown, ChevronRight
+  Mail, LogOut, Key, ChevronDown, ChevronRight, Copy, Check
 } from 'lucide-react';
 import RegisterOPS from './Operations/RegisterOPS';
 import AddignUser from './Operations/AddignUser';
@@ -108,6 +108,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
     target: 'optimizer' as 'optimizer' | 'dashboard' | 'extension'
   });
   const [extensionForm, setExtensionForm] = useState({ name: '', generatedCode: '' });
+  const [codeCopied, setCodeCopied] = useState(false);
 
   const API_OPTIMIZER = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? import.meta.env.VITE_DEV_API_URL || 'http://localhost:8001' : '');
   const API_DASHBOARD = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8086' : '');
@@ -1228,13 +1229,29 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Generated code (5-digit)</label>
-                        <input
-                          type="text"
-                          readOnly
-                          value={extensionForm.generatedCode}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-mono text-lg"
-                          placeholder="Generate to see code"
-                        />
+                        <div className="relative">
+                          <input
+                            type="text"
+                            readOnly
+                            value={extensionForm.generatedCode}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-mono text-lg pr-12"
+                            placeholder="Generate to see code"
+                          />
+                          {extensionForm.generatedCode && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(extensionForm.generatedCode);
+                                setCodeCopied(true);
+                                setTimeout(() => setCodeCopied(false), 2000);
+                              }}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1.5 rounded-lg hover:bg-gray-200 transition-colors"
+                              title="Copy code"
+                            >
+                              {codeCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-gray-400" />}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </>
                   ) : (
@@ -1277,17 +1294,48 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                     onClick={() => {
                       setShowGenerateSessionKey(false);
                       setExtensionForm({ name: '', generatedCode: '' });
+                      setCodeCopied(false);
                     }}
                     className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
                   >
-                    Cancel
+                    {extensionForm.generatedCode ? 'Close' : 'Cancel'}
                   </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl"
-                  >
-                    {sessionKeyForm.target === 'extension' ? 'Generate Code' : 'Generate Key'}
-                  </button>
+                  {sessionKeyForm.target === 'extension' && extensionForm.generatedCode ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExtensionForm({ name: '', generatedCode: '' });
+                          setCodeCopied(false);
+                        }}
+                        className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+                      >
+                        Generate New
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(extensionForm.generatedCode);
+                          setCodeCopied(true);
+                          setTimeout(() => {
+                            setShowGenerateSessionKey(false);
+                            setExtensionForm({ name: '', generatedCode: '' });
+                            setCodeCopied(false);
+                          }, 800);
+                        }}
+                        className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                      >
+                        {codeCopied ? <><Check className="h-4 w-4" /> Copied!</> : <><Copy className="h-4 w-4" /> Copy Code</>}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="submit"
+                      className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl"
+                    >
+                      {sessionKeyForm.target === 'extension' ? 'Generate Code' : 'Generate Key'}
+                    </button>
+                  )}
                 </div>
               </form>
             </div>
