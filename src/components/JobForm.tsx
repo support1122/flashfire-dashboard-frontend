@@ -121,8 +121,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
     companyName: "",
     jobDescription: "",
     joblink: "",
-    dateAdded: new Date().toLocaleString('en-US'),
-    // dateAdded: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+    dateAdded: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
 
     attachments: [] as string[],
     status: "saved" as JobStatus,
