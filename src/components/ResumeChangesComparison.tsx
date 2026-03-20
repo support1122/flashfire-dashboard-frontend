@@ -1,5 +1,5 @@
-
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from "react";
+import { renderBoldMarkers } from "../utils/renderBoldMarkers";
 
 const ResumeChangesComparison = ({ changesMade }: any) => {
     const sectionKeys = useMemo(() => {
@@ -66,7 +66,7 @@ const ResumeChangesComparison = ({ changesMade }: any) => {
                         return (
                             <li key={respIndex} className="flex items-start">
                                 <span className="text-gray-400 mr-2">•</span>
-                                <span>{resp}</span>
+                                <span>{renderBoldMarkers(String(resp ?? ""))}</span>
                             </li>
                         );
                     })}
@@ -97,7 +97,7 @@ const ResumeChangesComparison = ({ changesMade }: any) => {
                         {item.category ? capitalizeWords(item.category) : "Skills"}
                     </div>
                     <div className="text-sm text-gray-600">
-                        {capitalizeSkills(item.skills)}
+                        {renderBoldMarkers(capitalizeSkills(item.skills))}
                     </div>
                 </div>
             );
@@ -107,7 +107,9 @@ const ResumeChangesComparison = ({ changesMade }: any) => {
         if (item.additionalInfo !== undefined) {
             return (
                 <div className="text-sm">
-                    {item.additionalInfo || "No additional information"}
+                    {item.additionalInfo
+                        ? renderBoldMarkers(String(item.additionalInfo))
+                        : "No additional information"}
                 </div>
             );
         }
@@ -117,11 +119,13 @@ const ResumeChangesComparison = ({ changesMade }: any) => {
             return (
                 <div className="space-y-2">
                     <div className="font-medium text-sm">
-                        {item.jobTitle || item.position || "Position"}
+                        {renderBoldMarkers(
+                            String(item.jobTitle || item.position || "Position")
+                        )}
                     </div>
                     {item.company && (
                         <div className="text-sm text-gray-600">
-                            {item.company}
+                            {renderBoldMarkers(String(item.company))}
                         </div>
                     )}
                     {item.responsibilities && Array.isArray(item.responsibilities) && (
@@ -160,7 +164,11 @@ const ResumeChangesComparison = ({ changesMade }: any) => {
         }
 
         if (typeof value === "string") {
-            return <div className="text-sm whitespace-pre-wrap">{value}</div>;
+            return (
+                <div className="text-sm whitespace-pre-wrap">
+                    {renderBoldMarkers(value)}
+                </div>
+            );
         }
 
         return (

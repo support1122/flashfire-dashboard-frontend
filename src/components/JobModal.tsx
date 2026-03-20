@@ -1591,19 +1591,12 @@ export default function JobModal({
                                                 if (role !== 'operations') {
                                                     displayEvent = 'Added';
                                                 }
-                                            } else if (event === 'Added' && role === 'operations') {
-                                                const name =
-                                                    jobDetails?.addedBy ||
-                                                    (jobDetails?.operatorName &&
-                                                    jobDetails.operatorName !== 'user'
-                                                        ? jobDetails.operatorName
-                                                        : null) ||
-                                                    getOperatorName(jobDetails?.operatorEmail || '') ||
-                                                    jobDetails?.operatorEmail;
-                                                displayEvent =
-                                                    name && name !== 'user'
-                                                        ? `Added by ${name}`
-                                                        : 'Added';
+                                            } else if (event === 'Added') {
+                                                // Immutable label from DB (extension code name). Same for clients & operations.
+                                                const name = jobDetails?.addedBy?.trim();
+                                                displayEvent = name
+                                                    ? `Added by ${name}`
+                                                    : 'Added';
                                             }
                                             return (
                                                 <li
