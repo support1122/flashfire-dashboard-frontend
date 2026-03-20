@@ -280,10 +280,12 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
     loadAllData();
   }, []);
 
-  // Reset session key form when modal opens
+  // Reset session key + extension code form when modal opens
   useEffect(() => {
     if (showGenerateSessionKey) {
       setSessionKeyForm({ username: '', duration: 720, target: 'optimizer' });
+      setExtensionForm({ name: '', generatedCode: '' });
+      setCodeCopied(false);
     }
   }, [showGenerateSessionKey]);
 
@@ -349,7 +351,17 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
         });
         if (response.ok) {
           const data = await response.json();
-          setExtensionForm((prev) => ({ ...prev, generatedCode: data.code }));
+          const code = data.code || '';
+          setExtensionForm((prev) => ({ ...prev, generatedCode: code }));
+          if (code) {
+            try {
+              await navigator.clipboard.writeText(code);
+              setCodeCopied(true);
+              setTimeout(() => setCodeCopied(false), 3500);
+            } catch {
+              /* clipboard may be denied; inline copy still available */
+            }
+          }
           loadSessionKeys();
         } else {
           const err = await response.json();
@@ -1252,6 +1264,9 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                             </button>
                           )}
                         </div>
+                        {extensionForm.generatedCode && codeCopied && (
+                          <p className="text-xs text-emerald-600 mt-1.5 font-medium">Copied to clipboard — paste into the extension if needed.</p>
+                        )}
                       </div>
                     </>
                   ) : (
@@ -1325,7 +1340,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                         }}
                         className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                       >
-                        {codeCopied ? <><Check className="h-4 w-4" /> Copied!</> : <><Copy className="h-4 w-4" /> Copy Code</>}
+                        {codeCopied ? <><Check className="h-4 w-4" /> Copied!</> : <><Copy className="h-4 w-4" /> Copy again</>}
                       </button>
                     </>
                   ) : (
@@ -1333,7 +1348,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                       type="submit"
                       className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl"
                     >
-                      {sessionKeyForm.target === 'extension' ? 'Generate Code' : 'Generate Key'}
+                      {sessionKeyForm.target === 'extension' ? 'Generate & copy code' : 'Generate Key'}
                     </button>
                   )}
                 </div>

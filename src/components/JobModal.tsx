@@ -1588,12 +1588,22 @@ export default function JobModal({
                                         (event: string, idx: number) => {
                                             let displayEvent = event;
                                             if (event.toLowerCase().includes('added by')) {
-                                                if (role !== 'operations' && role !== 'operator') {
+                                                if (role !== 'operations') {
                                                     displayEvent = 'Added';
                                                 }
-                                            } else if (event === 'Added' && (role === 'operations' || role === 'operator')) {
-                                                const name = jobDetails?.operatorName || getOperatorName(jobDetails?.operatorEmail || '') || jobDetails?.operatorEmail;
-                                                displayEvent = name ? `Added by ${name}` : 'Added';
+                                            } else if (event === 'Added' && role === 'operations') {
+                                                const name =
+                                                    jobDetails?.addedBy ||
+                                                    (jobDetails?.operatorName &&
+                                                    jobDetails.operatorName !== 'user'
+                                                        ? jobDetails.operatorName
+                                                        : null) ||
+                                                    getOperatorName(jobDetails?.operatorEmail || '') ||
+                                                    jobDetails?.operatorEmail;
+                                                displayEvent =
+                                                    name && name !== 'user'
+                                                        ? `Added by ${name}`
+                                                        : 'Added';
                                             }
                                             return (
                                                 <li

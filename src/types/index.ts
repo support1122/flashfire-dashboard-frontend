@@ -20,6 +20,8 @@ export interface Job {
   timeline?: string[];
   operatorName?: string;
   operatorEmail?: string;
+  /** Set on server from extension code; omitted from user API responses */
+  addedBy?: string;
   appliedDate?: string | null;
   optimizedResume?: { hasResume?: boolean; [key: string]: any };
   optimizedResumeSeen?: boolean;
