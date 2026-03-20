@@ -593,7 +593,15 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                         </div>
                         {data.education.length > 0 ? (
                             data.education.map((edu, index) => (
-                                <div key={edu.id} style={{ marginBottom: "6px" }}>
+                                <div
+                                    key={edu.id}
+                                    style={{
+                                        marginBottom:
+                                            index === data.education.length - 1
+                                                ? "0px"
+                                                : "6px",
+                                    }}
+                                >
                                     <div
                                         style={{
                                             display: "flex",
@@ -602,26 +610,39 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             marginBottom: "2px",
                                         }}
                                     >
-                                        <span
-                                            style={{
-                                                fontSize: "9pt",
-                                                fontWeight: "bold",
-                                            }}
-                                        >
-                                            {edu.institution}
-                                        </span>
-                                        <span
+                                        <div style={{ flex: "1", minWidth: 0 }}>
+                                            <div
+                                                style={{
+                                                    fontSize: "9pt",
+                                                    fontWeight: "bold",
+                                                    lineHeight: "1.3",
+                                                }}
+                                            >
+                                                {edu.institution}
+                                                {edu.location &&
+                                                    `, ${edu.location}`}
+                                            </div>
+                                            <div
+                                                style={{
+                                                    fontSize: "9pt",
+                                                    lineHeight: "1.3",
+                                                }}
+                                            >
+                                                {edu.degree}
+                                                {edu.field && `, ${edu.field}`}
+                                            </div>
+                                        </div>
+                                        <div
                                             style={{
                                                 fontSize: "9pt",
                                                 textAlign: "right",
+                                                marginLeft: "20px",
+                                                flexShrink: 0,
+                                                lineHeight: "1.3",
                                             }}
                                         >
                                             {edu.duration}
-                                        </span>
-                                    </div>
-                                    <div style={{ fontSize: "9pt" }}>
-                                        {edu.degree}
-                                        {edu.field && ` in ${edu.field}`}
+                                        </div>
                                     </div>
                                     {edu.additionalInfo && (
                                         <div
