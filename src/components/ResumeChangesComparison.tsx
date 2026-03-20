@@ -1,8 +1,23 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 const ResumeChangesComparison = ({ changesMade }: any) => {
+    const sectionKeys = useMemo(() => {
+        if (!changesMade?.startingContent || !changesMade?.finalChanges) return [] as string[];
+        return [
+            ...new Set([
+                ...Object.keys(changesMade.startingContent),
+                ...Object.keys(changesMade.finalChanges),
+            ]),
+        ];
+    }, [changesMade]);
+
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+
+    // Start expanded so "Changes Made" shows diffs immediately (matches user expectation).
+    useEffect(() => {
+        setExpandedSections(new Set(sectionKeys));
+    }, [changesMade?.timestamp, changesMade?.source, sectionKeys.join("|")]);
 
     if (
         !changesMade ||
