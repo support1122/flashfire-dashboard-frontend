@@ -684,8 +684,8 @@
 //   );
 // }
 
-import { ArrowLeftCircle } from "lucide-react";
-import React, { useEffect, useState, useContext } from "react";
+import { ArrowLeftCircle, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import React, { useEffect, useState, useContext, useMemo } from "react";
 import { UserContext } from '../state_management/UserContext.js';
 import { ResumePreview } from './AiOprimizer/components/ResumePreview.tsx';
 // import { ResumePreview1 } from './AiOprimizer/components/ResumePreview1.tsx';
@@ -757,14 +757,24 @@ const DownloadIcon = () => (
   </svg>
 );
 
+type DocumentTabId = "base" | "optimized" | "cover" | "transcript" | "portfolio";
+
 export default function DocumentUpload() {
-  const [activeTab, setActiveTab] = useState<"base" | "optimized" | "cover" | "transcript" | null>(null);
+  const [activeTab, setActiveTab] = useState<DocumentTabId | null>(null);
   // const [fileNamePrompt, setFileNamePrompt] = useState<string>("");
   const context = useContext(UserContext);
   const [baseResume, setBaseResume] = useState<any[]>([]);
   const [optimizedList, setOptimizedList] = useState<Entry[]>([]);
   const [coverList, setCoverList] = useState<Entry[]>([]);
   const [transcriptList, setTranscriptList] = useState<any[]>([]);
+  const [portfolioList, setPortfolioList] = useState<{ name: string; url: string; createdAt?: string }[]>([]);
+  const [newPortfolioName, setNewPortfolioName] = useState("");
+  const [newPortfolioUrl, setNewPortfolioUrl] = useState("");
+  const [editingPortfolio, setEditingPortfolio] = useState<{
+    originalUrl: string;
+    name: string;
+    url: string;
+  } | null>(null);
   
   // Job-based resume states
   const [resumeData, setResumeData] = useState<any>(null);
@@ -832,7 +842,12 @@ export default function DocumentUpload() {
   };
 
   const persistToBackend = async (payload: any) => {
-    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/plans/select`, {
+    const base = import.meta.env.VITE_API_BASE_URL || "";
+    const url =
+      role === "operations"
+        ? `${base}/operations/plans/select`
+        : `${base}/api/plans/select`;
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -865,10 +880,11 @@ export default function DocumentUpload() {
     // setOptimizedList(Array.isArray(u.optimizedResumes) ? u.optimizedResumes : []);
     setCoverList(Array.isArray(u.coverLetters) ? u.coverLetters : []);
     setTranscriptList(Array.isArray(u.transcript) ? u.transcript : []);
+    setPortfolioList(Array.isArray(u.portfolioLinks) ? u.portfolioLinks : []);
 
     // Fetch job-based optimized resumes (this will include old Cloudinary resumes too)
     fetchAllOptimizedResumes();
-  }, []);
+  }, [context?.userDetails?.email]);
 
   // Function to fetch all optimized resumes (both old and new)
   const fetchAllOptimizedResumes = async () => {
@@ -1032,6 +1048,25 @@ export default function DocumentUpload() {
   useEffect(() => {
     filterResumes(searchTerm);
   }, [searchTerm, optimizedList]);
+
+  useEffect(() => {
+    if (role !== "operations" && activeTab === "portfolio") {
+      setActiveTab(null);
+    }
+  }, [role, activeTab]);
+
+  const documentTabs = useMemo(() => {
+    const core: { id: DocumentTabId; label: string }[] = [
+      { id: "base", label: "Base Resume" },
+      { id: "optimized", label: "Optimized Resumes" },
+      { id: "cover", label: "Cover Letters" },
+      { id: "transcript", label: "Transcripts" },
+    ];
+    if (role === "operations") {
+      core.push({ id: "portfolio", label: "Portfolio" });
+    }
+    return core;
+  }, [role]);
 
   // Function to fetch resume data from a job
   const fetchResumeDataFromJob = async (jobId: string) => {
@@ -1317,7 +1352,110 @@ export default function DocumentUpload() {
     }
   };
 
+  const addPortfolioLink = async () => {
+    const name = newPortfolioName.trim();
+    const urlRaw = newPortfolioUrl.trim();
+    if (!name || !urlRaw) {
+      alert("Please enter both a display name and a URL.");
+      return;
+    }
+    if (role !== "operations") return;
+    setIsUploading(true);
+    try {
+      const parsed = readAuth();
+      if (!parsed) return;
+      const payload = {
+        token: parsed.token,
+        userDetails: {
+          ...parsed.userDetails,
+          email: parsed.userDetails?.email,
+        },
+        portfolioLinkEntry: { name, url: urlRaw },
+      };
+      const backendData = await persistToBackend(payload);
+      const serverUser = backendData.userDetails || parsed.userDetails;
+      writeAuth(serverUser, parsed.token);
+      setPortfolioList(
+        Array.isArray(serverUser.portfolioLinks) ? serverUser.portfolioLinks : []
+      );
+      setNewPortfolioName("");
+      setNewPortfolioUrl("");
+    } catch (err) {
+      console.error("Portfolio add failed:", err);
+      alert("Failed to save portfolio link.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
+  const removePortfolioLink = async (linkUrl: string) => {
+    if (role !== "operations") return;
+    if (!confirm("Remove this portfolio link?")) return;
+    setIsUploading(true);
+    try {
+      const parsed = readAuth();
+      if (!parsed) return;
+      const payload = {
+        token: parsed.token,
+        userDetails: {
+          ...parsed.userDetails,
+          email: parsed.userDetails?.email,
+        },
+        deletePortfolioLink: { url: linkUrl },
+      };
+      const backendData = await persistToBackend(payload);
+      const serverUser = backendData.userDetails || parsed.userDetails;
+      writeAuth(serverUser, parsed.token);
+      setPortfolioList(
+        Array.isArray(serverUser.portfolioLinks) ? serverUser.portfolioLinks : []
+      );
+      if (editingPortfolio?.originalUrl === linkUrl) setEditingPortfolio(null);
+    } catch (err) {
+      console.error("Portfolio delete failed:", err);
+      alert("Failed to remove link.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const savePortfolioEdit = async () => {
+    if (!editingPortfolio || role !== "operations") return;
+    const name = editingPortfolio.name.trim();
+    const url = editingPortfolio.url.trim();
+    if (!name || !url) {
+      alert("Name and URL are required.");
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const parsed = readAuth();
+      if (!parsed) return;
+      const payload = {
+        token: parsed.token,
+        userDetails: {
+          ...parsed.userDetails,
+          email: parsed.userDetails?.email,
+        },
+        portfolioLinkUpdate: {
+          originalUrl: editingPortfolio.originalUrl,
+          name,
+          url,
+        },
+      };
+      const backendData = await persistToBackend(payload);
+      const serverUser = backendData.userDetails || parsed.userDetails;
+      writeAuth(serverUser, parsed.token);
+      setPortfolioList(
+        Array.isArray(serverUser.portfolioLinks) ? serverUser.portfolioLinks : []
+      );
+      setEditingPortfolio(null);
+    } catch (err) {
+      console.error("Portfolio update failed:", err);
+      alert("Failed to update link.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // const handleDelete = async (item: Entry, category: "base" | "optimized" | "cover") => {
   //   const DELETE_PASSCODE = import.meta.env.VITE_EDIT_PASSCODE; // simple hardcoded passcode for demo
@@ -1692,19 +1830,14 @@ export default function DocumentUpload() {
       <aside className="md:col-span-3 bg-white rounded-lg shadow border  top-20 ">
         <h2 className="px-4 py-3 font-semibold border-b">Documents</h2>
         <nav className="flex flex-wrap md:flex-col">
-          {[
-            { id: "base", label: "Base Resume" },
-            { id: "optimized", label: "Optimized Resumes" },
-            { id: "cover", label: "Cover Letters" },
-            { id: "transcript", label: "Transcripts" },
-          ].map((tab) => (
+          {documentTabs.map((tab) => (
             <button
               key={tab.id}
               className={`px-4 py-3 text-left w-full hover:bg-gray-50 transition ${
                 activeTab === tab.id ? "bg-blue-50 text-blue-700 font-medium" : ""
               }`}
               onClick={() => {
-                setActiveTab(tab.id as any);
+                setActiveTab(tab.id);
                 setPreviewMode(false);
                 setActivePreviewUrl(null);
               }}
@@ -2060,6 +2193,189 @@ export default function DocumentUpload() {
                 })()}
               </section>
             )
+        )}
+
+        {activeTab === "portfolio" && role === "operations" && (
+          <section>
+            <div className="flex items-center justify-between flex-wrap mb-4 gap-2">
+              <h3 className="text-lg font-semibold">Portfolio</h3>
+              <p className="text-sm text-gray-500">
+                Named links for this client (operations only).
+              </p>
+            </div>
+
+            <div className="border rounded-lg overflow-hidden mb-6">
+              <div className="grid grid-cols-12 bg-gray-100 text-sm font-semibold px-4 py-3 gap-2">
+                <div className="col-span-4">Name</div>
+                <div className="col-span-5">URL</div>
+                <div className="col-span-3 text-right">Actions</div>
+              </div>
+              {portfolioList.length === 0 ? (
+                <div className="px-4 py-8 text-sm text-gray-500 text-center">
+                  No portfolio links yet. Add one below.
+                </div>
+              ) : (
+                <ul className="divide-y">
+                  {portfolioList.map((item) => {
+                    const isEditing =
+                      editingPortfolio?.originalUrl === item.url;
+                    return (
+                      <li
+                        key={item.url}
+                        className="px-4 py-3 grid grid-cols-12 gap-2 items-center"
+                      >
+                        {isEditing && editingPortfolio ? (
+                          <>
+                            <div className="col-span-4">
+                              <input
+                                type="text"
+                                value={editingPortfolio.name}
+                                onChange={(e) =>
+                                  setEditingPortfolio({
+                                    ...editingPortfolio,
+                                    name: e.target.value,
+                                  })
+                                }
+                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                              />
+                            </div>
+                            <div className="col-span-5">
+                              <input
+                                type="url"
+                                value={editingPortfolio.url}
+                                onChange={(e) =>
+                                  setEditingPortfolio({
+                                    ...editingPortfolio,
+                                    url: e.target.value,
+                                  })
+                                }
+                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                                placeholder="https://"
+                              />
+                            </div>
+                            <div className="col-span-3 flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setEditingPortfolio(null)}
+                                className="text-sm px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={savePortfolioEdit}
+                                disabled={isUploading}
+                                className="text-sm px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                              >
+                                Save
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="col-span-4 font-medium text-sm truncate">
+                              {item.name}
+                            </div>
+                            <div className="col-span-5 min-w-0">
+                              <a
+                                href={
+                                  item.url.match(/^https?:\/\//i)
+                                    ? item.url
+                                    : `https://${item.url}`
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 hover:underline break-all"
+                              >
+                                {item.url}
+                              </a>
+                            </div>
+                            <div className="col-span-3 flex justify-end gap-1">
+                              <a
+                                href={
+                                  item.url.match(/^https?:\/\//i)
+                                    ? item.url
+                                    : `https://${item.url}`
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 text-gray-600 hover:text-blue-600"
+                                title="Open"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditingPortfolio({
+                                    originalUrl: item.url,
+                                    name: item.name,
+                                    url: item.url,
+                                  })
+                                }
+                                className="p-2 text-gray-600 hover:text-blue-600"
+                                title="Edit"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removePortfolioLink(item.url)}
+                                className="p-2 text-gray-600 hover:text-red-600"
+                                title="Remove"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-gray-200 p-4 bg-gray-50">
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">
+                Add link
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Display name
+                  </label>
+                  <input
+                    type="text"
+                    value={newPortfolioName}
+                    onChange={(e) => setNewPortfolioName(e.target.value)}
+                    placeholder="e.g. GitHub, Case study"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    URL
+                  </label>
+                  <input
+                    type="url"
+                    value={newPortfolioUrl}
+                    onChange={(e) => setNewPortfolioUrl(e.target.value)}
+                    placeholder="https://example.com"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={addPortfolioLink}
+                disabled={isUploading}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+              >
+                {isUploading ? "Saving…" : "Add portfolio link"}
+              </button>
+            </div>
+          </section>
         )}
       </main>
     </div>
