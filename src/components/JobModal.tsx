@@ -45,6 +45,243 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 const JOB_UPDATE_ENDPOINT = `${API_BASE}/updatechanges`;
 const PLAN_ENDPOINT = `${API_BASE}/api/plans/select`;
 
+/** Same diff rules as flashfire-dashboard-backend autoOptimizationWorker (changesMade for JobModal + auto-opt). */
+function hasStableResumeRowId(entry: any): boolean {
+    return entry && entry.id !== undefined && entry.id !== null && entry.id !== "";
+}
+
+function pairResumeRowsByIdThenIndex(origArr: any[] | undefined, optArr: any[] | undefined) {
+    const orig = Array.isArray(origArr) ? origArr : [];
+    const opt = Array.isArray(optArr) ? optArr : [];
+    const pairedOrigIdx = new Set<number>();
+    const pairedOptIdx = new Set<number>();
+    const pairs: { orig: any; opt: any }[] = [];
+
+    orig.forEach((o, oi) => {
+        if (!hasStableResumeRowId(o)) return;
+        const idStr = String(o.id);
+        const j = opt.findIndex(
+            (p, idx) => !pairedOptIdx.has(idx) && hasStableResumeRowId(p) && String(p.id) === idStr
+        );
+        if (j >= 0) {
+            pairs.push({ orig: o, opt: opt[j] });
+            pairedOrigIdx.add(oi);
+            pairedOptIdx.add(j);
+        }
+    });
+
+    const unpairedOrig = orig.filter((_, i) => !pairedOrigIdx.has(i));
+    const unpairedOpt = opt.filter((_, i) => !pairedOptIdx.has(i));
+    const len = Math.max(unpairedOrig.length, unpairedOpt.length);
+    for (let k = 0; k < len; k++) {
+        pairs.push({ orig: unpairedOrig[k], opt: unpairedOpt[k] });
+    }
+    return pairs;
+}
+
+function deepCloneDiff(val: any) {
+    if (val === undefined) return val;
+    try {
+        return JSON.parse(JSON.stringify(val));
+    } catch {
+        return val;
+    }
+}
+
+const EXTRA_CHANGE_SECTION_KEYS = [
+    "projects",
+    "leadership",
+    "education",
+    "publications",
+] as const;
+
+function diffWorkExperienceResumeEntry(orig: any, opt: any) {
+    const originals: Record<string, any> = {};
+    const changes: Record<string, any> = {};
+    let hasChanges = false;
+    if (!orig || !opt) {
+        return { hasChanges: false, originals, changes, id: orig?.id ?? opt?.id };
+    }
+    (["position", "company", "duration", "location", "roleType"] as const).forEach((field) => {
+        if (orig[field] !== opt[field]) {
+            originals[field] = orig[field];
+            changes[field] = opt[field];
+            hasChanges = true;
+        }
+    });
+    if (JSON.stringify(orig.responsibilities) !== JSON.stringify(opt.responsibilities)) {
+        originals.responsibilities = [...(orig.responsibilities || [])];
+        changes.responsibilities = [...(opt.responsibilities || [])];
+        hasChanges = true;
+    }
+    return { hasChanges, originals, changes, id: orig.id };
+}
+
+function getOptimizationChangesMade(baselineForDiff: any, optimizedData: any) {
+    const startingContent: Record<string, any> = {};
+    const finalChanges: Record<string, any> = {};
+
+    if (!baselineForDiff || !optimizedData) {
+        return {
+            startingContent: { summary: baselineForDiff?.summary ?? "" },
+            finalChanges: { summary: optimizedData?.summary ?? "" },
+        };
+    }
+
+    const origPI = baselineForDiff.personalInfo || {};
+    const optPI = optimizedData.personalInfo || {};
+    const personalInfoChanged = Object.keys(origPI).filter((key) => origPI[key] !== optPI[key]);
+    if (personalInfoChanged.length > 0) {
+        startingContent.personalInfo = {};
+        finalChanges.personalInfo = {};
+        personalInfoChanged.forEach((key) => {
+            startingContent.personalInfo[key] = origPI[key];
+            finalChanges.personalInfo[key] = optPI[key];
+        });
+    }
+
+    if ((baselineForDiff.summary || "") !== (optimizedData.summary || "")) {
+        startingContent.summary = baselineForDiff.summary || "";
+        finalChanges.summary = optimizedData.summary || "";
+    }
+
+    const changedWorkExp: any[] = [];
+    for (const { orig, opt } of pairResumeRowsByIdThenIndex(
+        baselineForDiff.workExperience,
+        optimizedData.workExperience
+    )) {
+        const { hasChanges, originals, changes, id } = diffWorkExperienceResumeEntry(orig, opt);
+        if (hasChanges && orig && opt) {
+            changedWorkExp.push({ id, original: originals, optimized: changes });
+        } else if (orig && !opt) {
+            changedWorkExp.push({
+                id: orig.id,
+                original: {
+                    ...(["position", "company", "duration", "location", "roleType"] as const).reduce(
+                        (acc: any, f) => {
+                            acc[f] = orig[f];
+                            return acc;
+                        },
+                        {}
+                    ),
+                    responsibilities: [...(orig.responsibilities || [])],
+                },
+                optimized: {},
+            });
+        } else if (!orig && opt) {
+            changedWorkExp.push({
+                id: opt.id,
+                original: {},
+                optimized: {
+                    ...(["position", "company", "duration", "location", "roleType"] as const).reduce(
+                        (acc: any, f) => {
+                            acc[f] = opt[f];
+                            return acc;
+                        },
+                        {}
+                    ),
+                    responsibilities: [...(opt.responsibilities || [])],
+                },
+            });
+        }
+    }
+
+    if (changedWorkExp.length > 0) {
+        startingContent.workExperience = changedWorkExp.map((item) => ({
+            id: item.id,
+            ...item.original,
+        }));
+        finalChanges.workExperience = changedWorkExp.map((item) => ({
+            id: item.id,
+            ...item.optimized,
+        }));
+    }
+
+    const changedSkills: any[] = [];
+    for (const { orig, opt } of pairResumeRowsByIdThenIndex(
+        baselineForDiff.skills,
+        optimizedData.skills
+    )) {
+        if (orig && opt && (orig.category !== opt.category || orig.skills !== opt.skills)) {
+            changedSkills.push({
+                id: orig.id,
+                original: { category: orig.category, skills: orig.skills },
+                optimized: { category: opt.category, skills: opt.skills },
+            });
+        } else if (orig && !opt) {
+            changedSkills.push({
+                id: orig.id,
+                original: { category: orig.category, skills: orig.skills },
+                optimized: { category: "", skills: "" },
+            });
+        } else if (!orig && opt) {
+            changedSkills.push({
+                id: opt.id,
+                original: { category: "", skills: "" },
+                optimized: { category: opt.category, skills: opt.skills },
+            });
+        }
+    }
+
+    if (changedSkills.length > 0) {
+        startingContent.skills = changedSkills.map((item) => ({
+            id: item.id,
+            ...item.original,
+        }));
+        finalChanges.skills = changedSkills.map((item) => ({
+            id: item.id,
+            ...item.optimized,
+        }));
+    }
+
+    for (const key of EXTRA_CHANGE_SECTION_KEYS) {
+        const a = baselineForDiff[key];
+        const b = optimizedData[key];
+        if (JSON.stringify(a) !== JSON.stringify(b)) {
+            startingContent[key] = deepCloneDiff(a);
+            finalChanges[key] = deepCloneDiff(b);
+        }
+    }
+
+    if (
+        !startingContent.workExperience &&
+        JSON.stringify(baselineForDiff.workExperience) !==
+            JSON.stringify(optimizedData.workExperience)
+    ) {
+        startingContent.workExperience = deepCloneDiff(baselineForDiff.workExperience);
+        finalChanges.workExperience = deepCloneDiff(optimizedData.workExperience);
+    }
+    if (
+        !startingContent.skills &&
+        JSON.stringify(baselineForDiff.skills) !== JSON.stringify(optimizedData.skills)
+    ) {
+        startingContent.skills = deepCloneDiff(baselineForDiff.skills);
+        finalChanges.skills = deepCloneDiff(optimizedData.skills);
+    }
+    if (
+        !startingContent.summary &&
+        JSON.stringify(baselineForDiff.summary ?? "") !==
+            JSON.stringify(optimizedData.summary ?? "")
+    ) {
+        startingContent.summary = baselineForDiff.summary ?? "";
+        finalChanges.summary = optimizedData.summary ?? "";
+    }
+
+    if (Object.keys(startingContent).length === 0) {
+        const structuralKeys = ["personalInfo", "summary", "workExperience", "skills"] as const;
+        for (const key of structuralKeys) {
+            const a = baselineForDiff[key];
+            const b = optimizedData[key];
+            if (JSON.stringify(a) !== JSON.stringify(b)) {
+                startingContent[key] = deepCloneDiff(a);
+                finalChanges[key] = deepCloneDiff(b);
+            }
+        }
+    }
+
+    return { startingContent, finalChanges };
+}
+
 /* ---------- Upload handler (uses backend API - supports R2 and Cloudinary) ---------- */
 async function uploadToCloudinary(
     file: File,
@@ -1814,96 +2051,18 @@ export default function JobModal({
                 throw new Error("Optimization failed. Data returned was empty.");
             }
 
-            // Step 3: Calculate changes
-            const getChangedFieldsOnly = () => {
-                const startingContent: any = {};
-                const finalChanges: any = {};
-
-                // Personal Info changes
-                const personalInfoChanged = Object.keys(resumeData.personalInfo).filter(
-                    (key) => resumeData.personalInfo[key] !== optimizedData.personalInfo[key]
-                );
-                if (personalInfoChanged.length > 0) {
-                    startingContent.personalInfo = {};
-                    finalChanges.personalInfo = {};
-                    personalInfoChanged.forEach((key) => {
-                        startingContent.personalInfo[key] = resumeData.personalInfo[key];
-                        finalChanges.personalInfo[key] = optimizedData.personalInfo[key];
-                    });
-                }
-
-                // Summary changes
-                if (resumeData.summary !== optimizedData.summary) {
-                    startingContent.summary = resumeData.summary;
-                    finalChanges.summary = optimizedData.summary;
-                }
-
-                // Work Experience changes
-                const changedWorkExp = resumeData.workExperience
-                    .map((orig: any, idx: number) => {
-                        const opt = optimizedData.workExperience[idx];
-                        if (!opt) return null;
-                        const changes: any = {};
-                        const originals: any = {};
-                        let hasChanges = false;
-                        ["position", "company", "duration", "location", "roleType"].forEach((field) => {
-                            if (orig[field] !== opt[field]) {
-                                originals[field] = orig[field];
-                                changes[field] = opt[field];
-                                hasChanges = true;
-                            }
-                        });
-                        if (JSON.stringify(orig.responsibilities) !== JSON.stringify(opt.responsibilities)) {
-                            originals.responsibilities = [...orig.responsibilities];
-                            changes.responsibilities = [...opt.responsibilities];
-                            hasChanges = true;
-                        }
-                        return hasChanges ? { id: orig.id, original: originals, optimized: changes } : null;
-                    })
-                    .filter(Boolean);
-
-                if (changedWorkExp.length > 0) {
-                    startingContent.workExperience = changedWorkExp.map((item: any) => ({
-                        id: item.id,
-                        ...item.original,
-                    }));
-                    finalChanges.workExperience = changedWorkExp.map((item: any) => ({
-                        id: item.id,
-                        ...item.optimized,
-                    }));
-                }
-
-                // Skills changes
-                const changedSkills = resumeData.skills
-                    .map((orig: any, idx: number) => {
-                        const opt = optimizedData.skills[idx];
-                        if (!opt) return null;
-                        if (orig.category !== opt.category || orig.skills !== opt.skills) {
-                            return {
-                                id: orig.id,
-                                original: { category: orig.category, skills: orig.skills },
-                                optimized: { category: opt.category, skills: opt.skills },
-                            };
-                        }
-                        return null;
-                    })
-                    .filter(Boolean);
-
-                if (changedSkills.length > 0) {
-                    startingContent.skills = changedSkills.map((item: any) => ({
-                        id: item.id,
-                        ...item.original,
-                    }));
-                    finalChanges.skills = changedSkills.map((item: any) => ({
-                        id: item.id,
-                        ...item.optimized,
-                    }));
-                }
-
-                return { startingContent, finalChanges };
+            // Step 3: Baseline must match the JSON sent to optimize-with-gemini
+            const baselineForDiff = {
+                ...resumeData,
+                summary: filteredResumeForOptimization.summary,
+                projects: filteredResumeForOptimization.projects,
+                leadership: filteredResumeForOptimization.leadership,
+                publications: filteredResumeForOptimization.publications,
             };
-
-            const { startingContent, finalChanges } = getChangedFieldsOnly();
+            const { startingContent, finalChanges } = getOptimizationChangesMade(
+                baselineForDiff,
+                optimizedData
+            );
 
             // Step 4: Save optimized resume to job
             const jobId = jobDetails._id || jobDetails.jobID;
