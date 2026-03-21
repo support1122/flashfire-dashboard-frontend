@@ -1135,17 +1135,26 @@ export default function JobModal({
         };
     }, []);
 
-    // Close on Escape key
+    // Close on Escape key (attachment lightbox first, then whole job modal)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Escape") {
                 if (isOptimizing) return;
+                if (attachmentsModalActiveStatus) {
+                    setAttachmentsModalActiveStatus(false);
+                    return;
+                }
                 setShowJobModal(false);
             }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [setShowJobModal, isOptimizing]); // Added isOptimizing dependency
+    }, [
+        setShowJobModal,
+        isOptimizing,
+        attachmentsModalActiveStatus,
+        setAttachmentsModalActiveStatus,
+    ]);
 
     const sections = [
         {
