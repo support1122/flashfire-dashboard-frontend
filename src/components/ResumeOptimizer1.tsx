@@ -684,7 +684,7 @@
 //   );
 // }
 
-import { ArrowLeftCircle, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeftCircle, ExternalLink } from "lucide-react";
 import React, { useEffect, useState, useContext, useMemo } from "react";
 import { UserContext } from '../state_management/UserContext.js';
 import { ResumePreview } from './AiOprimizer/components/ResumePreview.tsx';
@@ -770,11 +770,6 @@ export default function DocumentUpload() {
   const [portfolioList, setPortfolioList] = useState<{ name: string; url: string; createdAt?: string }[]>([]);
   const [newPortfolioName, setNewPortfolioName] = useState("");
   const [newPortfolioUrl, setNewPortfolioUrl] = useState("");
-  const [editingPortfolio, setEditingPortfolio] = useState<{
-    originalUrl: string;
-    name: string;
-    url: string;
-  } | null>(null);
   
   // Job-based resume states
   const [resumeData, setResumeData] = useState<any>(null);
@@ -1383,75 +1378,6 @@ export default function DocumentUpload() {
     } catch (err) {
       console.error("Portfolio add failed:", err);
       alert("Failed to save portfolio link.");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const removePortfolioLink = async (linkUrl: string) => {
-    if (role !== "operations") return;
-    if (!confirm("Remove this portfolio link?")) return;
-    setIsUploading(true);
-    try {
-      const parsed = readAuth();
-      if (!parsed) return;
-      const payload = {
-        token: parsed.token,
-        userDetails: {
-          ...parsed.userDetails,
-          email: parsed.userDetails?.email,
-        },
-        deletePortfolioLink: { url: linkUrl },
-      };
-      const backendData = await persistToBackend(payload);
-      const serverUser = backendData.userDetails || parsed.userDetails;
-      writeAuth(serverUser, parsed.token);
-      setPortfolioList(
-        Array.isArray(serverUser.portfolioLinks) ? serverUser.portfolioLinks : []
-      );
-      if (editingPortfolio?.originalUrl === linkUrl) setEditingPortfolio(null);
-    } catch (err) {
-      console.error("Portfolio delete failed:", err);
-      alert("Failed to remove link.");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const savePortfolioEdit = async () => {
-    if (!editingPortfolio || role !== "operations") return;
-    const name = editingPortfolio.name.trim();
-    const url = editingPortfolio.url.trim();
-    if (!name || !url) {
-      alert("Name and URL are required.");
-      return;
-    }
-    setIsUploading(true);
-    try {
-      const parsed = readAuth();
-      if (!parsed) return;
-      const payload = {
-        token: parsed.token,
-        userDetails: {
-          ...parsed.userDetails,
-          email: parsed.userDetails?.email,
-        },
-        portfolioLinkUpdate: {
-          originalUrl: editingPortfolio.originalUrl,
-          name,
-          url,
-        },
-      };
-      const backendData = await persistToBackend(payload);
-      const serverUser = backendData.userDetails || parsed.userDetails;
-      writeAuth(serverUser, parsed.token);
-      setPortfolioList(
-        Array.isArray(serverUser.portfolioLinks) ? serverUser.portfolioLinks : []
-      );
-      setEditingPortfolio(null);
-    } catch (err) {
-      console.error("Portfolio update failed:", err);
-      alert("Failed to update link.");
     } finally {
       setIsUploading(false);
     }
@@ -2208,7 +2134,7 @@ export default function DocumentUpload() {
               <div className="grid grid-cols-12 bg-gray-100 text-sm font-semibold px-4 py-3 gap-2">
                 <div className="col-span-4">Name</div>
                 <div className="col-span-5">URL</div>
-                <div className="col-span-3 text-right">Actions</div>
+                <div className="col-span-3 text-right">Open</div>
               </div>
               {portfolioList.length === 0 ? (
                 <div className="px-4 py-8 text-sm text-gray-500 text-center">
@@ -2216,119 +2142,39 @@ export default function DocumentUpload() {
                 </div>
               ) : (
                 <ul className="divide-y">
-                  {portfolioList.map((item) => {
-                    const isEditing =
-                      editingPortfolio?.originalUrl === item.url;
+                  {portfolioList.map((item, idx) => {
+                    const href = item.url.match(/^https?:\/\//i)
+                      ? item.url
+                      : `https://${item.url}`;
                     return (
                       <li
-                        key={item.url}
+                        key={`${item.url}-${idx}`}
                         className="px-4 py-3 grid grid-cols-12 gap-2 items-center"
                       >
-                        {isEditing && editingPortfolio ? (
-                          <>
-                            <div className="col-span-4">
-                              <input
-                                type="text"
-                                value={editingPortfolio.name}
-                                onChange={(e) =>
-                                  setEditingPortfolio({
-                                    ...editingPortfolio,
-                                    name: e.target.value,
-                                  })
-                                }
-                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-                              />
-                            </div>
-                            <div className="col-span-5">
-                              <input
-                                type="url"
-                                value={editingPortfolio.url}
-                                onChange={(e) =>
-                                  setEditingPortfolio({
-                                    ...editingPortfolio,
-                                    url: e.target.value,
-                                  })
-                                }
-                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-                                placeholder="https://"
-                              />
-                            </div>
-                            <div className="col-span-3 flex justify-end gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setEditingPortfolio(null)}
-                                className="text-sm px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                onClick={savePortfolioEdit}
-                                disabled={isUploading}
-                                className="text-sm px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                              >
-                                Save
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="col-span-4 font-medium text-sm truncate">
-                              {item.name}
-                            </div>
-                            <div className="col-span-5 min-w-0">
-                              <a
-                                href={
-                                  item.url.match(/^https?:\/\//i)
-                                    ? item.url
-                                    : `https://${item.url}`
-                                }
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-blue-600 hover:underline break-all"
-                              >
-                                {item.url}
-                              </a>
-                            </div>
-                            <div className="col-span-3 flex justify-end gap-1">
-                              <a
-                                href={
-                                  item.url.match(/^https?:\/\//i)
-                                    ? item.url
-                                    : `https://${item.url}`
-                                }
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-2 text-gray-600 hover:text-blue-600"
-                                title="Open"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                              </a>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setEditingPortfolio({
-                                    originalUrl: item.url,
-                                    name: item.name,
-                                    url: item.url,
-                                  })
-                                }
-                                className="p-2 text-gray-600 hover:text-blue-600"
-                                title="Edit"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removePortfolioLink(item.url)}
-                                className="p-2 text-gray-600 hover:text-red-600"
-                                title="Remove"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </>
-                        )}
+                        <div className="col-span-4 font-medium text-sm truncate">
+                          {item.name}
+                        </div>
+                        <div className="col-span-5 min-w-0">
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:underline break-all"
+                          >
+                            {item.url}
+                          </a>
+                        </div>
+                        <div className="col-span-3 flex justify-end">
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 text-gray-600 hover:text-blue-600"
+                            title="Open in new tab"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </div>
                       </li>
                     );
                   })}
