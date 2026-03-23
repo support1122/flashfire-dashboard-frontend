@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { renderBoldMarkers } from "../utils/renderBoldMarkers";
 
 const ResumeChangesComparison = ({ changesMade }: any) => {
+    const EXCLUDED_SECTION_KEYS = new Set(["personalInfo", "leadership"]);
+
     const sectionKeys = useMemo(() => {
         if (!changesMade?.startingContent || !changesMade?.finalChanges) return [] as string[];
         return [
@@ -9,7 +11,7 @@ const ResumeChangesComparison = ({ changesMade }: any) => {
                 ...Object.keys(changesMade.startingContent),
                 ...Object.keys(changesMade.finalChanges),
             ]),
-        ];
+        ].filter((key) => !EXCLUDED_SECTION_KEYS.has(key));
     }, [changesMade]);
 
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -46,10 +48,11 @@ const ResumeChangesComparison = ({ changesMade }: any) => {
     };
 
     // Get all unique keys from both objects
-    const allKeys = new Set([
-        ...Object.keys(startingContent),
-        ...Object.keys(finalChanges),
-    ]);
+    const allKeys = new Set(
+        [...Object.keys(startingContent), ...Object.keys(finalChanges)].filter(
+            (key) => !EXCLUDED_SECTION_KEYS.has(key)
+        )
+    );
 
     // Helper function to render text
     // const renderText = (text: string) => {
