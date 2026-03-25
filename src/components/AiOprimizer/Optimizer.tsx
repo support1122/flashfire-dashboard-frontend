@@ -26,6 +26,7 @@ import { ResumePreviewMedical } from "./components/ResumePreviewMedical";
 import { useJobsSessionStore } from "../../state_management/JobsSessionStore";
 import "./index.css"; //
 import { convertDoubleDashToHyphen, convertDoubleHyphenToHyphen } from "../../utils/generatehypesn";
+import { clearAdminOtpTrust, FLASHFIRE_OPTIMIZER_OTP_TRUST_KEY } from "../../utils/adminOtpTrustStorage";
 
 // Type definitions remain the same
 interface WorkExperienceItem {
@@ -1299,6 +1300,7 @@ function App() {
         localStorage.removeItem("jwt");
         localStorage.removeItem("role");
         localStorage.removeItem("userEmail");
+        clearAdminOtpTrust(FLASHFIRE_OPTIMIZER_OTP_TRUST_KEY);
         setIsAuthenticated(false);
         setUserRole("");
         setToken("");
