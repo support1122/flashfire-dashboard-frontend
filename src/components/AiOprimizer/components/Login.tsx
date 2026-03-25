@@ -10,6 +10,11 @@ import {
     Lock,
     Key,
 } from "lucide-react";
+import {
+    FLASHFIRE_OPTIMIZER_OTP_TRUST_KEY,
+    getValidAdminOtpTrustToken,
+    saveAdminOtpTrust,
+} from "../../../utils/adminOtpTrustStorage";
 
 const Login: React.FC<{
     onLogin: (token: string, role?: string, userEmail?: string) => void;
@@ -26,7 +31,6 @@ const Login: React.FC<{
     const [otpSent, setOtpSent] = useState(false);
     const [otpInput, setOtpInput] = useState("");
     const [sendingOtp, setSendingOtp] = useState(false);
-    const [rememberFor30Days, setRememberFor30Days] = useState(true);
     const [checkingStoredKey, setCheckingStoredKey] = useState(true);
     const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -129,14 +133,9 @@ const Login: React.FC<{
 
             // Try admin login (with optional stored OTP trust token)
             let adminPayload: { username: string; password: string; trustToken?: string } = { username, password };
-            const storedOtpTrust = localStorage.getItem("optimizerOtpTrust");
-            if (storedOtpTrust) {
-                try {
-                    const parsed = JSON.parse(storedOtpTrust);
-                    if (parsed?.trustToken && parsed?.email === (username || "").trim().toLowerCase()) {
-                        adminPayload.trustToken = parsed.trustToken;
-                    }
-                } catch (_) {}
+            const trustFromStorage = getValidAdminOtpTrustToken(FLASHFIRE_OPTIMIZER_OTP_TRUST_KEY, username);
+            if (trustFromStorage) {
+                adminPayload.trustToken = trustFromStorage;
             }
 
             const adminCheckRes = await fetch(`${API_BASE}/api/login`, {
@@ -152,17 +151,6 @@ const Login: React.FC<{
                 localStorage.setItem("userEmail", username);
                 if (data.user?.role) {
                     localStorage.setItem("role", data.user.role);
-                }
-                // Re-sync trust token to localStorage from backend DB fallback
-                if (data.otpTrust?.trustToken) {
-                    localStorage.setItem(
-                        "optimizerOtpTrust",
-                        JSON.stringify({
-                            email: (username || "").trim().toLowerCase(),
-                            trustToken: data.otpTrust.trustToken,
-                            verifiedAt: Date.now(),
-                        })
-                    );
                 }
                 onLogin(data.token, data.user?.role, username);
                 return;
@@ -322,18 +310,7 @@ const Login: React.FC<{
             });
             const data = await res.json();
             if (res.ok && data.trustToken) {
-                if (rememberFor30Days) {
-                    localStorage.setItem(
-                        "optimizerOtpTrust",
-                        JSON.stringify({
-                            email: username.trim().toLowerCase(),
-                            trustToken: data.trustToken,
-                            verifiedAt: Date.now(),
-                        })
-                    );
-                } else {
-                    localStorage.removeItem("optimizerOtpTrust");
-                }
+                saveAdminOtpTrust(FLASHFIRE_OPTIMIZER_OTP_TRUST_KEY, username, data.trustToken);
                 const loginRes = await fetch(`${API_BASE}/api/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -566,15 +543,9 @@ const Login: React.FC<{
                                                     className="w-full pl-4 pr-4 py-4 border border-orange-300 rounded-2xl focus:ring-orange-200 text-center text-xl tracking-widest bg-orange-50"
                                                 />
                                             </div>
-                                            <label className="flex items-center gap-2 cursor-pointer text-sm text-orange-800">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={rememberFor30Days}
-                                                    onChange={(e) => setRememberFor30Days(e.target.checked)}
-                                                    className="rounded"
-                                                />
-                                                Remember for 30 days (skip OTP next time)
-                                            </label>
+                                            <p className="text-xs text-orange-700">
+                                                This device will skip OTP for 7 days. Logging out clears it.
+                                            </p>
                                             <button
                                                 type="submit"
                                                 disabled={loading || otpInput.length !== 4}
