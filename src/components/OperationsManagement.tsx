@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext, useCallback, useRef } from 'react';
-import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, X, ChevronDown, ChevronUp, Edit2, Mail, Paperclip, Send, MessageSquare, Link2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, X, ChevronDown, ChevronUp, Edit2, Mail, Paperclip, Send, MessageSquare, Link2, Loader2, ChevronLeft, ChevronRight, Puzzle } from 'lucide-react';
+import { ExclusionListEditor } from './Operations/ExclusionListEditor.tsx';
 import { UserContext } from '../state_management/UserContext.tsx';
 import { toastUtils, toastMessages } from '../utils/toast.ts';
 import { useOperationsStore } from '../state_management/Operations.ts';
@@ -23,10 +24,23 @@ interface LockPeriod {
   createdAt?: string;
 }
 
+interface ExclusionAuditEntry {
+  text: string;
+  kind: string;
+  reason: string;
+  removedAt: string;
+}
+
 interface ClientOperationsData {
   todos: Todo[];
   lockPeriods: LockPeriod[];
+  excludedCompanies?: string[];
+  excludedLocations?: string[];
+  exclusionSanitizeAudit?: ExclusionAuditEntry[];
 }
+
+const OPERATIONS_SESSION_STORAGE_KEY = "flashfire_ops_session_v1";
+const OPERATIONS_SECRET_KEY = "flashfire@2025";
 
 const OperationsManagement = () => {
   const { userDetails, token } = useContext(UserContext) || {};
@@ -48,6 +62,20 @@ const OperationsManagement = () => {
   const [showAddLockPeriod, setShowAddLockPeriod] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [activeSection, setActiveSection] = useState<"operations" | "email" | "whatsapp">("operations");
+  const [excludedCompanies, setExcludedCompanies] = useState<string[]>([]);
+  const [excludedLocations, setExcludedLocations] = useState<string[]>([]);
+  const [extensionsSubTab, setExtensionsSubTab] = useState<"companies" | "locations">("companies");
+  const [exclusionSanitizeAudit, setExclusionSanitizeAudit] = useState<ExclusionAuditEntry[]>([]);
+  const [reconcilingJobs, setReconcilingJobs] = useState(false);
+  const [operationsSessionUnlocked, setOperationsSessionUnlocked] = useState(() => {
+    try {
+      return sessionStorage.getItem(OPERATIONS_SESSION_STORAGE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  const [showOperationsSessionModal, setShowOperationsSessionModal] = useState(false);
+  const [operationsSessionError, setOperationsSessionError] = useState("");
   const [gmailStatus, setGmailStatus] = useState<"unknown" | "connected" | "disconnected">("unknown");
   const [emailForm, setEmailForm] = useState({
     to: "",
@@ -92,25 +120,17 @@ const OperationsManagement = () => {
   const [loadingEmailLogs, setLoadingEmailLogs] = useState(false);
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-  // Only allow operations role
-  if (role !== 'operations') {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Lock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Restricted</h2>
-          <p className="text-gray-600">This page is only available to operations team members.</p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!operationsSessionUnlocked) {
+      setLoading(false);
+    }
+  }, [operationsSessionUnlocked]);
 
   useEffect(() => {
-    if (userDetails?.email) {
-      fetchClientOperations();
-      fetchUserGroupMapping();
-    }
-  }, [userDetails?.email]);
+    if (!operationsSessionUnlocked || !userDetails?.email) return;
+    fetchClientOperations();
+    fetchUserGroupMapping();
+  }, [userDetails?.email, operationsSessionUnlocked]);
 
   useEffect(() => {
     if (activeSection === "whatsapp" && whatsappGroups.length === 0) {
@@ -135,6 +155,9 @@ const OperationsManagement = () => {
       if (result.success && result.data) {
         setTodos(result.data.todos || []);
         setLockPeriods(result.data.lockPeriods || []);
+        setExcludedCompanies(result.data.excludedCompanies || []);
+        setExcludedLocations(result.data.excludedLocations || []);
+        setExclusionSanitizeAudit(result.data.exclusionSanitizeAudit || []);
       } else {
         // toastUtils.error('Failed to load operations data');
       }
@@ -146,7 +169,32 @@ const OperationsManagement = () => {
     }
   };
 
+  const runReconcileExclusionJobs = useCallback(async () => {
+    if (!userDetails?.email) return;
+    setReconcilingJobs(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/operations/reconcile-exclusion-jobs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientEmail: userDetails.email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        toastUtils.success(
+          `Job check: ${data.removed ?? 0} card(s) set to "removed by AI" (${data.scanned ?? 0} scanned)`
+        );
+      } else {
+        toastUtils.error(data.message || "Re-scan failed");
+      }
+    } catch {
+      toastUtils.error("Re-scan failed");
+    } finally {
+      setReconcilingJobs(false);
+    }
+  }, [API_BASE_URL, userDetails?.email]);
+
   useEffect(() => {
+    if (!operationsSessionUnlocked) return;
     const loadGmailState = async () => {
       try {
         if (!userDetails?.email) return;
@@ -181,9 +229,10 @@ const OperationsManagement = () => {
       }
     };
     loadGmailState();
-  }, [API_BASE_URL, userDetails?.email]);
+  }, [API_BASE_URL, userDetails?.email, operationsSessionUnlocked]);
 
   useEffect(() => {
+    if (!operationsSessionUnlocked) return;
     const loadEmailMetadata = async () => {
       try {
         if (!userDetails?.email) return;
@@ -228,10 +277,11 @@ const OperationsManagement = () => {
     if (gmailStatus === "connected") {
       loadEmailMetadata();
     }
-  }, [API_BASE_URL, gmailStatus, userDetails?.email]);
+  }, [API_BASE_URL, gmailStatus, userDetails?.email, operationsSessionUnlocked]);
 
   // Auto-save function with debouncing
   const autoSave = useCallback(async () => {
+    if (!operationsSessionUnlocked) return;
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
@@ -249,6 +299,8 @@ const OperationsManagement = () => {
             clientEmail: userDetails?.email,
             todos,
             lockPeriods,
+            excludedCompanies,
+            excludedLocations,
             operatorName: opsName
           }),
         });
@@ -265,19 +317,24 @@ const OperationsManagement = () => {
         setSaving(false);
       }
     }, 1000); // Debounce for 1 second
-  }, [todos, lockPeriods, userDetails?.email, operatorName, API_BASE_URL]);
+  }, [todos, lockPeriods, excludedCompanies, excludedLocations, userDetails?.email, operatorName, API_BASE_URL, operationsSessionUnlocked]);
 
   // Auto-save whenever todos or lockPeriods change
   useEffect(() => {
-    if (!loading && userDetails?.email) {
-      autoSave();
+    if (!operationsSessionUnlocked || !loading || !userDetails?.email) {
+      return () => {
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+      };
     }
+    autoSave();
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [todos, lockPeriods, loading, userDetails?.email, autoSave]);
+  }, [todos, lockPeriods, excludedCompanies, excludedLocations, loading, userDetails?.email, autoSave, operationsSessionUnlocked]);
 
   const toggleTodo = (todoId: string) => {
     setTodos(todos.map(todo =>
@@ -776,6 +833,64 @@ const OperationsManagement = () => {
     });
   };
 
+  if (role !== 'operations' && role !== 'operator') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Lock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Restricted</h2>
+          <p className="text-gray-600">This page is only available to operations team members.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!operationsSessionUnlocked) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 py-12">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border border-gray-200 p-8 text-center">
+          <Lock className="w-14 h-14 text-orange-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Operations session locked</h2>
+          <p className="text-gray-600 mb-6 text-sm">
+            Enter the operations secret key to manage TODOs, extension exclusions, email, and WhatsApp tools for this client.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setShowOperationsSessionModal(true);
+              setOperationsSessionError("");
+            }}
+            className="w-full px-6 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition-colors"
+          >
+            Unlock with secret key
+          </button>
+        </div>
+        <SecretKeyModal
+          isOpen={showOperationsSessionModal}
+          onClose={() => {
+            setShowOperationsSessionModal(false);
+            setOperationsSessionError("");
+          }}
+          onConfirm={(secretKey) => {
+            if (secretKey !== OPERATIONS_SECRET_KEY) {
+              setOperationsSessionError("Incorrect secret key. Please try again.");
+              return;
+            }
+            try {
+              sessionStorage.setItem(OPERATIONS_SESSION_STORAGE_KEY, "true");
+            } catch {
+              /* ignore */
+            }
+            setOperationsSessionUnlocked(true);
+            setShowOperationsSessionModal(false);
+            setOperationsSessionError("");
+          }}
+          error={operationsSessionError}
+        />
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -793,13 +908,30 @@ const OperationsManagement = () => {
     <div className="px-4 sm:px-6 lg:px-8 py-6 min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-4 md:mb-6">
-          <h2 className="text-4xl md:text-4xl font-extrabold text-zinc-900 mb-2 tracking-tight leading-[1.1]">
-            Operations Management
-          </h2>
-          <p className="text-gray-600 text-lg">
-            Manage client TODOs, lock periods, and send recruiter emails
-          </p>
+        <div className="mb-4 md:mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h2 className="text-4xl md:text-4xl font-extrabold text-zinc-900 mb-2 tracking-tight leading-[1.1]">
+              Operations Management
+            </h2>
+            <p className="text-gray-600 text-lg">
+              Manage client TODOs, lock periods, and send recruiter emails
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                sessionStorage.removeItem(OPERATIONS_SESSION_STORAGE_KEY);
+              } catch {
+                /* ignore */
+              }
+              setOperationsSessionUnlocked(false);
+            }}
+            className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Lock className="w-4 h-4" />
+            Lock session
+          </button>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 mb-6">
@@ -1186,6 +1318,100 @@ const OperationsManagement = () => {
               )}
             </div>
           </div>
+            </div>
+
+            <div className="mt-8 bg-white rounded-2xl shadow-sm border border-violet-200/80 overflow-hidden">
+              <div className="border-b border-violet-100 bg-gradient-to-r from-violet-50/90 to-indigo-50/80 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Puzzle className="w-5 h-5 text-violet-700" />
+                  <div>
+                    <h3 className="text-lg font-semibold text-violet-950">Extensions</h3>
+                    <p className="text-xs text-violet-700/80">
+                      Blocked company names and locations for the job extension (not visible to clients)
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 justify-end">
+                  {saving && (
+                    <span className="text-xs font-medium text-violet-600">Saving…</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void runReconcileExclusionJobs()}
+                    disabled={reconcilingJobs}
+                    className="text-xs font-medium px-3 py-1.5 rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50"
+                  >
+                    {reconcilingJobs ? "Scanning jobs…" : "Re-scan jobs vs exclusions"}
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-col md:flex-row min-h-[320px]">
+                <div className="flex md:flex-col border-b md:border-b-0 md:border-r border-violet-100 bg-violet-50/40 p-2 gap-1 md:w-52 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setExtensionsSubTab('companies')}
+                    className={`text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                      extensionsSubTab === 'companies'
+                        ? 'bg-violet-600 text-white shadow'
+                        : 'text-violet-900 hover:bg-violet-100/80'
+                    }`}
+                  >
+                    Excluded companies
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExtensionsSubTab('locations')}
+                    className={`text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                      extensionsSubTab === 'locations'
+                        ? 'bg-violet-600 text-white shadow'
+                        : 'text-violet-900 hover:bg-violet-100/80'
+                    }`}
+                  >
+                    Excluded locations
+                  </button>
+                </div>
+                <div className="flex-1 p-5 min-w-0">
+                  {extensionsSubTab === 'companies' ? (
+                    <ExclusionListEditor
+                      label="Add company names"
+                      placeholder="e.g. Google|Microsoft|Acme, Inc."
+                      searchPlaceholder="Search in this list"
+                      items={excludedCompanies}
+                      onChange={setExcludedCompanies}
+                      footerHint="Multiple entries: use | between values, or one per line. Commas inside a name are OK. Duplicates ignored (case-insensitive)."
+                    />
+                  ) : (
+                    <ExclusionListEditor
+                      label="Add locations / countries"
+                      placeholder="e.g. USA|India|Santa Monica, CA|Remote"
+                      searchPlaceholder="Search in this list"
+                      items={excludedLocations}
+                      onChange={setExcludedLocations}
+                      footerHint="Separate multiple entries with | or newlines. Commas inside a location (e.g. City, ST) are OK. Duplicates ignored."
+                    />
+                  )}
+                </div>
+              </div>
+              {exclusionSanitizeAudit.length > 0 && (
+                <div className="border-t border-violet-100 px-5 py-3 bg-amber-50/60">
+                  <p className="text-xs font-semibold text-amber-950 mb-2">
+                    Entries removed from active lists (invalid / too long / escaped)
+                  </p>
+                  <ul className="text-xs text-amber-900 space-y-1 max-h-36 overflow-y-auto font-mono">
+                    {exclusionSanitizeAudit
+                      .slice()
+                      .reverse()
+                      .slice(0, 25)
+                      .map((a, i) => (
+                        <li key={`${a.removedAt}-${a.text}-${i}`}>
+                          <span className="font-sans font-medium">[{a.kind}]</span>{" "}
+                          {(a.text || "").length > 100 ? `${(a.text || "").slice(0, 100)}…` : a.text}{" "}
+                          <span className="text-amber-800">— {a.reason}</span>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </>
         )}

@@ -139,7 +139,9 @@ const Navigation: React.FC<NavigationProps> = ({
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "jobs", label: "Job Tracker", icon: Briefcase },
     { id: "optimizer", label: "Documents", icon: FileText },
-    ...(role === "operations" ? [{ id: "operations", label: "Operations", icon: Settings }] : []),
+    ...(role === "operations" || role === "operator"
+      ? [{ id: "operations", label: "Operations", icon: Settings }]
+      : []),
   ];
 
   useEffect(() => {
