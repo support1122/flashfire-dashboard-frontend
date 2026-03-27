@@ -321,7 +321,7 @@ const OperationsManagement = () => {
 
   // Auto-save whenever todos or lockPeriods change
   useEffect(() => {
-    if (!operationsSessionUnlocked || !loading || !userDetails?.email) {
+    if (!operationsSessionUnlocked || loading || !userDetails?.email) {
       return () => {
         if (saveTimeoutRef.current) {
           clearTimeout(saveTimeoutRef.current);
