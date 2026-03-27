@@ -417,8 +417,23 @@ const JobTracker = () => {
                 body: JSON.stringify({ jobDetails, userDetails, token }),
             });
 
-            const responseFromServer = await saveJobsToDb.json();
-            console.log(responseFromServer);
+            const responseFromServer = await saveJobsToDb.json().catch(() => ({}));
+            if (saveJobsToDb.status === 403) {
+                const msg =
+                    responseFromServer?.error === "BLOCKED_COMPANY" ||
+                    responseFromServer?.error === "BLOCKED_LOCATION"
+                        ? responseFromServer?.message ||
+                          (responseFromServer?.error === "BLOCKED_COMPANY"
+                              ? "This company is blocked for this client."
+                              : "This location is blocked for this client.")
+                        : responseFromServer?.message || "Cannot add this job.";
+                toastUtils.error(msg);
+                return;
+            }
+            if (!saveJobsToDb.ok) {
+                toastUtils.error(responseFromServer?.message || "Failed to save job.");
+                return;
+            }
             setUserJobs(responseFromServer.NewJobList);
             setShowJobForm(false);
             if (responseFromServer.message == 'Job Added Succesfully') {

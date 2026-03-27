@@ -119,6 +119,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
   const [formData, setFormData] = useState({
     jobTitle: "",
     companyName: "",
+    jobLocation: "",
     jobDescription: "",
     joblink: "",
     dateAdded: new Date().toLocaleString('en-US'),
@@ -148,6 +149,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
         ...prev,
         jobTitle: job.jobTitle,
         companyName: job.companyName,
+        jobLocation: job.jobLocation || "",
         jobDescription: job.jobDescription,
         joblink: job.joblink || "",
         dateApplied: job.dateApplied?.split("T")[0] || new Date().toISOString().split("T")[0],
@@ -229,6 +231,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
         jobID: optimisticId,
         jobTitle: formData.jobTitle,
         companyName: formData.companyName,
+        jobLocation: formData.jobLocation?.trim() || undefined,
         jobDescription: formData.jobDescription,
         joblink: formData.joblink,
         dateAdded: new Date().toLocaleString("en-US"),
@@ -279,6 +282,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
           jobID: optimisticId,
           jobTitle: formData.jobTitle,
           companyName: formData.companyName,
+          jobLocation: formData.jobLocation?.trim() || "",
           jobDescription: formData.jobDescription,
           joblink: formData.joblink,
           dateAdded: formData.dateAdded,
@@ -298,7 +302,13 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
         if (status === 403) {
           clearTimeout(closeTimer);
           toastUtils.dismissToast(loadingToast);
-          const errorMsg = body?.message || "Client is in lock period";
+          const errorMsg =
+            body?.error === "BLOCKED_COMPANY" || body?.error === "BLOCKED_LOCATION"
+              ? body?.message ||
+                (body?.error === "BLOCKED_COMPANY"
+                  ? "This company is blocked for this client."
+                  : "This location is blocked for this client.")
+              : body?.message || "Client is in lock period";
           toastUtils.error(errorMsg);
           setIsSubmitting(false);
           setError(errorMsg);
@@ -470,6 +480,22 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
               className="w-full px-3 py-2 border rounded-lg"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium">Location (optional)</label>
+          <input
+            disabled={isEditMode}
+            readOnly={isEditMode}
+            name="jobLocation"
+            value={formData.jobLocation}
+            onChange={handleChange}
+            placeholder="e.g. Remote, USA or City, ST"
+            className="w-full px-3 py-2 border rounded-lg"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Used for client location exclusions. Leave blank if unknown.
+          </p>
         </div>
 
         <div>

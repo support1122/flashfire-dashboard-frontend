@@ -5,6 +5,8 @@ export interface Job {
   jobID: string;
   jobTitle: string;
   companyName: string;
+  /** Optional; used for exclusion matching (manual add + extension) */
+  jobLocation?: string;
   jobDescription: string;
   dateApplied: string;
   joblink: string;
