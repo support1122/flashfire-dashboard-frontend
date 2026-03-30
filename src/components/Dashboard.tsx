@@ -18,6 +18,7 @@ import DashboardManagerDisplay from "./DashboardManagerDisplay.tsx";
 import ReferralBenefitsDisplay from "./ReferralBenefitsDisplay.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
 import { useJobsSessionStore } from "../state_management/JobsSessionStore.ts";
+import { TokenManager } from "../utils/tokenManager";
 
 const JobForm = lazy(() => import("./JobForm.tsx"));
 
@@ -106,16 +107,13 @@ const Dashboard: React.FC = () => {
             if (context?.refreshToken) {
               const refreshSuccess = await context.refreshToken();
               if (refreshSuccess) {
+                // setData() updates localStorage synchronously; context.token in this closure is still stale.
                 console.log("Token refreshed, retrying job fetch...");
-                setTimeout(
-                  () =>
-                    FetchAllJobs(
-                      context?.token!,
-                      context?.userDetails!,
-                      silent
-                    ),
-                  100
-                );
+                const freshToken = TokenManager.getStoredToken();
+                const freshUser = TokenManager.getStoredUserDetails();
+                if (freshToken && freshUser) {
+                  void FetchAllJobs(freshToken, freshUser, silent);
+                }
                 return;
               }
             }
