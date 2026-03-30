@@ -45,6 +45,14 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 const JOB_UPDATE_ENDPOINT = `${API_BASE}/updatechanges`;
 const PLAN_ENDPOINT = `${API_BASE}/api/plans/select`;
 
+function normalizeRole(value: unknown): string {
+    return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function isFlashfireOpsEmail(value: unknown): boolean {
+    return typeof value === "string" && value.toLowerCase().includes("@flashfirehq");
+}
+
 /** Same diff rules as flashfire-dashboard-backend autoOptimizationWorker (changesMade for JobModal + auto-opt). */
 function hasStableResumeRowId(entry: any): boolean {
     return entry && entry.id !== undefined && entry.id !== null && entry.id !== "";
@@ -504,12 +512,25 @@ export default function JobModal({
     const token = ctx?.token ?? null;
     const setData = ctx?.setData ?? null;
     const currentUser = ctx?.userDetails ?? {};
+    const currentUserEmail = typeof currentUser?.email === "string" ? currentUser.email.trim().toLowerCase() : "";
 
     const getCompanyDomain = (companyName: string) => {
         return companyName.replace(/\s+/g, '').toLowerCase();
     };
 
     const { role, name: operationsUserName, email: operationsUserEmail, getOperatorName } = useOperationsStore();
+    const normalizedStoreRole = normalizeRole(role);
+    const normalizedCurrentUserRole = normalizeRole(
+        currentUser?.role || currentUser?.userType || localStorage.getItem("role")
+    );
+    const isEndUserSession = !!currentUserEmail && !isFlashfireOpsEmail(currentUserEmail);
+    const isOperatorViewer =
+        !isEndUserSession &&
+        (
+            normalizedCurrentUserRole === "operations" ||
+            normalizedStoreRole === "operations" ||
+            normalizedStoreRole === "operator"
+        );
 
     // NEW (paste-to-upload buffer)
     const [pastedImages, setPastedImages] = useState<File[]>([]);
@@ -1828,21 +1849,21 @@ export default function JobModal({
                             <h4 className="text-lg font-semibold text-gray-900 mb-4">
                                 📈 Application Timeline
                             </h4>
-                            {(jobDetails?.timeline?.length > 0 || (role === "operations" && removalReasonData)) ? (
+                            {(jobDetails?.timeline?.length > 0 || (isOperatorViewer && removalReasonData)) ? (
                                 <ol className="relative border-s border-gray-200">
                                     {jobDetails?.timeline?.map(
                                         (event: string, idx: number) => {
                                             let displayEvent = event;
                                             if (event.toLowerCase().includes('added by')) {
-                                                if (role !== 'operations') {
+                                                if (!isOperatorViewer) {
                                                     displayEvent = 'Added';
                                                 }
                                             } else if (event === 'Added') {
-                                                // Immutable label from DB (extension code name). Same for clients & operations.
                                                 const name = jobDetails?.addedBy?.trim();
-                                                displayEvent = name
-                                                    ? `Added by ${name}`
-                                                    : 'Added';
+                                                displayEvent =
+                                                    isOperatorViewer && name
+                                                        ? `Added by ${name}`
+                                                        : 'Added';
                                             }
                                             return (
                                                 <li
@@ -1872,7 +1893,7 @@ export default function JobModal({
                                             );
                                         }
                                     )}
-                                    {role === "operations" && removalReasonData && (
+                                    {isOperatorViewer && removalReasonData && (
                                         <li className="mb-10 ms-6">
                                             <span className="absolute flex items-center justify-center w-6 h-6 bg-red-100 rounded-full -start-3 ring-8 ring-white">
                                                 <svg
@@ -3008,6 +3029,5 @@ export default function JobModal({
         </div>
     );
 }
-
 
 

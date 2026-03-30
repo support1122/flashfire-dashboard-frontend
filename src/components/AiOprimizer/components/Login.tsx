@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import {
     FLASHFIRE_OPTIMIZER_OTP_TRUST_KEY,
+    ADMIN_OTP_TRUST_TTL_7D_MS,
+    ADMIN_OTP_TRUST_TTL_30D_MS,
     getValidAdminOtpTrustToken,
     saveAdminOtpTrust,
 } from "../../../utils/adminOtpTrustStorage";
@@ -31,6 +33,7 @@ const Login: React.FC<{
     const [otpSent, setOtpSent] = useState(false);
     const [otpInput, setOtpInput] = useState("");
     const [sendingOtp, setSendingOtp] = useState(false);
+    const [remember30Days, setRemember30Days] = useState(false);
     const [checkingStoredKey, setCheckingStoredKey] = useState(true);
     const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -306,11 +309,19 @@ const Login: React.FC<{
             const res = await fetch(`${API_BASE}/api/verify-otp`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: username.trim().toLowerCase(), otp: otpInput }),
+                body: JSON.stringify({
+                    email: username.trim().toLowerCase(),
+                    otp: otpInput,
+                    remember30Days,
+                }),
             });
             const data = await res.json();
             if (res.ok && data.trustToken) {
-                saveAdminOtpTrust(FLASHFIRE_OPTIMIZER_OTP_TRUST_KEY, username, data.trustToken);
+                const ttlMs =
+                    data.expiresIn === "30d"
+                        ? ADMIN_OTP_TRUST_TTL_30D_MS
+                        : ADMIN_OTP_TRUST_TTL_7D_MS;
+                saveAdminOtpTrust(FLASHFIRE_OPTIMIZER_OTP_TRUST_KEY, username, data.trustToken, ttlMs);
                 const loginRes = await fetch(`${API_BASE}/api/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -543,8 +554,20 @@ const Login: React.FC<{
                                                     className="w-full pl-4 pr-4 py-4 border border-orange-300 rounded-2xl focus:ring-orange-200 text-center text-xl tracking-widest bg-orange-50"
                                                 />
                                             </div>
+                                            <label className="flex items-start gap-2 cursor-pointer text-sm text-orange-800">
+                                                <input
+                                                    type="checkbox"
+                                                    className="mt-0.5 rounded border-orange-300 text-orange-600 focus:ring-orange-500"
+                                                    checked={remember30Days}
+                                                    onChange={(e) => setRemember30Days(e.target.checked)}
+                                                />
+                                                <span>
+                                                    Remember this device for <strong>30 days</strong> (skip OTP). If
+                                                    unchecked, OTP is skipped for <strong>7 days</strong> only.
+                                                </span>
+                                            </label>
                                             <p className="text-xs text-orange-700">
-                                                This device will skip OTP for 7 days. Logging out clears it.
+                                                Logging out clears remembered OTP on this device.
                                             </p>
                                             <button
                                                 type="submit"
@@ -557,7 +580,13 @@ const Login: React.FC<{
                                     )}
                                     <button
                                         type="button"
-                                        onClick={() => { setRequireOtpStep(false); setOtpSent(false); setOtpInput(""); setError(""); }}
+                                        onClick={() => {
+                                            setRequireOtpStep(false);
+                                            setOtpSent(false);
+                                            setOtpInput("");
+                                            setRemember30Days(false);
+                                            setError("");
+                                        }}
                                         className="w-full text-gray-600 py-2 text-sm hover:text-gray-800"
                                     >
                                         ← Back to login

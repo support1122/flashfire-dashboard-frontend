@@ -58,7 +58,7 @@ const Navigation: React.FC<NavigationProps> = ({
   const mobileMenuRef = useRef<HTMLDivElement>(null);         // mobile menu dropdown container
 
   const { userProfile } = useUserProfile();
-  const { role } = useOperationsStore();
+  const { role, reset: resetOperationsStore } = useOperationsStore();
   const { triggerHighlight } = useDownloadHighlightStore();
   const hasProfile = !!userProfile?.email;
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -189,6 +189,7 @@ const Navigation: React.FC<NavigationProps> = ({
   };
 
   const handleLogout = () => {
+    resetOperationsStore();
     localStorage.clear();
     sessionStorage.clear();
     setUser("");

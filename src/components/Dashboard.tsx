@@ -7,7 +7,7 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
-import React, { useEffect, useContext, useState, Suspense, lazy } from "react";
+import React, { useEffect, useContext, useState, Suspense, lazy, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUserJobs } from "../state_management/UserJobs.tsx";
 import { UserContext } from "../state_management/UserContext.js";
@@ -20,6 +20,9 @@ import { useOperationsStore } from "../state_management/Operations.ts";
 import { useJobsSessionStore } from "../state_management/JobsSessionStore.ts";
 
 const JobForm = lazy(() => import("./JobForm.tsx"));
+
+/** Background poll interval so dashboard stats / recent jobs stay live without full reload */
+const DASHBOARD_REFRESH_MS = 60 * 1000;
 
 const Dashboard: React.FC = () => {
   const context = useContext(UserContext);
@@ -46,96 +49,96 @@ const Dashboard: React.FC = () => {
   const dashboardStats = getDashboardStats();
 
 
-  async function FetchAllJobs(localToken: string, localUserDetails: any) {
-    if (role == "operations") {
-      console.log("local storage email : ", localUserDetails.email);
-      try {
+  const FetchAllJobs = useCallback(
+    async (localToken: string, localUserDetails: any, silent = false) => {
+      if (!silent) {
         setLoadingDetails(true);
         setIsInitialLoad(true);
-        const res = await fetch(
-          `${API_BASE_URL}/operations/getalljobs`,
-          {
+      }
+      if (role == "operations") {
+        console.log("local storage email : ", localUserDetails.email);
+        try {
+          const res = await fetch(
+            `${API_BASE_URL}/operations/getalljobs`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localToken}`,
+              },
+              body: JSON.stringify({ email: localUserDetails.email }),
+            }
+          );
+          const data = await res.json();
+          if (res.ok) {
+            setUserJobs(data?.allJobs || []);
+            if (!silent) setIsInitialLoad(false);
+          } else {
+            if (!silent) alert("something is really wrong");
+            if (!silent) setIsInitialLoad(false);
+          }
+        } catch (error) {
+          console.log("error while initial fetch data", error);
+          if (!silent) setIsInitialLoad(false);
+        } finally {
+          if (!silent) setLoadingDetails(false);
+        }
+      } else {
+        try {
+          const res = await fetch(`${API_BASE_URL}/getalljobs`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${localToken}`,
             },
             body: JSON.stringify({ email: localUserDetails.email }),
-          }
-        );
-        const data = await res.json();
-        if (res.ok) {
-          setUserJobs(data?.allJobs || []);
-          setIsInitialLoad(false);
-        } else {
-          alert("something is really wrong");
-          setIsInitialLoad(false);
-        }
-      } catch (error) {
-        console.log("error while initial fetch data", error);
-        setIsInitialLoad(false);
-      } finally {
-        setLoadingDetails(false);
-      }
-    } else {
-      try {
-        setLoadingDetails(true);
-        setIsInitialLoad(true);
-        const res = await fetch(`${API_BASE_URL}/getalljobs`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localToken}`,
-          },
-          body: JSON.stringify({ email: localUserDetails.email }),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setUserJobs(data?.allJobs || []);
-          setIsInitialLoad(false);
-        } else if (
-          data.message === "invalid token please login again" ||
-          data.message === "Invalid token or expired"
-        ) {
-          console.log("Token invalid, attempting refresh...");
+          });
+          const data = await res.json();
+          if (res.ok) {
+            setUserJobs(data?.allJobs || []);
+            if (!silent) setIsInitialLoad(false);
+          } else if (
+            data.message === "invalid token please login again" ||
+            data.message === "Invalid token or expired"
+          ) {
+            console.log("Token invalid, attempting refresh...");
 
-          // Try to refresh token
-          if (context?.refreshToken) {
-            const refreshSuccess = await context.refreshToken();
-            if (refreshSuccess) {
-              // Retry the request with new token
-              console.log(
-                "Token refreshed, retrying job fetch..."
-              );
-              setTimeout(
-                () =>
-                  FetchAllJobs(
-                    context?.token!,
-                    context?.userDetails!
-                  ),
-                100
-              );
-              return;
+            if (context?.refreshToken) {
+              const refreshSuccess = await context.refreshToken();
+              if (refreshSuccess) {
+                console.log("Token refreshed, retrying job fetch...");
+                setTimeout(
+                  () =>
+                    FetchAllJobs(
+                      context?.token!,
+                      context?.userDetails!,
+                      silent
+                    ),
+                  100
+                );
+                return;
+              }
             }
-          }
 
-          console.log(
-            "Token refresh failed, clearing storage and redirecting to login"
-          );
-          localStorage.clear();
-          navigate("/login");
-          setIsInitialLoad(false);
-        } else {
-          setIsInitialLoad(false);
+            console.log(
+              "Token refresh failed, clearing storage and redirecting to login"
+            );
+            localStorage.clear();
+            navigate("/login");
+            if (!silent) setIsInitialLoad(false);
+          } else {
+            if (!silent) setIsInitialLoad(false);
+          }
+        } catch (err) {
+          console.error(err);
+          if (!silent) setIsInitialLoad(false);
+        } finally {
+          if (!silent) setLoadingDetails(false);
         }
-      } catch (err) {
-        console.error(err);
-        setIsInitialLoad(false);
-      } finally {
-        setLoadingDetails(false);
       }
-    }
-  }
+    },
+    [API_BASE_URL, context, navigate, role, setUserJobs]
+  );
 
   useEffect(() => {
     if (!token || !userDetails) {
@@ -156,8 +159,17 @@ const Dashboard: React.FC = () => {
     // Always fetch fresh data on mount/refresh to ensure we have latest data
     // This prevents showing stale cached data from sessionStorage
     setIsInitialLoad(true);
-    FetchAllJobs(token, userDetails);
-  }, [token, userDetails]);
+    void FetchAllJobs(token, userDetails, false);
+  }, [token, userDetails, FetchAllJobs, navigate]);
+
+  /** Live refresh: pull latest jobs every minute without full-page loader */
+  useEffect(() => {
+    if (!token || !userDetails) return;
+    const id = window.setInterval(() => {
+      void FetchAllJobs(token, userDetails, true);
+    }, DASHBOARD_REFRESH_MS);
+    return () => window.clearInterval(id);
+  }, [token, userDetails, FetchAllJobs]);
 
   // Calculate stats directly from userJobs to avoid stale sessionStorage data
   const calculateStatsFromJobs = (jobs: typeof userJobs) => {
@@ -372,7 +384,7 @@ const Dashboard: React.FC = () => {
             onSuccess={() => {
               setShowJobForm(false);
               if (context?.token && context?.userDetails) {
-                FetchAllJobs(context?.token, context?.userDetails);
+                void FetchAllJobs(context.token, context.userDetails, true);
               }
             }}
             setUserJobs={setUserJobs}
