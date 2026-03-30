@@ -596,6 +596,7 @@ export default function Login() {
       } else {
         if (data?.message === "Login Success..!") {
           resetOperationsStore()
+          localStorage.removeItem("role")
           setData?.({
             userDetails: data?.userDetails,
             token: data?.token || "",
@@ -615,12 +616,13 @@ export default function Login() {
           toastUtils.dismissToast(loadingToast)
           toastUtils.success(toastMessages.loginSuccess)
           navigate("/")
-          } else {
-            resetOperationsStore()
-            setData?.({
-              userDetails: null,
-              token: "",
-            })
+        } else {
+          resetOperationsStore()
+          localStorage.removeItem("role")
+          setData?.({
+            userDetails: null,
+            token: "",
+          })
           toastUtils.dismissToast(loadingToast)
           toastUtils.error(data?.message || toastMessages.loginError)
         }
@@ -904,6 +906,7 @@ export default function Login() {
             navigate("/manage")
           } else {
             resetOperationsStore()
+            localStorage.removeItem("role")
             setData?.({
               userDetails: data?.userDetails,
               token: data?.token || "",
@@ -1155,6 +1158,4 @@ function SessionKeyModal({
     </div>
   )
 }
-
-
 

@@ -520,14 +520,17 @@ export default function JobModal({
 
     const { role, name: operationsUserName, email: operationsUserEmail, getOperatorName } = useOperationsStore();
     const normalizedStoreRole = normalizeRole(role);
-    const normalizedCurrentUserRole = normalizeRole(
-        currentUser?.role || currentUser?.userType || localStorage.getItem("role")
+    const normalizedContextRole = normalizeRole(
+        currentUser?.role || currentUser?.userType
     );
+    const normalizedStoredRole = normalizeRole(localStorage.getItem("role"));
+    const normalizedCurrentUserRole = normalizedContextRole || normalizedStoredRole;
     const isEndUserSession = !!currentUserEmail && !isFlashfireOpsEmail(currentUserEmail);
     const isOperatorViewer =
         !isEndUserSession &&
         (
             normalizedCurrentUserRole === "operations" ||
+            normalizedCurrentUserRole === "operator" ||
             normalizedStoreRole === "operations" ||
             normalizedStoreRole === "operator"
         );
@@ -3029,5 +3032,3 @@ export default function JobModal({
         </div>
     );
 }
-
-
