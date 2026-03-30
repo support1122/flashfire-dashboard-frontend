@@ -7,7 +7,7 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
-import React, { useEffect, useLayoutEffect, useContext, useState, Suspense, lazy, useCallback } from "react";
+import React, { useEffect, useContext, useState, Suspense, lazy, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUserJobs } from "../state_management/UserJobs.tsx";
 import { UserContext } from "../state_management/UserContext.js";
@@ -25,17 +25,6 @@ const JobForm = lazy(() => import("./JobForm.tsx"));
 /** Background poll interval so dashboard stats / recent jobs stay live without full reload */
 const DASHBOARD_REFRESH_MS = 60 * 1000;
 
-function shouldSkipBlockingFetch(
-  localUserDetails: { email?: string } | null | undefined
-): boolean {
-  const email = localUserDetails?.email?.trim().toLowerCase();
-  if (!email) return false;
-  const { jobs, userEmail } = useJobsSessionStore.getState();
-  if (!Array.isArray(jobs) || jobs.length === 0) return false;
-  if (!userEmail) return false;
-  return userEmail.trim().toLowerCase() === email;
-}
-
 const Dashboard: React.FC = () => {
   const context = useContext(UserContext);
   const navigate = useNavigate();
@@ -50,7 +39,6 @@ const Dashboard: React.FC = () => {
 
   const { token, userDetails } = context;
   const { userJobs, setUserJobs } = useUserJobs();
-  const userEmailFromStore = useJobsSessionStore((s) => s.userEmail);
   const [loadingDetails, setLoadingDetails] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -61,25 +49,9 @@ const Dashboard: React.FC = () => {
   const { getDashboardStats } = useJobsSessionStore();
   const dashboardStats = getDashboardStats();
 
-  /** Session jobs match logged-in user — show UI immediately and refresh in background */
-  const hasWarmCache =
-    !!userDetails?.email &&
-    !!userEmailFromStore &&
-    userEmailFromStore.toLowerCase() === userDetails.email.trim().toLowerCase() &&
-    Array.isArray(userJobs) &&
-    userJobs.length > 0;
-
-  useLayoutEffect(() => {
-    if (hasWarmCache) {
-      setLoadingDetails(false);
-      setIsInitialLoad(false);
-    }
-  }, [hasWarmCache]);
-
   const FetchAllJobs = useCallback(
     async (localToken: string, localUserDetails: any, silent = false) => {
-      const skipBlockingUi = silent || shouldSkipBlockingFetch(localUserDetails);
-      if (!skipBlockingUi) {
+      if (!silent) {
         setLoadingDetails(true);
         setIsInitialLoad(true);
       }
@@ -109,7 +81,7 @@ const Dashboard: React.FC = () => {
           console.log("error while initial fetch data", error);
           if (!silent) setIsInitialLoad(false);
         } finally {
-          if (!skipBlockingUi) setLoadingDetails(false);
+          if (!silent) setLoadingDetails(false);
         }
       } else {
         try {
@@ -156,7 +128,7 @@ const Dashboard: React.FC = () => {
           console.error(err);
           if (!silent) setIsInitialLoad(false);
         } finally {
-          if (!skipBlockingUi) setLoadingDetails(false);
+          if (!silent) setLoadingDetails(false);
         }
       }
     },
@@ -179,6 +151,7 @@ const Dashboard: React.FC = () => {
       setShowProfileModal(false);
     }
 
+    setIsInitialLoad(true);
     void FetchAllJobs(token, userDetails, false);
   }, [token, userDetails, FetchAllJobs, navigate]);
 
@@ -226,19 +199,17 @@ const Dashboard: React.FC = () => {
     });
   };
 
-  // Warm cache: show real stats immediately; cold start: zeros until first fetch completes
-  const stats =
-    isInitialLoad && !hasWarmCache
-      ? {
-          total: 0,
-          saved: 0,
-          applied: 0,
-          interviewing: 0,
-          offer: 0,
-          rejected: 0,
-          deleted: 0,
-        }
-      : calculateStatsFromJobs(userJobs);
+  const stats = isInitialLoad
+    ? {
+        total: 0,
+        saved: 0,
+        applied: 0,
+        interviewing: 0,
+        offer: 0,
+        rejected: 0,
+        deleted: 0,
+      }
+    : calculateStatsFromJobs(userJobs);
 
   // Helper function to parse dates in various formats
   const parseCustomDate = (dateString: string): Date => {
@@ -344,8 +315,7 @@ const Dashboard: React.FC = () => {
     stats.total > 0 ? Math.round((stats.offer / stats.total) * 100) : 0;
   // alert(successRate)
 
-  // Cold start: full-screen loader. Warm cache: show dashboard immediately while fetch runs.
-  if ((loadingDetails || isInitialLoad) && !hasWarmCache) {
+  if (loadingDetails || isInitialLoad) {
     return <LoadingScreen />;
   }
   return (
