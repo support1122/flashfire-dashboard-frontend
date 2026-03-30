@@ -7,7 +7,7 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
-import React, { useEffect, useContext, useState, Suspense, lazy, useCallback } from "react";
+import React, { useEffect, useLayoutEffect, useContext, useState, Suspense, lazy, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUserJobs } from "../state_management/UserJobs.tsx";
 import { UserContext } from "../state_management/UserContext.js";
@@ -25,6 +25,17 @@ const JobForm = lazy(() => import("./JobForm.tsx"));
 /** Background poll interval so dashboard stats / recent jobs stay live without full reload */
 const DASHBOARD_REFRESH_MS = 60 * 1000;
 
+function shouldSkipBlockingFetch(
+  localUserDetails: { email?: string } | null | undefined
+): boolean {
+  const email = localUserDetails?.email?.trim().toLowerCase();
+  if (!email) return false;
+  const { jobs, userEmail } = useJobsSessionStore.getState();
+  if (!Array.isArray(jobs) || jobs.length === 0) return false;
+  if (!userEmail) return false;
+  return userEmail.trim().toLowerCase() === email;
+}
+
 const Dashboard: React.FC = () => {
   const context = useContext(UserContext);
   const navigate = useNavigate();
@@ -39,8 +50,9 @@ const Dashboard: React.FC = () => {
 
   const { token, userDetails } = context;
   const { userJobs, setUserJobs } = useUserJobs();
-  const [loadingDetails, setLoadingDetails] = useState(true); // Start with true to show loading initially
-  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial load state
+  const userEmailFromStore = useJobsSessionStore((s) => s.userEmail);
+  const [loadingDetails, setLoadingDetails] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showJobForm, setShowJobForm] = useState(false);
   const { role } = useOperationsStore();
@@ -49,10 +61,25 @@ const Dashboard: React.FC = () => {
   const { getDashboardStats } = useJobsSessionStore();
   const dashboardStats = getDashboardStats();
 
+  /** Session jobs match logged-in user — show UI immediately and refresh in background */
+  const hasWarmCache =
+    !!userDetails?.email &&
+    !!userEmailFromStore &&
+    userEmailFromStore.toLowerCase() === userDetails.email.trim().toLowerCase() &&
+    Array.isArray(userJobs) &&
+    userJobs.length > 0;
+
+  useLayoutEffect(() => {
+    if (hasWarmCache) {
+      setLoadingDetails(false);
+      setIsInitialLoad(false);
+    }
+  }, [hasWarmCache]);
 
   const FetchAllJobs = useCallback(
     async (localToken: string, localUserDetails: any, silent = false) => {
-      if (!silent) {
+      const skipBlockingUi = silent || shouldSkipBlockingFetch(localUserDetails);
+      if (!skipBlockingUi) {
         setLoadingDetails(true);
         setIsInitialLoad(true);
       }
@@ -82,7 +109,7 @@ const Dashboard: React.FC = () => {
           console.log("error while initial fetch data", error);
           if (!silent) setIsInitialLoad(false);
         } finally {
-          if (!silent) setLoadingDetails(false);
+          if (!skipBlockingUi) setLoadingDetails(false);
         }
       } else {
         try {
@@ -107,12 +134,10 @@ const Dashboard: React.FC = () => {
             if (context?.refreshToken) {
               const refreshSuccess = await context.refreshToken();
               if (refreshSuccess) {
-                // setData() updates localStorage synchronously; context.token in this closure is still stale.
                 console.log("Token refreshed, retrying job fetch...");
                 const freshToken = TokenManager.getStoredToken();
-                const freshUser = TokenManager.getStoredUserDetails();
-                if (freshToken && freshUser) {
-                  void FetchAllJobs(freshToken, freshUser, silent);
+                if (freshToken && localUserDetails?.email) {
+                  void FetchAllJobs(freshToken, localUserDetails, silent);
                 }
                 return;
               }
@@ -131,7 +156,7 @@ const Dashboard: React.FC = () => {
           console.error(err);
           if (!silent) setIsInitialLoad(false);
         } finally {
-          if (!silent) setLoadingDetails(false);
+          if (!skipBlockingUi) setLoadingDetails(false);
         }
       }
     },
@@ -154,9 +179,6 @@ const Dashboard: React.FC = () => {
       setShowProfileModal(false);
     }
 
-    // Always fetch fresh data on mount/refresh to ensure we have latest data
-    // This prevents showing stale cached data from sessionStorage
-    setIsInitialLoad(true);
     void FetchAllJobs(token, userDetails, false);
   }, [token, userDetails, FetchAllJobs, navigate]);
 
@@ -204,19 +226,19 @@ const Dashboard: React.FC = () => {
     });
   };
 
-  // Calculate stats from current userJobs (not from sessionStorage to avoid stale data)
-  // Only calculate after initial load completes to prevent showing stale values
-  const stats = isInitialLoad ? {
-    total: 0,
-    saved: 0,
-    applied: 0,
-    interviewing: 0,
-    offer: 0,
-    rejected: 0,
-    deleted: 0,
-  } : calculateStatsFromJobs(userJobs);
-
-  console.log("stats calculated from userJobs = ", stats);
+  // Warm cache: show real stats immediately; cold start: zeros until first fetch completes
+  const stats =
+    isInitialLoad && !hasWarmCache
+      ? {
+          total: 0,
+          saved: 0,
+          applied: 0,
+          interviewing: 0,
+          offer: 0,
+          rejected: 0,
+          deleted: 0,
+        }
+      : calculateStatsFromJobs(userJobs);
 
   // Helper function to parse dates in various formats
   const parseCustomDate = (dateString: string): Date => {
@@ -304,18 +326,6 @@ const Dashboard: React.FC = () => {
         self.findIndex((j) => j.jobID === job.jobID) === index
     ) || [];
 
-  console.log("Total unique jobs:", uniqueJobs.length);
-  console.log(
-    "All jobs with updatedAt:",
-    uniqueJobs.map((job) => ({
-      jobID: job.jobID,
-      title: job.jobTitle,
-      company: job.companyName,
-      updatedAt: job.updatedAt,
-      parsedDate: parseCustomDate(job.updatedAt),
-    }))
-  );
-
   const recentJobs =
     uniqueJobs
       ?.sort((a, b) => {
@@ -330,29 +340,12 @@ const Dashboard: React.FC = () => {
       })
       ?.slice(0, 6) || [];
 
-  console.log(
-    "RecentAllJOBS META DATA",
-    recentJobs.map((job) => ({
-      jobID: job.jobID,
-      title: job.jobTitle,
-      company: job.companyName,
-      updatedAt: job.updatedAt,
-      status: job.currentStatus,
-      parsedDate: parseCustomDate(job.updatedAt),
-    }))
-  );
-
-  // Force re-calculation when userJobs changes
-  useEffect(() => {
-    // This effect ensures the component re-renders when userJobs changes
-    console.log("userJobs updated, recalculating recent jobs");
-  }, [userJobs]);
   const successRate =
     stats.total > 0 ? Math.round((stats.offer / stats.total) * 100) : 0;
   // alert(successRate)
 
-  // Show loading screen while fetching initial data to prevent showing stale cached data
-  if (loadingDetails || isInitialLoad) {
+  // Cold start: full-screen loader. Warm cache: show dashboard immediately while fetch runs.
+  if ((loadingDetails || isInitialLoad) && !hasWarmCache) {
     return <LoadingScreen />;
   }
   return (
