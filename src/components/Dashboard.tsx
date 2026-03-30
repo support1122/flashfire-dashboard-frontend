@@ -18,25 +18,11 @@ import DashboardManagerDisplay from "./DashboardManagerDisplay.tsx";
 import ReferralBenefitsDisplay from "./ReferralBenefitsDisplay.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
 import { useJobsSessionStore } from "../state_management/JobsSessionStore.ts";
-import { TokenManager } from "../utils/tokenManager";
 
 const JobForm = lazy(() => import("./JobForm.tsx"));
 
 /** Background poll interval so dashboard stats / recent jobs stay live without full reload */
 const DASHBOARD_REFRESH_MS = 60 * 1000;
-
-function SkeletonNumber({ className = "h-9 w-14" }: { className?: string }) {
-  return (
-    <span
-      className={`inline-block rounded-md bg-gray-200 animate-pulse ${className}`}
-      aria-hidden
-    />
-  );
-}
-
-const fetchOpts = {
-  priority: "high" as const,
-} as RequestInit;
 
 const Dashboard: React.FC = () => {
   const context = useContext(UserContext);
@@ -52,7 +38,8 @@ const Dashboard: React.FC = () => {
 
   const { token, userDetails } = context;
   const { userJobs, setUserJobs } = useUserJobs();
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [loadingDetails, setLoadingDetails] = useState(true); // Start with true to show loading initially
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial load state
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showJobForm, setShowJobForm] = useState(false);
   const { role } = useOperationsStore();
@@ -61,21 +48,27 @@ const Dashboard: React.FC = () => {
   const { getDashboardStats } = useJobsSessionStore();
   const dashboardStats = getDashboardStats();
 
+
   const FetchAllJobs = useCallback(
     async (localToken: string, localUserDetails: any, silent = false) => {
-      if (!silent) setIsInitialLoad(true);
+      if (!silent) {
+        setLoadingDetails(true);
+        setIsInitialLoad(true);
+      }
       if (role == "operations") {
         console.log("local storage email : ", localUserDetails.email);
         try {
-          const res = await fetch(`${API_BASE_URL}/operations/getalljobs`, {
-            ...fetchOpts,
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localToken}`,
-            },
-            body: JSON.stringify({ email: localUserDetails.email }),
-          });
+          const res = await fetch(
+            `${API_BASE_URL}/operations/getalljobs`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localToken}`,
+              },
+              body: JSON.stringify({ email: localUserDetails.email }),
+            }
+          );
           const data = await res.json();
           if (res.ok) {
             setUserJobs(data?.allJobs || []);
@@ -87,11 +80,12 @@ const Dashboard: React.FC = () => {
         } catch (error) {
           console.log("error while initial fetch data", error);
           if (!silent) setIsInitialLoad(false);
+        } finally {
+          if (!silent) setLoadingDetails(false);
         }
       } else {
         try {
           const res = await fetch(`${API_BASE_URL}/getalljobs`, {
-            ...fetchOpts,
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -113,10 +107,15 @@ const Dashboard: React.FC = () => {
               const refreshSuccess = await context.refreshToken();
               if (refreshSuccess) {
                 console.log("Token refreshed, retrying job fetch...");
-                const freshToken = TokenManager.getStoredToken();
-                if (freshToken && localUserDetails?.email) {
-                  void FetchAllJobs(freshToken, localUserDetails, silent);
-                }
+                setTimeout(
+                  () =>
+                    FetchAllJobs(
+                      context?.token!,
+                      context?.userDetails!,
+                      silent
+                    ),
+                  100
+                );
                 return;
               }
             }
@@ -133,6 +132,8 @@ const Dashboard: React.FC = () => {
         } catch (err) {
           console.error(err);
           if (!silent) setIsInitialLoad(false);
+        } finally {
+          if (!silent) setLoadingDetails(false);
         }
       }
     },
@@ -155,6 +156,9 @@ const Dashboard: React.FC = () => {
       setShowProfileModal(false);
     }
 
+    // Always fetch fresh data on mount/refresh to ensure we have latest data
+    // This prevents showing stale cached data from sessionStorage
+    setIsInitialLoad(true);
     void FetchAllJobs(token, userDetails, false);
   }, [token, userDetails, FetchAllJobs, navigate]);
 
@@ -202,17 +206,19 @@ const Dashboard: React.FC = () => {
     });
   };
 
-  const stats = isInitialLoad
-    ? {
-        total: 0,
-        saved: 0,
-        applied: 0,
-        interviewing: 0,
-        offer: 0,
-        rejected: 0,
-        deleted: 0,
-      }
-    : calculateStatsFromJobs(userJobs);
+  // Calculate stats from current userJobs (not from sessionStorage to avoid stale data)
+  // Only calculate after initial load completes to prevent showing stale values
+  const stats = isInitialLoad ? {
+    total: 0,
+    saved: 0,
+    applied: 0,
+    interviewing: 0,
+    offer: 0,
+    rejected: 0,
+    deleted: 0,
+  } : calculateStatsFromJobs(userJobs);
+
+  console.log("stats calculated from userJobs = ", stats);
 
   // Helper function to parse dates in various formats
   const parseCustomDate = (dateString: string): Date => {
@@ -300,6 +306,18 @@ const Dashboard: React.FC = () => {
         self.findIndex((j) => j.jobID === job.jobID) === index
     ) || [];
 
+  console.log("Total unique jobs:", uniqueJobs.length);
+  console.log(
+    "All jobs with updatedAt:",
+    uniqueJobs.map((job) => ({
+      jobID: job.jobID,
+      title: job.jobTitle,
+      company: job.companyName,
+      updatedAt: job.updatedAt,
+      parsedDate: parseCustomDate(job.updatedAt),
+    }))
+  );
+
   const recentJobs =
     uniqueJobs
       ?.sort((a, b) => {
@@ -314,10 +332,31 @@ const Dashboard: React.FC = () => {
       })
       ?.slice(0, 6) || [];
 
+  console.log(
+    "RecentAllJOBS META DATA",
+    recentJobs.map((job) => ({
+      jobID: job.jobID,
+      title: job.jobTitle,
+      company: job.companyName,
+      updatedAt: job.updatedAt,
+      status: job.currentStatus,
+      parsedDate: parseCustomDate(job.updatedAt),
+    }))
+  );
+
+  // Force re-calculation when userJobs changes
+  useEffect(() => {
+    // This effect ensures the component re-renders when userJobs changes
+    console.log("userJobs updated, recalculating recent jobs");
+  }, [userJobs]);
   const successRate =
     stats.total > 0 ? Math.round((stats.offer / stats.total) * 100) : 0;
   // alert(successRate)
 
+  // Show loading screen while fetching initial data to prevent showing stale cached data
+  if (loadingDetails || isInitialLoad) {
+    return <LoadingScreen />;
+  }
   return (
     <div className="relative min-h-dvh text-zinc-900 overflow-x-hidden">
       {/* NewUserModal */}
@@ -355,15 +394,6 @@ const Dashboard: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {isInitialLoad && (
-          <div
-            className="mb-6 h-1.5 w-full overflow-hidden rounded-full bg-orange-100"
-            role="progressbar"
-            aria-label="Loading job data"
-          >
-            <div className="h-full w-full animate-pulse bg-gradient-to-r from-orange-300 via-orange-500 to-orange-300" />
-          </div>
-        )}
 
         {/* Welcome Section */}
         <div className="mb-8">
@@ -388,8 +418,8 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Zero jobs hint (hide while first fetch runs — avoids false "no jobs" flash) */}
-        {!isInitialLoad && uniqueJobs.length === 0 && (
+        {/* Zero jobs hint */}
+        {uniqueJobs.length === 0 && (
           <div className="mb-8 rounded-xl border border-dashed border-gray-300 bg-white p-5 md:p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">You have no jobs yet</h3>
             <p className="text-gray-600 mb-4">
@@ -413,17 +443,15 @@ const Dashboard: React.FC = () => {
                 <Briefcase className="w-6 h-6 text-blue-600" />
               </div>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-1 min-h-[2.25rem] flex items-center">
-              {isInitialLoad ? <SkeletonNumber /> : stats.total}
+            <h3 className="text-2xl font-bold text-gray-900 mb-1">
+              {stats.total}
             </h3>
             <p className="text-gray-600 text-sm">Total Applications</p>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-              {!isInitialLoad && (
-                <div
-                  className="bg-blue-600 h-2 rounded-full"
-                  style={{ width: `${Math.min(100, (stats.total / 50) * 100)}%` }}
-                />
-              )}
+              <div
+                className="bg-blue-600 h-2 rounded-full"
+                style={{ width: `${Math.min(100, (stats.total / 50) * 100)}%` }}
+              />
             </div>
           </div>
 
@@ -434,17 +462,13 @@ const Dashboard: React.FC = () => {
                 <Users className="w-6 h-6 text-orange-600" />
               </div>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-1 min-h-[2.25rem] flex items-center">
-              {isInitialLoad ? <SkeletonNumber /> : stats.interviewing}
-            </h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-1">{stats.interviewing}</h3>
             <p className="text-gray-600 text-sm">Active Interviews</p>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-              {!isInitialLoad && (
-                <div
-                  className="bg-orange-600 h-2 rounded-full"
-                  style={{ width: `${Math.min(100, (stats.interviewing / 10) * 100)}%` }}
-                />
-              )}
+              <div
+                className="bg-orange-600 h-2 rounded-full"
+                style={{ width: `${Math.min(100, (stats.interviewing / 10) * 100)}%` }}
+              />
             </div>
           </div>
 
@@ -455,17 +479,15 @@ const Dashboard: React.FC = () => {
                 <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-1 min-h-[2.25rem] flex items-center">
-              {isInitialLoad ? <SkeletonNumber /> : stats.offer}
+            <h3 className="text-2xl font-bold text-gray-900 mb-1">
+              {stats.offer}
             </h3>
             <p className="text-gray-600 text-sm">Offers Received</p>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-              {!isInitialLoad && (
-                <div
-                  className="bg-green-600 h-2 rounded-full"
-                  style={{ width: `${Math.min(100, (stats.offer / 5) * 100)}%` }}
-                />
-              )}
+              <div
+                className="bg-green-600 h-2 rounded-full"
+                style={{ width: `${Math.min(100, (stats.offer / 5) * 100)}%` }}
+              />
             </div>
           </div>
 
@@ -476,17 +498,13 @@ const Dashboard: React.FC = () => {
                 <TrendingUp className="w-6 h-6 text-purple-600" />
               </div>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-1 min-h-[2.25rem] flex items-center">
-              {isInitialLoad ? <SkeletonNumber className="h-9 w-16" /> : `${successRate}%`}
-            </h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-1">{successRate}%</h3>
             <p className="text-gray-600 text-sm">Success Rate</p>
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-              {!isInitialLoad && (
-                <div
-                  className="bg-purple-600 h-2 rounded-full"
-                  style={{ width: `${successRate}%` }}
-                />
-              )}
+              <div
+                className="bg-purple-600 h-2 rounded-full"
+                style={{ width: `${successRate}%` }}
+              />
             </div>
           </div>
         </div>
@@ -533,8 +551,8 @@ const Dashboard: React.FC = () => {
                 <Clock className="w-8 h-8 text-gray-400" />
               </div>
               <span className="text-sm font-medium text-gray-600">Saved</span>
-              <span className="text-lg font-bold text-gray-900 min-h-[1.75rem] flex items-center justify-center">
-                {isInitialLoad ? <SkeletonNumber className="h-7 w-10" /> : stats.saved}
+              <span className="text-lg font-bold text-gray-900">
+                {stats.saved}
               </span>
             </div>
 
@@ -544,9 +562,7 @@ const Dashboard: React.FC = () => {
                 <FileText className="w-8 h-8 text-blue-600" />
               </div>
               <span className="text-sm font-medium text-gray-600">Applied</span>
-              <span className="text-lg font-bold text-gray-900 min-h-[1.75rem] flex items-center justify-center">
-                {isInitialLoad ? <SkeletonNumber className="h-7 w-10" /> : stats.applied}
-              </span>
+              <span className="text-lg font-bold text-gray-900">{stats.applied}</span>
             </div>
 
             {/* Interview */}
@@ -555,9 +571,7 @@ const Dashboard: React.FC = () => {
                 <Users className="w-8 h-8 text-orange-600" />
               </div>
               <span className="text-sm font-medium text-gray-600">Interview</span>
-              <span className="text-lg font-bold text-gray-900 min-h-[1.75rem] flex items-center justify-center">
-                {isInitialLoad ? <SkeletonNumber className="h-7 w-10" /> : stats.interviewing}
-              </span>
+              <span className="text-lg font-bold text-gray-900">{stats.interviewing}</span>
             </div>
 
             {/* Offer */}
@@ -566,9 +580,7 @@ const Dashboard: React.FC = () => {
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
               <span className="text-sm font-medium text-gray-600">Offer</span>
-              <span className="text-lg font-bold text-gray-900 min-h-[1.75rem] flex items-center justify-center">
-                {isInitialLoad ? <SkeletonNumber className="h-7 w-10" /> : stats.offer}
-              </span>
+              <span className="text-lg font-bold text-gray-900">{stats.offer}</span>
             </div>
 
             {/* Rejected */}
@@ -577,9 +589,7 @@ const Dashboard: React.FC = () => {
                 <XCircle className="w-8 h-8 text-red-600" />
               </div>
               <span className="text-sm font-medium text-gray-600">Rejected</span>
-              <span className="text-lg font-bold text-gray-900 min-h-[1.75rem] flex items-center justify-center">
-                {isInitialLoad ? <SkeletonNumber className="h-7 w-10" /> : stats.rejected}
-              </span>
+              <span className="text-lg font-bold text-gray-900">{stats.rejected}</span>
             </div>
           </div>
         </div>
@@ -673,7 +683,7 @@ const Dashboard: React.FC = () => {
         )}
 
         {/* Welcome Message - (original condition kept) */}
-        {!isInitialLoad && uniqueJobs.length === 0 && (
+        {uniqueJobs.length === 0 && (
           <div className="mt-8 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-5 md:p-6 text-white">
             <h3 className="text-lg md:text-xl font-bold mb-2">
               Welcome aboard, {userProfile?.firstName || context?.userDetails?.name?.split(" ")?.[0] || "User"}! 🎉
