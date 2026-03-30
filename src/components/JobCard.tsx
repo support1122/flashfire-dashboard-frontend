@@ -181,10 +181,10 @@ const JobCard: React.FC<JobCardProps> = ({
       {isOps && !job.optimizedResumeSeen && (autoOptCompleted || autoOptFailed) && (
         <div className="mb-2">
           {autoOptCompleted && (
-            <p className="text-xs font-medium text-green-600">Resume auto optimized – download</p>
+            <p className="text-xs font-medium text-green-600">Resume auto optimized – Just download  optimized resume and apply</p>
           )}
           {autoOptFailed && !autoOptCompleted && (
-            <p className="text-xs font-medium text-red-600">Resume auto optimization failed</p>
+            <p className="text-xs font-medium text-red-600">Resume auto optimization failed .Please Optimize and Downlaod the optimize resume</p>
           )}
         </div>
       )}
