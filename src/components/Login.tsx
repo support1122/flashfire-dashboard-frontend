@@ -392,7 +392,7 @@ export default function Login() {
   const [rememberFor30Days, setRememberFor30Days] = useState<boolean>(true)
 
   const navigate = useNavigate()
-  const { setName, setEmailOperations, setRole, setManagedUsers, setOperatorNamesMap } = useOperationsStore()
+  const { setName, setEmailOperations, setRole, setManagedUsers, setOperatorNamesMap, reset: resetOperationsStore } = useOperationsStore()
   const userContext = useContext(UserContext)
   const setData = userContext?.setData
   const { setProfileFromApi } = useUserProfile()
@@ -595,6 +595,7 @@ export default function Login() {
         }
       } else {
         if (data?.message === "Login Success..!") {
+          resetOperationsStore()
           setData?.({
             userDetails: data?.userDetails,
             token: data?.token || "",
@@ -614,11 +615,12 @@ export default function Login() {
           toastUtils.dismissToast(loadingToast)
           toastUtils.success(toastMessages.loginSuccess)
           navigate("/")
-        } else {
-          setData?.({
-            userDetails: null,
-            token: "",
-          })
+          } else {
+            resetOperationsStore()
+            setData?.({
+              userDetails: null,
+              token: "",
+            })
           toastUtils.dismissToast(loadingToast)
           toastUtils.error(data?.message || toastMessages.loginError)
         }
@@ -901,6 +903,7 @@ export default function Login() {
             toastUtils.success("Welcome to Operations Dashboard!")
             navigate("/manage")
           } else {
+            resetOperationsStore()
             setData?.({
               userDetails: data?.userDetails,
               token: data?.token || "",
@@ -1152,7 +1155,6 @@ function SessionKeyModal({
     </div>
   )
 }
-
 
 
 
