@@ -1,6 +1,6 @@
 
 
-import React, { useState, createContext, useEffect } from "react";
+import React, { useState, createContext, useEffect, useCallback, useMemo } from "react";
 import { TokenManager } from "../utils/tokenManager";
 import { toastUtils, toastMessages } from "../utils/toast";
 
@@ -37,10 +37,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-const setData = ({ userDetails, token }: { userDetails: any; token: string }) => {
+const setData = useCallback(({ userDetails: newDetails, token: newToken }: { userDetails: any; token: string }) => {
   // update React state
-  setUserDetails(userDetails);
-  setToken(token);
+  setUserDetails(newDetails);
+  setToken(newToken);
 
   // merge into existing localStorage.userAuth (preserve other keys)
   try {
@@ -49,19 +49,25 @@ const setData = ({ userDetails, token }: { userDetails: any; token: string }) =>
 
     const next = {
       ...existing,       // keep everything else under userAuth
-      userDetails,       // replace with latest
-      token,             // replace with latest
+      userDetails: newDetails,
+      token: newToken,
     };
 
     localStorage.setItem("userAuth", JSON.stringify(next));
   } catch (err) {
     console.error("Failed to update userAuth:", err);
-    // Fallback: at least persist the two keys
-    localStorage.setItem("userAuth", JSON.stringify({ userDetails, token }));
+    localStorage.setItem("userAuth", JSON.stringify({ userDetails: newDetails, token: newToken }));
   }
-};
+}, []);
 
-const refreshToken = async (): Promise<boolean> => {
+const logout = useCallback(() => {
+  setUserDetails({});
+  setToken(null);
+  TokenManager.clearStoredToken();
+  toastUtils.success(toastMessages.logoutSuccess);
+}, []);
+
+const refreshToken = useCallback(async (): Promise<boolean> => {
   try {
     if (!userDetails?.email) {
       console.error("No email found for token refresh");
@@ -78,14 +84,7 @@ const refreshToken = async (): Promise<boolean> => {
     console.error("Token refresh failed:", error);
     return false;
   }
-};
-
-const logout = () => {
-  setUserDetails({});
-  setToken(null);
-  TokenManager.clearStoredToken();
-  toastUtils.success(toastMessages.logoutSuccess);
-};
+}, [userDetails?.email, setData]);
 
 // Auto token refresh effect
 useEffect(() => {
@@ -114,8 +113,12 @@ useEffect(() => {
   return () => clearInterval(interval);
 }, [token, userDetails?.email]);
 
+  const contextValue = useMemo(() => ({
+    userDetails, token, setData, refreshToken, logout
+  }), [userDetails, token, setData, refreshToken, logout]);
+
   return (
-    <UserContext.Provider value={{ userDetails, token, setData, refreshToken, logout }}>
+    <UserContext.Provider value={contextValue}>
       {children}
     </UserContext.Provider>
   );
