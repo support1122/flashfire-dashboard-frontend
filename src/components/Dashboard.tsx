@@ -7,7 +7,7 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
-import React, { useEffect, useContext, useState, Suspense, lazy, useCallback } from "react";
+import React, { useEffect, useContext, useState, Suspense, lazy, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUserJobs } from "../state_management/UserJobs.tsx";
 import { UserContext } from "../state_management/UserContext.js";
@@ -17,17 +17,80 @@ import NewUserModal from "./NewUserModal.tsx";
 import DashboardManagerDisplay from "./DashboardManagerDisplay.tsx";
 import ReferralBenefitsDisplay from "./ReferralBenefitsDisplay.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
-import { useJobsSessionStore } from "../state_management/JobsSessionStore.ts";
 
 const JobForm = lazy(() => import("./JobForm.tsx"));
 
-/** Background poll interval so dashboard stats / recent jobs stay live without full reload */
-const DASHBOARD_REFRESH_MS = 60 * 1000;
+// Helper function to parse dates in various formats
+const parseCustomDate = (dateString: string): Date => {
+  if (!dateString) return new Date(0);
+
+  try {
+    // Try ISO format first
+    if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dateString)) {
+      const iso = new Date(dateString);
+      if (!isNaN(iso.getTime())) {
+        return iso;
+      }
+    }
+
+    // Handle format: "MM/DD/YYYY, h:mm:ss am/pm" or "DD/MM/YYYY, h:mm:ss am/pm"
+    const parts = dateString.trim().split(",");
+    if (parts.length === 2) {
+      const datePart = parts[0].trim();
+      const timePart = parts[1].trim();
+
+      const dateNumbers = datePart.split("/").map((p) => parseInt(p.trim()));
+
+      if (dateNumbers.length === 3) {
+        let dd, mm, yyyy;
+
+        if (dateNumbers[0] > 12) {
+          dd = dateNumbers[0];
+          mm = dateNumbers[1];
+          yyyy = dateNumbers[2];
+        } else {
+          mm = dateNumbers[0];
+          dd = dateNumbers[1];
+          yyyy = dateNumbers[2];
+        }
+
+        if (dd && mm && yyyy) {
+          if (yyyy < 100) yyyy += 2000;
+
+          const date = new Date(yyyy, mm - 1, dd);
+
+          const timeMatch = timePart.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)/i);
+          if (timeMatch) {
+            let hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            const seconds = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
+            const period = timeMatch[4]?.toLowerCase();
+
+            if (period === "pm" && hours !== 12) hours += 12;
+            if (period === "am" && hours === 12) hours = 0;
+
+            date.setHours(hours, minutes, seconds);
+          }
+
+          return date;
+        }
+      }
+    }
+
+    const native = new Date(dateString);
+    if (!isNaN(native.getTime())) {
+      return native;
+    }
+  } catch {
+    // Fall through to default
+  }
+
+  return new Date(0);
+};
 
 const Dashboard: React.FC = () => {
   const context = useContext(UserContext);
   const navigate = useNavigate();
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const { userProfile } = useUserProfile();
 
   if (!context) {
@@ -37,109 +100,11 @@ const Dashboard: React.FC = () => {
   }
 
   const { token, userDetails } = context;
-  const { userJobs, setUserJobs } = useUserJobs();
-  const [loadingDetails, setLoadingDetails] = useState(true); // Start with true to show loading initially
-  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial load state
+  const { userJobs, setUserJobs, loading, refreshJobs } = useUserJobs();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showJobForm, setShowJobForm] = useState(false);
-  const { role } = useOperationsStore();
 
-  // Use session storage for analytics
-  const { getDashboardStats } = useJobsSessionStore();
-  const dashboardStats = getDashboardStats();
-
-
-  const FetchAllJobs = useCallback(
-    async (localToken: string, localUserDetails: any, silent = false) => {
-      if (!silent) {
-        setLoadingDetails(true);
-        setIsInitialLoad(true);
-      }
-      if (role == "operations") {
-        console.log("local storage email : ", localUserDetails.email);
-        try {
-          const res = await fetch(
-            `${API_BASE_URL}/operations/getalljobs`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${localToken}`,
-              },
-              body: JSON.stringify({ email: localUserDetails.email }),
-            }
-          );
-          const data = await res.json();
-          if (res.ok) {
-            setUserJobs(data?.allJobs || []);
-            if (!silent) setIsInitialLoad(false);
-          } else {
-            if (!silent) alert("something is really wrong");
-            if (!silent) setIsInitialLoad(false);
-          }
-        } catch (error) {
-          console.log("error while initial fetch data", error);
-          if (!silent) setIsInitialLoad(false);
-        } finally {
-          if (!silent) setLoadingDetails(false);
-        }
-      } else {
-        try {
-          const res = await fetch(`${API_BASE_URL}/getalljobs`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localToken}`,
-            },
-            body: JSON.stringify({ email: localUserDetails.email }),
-          });
-          const data = await res.json();
-          if (res.ok) {
-            setUserJobs(data?.allJobs || []);
-            if (!silent) setIsInitialLoad(false);
-          } else if (
-            data.message === "invalid token please login again" ||
-            data.message === "Invalid token or expired"
-          ) {
-            console.log("Token invalid, attempting refresh...");
-
-            if (context?.refreshToken) {
-              const refreshSuccess = await context.refreshToken();
-              if (refreshSuccess) {
-                console.log("Token refreshed, retrying job fetch...");
-                setTimeout(
-                  () =>
-                    FetchAllJobs(
-                      context?.token!,
-                      context?.userDetails!,
-                      silent
-                    ),
-                  100
-                );
-                return;
-              }
-            }
-
-            console.log(
-              "Token refresh failed, clearing storage and redirecting to login"
-            );
-            localStorage.clear();
-            navigate("/login");
-            if (!silent) setIsInitialLoad(false);
-          } else {
-            if (!silent) setIsInitialLoad(false);
-          }
-        } catch (err) {
-          console.error(err);
-          if (!silent) setIsInitialLoad(false);
-        } finally {
-          if (!silent) setLoadingDetails(false);
-        }
-      }
-    },
-    [API_BASE_URL, context, navigate, role, setUserJobs]
-  );
-
+  // Check auth and profile on mount only
   useEffect(() => {
     if (!token || !userDetails) {
       navigate("/login");
@@ -147,54 +112,26 @@ const Dashboard: React.FC = () => {
     }
 
     const hasProfileValue = sessionStorage.getItem('hasProfile');
-
     if (hasProfileValue === 'false') {
-      console.log("No profile - showing modal");
       setShowProfileModal(true);
-    } else {
-      console.log("Has profile or not checked - not showing modal");
-      setShowProfileModal(false);
     }
+  }, []); // Run once on mount
 
-    // Always fetch fresh data on mount/refresh to ensure we have latest data
-    // This prevents showing stale cached data from sessionStorage
-    setIsInitialLoad(true);
-    void FetchAllJobs(token, userDetails, false);
-  }, [token, userDetails, FetchAllJobs, navigate]);
-
-  /** Live refresh: pull latest jobs every minute without full-page loader */
-  useEffect(() => {
-    if (!token || !userDetails) return;
-    const id = window.setInterval(() => {
-      void FetchAllJobs(token, userDetails, true);
-    }, DASHBOARD_REFRESH_MS);
-    return () => window.clearInterval(id);
-  }, [token, userDetails, FetchAllJobs]);
-
-  // Calculate stats directly from userJobs to avoid stale sessionStorage data
-  const calculateStatsFromJobs = (jobs: typeof userJobs) => {
-    const safeJobs = Array.isArray(jobs) ? jobs : [];
-    return safeJobs.reduce((stats, job) => {
+  // Memoize stats calculation
+  const stats = useMemo(() => {
+    const safeJobs = Array.isArray(userJobs) ? userJobs : [];
+    return safeJobs.reduce((acc, job) => {
       const status = job?.currentStatus?.toLowerCase() || '';
 
-      if (status.startsWith('saved')) {
-        stats.saved++;
-      } else if (status.startsWith('applied')) {
-        stats.applied++;
-      } else if (status.startsWith('interviewing')) {
-        stats.interviewing++;
-      } else if (status.startsWith('offer')) {
-        stats.offer++;
-      } else if (status.startsWith('rejected')) {
-        stats.rejected++;
-      } else if (status.startsWith('deleted')) {
-        stats.deleted++;
-      }
+      if (status.startsWith('saved')) acc.saved++;
+      else if (status.startsWith('applied')) acc.applied++;
+      else if (status.startsWith('interviewing')) acc.interviewing++;
+      else if (status.startsWith('offer')) acc.offer++;
+      else if (status.startsWith('rejected')) acc.rejected++;
+      else if (status.startsWith('deleted')) acc.deleted++;
 
-      // Calculate total as the sum of active statuses (excluding deleted)
-      stats.total = stats.saved + stats.applied + stats.interviewing + stats.offer + stats.rejected;
-
-      return stats;
+      acc.total = acc.saved + acc.applied + acc.interviewing + acc.offer + acc.rejected;
+      return acc;
     }, {
       total: 0,
       saved: 0,
@@ -204,159 +141,48 @@ const Dashboard: React.FC = () => {
       rejected: 0,
       deleted: 0,
     });
-  };
+  }, [userJobs]);
 
-  // Calculate stats from current userJobs (not from sessionStorage to avoid stale data)
-  // Only calculate after initial load completes to prevent showing stale values
-  const stats = isInitialLoad ? {
-    total: 0,
-    saved: 0,
-    applied: 0,
-    interviewing: 0,
-    offer: 0,
-    rejected: 0,
-    deleted: 0,
-  } : calculateStatsFromJobs(userJobs);
+  // Memoize unique jobs (deduplicated)
+  const uniqueJobs = useMemo(() => {
+    if (!userJobs) return [];
+    const seen = new Set<string>();
+    return userJobs.filter((job) => {
+      if (!job || !job.updatedAt || !job.jobID) return false;
+      if (seen.has(job.jobID)) return false;
+      seen.add(job.jobID);
+      return true;
+    });
+  }, [userJobs]);
 
-  console.log("stats calculated from userJobs = ", stats);
-
-  // Helper function to parse dates in various formats
-  const parseCustomDate = (dateString: string): Date => {
-    if (!dateString) return new Date(0);
-
-    try {
-      // Try ISO format first
-      if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dateString)) {
-        const iso = new Date(dateString);
-        if (!isNaN(iso.getTime())) {
-          return iso;
-        }
-      }
-
-      // Handle format: "MM/DD/YYYY, h:mm:ss am/pm" (dateAdded) or "DD/MM/YYYY, h:mm:ss am/pm" (createdAt)
-      const parts = dateString.trim().split(",");
-      if (parts.length === 2) {
-        const datePart = parts[0].trim();
-        const timePart = parts[1].trim();
-
-        const dateNumbers = datePart.split("/").map((p) => parseInt(p.trim()));
-
-        if (dateNumbers.length === 3) {
-          let dd, mm, yyyy;
-
-          // Detect format: if first number > 12, it's DD/MM/YYYY (createdAt)
-          // Otherwise, assume MM/DD/YYYY (US format) for dateAdded
-          if (dateNumbers[0] > 12) {
-            // DD/MM/YYYY format (createdAt)
-            dd = dateNumbers[0];
-            mm = dateNumbers[1];
-            yyyy = dateNumbers[2];
-          } else {
-            // MM/DD/YYYY format (dateAdded)
-            mm = dateNumbers[0];
-            dd = dateNumbers[1];
-            yyyy = dateNumbers[2];
-          }
-
-          if (dd && mm && yyyy) {
-            // Handle 2-digit years
-            if (yyyy < 100) yyyy += 2000;
-
-            const date = new Date(yyyy, mm - 1, dd);
-
-            // Parse time with AM/PM
-            const timeMatch = timePart.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)/i);
-            if (timeMatch) {
-              let hours = parseInt(timeMatch[1]);
-              const minutes = parseInt(timeMatch[2]);
-              const seconds = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
-              const period = timeMatch[4]?.toLowerCase();
-
-              if (period === "pm" && hours !== 12) hours += 12;
-              if (period === "am" && hours === 12) hours = 0;
-
-              date.setHours(hours, minutes, seconds);
-            }
-
-            return date;
-          }
-        }
-      }
-
-      // Fallback: try native Date parse (handles US format, etc.)
-      const native = new Date(dateString);
-      if (!isNaN(native.getTime())) {
-        return native;
-      }
-    } catch (error) {
-      console.warn("Failed to parse date:", dateString, error);
-    }
-
-    // Final fallback - return epoch time to sort at the end
-    return new Date(0);
-  };
-
-  // Remove duplicates based on jobID and filter valid jobs
-  const uniqueJobs =
-    userJobs?.filter(
-      (job, index, self) =>
-        job &&
-        job.updatedAt &&
-        job.jobID &&
-        self.findIndex((j) => j.jobID === job.jobID) === index
-    ) || [];
-
-  console.log("Total unique jobs:", uniqueJobs.length);
-  console.log(
-    "All jobs with updatedAt:",
-    uniqueJobs.map((job) => ({
-      jobID: job.jobID,
-      title: job.jobTitle,
-      company: job.companyName,
-      updatedAt: job.updatedAt,
-      parsedDate: parseCustomDate(job.updatedAt),
-    }))
-  );
-
-  const recentJobs =
-    uniqueJobs
-      ?.sort((a, b) => {
-        // This matches the JobTracker sorting logic for consistency
-        const dateA = parseCustomDate(
-          a?.dateAdded || a?.createdAt || ""
-        );
-        const dateB = parseCustomDate(
-          b?.dateAdded || b?.createdAt || ""
-        );
+  // Memoize recent jobs (sorted, top 6)
+  const recentJobs = useMemo(() => {
+    return [...uniqueJobs]
+      .sort((a, b) => {
+        const dateA = parseCustomDate(a?.dateAdded || a?.createdAt || "");
+        const dateB = parseCustomDate(b?.dateAdded || b?.createdAt || "");
         return dateB.getTime() - dateA.getTime();
       })
-      ?.slice(0, 6) || [];
+      .slice(0, 6);
+  }, [uniqueJobs]);
 
-  console.log(
-    "RecentAllJOBS META DATA",
-    recentJobs.map((job) => ({
-      jobID: job.jobID,
-      title: job.jobTitle,
-      company: job.companyName,
-      updatedAt: job.updatedAt,
-      status: job.currentStatus,
-      parsedDate: parseCustomDate(job.updatedAt),
-    }))
-  );
+  const successRate = stats.total > 0 ? Math.round((stats.offer / stats.total) * 100) : 0;
 
-  // Force re-calculation when userJobs changes
-  useEffect(() => {
-    // This effect ensures the component re-renders when userJobs changes
-    console.log("userJobs updated, recalculating recent jobs");
-  }, [userJobs]);
-  const successRate =
-    stats.total > 0 ? Math.round((stats.offer / stats.total) * 100) : 0;
-  // alert(successRate)
+  const handleJobFormSuccess = useCallback(() => {
+    setShowJobForm(false);
+    refreshJobs(true);
+  }, [refreshJobs]);
 
-  // Show loading screen while fetching initial data to prevent showing stale cached data
-  if (loadingDetails || isInitialLoad) {
+  const handleProfileComplete = useCallback(() => {
+    sessionStorage.setItem('hasProfile', 'true');
+    setShowProfileModal(false);
+  }, []);
+
+  // Show loading only on very first load when we have no cached data
+  if (loading && userJobs.length === 0) {
     return <LoadingScreen />;
   }
+
   return (
     <div className="relative min-h-dvh text-zinc-900 overflow-x-hidden">
       {/* NewUserModal */}
@@ -365,13 +191,7 @@ const Dashboard: React.FC = () => {
           setUserProfileFormVisibility={setShowProfileModal}
           mode="create"
           startSection="personal"
-          onProfileComplete={() => {
-            console.log("Profile completed - closing modal and updating sessionStorage");
-            // Set sessionStorage to indicate profile exists now
-            sessionStorage.setItem('hasProfile', 'true');
-            // Close modal
-            setShowProfileModal(false);
-          }}
+          onProfileComplete={handleProfileComplete}
         />
       )}
 
@@ -381,12 +201,7 @@ const Dashboard: React.FC = () => {
           <JobForm
             job={null}
             onCancel={() => setShowJobForm(false)}
-            onSuccess={() => {
-              setShowJobForm(false);
-              if (context?.token && context?.userDetails) {
-                void FetchAllJobs(context.token, context.userDetails, true);
-              }
-            }}
+            onSuccess={handleJobFormSuccess}
             setUserJobs={setUserJobs}
           />
         </Suspense>
@@ -434,7 +249,7 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Stats Cards (same visuals; stack on mobile, 2-col on md, 4-col on lg) */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6 mb-8">
           {/* Total Applications */}
           <div className="bg-white rounded-xl shadow-sm p-5 md:p-6 border border-gray-200">
@@ -509,38 +324,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Secondary Stats (unchanged visuals; responsive spacing) */}
-        {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-5 md:p-6 border border-gray-200">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <FileText className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900">{stats.applied}</h3>
-                <p className="text-gray-600">Applications Sent</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-5 md:p-6 border border-gray-200">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Briefcase className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900">
-                  {userJobs?.filter((item) =>
-                    item.currentStatus?.toLowerCase().startsWith("saved")
-                  ).length}
-                </h3>
-                <p className="text-gray-600">Jobs Saved</p>
-              </div>
-            </div>
-          </div>
-        </div> */}
-
-        {/* Application Pipeline (full-page vertical scroll; stacks on mobile) */}
+        {/* Application Pipeline */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 md:p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Application Pipeline</h2>
 
@@ -596,93 +380,10 @@ const Dashboard: React.FC = () => {
 
         {/* Recent Activity */}
         {recentJobs.length > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 md:p-6 mt-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Recent Activity</h2>
-            <div className="space-y-4">
-              {recentJobs?.map((job) => {
-                const key = (job.currentStatus || "saved").toLowerCase().split(" ")[0];
-
-                const statusConfig: Record<
-                  string,
-                  {
-                    color: string;
-                    icon: React.ComponentType<any>;
-                    label: string;
-                    bgColor: string;
-                    textColor: string;
-                  }
-                > = {
-                  saved: {
-                    color: "bg-gray-100 text-gray-700 border-gray-200",
-                    bgColor: "bg-gray-100",
-                    textColor: "text-gray-600",
-                    icon: Clock,
-                    label: "Saved",
-                  },
-                  applied: {
-                    color: "bg-blue-100 text-blue-700 border-blue-200",
-                    bgColor: "bg-blue-100",
-                    textColor: "text-blue-800",
-                    icon: FileText,
-                    label: "Applied",
-                  },
-                  interviewing: {
-                    color: "bg-amber-100 text-amber-700 border-amber-200",
-                    bgColor: "bg-yellow-100",
-                    textColor: "text-yellow-800",
-                    icon: Users,
-                    label: "Interviewing",
-                  },
-                  offer: {
-                    color: "bg-green-100 text-green-700 border-green-200",
-                    bgColor: "bg-green-100",
-                    textColor: "text-green-800",
-                    icon: CheckCircle,
-                    label: "Offer",
-                  },
-                  rejected: {
-                    color: "bg-red-100 text-red-700 border-red-200",
-                    bgColor: "bg-red-100",
-                    textColor: "text-red-800",
-                    icon: XCircle,
-                    label: "Rejected",
-                  },
-                  deleted: {
-                    color: "bg-gray-100 text-gray-700 border-gray-200",
-                    bgColor: "bg-gray-100",
-                    textColor: "text-gray-600",
-                    icon: XCircle,
-                    label: "Deleted",
-                  },
-                };
-
-                const config = statusConfig[key] || statusConfig.saved;
-                const Icon = config.icon;
-
-                return (
-                  <div key={job.jobID} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                    <div className={`w-10 h-10 ${config.bgColor} rounded-full flex items-center justify-center flex-shrink-0`}>
-                      <Icon className="w-5 h-5 text-gray-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{job.jobTitle}</p>
-                      <p className="text-sm text-gray-500">{job.companyName}</p>
-                    </div>
-                    <div className="flex-shrink-0">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bgColor} ${config.textColor}`}
-                      >
-                        {job.currentStatus}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <RecentActivity recentJobs={recentJobs} />
         )}
 
-        {/* Welcome Message - (original condition kept) */}
+        {/* Welcome Message */}
         {uniqueJobs.length === 0 && (
           <div className="mt-8 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-5 md:p-6 text-white">
             <h3 className="text-lg md:text-xl font-bold mb-2">
@@ -698,5 +399,57 @@ const Dashboard: React.FC = () => {
     </div>
   );
 };
+
+// Memoized Recent Activity component to prevent unnecessary re-renders
+const RecentActivity = React.memo(({ recentJobs }: { recentJobs: any[] }) => {
+  const statusConfig: Record<
+    string,
+    {
+      icon: React.ComponentType<any>;
+      label: string;
+      bgColor: string;
+      textColor: string;
+    }
+  > = {
+    saved: { bgColor: "bg-gray-100", textColor: "text-gray-600", icon: Clock, label: "Saved" },
+    applied: { bgColor: "bg-blue-100", textColor: "text-blue-800", icon: FileText, label: "Applied" },
+    interviewing: { bgColor: "bg-yellow-100", textColor: "text-yellow-800", icon: Users, label: "Interviewing" },
+    offer: { bgColor: "bg-green-100", textColor: "text-green-800", icon: CheckCircle, label: "Offer" },
+    rejected: { bgColor: "bg-red-100", textColor: "text-red-800", icon: XCircle, label: "Rejected" },
+    deleted: { bgColor: "bg-gray-100", textColor: "text-gray-600", icon: XCircle, label: "Deleted" },
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 md:p-6 mt-8">
+      <h2 className="text-xl font-bold text-gray-900 mb-6">Recent Activity</h2>
+      <div className="space-y-4">
+        {recentJobs.map((job) => {
+          const key = (job.currentStatus || "saved").toLowerCase().split(" ")[0];
+          const config = statusConfig[key] || statusConfig.saved;
+          const Icon = config.icon;
+
+          return (
+            <div key={job.jobID} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              <div className={`w-10 h-10 ${config.bgColor} rounded-full flex items-center justify-center flex-shrink-0`}>
+                <Icon className="w-5 h-5 text-gray-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900">{job.jobTitle}</p>
+                <p className="text-sm text-gray-500">{job.companyName}</p>
+              </div>
+              <div className="flex-shrink-0">
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bgColor} ${config.textColor}`}
+                >
+                  {job.currentStatus}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
 
 export default Dashboard;

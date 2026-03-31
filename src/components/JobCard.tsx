@@ -178,6 +178,12 @@ const JobCard: React.FC<JobCardProps> = ({
         </span>
       </div>
 
+      {isOps && job.addedBy?.trim() && (
+        <div className="text-xs text-gray-400 mb-2">
+          Added by {job.addedBy.trim()}
+        </div>
+      )}
+
       {isOps && !job.optimizedResumeSeen && (autoOptCompleted || autoOptFailed) && (
         <div className="mb-2">
           {autoOptCompleted && (

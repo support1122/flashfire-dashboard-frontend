@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { UserContext } from './UserContext.tsx';
 import { useNavigate } from 'react-router-dom';
 import { useOperationsStore } from "./Operations.ts";
@@ -11,6 +11,7 @@ interface UserJobsContextType {
   userJobs: Job[];
   setUserJobs: React.Dispatch<React.SetStateAction<Job[]>>;
   loading: boolean;
+  refreshJobs: (silent?: boolean) => void;
 }
 
 const UserJobsContext = createContext<UserJobsContextType | null>(null);
@@ -24,129 +25,157 @@ export const useUserJobs = () => {
 };
 
 export const UserJobsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [loading, setLoading] = useState(false); // Changed to false - never show loading
+  const [loading, setLoading] = useState(false);
   const context = useContext(UserContext);
   const navigate = useNavigate();
-  
+
   const userDetails = context?.userDetails;
   const token = context?.token;
   const { role } = useOperationsStore();
-  
+
   // Use session storage store
-  const { 
-    jobs: userJobs, 
-    setJobs, 
-    setLoading: setStoreLoading, 
+  const {
+    jobs: userJobs,
+    setJobs,
     setUserEmail,
-    loading: storeLoading 
   } = useJobsSessionStore();
-  
-  const lastManualUpdateRef = React.useRef<number>(0);
-  
-  // Always fetch fresh data in the background on mount or when user changes
-  useEffect(() => {
-    if (userDetails?.email) {
-      // Add a small delay to avoid race conditions with recent updates
-      const timeoutId = setTimeout(() => {
-        fetchJobsInBackground();
-      }, 1000);
-      
-      return () => clearTimeout(timeoutId);
+
+  const lastManualUpdateRef = useRef<number>(0);
+  const fetchingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const hasFetchedRef = useRef(false);
+
+  // Stable reference to latest values for use in callbacks
+  const latestRef = useRef({ token, userDetails, role, context });
+  latestRef.current = { token, userDetails, role, context };
+
+  const fetchJobsInBackground = useCallback(async (silent = true) => {
+    const { token: currentToken, userDetails: currentUser, role: currentRole, context: currentContext } = latestRef.current;
+
+    if (!currentUser?.email) return;
+
+    // Prevent concurrent requests
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+
+    // Abort any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
-  }, [userDetails?.email, token, role]);
-  
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    if (!silent) setLoading(true);
+
+    try {
+      let data;
+      const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
+      if (currentRole === "operations") {
+        const res = await fetch(
+          `${API_BASE}/operations/getalljobs`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${currentToken}`,
+            },
+            body: JSON.stringify({ email: currentUser.email }),
+            signal: controller.signal,
+          }
+        );
+        data = await res.json();
+      } else {
+        const res = await fetch(
+          `${API_BASE}/getalljobs`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${currentToken}`,
+            },
+            body: JSON.stringify({ email: currentUser.email }),
+            signal: controller.signal,
+          }
+        );
+
+        data = await res.json();
+
+        if (
+          data?.message === "Token or user details missing" ||
+          data?.message === "Invalid token or expired" ||
+          data?.message === "invalid token please login again"
+        ) {
+          // Try to refresh token
+          if (currentContext?.refreshToken) {
+            const refreshSuccess = await currentContext.refreshToken();
+            if (refreshSuccess) {
+              // Will be retried on next effect trigger from token change
+              return;
+            }
+          }
+          navigate("/login");
+          return;
+        }
+      }
+
+      // Only update if no recent manual update
+      const timeSinceLastUpdate = Date.now() - lastManualUpdateRef.current;
+      if (timeSinceLastUpdate > 2000) {
+        setJobs(data?.allJobs || []);
+      }
+
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      console.error('Error fetching jobs:', err);
+    } finally {
+      fetchingRef.current = false;
+      if (!silent) setLoading(false);
+    }
+  }, [navigate, setJobs]);
+
+  // Fetch on mount and when user email changes (NOT on every token change)
+  useEffect(() => {
+    if (!userDetails?.email) return;
+
+    // Only fetch once on mount, or when email/role changes
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+
+    const timeoutId = setTimeout(() => {
+      fetchJobsInBackground(false);
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [userDetails?.email, role, fetchJobsInBackground]);
+
+  // Reset fetch flag when user changes
+  useEffect(() => {
+    hasFetchedRef.current = false;
+  }, [userDetails?.email]);
+
+  // Set user email in session store
   useEffect(() => {
     if (userDetails?.email) {
       setUserEmail(userDetails.email);
     }
   }, [userDetails?.email, setUserEmail]);
 
-  const fetchJobsInBackground = async () => {
-    console.log("🔄 Fetching jobs in background for role:", role);
-    // Don't set loading states - keep showing cached data
-    
-    try {
-      console.log("Fetching jobs...", userDetails.email);
-      let data;
-      
-      if (role == "operations") {
-        const res = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL}/operations/alljobs`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: userDetails.email }),
-            }
-        );
-        data = await res.json();
-        console.log("✅ Got job data (operations):", data?.allJobs?.length, "jobs");
-      } else {
-        console.log("Fetching jobs with token:", token);
-        console.log(
-            "API URL:",
-            `${import.meta.env.VITE_API_BASE_URL}/getalljobs`
-        );
+  // Background refresh every 60 seconds
+  useEffect(() => {
+    if (!userDetails?.email) return;
 
-        const res = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL}/getalljobs`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ email: userDetails.email }),
-            }
-        );
+    const id = setInterval(() => {
+      fetchJobsInBackground(true);
+    }, 60 * 1000);
 
-        console.log("Response status:", res.status);
-
-        data = await res.json();
-        console.log("✅ Fetched jobs response:", data?.allJobs?.length, "jobs");
-
-        if (
-            data?.message == "Token or user details missing" ||
-            data?.message == "Token or user details missing" ||
-            data?.message == "Invalid token or expired"
-        ) {
-            console.log("Authentication failed, attempting token refresh...");
-
-            // Try to refresh token
-            if (context?.refreshToken) {
-                const refreshSuccess = await context.refreshToken();
-                if (refreshSuccess) {
-                    // Retry the request with new token
-                    console.log("Token refreshed, retrying job fetch...");
-                    setTimeout(() => fetchJobsInBackground(), 100);
-                    return;
-                }
-            }
-
-            console.log("Token refresh failed, redirecting to login");
-            navigate("/login");
-            return;
-        }
-      }
-      
-      // Store in session storage - but only if no recent manual update
-      const timeSinceLastUpdate = Date.now() - lastManualUpdateRef.current;
-      if (timeSinceLastUpdate > 2000) {
-        console.log("💾 Updating session storage with fresh data (no recent updates)");
-        setJobs(data?.allJobs || []);
-      } else {
-        console.log("⏸️ Skipping background fetch update - recent manual update detected");
-      }
-      
-    } catch (err) {
-      console.error('❌ Error fetching jobs:', err);
-      // Don't clear existing data on error - keep showing cached data
-    }
-  };
+    return () => clearInterval(id);
+  }, [userDetails?.email, fetchJobsInBackground]);
 
   // Wrapper function to maintain compatibility with existing code
-  const setUserJobs = (jobs: Job[] | ((prevJobs: Job[]) => Job[])) => {
+  const setUserJobs = useCallback((jobs: Job[] | ((prevJobs: Job[]) => Job[])) => {
     lastManualUpdateRef.current = Date.now();
-    
+
     try {
       if (typeof jobs === 'function') {
         const currentJobs = Array.isArray(userJobs) ? userJobs : [];
@@ -157,7 +186,7 @@ export const UserJobsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     } catch (error: any) {
       if (error?.name === 'QuotaExceededError' || error?.message?.includes('quota')) {
-        console.warn('⚠️ Storage quota exceeded - clearing old jobs data and retrying');
+        console.warn('Storage quota exceeded - clearing old jobs data and retrying');
         try {
           sessionStorage.removeItem('jobs-session-storage');
           if (typeof jobs === 'function') {
@@ -168,27 +197,26 @@ export const UserJobsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setJobs(jobs);
           }
         } catch (retryError) {
-          console.error('❌ Failed to update jobs even after clearing storage:', retryError);
-          if (typeof jobs === 'function') {
-            const currentJobs = Array.isArray(userJobs) ? userJobs : [];
-            const nextJobs = jobs(currentJobs);
-            setJobs(nextJobs);
-          } else {
-            setJobs(jobs);
-          }
+          console.error('Failed to update jobs even after clearing storage:', retryError);
         }
       } else {
-        // Re-throw non-quota errors
         throw error;
       }
     }
-  };
+  }, [userJobs, setJobs]);
+
+  // Manual refresh function exposed to children
+  const refreshJobs = useCallback((silent = true) => {
+    hasFetchedRef.current = false;
+    fetchingRef.current = false;
+    fetchJobsInBackground(silent);
+  }, [fetchJobsInBackground]);
 
   // Ensure userJobs is always an array
   const safeUserJobs = Array.isArray(userJobs) ? userJobs : [];
 
   return (
-    <UserJobsContext.Provider value={{ userJobs: safeUserJobs, setUserJobs, loading }}>
+    <UserJobsContext.Provider value={{ userJobs: safeUserJobs, setUserJobs, loading, refreshJobs }}>
       {children}
     </UserJobsContext.Provider>
   );

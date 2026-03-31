@@ -525,15 +525,13 @@ export default function JobModal({
     );
     const normalizedStoredRole = normalizeRole(localStorage.getItem("role"));
     const normalizedCurrentUserRole = normalizedContextRole || normalizedStoredRole;
-    const isEndUserSession = !!currentUserEmail && !isFlashfireOpsEmail(currentUserEmail);
-    const isOperatorViewer =
-        !isEndUserSession &&
-        (
-            normalizedCurrentUserRole === "operations" ||
-            normalizedCurrentUserRole === "operator" ||
-            normalizedStoreRole === "operations" ||
-            normalizedStoreRole === "operator"
-        );
+    const hasOpsRole =
+        normalizedCurrentUserRole === "operations" ||
+        normalizedCurrentUserRole === "operator" ||
+        normalizedStoreRole === "operations" ||
+        normalizedStoreRole === "operator";
+    const isEndUserSession = !hasOpsRole && !!currentUserEmail && !isFlashfireOpsEmail(currentUserEmail);
+    const isOperatorViewer = hasOpsRole || isFlashfireOpsEmail(operationsUserEmail || "");
 
     // NEW (paste-to-upload buffer)
     const [pastedImages, setPastedImages] = useState<File[]>([]);
