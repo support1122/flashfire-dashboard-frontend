@@ -2082,6 +2082,25 @@ export default function JobModal({
                 throw new Error("Optimization failed. Data returned was empty.");
             }
 
+            // Guard: restore any work experience entries Gemini silently dropped.
+            // Gemini is instructed to keep all entries but sometimes ignores this.
+            const origWorkExp: any[] = Array.isArray(resumeData.workExperience) ? resumeData.workExperience : [];
+            const optWorkExp: any[] = Array.isArray(optimizedData.workExperience) ? optimizedData.workExperience : [];
+            if (origWorkExp.length > 0 && optWorkExp.length < origWorkExp.length) {
+                const survivedIds = new Set(
+                    optWorkExp.filter((e: any) => e?.id != null).map((e: any) => String(e.id))
+                );
+                const dropped = origWorkExp.filter((e: any) =>
+                    e?.id != null ? !survivedIds.has(String(e.id)) : !optWorkExp.includes(e)
+                );
+                if (dropped.length > 0) {
+                    console.warn(
+                        `[Optimizer] Gemini dropped ${dropped.length} work experience entr${dropped.length === 1 ? "y" : "ies"} — restoring originals.`
+                    );
+                    optimizedData.workExperience = [...optWorkExp, ...dropped];
+                }
+            }
+
             // Step 3: Baseline must match the JSON sent to optimize-with-gemini
             const baselineForDiff = {
                 ...resumeData,
