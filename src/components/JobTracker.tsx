@@ -292,13 +292,15 @@ const JobTracker = () => {
 
     const getJobSortTimeForStatus = (job: Job, status: JobStatus): number => {
         if (status === "applied") {
-            const appliedTime = parseJobDate(job.appliedDate ?? undefined);
-            if (appliedTime > 0) return appliedTime;
-            const maybeAttachmentTime = parseJobDate((job as any)?.attachmentsAttachedAt ?? (job as any)?.attachmentsAttachedAtDate ?? (job as any)?.attachedAt);
-            if (maybeAttachmentTime > 0) return maybeAttachmentTime;
+            // For APPLIED: sort by creation time (stack behavior — newest added stays on top).
+            // We intentionally skip appliedDate/attachmentsAttachedAt here because those fields
+            // get updated when operations attaches a resume, which would push old jobs back to
+            // the top even if they were applied 1+ months ago. createdAt is immutable and since
+            // jobs are typically applied within 1 day of being created, creation order ≈ applied order.
+            return getJobCreationTime(job);
         }
 
-        // For all columns: prefer updatedAt so recently moved cards stay on top (stack behavior)
+        // For all other columns: prefer updatedAt so recently moved cards stay on top (stack behavior)
         const updatedTime = parseJobDate(job.updatedAt);
         if (updatedTime > 0) return updatedTime;
 
