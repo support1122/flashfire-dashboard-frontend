@@ -41,6 +41,7 @@ const JobTracker = () => {
     const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
     const { clearPendingUpdate } = useJobsSessionStore();
     const [notifyLoading, setNotifyLoading] = useState(false);
+    const [autoOptimizeLoading, setAutoOptimizeLoading] = useState(false);
     const [notifyCooldown, setNotifyCooldown] = useState(0);
     const [showNotifyPasswordModal, setShowNotifyPasswordModal] = useState(false);
     const [notifyPasswordError, setNotifyPasswordError] = useState('');
@@ -900,6 +901,57 @@ const JobTracker = () => {
         }
     };
 
+    const handleQueueAutoOptimizeSavedJobs = async () => {
+        if (autoOptimizeLoading) return;
+        if (!(role === "operations" || role === "operator")) return;
+        if (!userDetails?.email) {
+            toastUtils.error("Client email not found.");
+            return;
+        }
+
+        setAutoOptimizeLoading(true);
+        const loadingToast = toastUtils.loading("Queueing saved jobs for auto-optimization...");
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/operations/auto-optimize-saved`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    email: userDetails.email,
+                    role,
+                    operationsEmail,
+                }),
+            });
+
+            const result = await response.json().catch(() => ({}));
+
+            if (!response.ok || !result?.success) {
+                toastUtils.dismissToast(loadingToast);
+                toastUtils.error(result?.message || "Failed to queue auto-optimization.");
+                return;
+            }
+
+            const queuedCount = Number(result?.queuedCount || 0);
+            toastUtils.dismissToast(loadingToast);
+            if (queuedCount > 0) {
+                toastUtils.success(`Queued ${queuedCount} saved job(s) with 5-minute gap.`);
+            } else {
+                toastUtils.custom(result?.message || "No saved jobs available to queue.", "info");
+            }
+
+            // Soft refresh to show new autoOptimization state without blocking UI flow.
+            setTimeout(() => refreshJobs(true), 400);
+        } catch (error) {
+            console.error("Failed to queue saved jobs for auto-optimization:", error);
+            toastUtils.dismissToast(loadingToast);
+            toastUtils.error("Network error while queueing auto-optimization.");
+        } finally {
+            setAutoOptimizeLoading(false);
+        }
+    };
+
 
 
     // Replace your current handleDrop with this:
@@ -1017,6 +1069,20 @@ const JobTracker = () => {
                     >
                         Add Jobs
                     </button>
+                    {(role === "operations" || role === "operator") && (
+                        <button
+                            onClick={handleQueueAutoOptimizeSavedJobs}
+                            disabled={autoOptimizeLoading}
+                            className={`whitespace-nowrap px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 shadow-sm ${
+                                autoOptimizeLoading
+                                    ? "bg-purple-300 text-white cursor-wait"
+                                    : "bg-gradient-to-br from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white hover:shadow-md"
+                            }`}
+                            title="Optimize saved jobs only (5-minute spacing)"
+                        >
+                            {autoOptimizeLoading ? "Queueing..." : "Auto Optimize"}
+                        </button>
+                    )}
                 </div>
             </div>
 

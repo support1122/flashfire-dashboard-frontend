@@ -101,8 +101,14 @@ const JobCard: React.FC<JobCardProps> = ({
 
   const isOps = role === "operator" || role === "operations";
   const hasUnseenResume = isOps && job.optimizedResume?.hasResume === true && !job.optimizedResumeSeen;
+  const autoOptStatus = job.autoOptimization?.status;
   const autoOptCompleted = isOps && job.optimizedResume?.hasResume === true;
-  const autoOptFailed = isOps && job.autoOptimization?.status === 'failed';
+  const autoOptFailed = isOps && autoOptStatus === 'failed';
+  const autoOptSkipped = isOps && autoOptStatus === 'skipped';
+  const autoOptPending = isOps && autoOptStatus === 'pending';
+  const autoOptProcessing = isOps && autoOptStatus === 'processing';
+  const autoOptUnknown = isOps && !autoOptStatus && !autoOptCompleted && !!job.jobDescription?.trim();
+  const autoOptError = job.autoOptimization?.error?.trim();
   const sanitizeCompanyDomain = (name) => {
   if (!name) return "example.com";
 
@@ -184,13 +190,29 @@ const JobCard: React.FC<JobCardProps> = ({
         </div>
       )}
 
-      {isOps && !job.optimizedResumeSeen && (autoOptCompleted || autoOptFailed) && (
+      {isOps && (autoOptCompleted || autoOptFailed || autoOptSkipped || autoOptPending || autoOptProcessing || autoOptUnknown) && (
         <div className="mb-2">
-          {autoOptCompleted && (
-            <p className="text-xs font-medium text-green-600">Resume auto optimized – Just download  optimized resume and apply</p>
+          {autoOptCompleted && !job.optimizedResumeSeen && (
+            <p className="text-xs font-medium text-green-600">Resume auto-optimized. Download optimized resume and apply.</p>
           )}
           {autoOptFailed && !autoOptCompleted && (
-            <p className="text-xs font-medium text-red-600">Resume auto optimization failed .Please Optimize and Downlaod the optimize resume</p>
+            <p className="text-xs font-medium text-red-600">
+              Resume auto-optimization failed. Please optimize and download manually.
+            </p>
+          )}
+          {autoOptSkipped && !autoOptCompleted && (
+            <p className="text-xs font-medium text-amber-700">
+              Resume auto-optimization skipped{autoOptError ? `: ${autoOptError}` : "."}
+            </p>
+          )}
+          {autoOptPending && !autoOptCompleted && (
+            <p className="text-xs font-medium text-blue-600">Resume auto-optimization queued.</p>
+          )}
+          {autoOptProcessing && !autoOptCompleted && (
+            <p className="text-xs font-medium text-blue-600">Resume auto-optimization in progress.</p>
+          )}
+          {autoOptUnknown && (
+            <p className="text-xs font-medium text-gray-600">Resume auto-optimization status unavailable. Please refresh.</p>
           )}
         </div>
       )}
