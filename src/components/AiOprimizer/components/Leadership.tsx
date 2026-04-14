@@ -206,6 +206,29 @@ export const Leadership: React.FC<LeadershipProps> = ({ data, onChange }) => {
                                             leadership.title
                                         )?.label || "Edit Link"}
                                     </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const parsed =
+                                                parseLeadershipLinkMarker(
+                                                    leadership.title
+                                                );
+                                            if (!parsed) return;
+                                            updateLeadership(
+                                                leadership.id,
+                                                "title",
+                                                (leadership.title || "").replace(
+                                                    parsed.fullMarker,
+                                                    parsed.label
+                                                )
+                                            );
+                                            setLinkEditor(null);
+                                        }}
+                                        className="ml-2 text-red-600 hover:text-red-800"
+                                        title="Remove hyperlink"
+                                    >
+                                        <Trash2 size={12} />
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -265,6 +288,31 @@ export const Leadership: React.FC<LeadershipProps> = ({ data, onChange }) => {
                                         {parseLeadershipLinkMarker(
                                             leadership.organization
                                         )?.label || "Edit Link"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const parsed =
+                                                parseLeadershipLinkMarker(
+                                                    leadership.organization
+                                                );
+                                            if (!parsed) return;
+                                            updateLeadership(
+                                                leadership.id,
+                                                "organization",
+                                                (
+                                                    leadership.organization || ""
+                                                ).replace(
+                                                    parsed.fullMarker,
+                                                    parsed.label
+                                                )
+                                            );
+                                            setLinkEditor(null);
+                                        }}
+                                        className="ml-2 text-red-600 hover:text-red-800"
+                                        title="Remove hyperlink"
+                                    >
+                                        <Trash2 size={12} />
                                     </button>
                                 </div>
                             )}

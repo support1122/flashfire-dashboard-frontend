@@ -532,6 +532,11 @@ export default function JobModal({
         normalizedStoreRole === "operator";
     const isEndUserSession = !hasOpsRole && !!currentUserEmail && !isFlashfireOpsEmail(currentUserEmail);
     const isOperatorViewer = hasOpsRole || isFlashfireOpsEmail(operationsUserEmail || "");
+    const isSavedStatusForViewer = String(jobDetails?.currentStatus || "")
+        .toLowerCase()
+        .startsWith("saved");
+    const hideResumeAndChangesForViewer =
+        isEndUserSession && isSavedStatusForViewer;
 
     // NEW (paste-to-upload buffer)
     const [pastedImages, setPastedImages] = useState<File[]>([]);
@@ -1222,8 +1227,38 @@ export default function JobModal({
             color: "bg-brown-800 text-orange-700 border-orange-200",
         },
     ] as const;
+    const visibleSections = sections.filter((section) => {
+        if (
+            hideResumeAndChangesForViewer &&
+            (section.id === "resume" || section.id === "changes")
+        ) {
+            return false;
+        }
+        return true;
+    });
+
+    useEffect(() => {
+        if (
+            hideResumeAndChangesForViewer &&
+            (activeSection === "resume" || activeSection === "changes")
+        ) {
+            setActiveSection("details");
+        }
+    }, [hideResumeAndChangesForViewer, activeSection]);
 
     const renderContent = () => {
+        if (
+            hideResumeAndChangesForViewer &&
+            (activeSection === "resume" || activeSection === "changes")
+        ) {
+            return (
+                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <p className="text-gray-500">
+                        Resume and changes are not available in Saved jobs for normal users.
+                    </p>
+                </div>
+            );
+        }
         switch (activeSection) {
             case "details":
                 return (
@@ -2482,50 +2517,7 @@ export default function JobModal({
                     {/* Sidebar */}
                     <div className="w-56 bg-gray-50 border-r border-gray-200 py-6 px-3">
                         <nav className="space-y-2">
-                            {[
-                                {
-                                    id: "details",
-                                    label: "Job Details",
-                                    icon: FileText,
-                                    color: "bg-blue-50 text-blue-700 border-blue-200",
-                                },
-                                {
-                                    id: "link",
-                                    label: "Job Link",
-                                    icon: Link,
-                                    color: "bg-green-50 text-green-700 border-green-200",
-                                },
-                                {
-                                    id: "description",
-                                    label: "Job Description",
-                                    icon: Briefcase,
-                                    color: "bg-purple-50 text-purple-700 border-purple-200",
-                                },
-                                {
-                                    id: "attachments",
-                                    label: "Attachments",
-                                    icon: User,
-                                    color: "bg-orange-50 text-orange-700 border-orange-200",
-                                },
-                                {
-                                    id: "resume",
-                                    label: "Resume",
-                                    icon: FileText,
-                                    color: "bg-blue-50 text-blue-700 border-blue-200",
-                                },
-                                {
-                                    id: "changes",
-                                    label: "Changes Made",
-                                    icon: GitCommit,
-                                    color: "bg-brown-800 text-red-700 border-orange-300",
-                                },
-                                {
-                                    id: "timeline",
-                                    label: "Application Timeline",
-                                    icon: TimerIcon,
-                                    color: "bg-brown-800 text-orange-700 border-orange-200",
-                                },
-                            ].map((section: any) => {
+                            {visibleSections.map((section: any) => {
                                 const Icon = section.icon;
                                 const isActive = activeSection === section.id;
                                 return (

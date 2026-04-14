@@ -353,6 +353,29 @@ const SortableExperienceItem = ({
                                             responsibility
                                         )?.label || "Edit Link"}
                                     </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const parsed =
+                                            parseResponsibilityLinkMarker(
+                                                responsibility
+                                            );
+                                        if (!parsed) return;
+                                        onUpdateResponsibilities(
+                                            experience.id,
+                                            respIndex,
+                                            responsibility.replace(
+                                                parsed.fullMarker,
+                                                parsed.label
+                                            )
+                                        );
+                                        setLinkEditor(null);
+                                    }}
+                                    className="ml-2 text-red-600 hover:text-red-800"
+                                    title="Remove hyperlink"
+                                >
+                                    <Trash2 size={12} />
+                                </button>
                                 </div>
                             )}
                             {linkEditor?.respIndex === respIndex && (

@@ -203,6 +203,27 @@ const SortablePublicationItem = ({
                                 {parsePublicationLinkMarker(publication.details)
                                     ?.label || "Edit Link"}
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const parsed = parsePublicationLinkMarker(
+                                        publication.details
+                                    );
+                                    if (!parsed) return;
+                                    onUpdate(
+                                        publication.id,
+                                        (publication.details || "").replace(
+                                            parsed.fullMarker,
+                                            parsed.label
+                                        )
+                                    );
+                                    setLinkEditor(null);
+                                }}
+                                className="ml-2 text-red-600 hover:text-red-800"
+                                title="Remove hyperlink"
+                            >
+                                <Trash2 size={12} />
+                            </button>
                         </div>
                     )}
                     {linkEditor && (
