@@ -33,6 +33,28 @@ interface WorkExperienceProps {
     onChange: (data: WorkExperienceItem[]) => void;
 }
 
+const RESPONSIBILITY_LINK_MARKER_REGEX = /<a>[\s\S]*?(?:<\/a>|<a\/>|$)/i;
+
+const parseResponsibilityLinkMarker = (text: string) => {
+    const markerMatch = (text || "").match(/<a>([\s\S]*?)(?:<\/a>|<a\/>|$)/i);
+    if (!markerMatch) return null;
+    const fullMarker = markerMatch[0];
+    const content = markerMatch[1] || "";
+    const pipeIndex = content.indexOf("|");
+    if (pipeIndex === -1) {
+        return {
+            fullMarker,
+            label: content.trim(),
+            url: content.trim(),
+        };
+    }
+    return {
+        fullMarker,
+        label: content.slice(0, pipeIndex).trim(),
+        url: content.slice(pipeIndex + 1).trim(),
+    };
+};
+
 // Sortable item component
 const SortableExperienceItem = ({
     experience,
@@ -67,6 +89,76 @@ const SortableExperienceItem = ({
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
+    };
+
+    const [linkEditor, setLinkEditor] = React.useState<{
+        respIndex: number;
+        start: number;
+        end: number;
+        selectedText: string;
+        url: string;
+        mode: "insert" | "edit";
+    } | null>(null);
+
+    const handleResponsibilitySelection = (
+        respIndex: number,
+        e: React.SyntheticEvent<HTMLTextAreaElement>
+    ) => {
+        const target = e.currentTarget;
+        const start = target.selectionStart ?? 0;
+        const end = target.selectionEnd ?? 0;
+        if (start === end) {
+            if (linkEditor?.respIndex === respIndex) {
+                setLinkEditor(null);
+            }
+            return;
+        }
+        const selectedText = target.value.slice(start, end).trim();
+        if (!selectedText) return;
+        setLinkEditor({
+            respIndex,
+            start,
+            end,
+            selectedText,
+            url: "",
+            mode: "insert",
+        });
+    };
+
+    const insertResponsibilityLink = () => {
+        if (!linkEditor) return;
+        const current = experience.responsibilities[linkEditor.respIndex] || "";
+        if (
+            linkEditor.mode === "insert" &&
+            RESPONSIBILITY_LINK_MARKER_REGEX.test(current)
+        ) {
+            window.alert("Only one hyperlink is allowed in each bullet point.");
+            return;
+        }
+        const selectedText = (linkEditor.selectedText || "").trim();
+        if (!selectedText) {
+            window.alert("Please enter link text.");
+            return;
+        }
+        const rawUrl = (linkEditor.url || "").trim();
+        if (!rawUrl) {
+            window.alert("Please enter a hyperlink URL.");
+            return;
+        }
+        const hasProtocol = /^(https?:\/\/|mailto:|tel:|#)/i.test(rawUrl);
+        const normalizedUrl = hasProtocol ? rawUrl : `https://${rawUrl}`;
+        const marker = `<a>${selectedText}|${normalizedUrl}<a/>`;
+        const updated =
+            linkEditor.mode === "edit"
+                ? current.replace(
+                      /<a>[\s\S]*?(?:<\/a>|<a\/>|$)/i,
+                      marker
+                  )
+                : current.slice(0, linkEditor.start) +
+                  marker +
+                  current.slice(linkEditor.end);
+        onUpdateResponsibilities(experience.id, linkEditor.respIndex, updated);
+        setLinkEditor(null);
     };
 
     return (
@@ -196,38 +288,130 @@ const SortableExperienceItem = ({
 
                 {experience.responsibilities.map(
                     (responsibility, respIndex) => (
-                        <div
-                            key={respIndex}
-                            className="flex items-start gap-2 mb-2"
-                        >
-                            <span className="text-gray-400 mt-2">•</span>
-                            <textarea
-                                value={responsibility}
-                                onChange={(e) =>
-                                    onUpdateResponsibilities(
-                                        experience.id,
-                                        respIndex,
-                                        e.target.value
-                                    )
-                                }
-                                rows={2}
-                                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                                placeholder="Describe your key achievement or responsibility..."
-                            />
-                            {experience.responsibilities.length > 1 && (
-                                <button
-                                    onClick={() =>
-                                        onRemoveResponsibility(
+                        <React.Fragment key={respIndex}>
+                            <div className="flex items-start gap-2 mb-2">
+                                <span className="text-gray-400 mt-2">•</span>
+                                <textarea
+                                    value={responsibility}
+                                    onChange={(e) =>
+                                        onUpdateResponsibilities(
                                             experience.id,
-                                            respIndex
+                                            respIndex,
+                                            e.target.value
                                         )
                                     }
-                                    className="text-red-600 hover:text-red-800 mt-2"
-                                >
-                                    <Trash2 size={14} />
-                                </button>
+                                    onSelect={(e) =>
+                                        handleResponsibilitySelection(
+                                            respIndex,
+                                            e
+                                        )
+                                    }
+                                    rows={2}
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                    placeholder="Describe your key achievement or responsibility..."
+                                />
+                                {experience.responsibilities.length > 1 && (
+                                    <button
+                                        onClick={() =>
+                                            onRemoveResponsibility(
+                                                experience.id,
+                                                respIndex
+                                            )
+                                        }
+                                        className="text-red-600 hover:text-red-800 mt-2"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                )}
+                            </div>
+                            {parseResponsibilityLinkMarker(responsibility) && (
+                                <div className="ml-6 mb-2 text-xs">
+                                    <span className="text-gray-600 mr-2">
+                                        Linked text:
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const parsed =
+                                                parseResponsibilityLinkMarker(
+                                                    responsibility
+                                                );
+                                            if (!parsed) return;
+                                            setLinkEditor({
+                                                respIndex,
+                                                start: 0,
+                                                end: 0,
+                                                selectedText: parsed.label,
+                                                url: parsed.url,
+                                                mode: "edit",
+                                            });
+                                        }}
+                                        className="text-blue-600 hover:text-blue-800"
+                                        style={{ textDecoration: "none" }}
+                                    >
+                                        {parseResponsibilityLinkMarker(
+                                            responsibility
+                                        )?.label || "Edit Link"}
+                                    </button>
+                                </div>
                             )}
-                        </div>
+                            {linkEditor?.respIndex === respIndex && (
+                                <div className="ml-6 mb-3 p-2 border border-blue-200 bg-blue-50 rounded-md">
+                                    <div className="text-xs text-blue-700 mb-2">
+                                        Edit hyperlink
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <input
+                                            type="text"
+                                            value={linkEditor.selectedText}
+                                            onChange={(e) =>
+                                                setLinkEditor((prev) =>
+                                                    prev
+                                                        ? {
+                                                              ...prev,
+                                                              selectedText:
+                                                                  e.target.value,
+                                                          }
+                                                        : prev
+                                                )
+                                            }
+                                            placeholder="Link text"
+                                            className="flex-1 min-w-[180px] px-2 py-1 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={linkEditor.url}
+                                            onChange={(e) =>
+                                                setLinkEditor((prev) =>
+                                                    prev
+                                                        ? {
+                                                              ...prev,
+                                                              url: e.target.value,
+                                                          }
+                                                        : prev
+                                                )
+                                            }
+                                            placeholder="Enter URL (https://...)"
+                                            className="flex-1 min-w-[220px] px-2 py-1 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={insertResponsibilityLink}
+                                            className="px-2 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 whitespace-nowrap"
+                                        >
+                                            Insert Link
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setLinkEditor(null)}
+                                            className="px-2 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-100 whitespace-nowrap"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </React.Fragment>
                     )
                 )}
             </div>
