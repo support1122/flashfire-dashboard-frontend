@@ -77,9 +77,28 @@ export const ResumePreview1: React.FC<ResumePreviewHybridProps> = ({
     showPrintButtons = true,
     sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education"],
 }) => {
+    const parseCustomLinkContent = (raw: string) => {
+        const content = (raw || "").trim();
+        if (!content) return { label: "", href: "" };
+
+        const pipeIndex = content.indexOf("|");
+        let label = content;
+        let href = content;
+        if (pipeIndex !== -1) {
+            label = content.slice(0, pipeIndex).trim();
+            href = content.slice(pipeIndex + 1).trim();
+        }
+
+        if (!href) return { label, href: "" };
+
+        const hasProtocol = /^(https?:\/\/|mailto:|tel:|#)/i.test(href);
+        const normalizedHref = hasProtocol ? href : `https://${href}`;
+        return { label: label || normalizedHref, href: normalizedHref };
+    };
+
     const renderMarkedText = (text: string) => {
         if (!text) return null;
-        const regex = /\*\*\{(.*?)\}\*\*|\*\*(.+?)\*\*/g;
+        const regex = /\*\*\{(.*?)\}\*\*|\*\*(.+?)\*\*|<a>([\s\S]*?)<\/a>|<a>([\s\S]*?)<a\/>/gi;
         const elements: React.ReactNode[] = [];
         let lastIndex = 0;
         let match: RegExpExecArray | null;
@@ -87,12 +106,32 @@ export const ResumePreview1: React.FC<ResumePreviewHybridProps> = ({
             if (match.index > lastIndex) {
                 elements.push(text.slice(lastIndex, match.index));
             }
-            const boldText = match[1] !== undefined ? match[1] : match[2];
-            elements.push(
-                <strong key={elements.length}>
-                    {boldText}
-                </strong>
-            );
+            if (match[1] !== undefined || match[2] !== undefined) {
+                const boldText = match[1] !== undefined ? match[1] : match[2];
+                elements.push(
+                    <strong key={elements.length}>
+                        {boldText}
+                    </strong>
+                );
+            } else {
+                const linkRaw = match[3] !== undefined ? match[3] : match[4];
+                const { label, href } = parseCustomLinkContent(linkRaw || "");
+                if (href) {
+                    elements.push(
+                        <a
+                            key={elements.length}
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "#2563eb", textDecoration: "underline" }}
+                        >
+                            {label}
+                        </a>
+                    );
+                } else {
+                    elements.push(linkRaw || "");
+                }
+            }
             lastIndex = regex.lastIndex;
         }
         if (lastIndex < text.length) {
