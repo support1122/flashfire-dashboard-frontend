@@ -123,7 +123,7 @@ export const ResumePreview1: React.FC<ResumePreviewHybridProps> = ({
                             href={href}
                             target="_blank"
                             rel="noopener noreferrer"
-                            style={{ color: "#2563eb", textDecoration: "underline" }}
+                            style={{ color: "#2563eb", textDecoration: "none" }}
                         >
                             {label}
                         </a>
@@ -880,9 +880,14 @@ These settings will give you the best results for your resume PDF.`);
                                 }}
                             >
                                 <span style={{ fontWeight: "bold" }}>
-                                    {item.title}
+                                    {renderMarkedText(item.title)}
                                 </span>
-                                {item.organization && `, ${item.organization}`}
+                                {item.organization && (
+                                    <>
+                                        {", "}
+                                        {renderMarkedText(item.organization)}
+                                    </>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -1089,7 +1094,9 @@ These settings will give you the best results for your resume PDF.`);
                                                     marginBottom: "0px",
                                                 }}
                                             >
-                                                {edu.additionalInfo}
+                                                {renderMarkedText(
+                                                    edu.additionalInfo
+                                                )}
                                             </div>
                                         )}
                                     </div>

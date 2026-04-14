@@ -136,7 +136,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                             href={href}
                             target="_blank"
                             rel="noopener noreferrer"
-                            style={{ color: "#2563eb", textDecoration: "underline" }}
+                            style={{ color: "#2563eb", textDecoration: "none" }}
                         >
                             {label}
                         </a>
@@ -1465,7 +1465,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                         marginBottom: styles.bulletSpacing,
                                     }}
                                 >
-                                    {item.title}
+                                    {renderMarkedText(item.title)}
                                 </div>
                                 {item.organization &&
                                     item.organization
@@ -1688,7 +1688,9 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                     lineHeight: styles.lineHeight,
                                                 }}
                                             >
-                                                {edu.additionalInfo}
+                                                {renderMarkedText(
+                                                    edu.additionalInfo
+                                                )}
                                             </div>
                                         )}
                                     </div>

@@ -135,7 +135,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                             href={href}
                             target="_blank"
                             rel="noopener noreferrer"
-                            style={{ color: "#2563eb", textDecoration: "underline" }}
+                            style={{ color: "#2563eb", textDecoration: "none" }}
                         >
                             {label}
                         </a>
@@ -535,8 +535,13 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                 key={item.id}
                                 style={{ fontSize: "9pt", marginBottom: "3px" }}
                             >
-                                {item.title}
-                                {item.organization && `, ${item.organization}`}
+                                {renderMarkedText(item.title)}
+                                {item.organization && (
+                                    <>
+                                        {", "}
+                                        {renderMarkedText(item.organization)}
+                                    </>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -690,7 +695,9 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                 marginTop: "2px",
                                             }}
                                         >
-                                            {edu.additionalInfo}
+                                            {renderMarkedText(
+                                                edu.additionalInfo
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -759,7 +766,9 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             flex: "1",
                                         }}
                                     >
-                                        {publication.details}
+                                        {renderMarkedText(
+                                            publication.details
+                                        )}
                                     </div>
                                 </div>
                             </div>
