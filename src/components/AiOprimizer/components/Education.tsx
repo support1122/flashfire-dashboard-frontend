@@ -289,6 +289,28 @@ const SortableEducationItem = ({
                                 {parseEducationLinkMarker(education.additionalInfo)
                                     ?.label || "Edit Link"}
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const parsed = parseEducationLinkMarker(
+                                        education.additionalInfo
+                                    );
+                                    if (!parsed) return;
+                                    onUpdate(
+                                        education.id,
+                                        "additionalInfo",
+                                        (education.additionalInfo || "").replace(
+                                            parsed.fullMarker,
+                                            parsed.label
+                                        )
+                                    );
+                                    setLinkEditor(null);
+                                }}
+                                className="ml-2 text-red-600 hover:text-red-800"
+                                title="Remove hyperlink"
+                            >
+                                <Trash2 size={12} />
+                            </button>
                         </div>
                     )}
                     {linkEditor && (
