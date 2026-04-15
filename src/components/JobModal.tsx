@@ -1215,15 +1215,15 @@ export default function JobModal({
             color: "bg-blue-50 text-blue-700 border-blue-200",
         },
         {
-            id: "timeline",
-            label: "Application Timeline",
-            icon: TimerIcon,
-            color: "bg-brown-800 text-orange-700 border-orange-200",
-        },
-        {
             id: "changes",
             label: "Changes Made",
             icon: GitCommit,
+            color: "bg-brown-800 text-orange-700 border-orange-200",
+        },
+        {
+            id: "timeline",
+            label: "Application Timeline",
+            icon: TimerIcon,
             color: "bg-brown-800 text-orange-700 border-orange-200",
         },
     ] as const;

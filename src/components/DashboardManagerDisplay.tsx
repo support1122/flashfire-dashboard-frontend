@@ -10,11 +10,28 @@ interface DashboardManager {
   profilePhoto: string;
 }
 
+const getApiBaseUrl = () => {
+  const raw = import.meta.env.VITE_API_BASE_URL;
+  if (typeof raw === "string" && raw.trim()) {
+    return raw.replace(/\/$/, "");
+  }
+  // Local dev: Vite runs on :3000, API often on :8086 — avoid silent fetch to "undefined/..."
+  if (import.meta.env.DEV) {
+    return "http://localhost:8086";
+  }
+  return "";
+};
+
 const DashboardManagerDisplay: React.FC = () => {
   const { userProfile } = useUserProfile();
   const { userDetails } = useContext(UserContext);
   const [managerData, setManagerData] = useState<DashboardManager | null>(null);
-  const [loading, setLoading] = useState(false);
+  /** Start true when we might fetch a manager so we don't flash initials before the first request. */
+  const [loading, setLoading] = useState(() => {
+    const name = (userProfile?.dashboardManager || userDetails?.dashboardManager || "").trim();
+    return Boolean(name);
+  });
+  const [photoLoadFailed, setPhotoLoadFailed] = useState(false);
   const [effectiveManagerName, setEffectiveManagerName] = useState(
     (userProfile?.dashboardManager || userDetails?.dashboardManager || '').trim()
   );
@@ -22,14 +39,33 @@ const DashboardManagerDisplay: React.FC = () => {
   useEffect(() => {
     const nextName = (userProfile?.dashboardManager || userDetails?.dashboardManager || '').trim();
     setEffectiveManagerName(nextName);
+    if (!nextName) {
+      setLoading(false);
+      setManagerData(null);
+    } else {
+      // Avoid one frame of initials before the fetch effect runs.
+      setLoading(true);
+    }
   }, [userProfile?.dashboardManager, userDetails?.dashboardManager]);
+
+  useEffect(() => {
+    setPhotoLoadFailed(false);
+  }, [managerData?._id]);
 
   // Fetch manager details when component mounts
   useEffect(() => {
     const fetchManagerDetails = async () => {
       try {
+        const API_BASE_URL = getApiBaseUrl();
+        if (!API_BASE_URL) {
+          console.warn("DashboardManagerDisplay: VITE_API_BASE_URL is not set");
+          setManagerData(null);
+          setLoading(false);
+          return;
+        }
+
         setLoading(true);
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+        setPhotoLoadFailed(false);
 
         // Do not call GET /sync/managers from the browser: if the API returns 502 (e.g. upstream
         // unreachable), Cloudflare serves HTML without CORS headers and the console shows a CORS
@@ -70,6 +106,7 @@ const DashboardManagerDisplay: React.FC = () => {
         const data = await response.json();
         if (data.success && data.data) {
           setManagerData(data.data);
+          setPhotoLoadFailed(false);
         } else {
           setManagerData(null);
         }
@@ -119,7 +156,7 @@ const DashboardManagerDisplay: React.FC = () => {
     const initials = effectiveManagerName
       .split(' ')
       .filter(Boolean)
-      .map((n) => n[0])
+      .map((n: string) => n[0])
       .join('')
       .slice(0, 2)
       .toUpperCase();
@@ -141,24 +178,35 @@ const DashboardManagerDisplay: React.FC = () => {
     );
   }
 
+  const initialsFromName = managerData.fullName
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const photoUrl = (managerData.profilePhoto || "").trim();
+
   return (
     <div className="flex items-center space-x-3 bg-white/80 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border border-white/20">
       {/* Manager Photo */}
       <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+        {!photoUrl || photoLoadFailed ? (
+          <div className="w-full h-full bg-orange-500 text-white flex items-center justify-center text-xs font-semibold">
+            {initialsFromName || "?"}
+          </div>
+        ) : (
         <img
-          src={managerData.profilePhoto}
+          src={photoUrl}
           alt={managerData.fullName}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            // Fallback to initials if image fails to load
-            const target = e.target as HTMLImageElement;
-            target.style.display = 'none';
-            const parent = target.parentElement;
-            if (parent) {
-              parent.innerHTML = `<div class="w-full h-full bg-orange-500 text-white flex items-center justify-center text-sm font-medium">${managerData.fullName.split(' ').map(n => n[0]).join('')}</div>`;
-            }
-          }}
+          loading="eager"
+          decoding="async"
+          onLoad={() => setPhotoLoadFailed(false)}
+          onError={() => setPhotoLoadFailed(true)}
         />
+        )}
       </div>
 
       {/* Manager Name */}
