@@ -963,7 +963,9 @@ These settings will give you the best results for your resume PDF.`);
                                             textAlign: "justify",
                                         }}
                                     >
-                                        {formatSkills(category.skills)}
+                                        {renderMarkedText(
+                                            formatSkills(category.skills)
+                                        )}
                                     </span>
                                 </div>
                             ))
