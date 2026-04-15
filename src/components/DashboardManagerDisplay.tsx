@@ -31,8 +31,10 @@ const DashboardManagerDisplay: React.FC = () => {
         setLoading(true);
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-        // Pull fresh manager roster and assignment from clients-tracking.
-        await fetch(`${API_BASE_URL}/sync/managers`).catch(() => null);
+        // Do not call GET /sync/managers from the browser: if the API returns 502 (e.g. upstream
+        // unreachable), Cloudflare serves HTML without CORS headers and the console shows a CORS
+        // error. Sync is for server/cron; manager lookup uses GET /dashboard-managers/:name which
+        // can hydrate from DB or clients-tracking on the server.
 
         let managerName = (userProfile?.dashboardManager || userDetails?.dashboardManager || '').trim();
         const currentEmail = (userDetails?.email || userProfile?.email || '').trim();
