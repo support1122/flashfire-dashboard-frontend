@@ -1890,7 +1890,10 @@ export default function JobModal({
                                     {jobDetails?.timeline?.map(
                                         (event: string, idx: number) => {
                                             let displayEvent = event;
-                                            if (event.toLowerCase().includes('added by')) {
+                                            const evLower = event.toLowerCase();
+                                            if (evLower === 'added by user') {
+                                                displayEvent = 'Added by user';
+                                            } else if (evLower.includes('added by')) {
                                                 if (!isOperatorViewer) {
                                                     displayEvent = 'Added';
                                                 }

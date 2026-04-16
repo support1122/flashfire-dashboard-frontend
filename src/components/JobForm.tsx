@@ -238,7 +238,14 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
         currentStatus: formData.status,
         userID: userDetails.email,
         attachments: [],
-        timeline: ["Added"],
+        timeline:
+          role === "operations" || role === "operator" ? ["Added"] : ["Added by user"],
+        createdByRole:
+          role === "operations" || role === "operator" ? ("operations" as const) : ("user" as const),
+        addedBy:
+          role === "operations" || role === "operator"
+            ? (operationsName || "").trim() || undefined
+            : undefined,
         createdAt: new Date().toISOString(),
         updatedAt: nowIN, // so it sorts to the top immediately
       };
