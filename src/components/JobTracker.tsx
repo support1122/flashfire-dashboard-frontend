@@ -9,12 +9,14 @@ import LoadingScreen from "./LoadingScreen.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
 import { toastUtils, toastMessages } from "../utils/toast.ts";
 import { useJobsSessionStore } from "../state_management/JobsSessionStore.ts";
+import { isUserOriginatedJob } from "../utils/jobOrigin.ts";
 import { useUserProfile } from "../state_management/ProfileContext.tsx";
 import NotifyClientPasswordModal from "./NotifyClientPasswordModal.tsx";
 const JobModal = lazy(() => import("./JobModal.tsx"));
 const RemovalLimitModal = lazy(() => import("./RemovalLimitModal.tsx"));
 const RemovalReasonModal = lazy(() => import("./RemovalReasonModal.tsx"));
 const RemovalReasonDisplayModal = lazy(() => import("./RemovalReasonDisplayModal.tsx"));
+const OpsConfirmRemoveUserJobModal = lazy(() => import("./OpsConfirmRemoveUserJobModal.tsx"));
 
 const JOBS_PER_PAGE = 30;
 
@@ -28,6 +30,8 @@ const JobTracker = () => {
     const [showRemovalReasonModal, setShowRemovalReasonModal] = useState(false);
     const [pendingRemovalJob, setPendingRemovalJob] = useState<Job | null>(null);
     const [showRemovalReasonDisplayModal, setShowRemovalReasonDisplayModal] = useState(false);
+    const [showOpsRemoveUserConfirm, setShowOpsRemoveUserConfirm] = useState(false);
+    const [pendingOpsUserRemovalJob, setPendingOpsUserRemovalJob] = useState<Job | null>(null);
     const [removalReasonData, setRemovalReasonData] = useState<{
         removalReason: string;
         removalDate: string;
@@ -761,6 +765,21 @@ const JobTracker = () => {
         }
     };
 
+    const continueOperationsMoveToRemoved = (job: Job) => {
+        const hasAttachments =
+            job.attachments && Array.isArray(job.attachments) && job.attachments.length > 0;
+        if (!hasAttachments) {
+            setSelectedJob(job);
+            setPendingMove({ jobID: job.jobID, status: "deleted" });
+            setShowJobModal(true);
+            toastUtils.error(
+                "Please upload at least one image attachment before moving this job card to Removed."
+            );
+            return;
+        }
+        onUpdateJobStatus(job.jobID, "deleted", userDetails);
+    };
+
     const checkLockPeriod = async (): Promise<{ isLocked: boolean; message: string | null }> => {
         if (role !== 'operations' || !userDetails?.email) {
             return { isLocked: false, message: null };
@@ -809,24 +828,26 @@ const JobTracker = () => {
         const job = userJobs?.find((j) => j.jobID === jobID);
         if (!job) return;
 
-        // Check if user (not operations) is moving job to deleted - show removal reason modal
-        if (status === 'deleted' && role !== 'operations') {
+        const isOps = role === "operations" || role === "operator";
+
+        // End user: moving to Removed — ask for a reason (existing flow)
+        if (status === "deleted" && !isOps) {
             setPendingRemovalJob(job);
             setShowRemovalReasonModal(true);
             return;
         }
 
-        // Check if operations role is moving job to deleted - require at least one attachment
-        if (status === 'deleted' && role === 'operations') {
-            const hasAttachments = job.attachments && Array.isArray(job.attachments) && job.attachments.length > 0;
-            if (!hasAttachments) {
-                // Open JobModal with attachments section and set pending move
-                setSelectedJob(job);
-                setPendingMove({ jobID, status });
-                setShowJobModal(true);
-                toastUtils.error("Please upload at least one image attachment before moving this job card to Removed.");
-                return;
-            }
+        // Operations: client-added job — confirm before Removed (attachments checked after)
+        if (status === "deleted" && isOps && isUserOriginatedJob(job)) {
+            setPendingOpsUserRemovalJob(job);
+            setShowOpsRemoveUserConfirm(true);
+            return;
+        }
+
+        // Operations: moving to Removed — require at least one attachment
+        if (status === "deleted" && isOps) {
+            continueOperationsMoveToRemoved(job);
+            return;
         }
 
         // Check lock period for operations moving from saved to applied
@@ -867,6 +888,13 @@ const JobTracker = () => {
         await onUpdateJobStatus(pendingRemovalJob.jobID, 'deleted', userDetails, reason);
         setShowRemovalReasonModal(false);
         setPendingRemovalJob(null);
+    };
+
+    const handleOpsRemoveUserJobConfirm = () => {
+        setShowOpsRemoveUserConfirm(false);
+        const job = pendingOpsUserRemovalJob;
+        setPendingOpsUserRemovalJob(null);
+        if (job) continueOperationsMoveToRemoved(job);
     };
 
     const handleShowRemovalReason = async (job: Job) => {
@@ -1388,6 +1416,20 @@ const JobTracker = () => {
                     <RemovalLimitModal
                         isOpen={showRemovalLimitModal}
                         onClose={() => setShowRemovalLimitModal(false)}
+                    />
+                </Suspense>
+            )}
+            {showOpsRemoveUserConfirm && pendingOpsUserRemovalJob && (
+                <Suspense fallback={<LoadingScreen />}>
+                    <OpsConfirmRemoveUserJobModal
+                        isOpen={showOpsRemoveUserConfirm}
+                        onClose={() => {
+                            setShowOpsRemoveUserConfirm(false);
+                            setPendingOpsUserRemovalJob(null);
+                        }}
+                        onConfirm={handleOpsRemoveUserJobConfirm}
+                        jobTitle={pendingOpsUserRemovalJob.jobTitle}
+                        companyName={pendingOpsUserRemovalJob.companyName}
                     />
                 </Suspense>
             )}

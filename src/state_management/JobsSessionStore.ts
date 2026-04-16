@@ -239,6 +239,7 @@ export const useJobsSessionStore = create<JobsSessionState>()(
                       operatorName: updatedJob.operatorName,
                       operatorEmail: updatedJob.operatorEmail,
                       addedBy: (updatedJob as any).addedBy,
+                      createdByRole: (updatedJob as any).createdByRole,
                       appliedDate: updatedJob.appliedDate
                     }
                   : job

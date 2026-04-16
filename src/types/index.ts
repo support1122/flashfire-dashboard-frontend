@@ -24,6 +24,8 @@ export interface Job {
   operatorEmail?: string;
   /** Operator display name from extension code (returned to clients; extensionCode is not) */
   addedBy?: string;
+  /** Dashboard creator: client vs operations (extension jobs may omit). */
+  createdByRole?: "user" | "operations";
   appliedDate?: string | null;
   optimizedResume?: { hasResume?: boolean; [key: string]: any };
   optimizedResumeSeen?: boolean;
