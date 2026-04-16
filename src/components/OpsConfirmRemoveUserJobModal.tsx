@@ -53,8 +53,7 @@ export default function OpsConfirmRemoveUserJobModal({
             </h2>
             <p className="mt-2 text-sm text-gray-600">
               This job was added by the user. Are you sure you want to move it to{" "}
-              <span className="font-medium">Removed</span>? This action is meant for jobs the
-              client created themselves.
+              <span className="font-medium">Removed</span>?
             </p>
             <p className="mt-2 truncate text-sm text-gray-500" title={`${jobTitle} — ${companyName}`}>
               <span className="font-medium text-gray-700">{jobTitle}</span>
