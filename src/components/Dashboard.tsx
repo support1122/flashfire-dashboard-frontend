@@ -434,7 +434,7 @@ const RecentActivity = React.memo(({ recentJobs }: { recentJobs: any[] }) => {
                 <Icon className="w-5 h-5 text-gray-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">{job.jobTitle}</p>
+                <p className="text-sm font-medium text-gray-900 break-words">{job.jobTitle}</p>
                 <p className="text-sm text-gray-500">{job.companyName}</p>
               </div>
               <div className="flex-shrink-0">

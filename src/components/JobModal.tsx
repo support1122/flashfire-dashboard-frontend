@@ -1757,7 +1757,8 @@ export default function JobModal({
                                                     showProjects={resumeData.showProjects}
                                                     showSummary={resumeData.showSummary}
                                                     showPublications={resumeData.showPublications}
-                                                    showPrintButtons={role === "operations"}
+                                                    showPrintButtons
+                                                    showDirectPdfButton={role === "operations"}
                                                     sectionOrder={resumeData.sectionOrder}
                                                     onDownloadClick={handleDownloadClick}
                                                 />
@@ -1772,7 +1773,8 @@ export default function JobModal({
                                                 showPublications={resumeData.showPublications}
                                                 showChanges={false}
                                                 changedFields={new Set()}
-                                                showPrintButtons={role === "operations"}
+                                                showPrintButtons
+                                                showDirectPdfButton={role === "operations"}
                                                 sectionOrder={resumeData.sectionOrder}
                                                 onDownloadClick={handleDownloadClick}
                                             />
@@ -2816,7 +2818,8 @@ export default function JobModal({
                                         showProjects={optimizedResumeMetadata.showProjects}
                                         showSummary={optimizedResumeMetadata.showSummary}
                                         showPublications={optimizedResumeMetadata.showPublications}
-                                        showPrintButtons={role === "operations"}
+                                        showPrintButtons
+                                        showDirectPdfButton={role === "operations"}
                                         sectionOrder={optimizedResumeMetadata.sectionOrder}
                                         onDownloadClick={handleDownloadClick}
                                     />
@@ -2829,7 +2832,8 @@ export default function JobModal({
                                         showPublications={optimizedResumeMetadata.showPublications}
                                         showChanges={false}
                                         changedFields={new Set()}
-                                        showPrintButtons={role === "operations"}
+                                        showPrintButtons
+                                        showDirectPdfButton={role === "operations"}
                                         sectionOrder={optimizedResumeMetadata.sectionOrder}
                                         onDownloadClick={handleDownloadClick}
                                     />

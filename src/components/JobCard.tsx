@@ -146,7 +146,7 @@ const JobCard: React.FC<JobCardProps> = ({
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <h4 className="font-semibold text-gray-900 line-clamp-2">{job.jobTitle}</h4>
+            <h4 className="font-semibold text-gray-900 line-clamp-2 break-words">{job.jobTitle}</h4>
             {autoOptCompleted && !job.optimizedResumeSeen && (
               <Sparkles className="w-3.5 h-3.5 text-green-600 flex-shrink-0" title="Resume auto optimized" />
             )}
