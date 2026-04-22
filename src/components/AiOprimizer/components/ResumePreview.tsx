@@ -75,6 +75,7 @@ interface ResumePreviewProps {
     changedFields?: Set<string>;
     onDownloadClick?: () => void; // Add this prop to handle download clicks
     showPrintButtons?: boolean; // Add this prop to control print buttons visibility
+    showDirectPdfButton?: boolean;
     sectionOrder?: string[]; // Add section order prop
 }
 
@@ -88,6 +89,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     changedFields = new Set(),
     onDownloadClick,
     showPrintButtons = true,
+    showDirectPdfButton = true,
     sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education", "publications"],
 }) => {
     const parseCustomLinkContent = (raw: string) => {
@@ -852,19 +854,16 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
 
 
 
-    // Show instructions for automatic print settings
+    // Explain the download flow with scaling modal
     const showPrintInstructions = () => {
-        alert(`Automatic Print Settings:
-        
-The print dialog will automatically open with optimized settings:
-• Pages: Set to 2 (automatically configured)
-• Scale: Auto-optimized for best fit
-• Margins: Minimal for maximum content space
-• Destination: Save as PDF (or your preferred printer)
+        alert(`How to download your resume:
 
-Just click "Print" or "Save as PDF" - no manual adjustments needed!
+1. Click "Download Resume" to open the scaling modal.
+2. Adjust the scale slider until the page count is correct.
+3. Confirm the live preview looks right.
+4. Click "Download PDF" to save your resume.
 
-The resume will print across multiple pages if needed, ensuring no content is cut off and no blank pages appear.`);
+Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
     };
 
     // Calculate content density and determine scaling factor
@@ -2048,7 +2047,8 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        backgroundColor: "rgba(0, 0, 0, 0.5)",
+                        backgroundColor: "rgba(15, 23, 42, 0.48)",
+                        backdropFilter: "blur(2px)",
                         display: "flex",
                         justifyContent: "center",
                         alignItems: "center",
@@ -2250,20 +2250,22 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                     >
                         In-House Scaling
                     </button> */}
-                    <button
-                        onClick={handlePrint}
-                        style={{
-                            backgroundColor: "#3b82f6",
-                            color: "white",
-                            padding: "8px 16px",
-                            border: "none",
-                            borderRadius: "4px",
-                            marginRight: "8px",
-                            cursor: "pointer",
-                        }}
-                    >
-                        Download PDF
-                    </button>
+                    {showDirectPdfButton && (
+                        <button
+                            onClick={handlePrint}
+                            style={{
+                                backgroundColor: "#3b82f6",
+                                color: "white",
+                                padding: "8px 16px",
+                                border: "none",
+                                borderRadius: "4px",
+                                marginRight: "8px",
+                                cursor: "pointer",
+                            }}
+                        >
+                            Download PDF
+                        </button>
+                    )}
                     <button
                         onClick={showPrintInstructions}
                         style={{
@@ -2300,48 +2302,84 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                     <div
                         style={{
                             backgroundColor: "white",
-                            borderRadius: "12px",
-                            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-                            maxWidth: "1200px",
+                            borderRadius: "16px",
+                            boxShadow: "0 32px 48px -20px rgba(15, 23, 42, 0.4)",
+                            border: "1px solid #e5e7eb",
+                            maxWidth: "1180px",
                             width: "100%",
                             maxHeight: "90vh",
                             display: "flex",
                             flexDirection: "column",
                             overflow: "hidden",
+                            fontFamily: "Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
                         }}
                     >
                         {/* Header */}
-                        <div style={{ padding: "1.5rem", borderBottom: "1px solid #e5e7eb" }}>
-                            <h2
-                                style={{
-                                    fontSize: "1.5rem",
-                                    fontWeight: "bold",
-                                    marginBottom: "0.5rem",
-                                    color: "#1f2937",
+                        <div style={{
+                            padding: "1.25rem 1.5rem",
+                            borderBottom: "1px solid #e5e7eb",
+                            background: "#ffffff",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "1rem",
+                        }}>
+                            <div>
+                                <h2
+                                    style={{
+                                        fontSize: "1.45rem",
+                                        fontWeight: "700",
+                                        marginBottom: "0.35rem",
+                                        color: "#111827",
+                                    }}
+                                >
+                                    Select PDF Scale
+                                </h2>
+                                <p
+                                    style={{
+                                        fontSize: "0.9rem",
+                                        color: "#6b7280",
+                                    }}
+                                >
+                                    Fine-tune scale and confirm one-page output in live preview.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setShowScaleModal(false);
+                                    setPdfPageCount(null);
                                 }}
-                            >
-                                Select PDF Scale
-                            </h2>
-                            <p
+                                disabled={isGeneratingPDF}
                                 style={{
-                                    fontSize: "0.9rem",
-                                    color: "#6b7280",
+                                    width: "34px",
+                                    height: "34px",
+                                    borderRadius: "999px",
+                                    border: "1px solid #e5e7eb",
+                                    backgroundColor: "#f8fafc",
+                                    color: "#64748b",
+                                    fontSize: "1.2rem",
+                                    fontWeight: "600",
+                                    lineHeight: 1,
+                                    cursor: isGeneratingPDF ? "not-allowed" : "pointer",
+                                    opacity: isGeneratingPDF ? 0.6 : 1,
                                 }}
+                                aria-label="Close PDF scale modal"
                             >
-                                Adjust the scale and see a live preview.
-                            </p>
+                                ×
+                            </button>
                         </div>
 
                         {/* Content Area - Side by Side */}
                         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
                             {/* Left Side - Controls */}
                             <div style={{
-                                width: "400px",
-                                padding: "1.5rem",
+                                width: "360px",
+                                padding: "1.25rem",
                                 borderRight: "1px solid #e5e7eb",
                                 display: "flex",
                                 flexDirection: "column",
                                 overflowY: "auto",
+                                backgroundColor: "#fcfcfd",
                             }}>
                                 <div style={{ marginBottom: "1.5rem" }}>
                                     <label
@@ -2353,7 +2391,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                             color: "#374151",
                                         }}
                                     >
-                                        Scale: <span style={{ color: "#10b981", fontSize: "1.1rem", fontWeight: "700" }}>{(selectedScale * 100).toFixed(0)}%</span>
+                                        Scale: <span style={{ color: "#f97316", fontSize: "1.1rem", fontWeight: "700" }}>{(selectedScale * 100).toFixed(0)}%</span>
                                     </label>
                                     <input
                                         type="range"
@@ -2373,7 +2411,8 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                             borderRadius: "5px",
                                             outline: "none",
                                             cursor: "pointer",
-                                            background: `linear-gradient(to right, #10b981 0%, #10b981 ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb 100%)`,
+                                            background: `linear-gradient(to right, #f97316 0%, #f97316 ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb 100%)`,
+                                            accentColor: "#f97316",
                                         }}
                                     />
                                     <div
@@ -2402,7 +2441,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                             }}
                                             style={{
                                                 padding: "8px 12px",
-                                                backgroundColor: "#10b981",
+                                                backgroundColor: "#ea580c",
                                                 color: "white",
                                                 border: "none",
                                                 borderRadius: "6px",
@@ -2427,7 +2466,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                 width: "80px",
                                                 padding: "8px",
                                                 textAlign: "center",
-                                                border: "2px solid #10b981",
+                                                border: "2px solid #fb923c",
                                                 borderRadius: "6px",
                                                 fontSize: "1rem",
                                                 fontWeight: "600",
@@ -2442,7 +2481,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                             }}
                                             style={{
                                                 padding: "8px 12px",
-                                                backgroundColor: "#10b981",
+                                                backgroundColor: "#ea580c",
                                                 color: "white",
                                                 border: "none",
                                                 borderRadius: "6px",
@@ -2457,15 +2496,15 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 <div style={{
                                     marginBottom: "1.5rem",
                                     padding: "1rem",
-                                    backgroundColor: "#f9fafb",
-                                    borderRadius: "8px",
+                                    backgroundColor: "#ffffff",
+                                    borderRadius: "10px",
                                     border: "1px solid #e5e7eb"
                                 }}>
-                                    <div style={{ fontSize: "0.85rem", color: "#6b7280", lineHeight: "1.5" }}>
-                                        <strong style={{ color: "#374151" }}>Reduce or increase scale to change the PDF scale.</strong>
+                                    <div style={{ fontSize: "0.85rem", color: "#475569", lineHeight: "1.5" }}>
+                                        <strong style={{ color: "#334155" }}>Adjust scale to control final PDF length.</strong>
                                         <br />
-                                        <span style={{ color: "#6b7280", marginTop: "0.5rem", display: "block" }}>
-                                            If you want a one-page resume, make sure the preview is also one page so you will get the resume as it is.
+                                        <span style={{ color: "#64748b", marginTop: "0.5rem", display: "block" }}>
+                                            For best recruiter readability, keep preview at 1 page before downloading.
                                         </span>
                                     </div>
                                 </div>
@@ -2487,11 +2526,11 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>⚠️</span>
                                             <strong style={{ color: "#92400e", fontSize: "0.9rem" }}>
-                                                PDF is crossing {pdfPageCount} pages
+                                                Resume currently spans {pdfPageCount} pages
                                             </strong>
                                         </div>
                                         <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
-                                            Please reduce the scale to fit the resume on 1 page before downloading.
+                                            Try reducing scale slightly so resume fits in 1 page before download.
                                         </div>
                                     </div>
                                 )}
@@ -2501,9 +2540,9 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                     <div style={{
                                         marginBottom: "1rem",
                                         padding: "1rem",
-                                        backgroundColor: "#d1fae5",
+                                        backgroundColor: "#fff7ed",
                                         borderRadius: "8px",
-                                        border: "2px solid #10b981"
+                                        border: "2px solid #fdba74"
                                     }}>
                                         <div style={{
                                             display: "flex",
@@ -2511,8 +2550,8 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                             gap: "0.5rem"
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>✅</span>
-                                            <strong style={{ color: "#065f46", fontSize: "0.9rem" }}>
-                                                PDF is 1 page - Ready to download!
+                                            <strong style={{ color: "#9a3412", fontSize: "0.9rem" }}>
+                                                Your resume looks good. Ready to download.
                                             </strong>
                                         </div>
                                     </div>
@@ -2522,7 +2561,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                 <div style={{
                                     marginBottom: "1rem",
                                     padding: "0.75rem 1rem",
-                                    backgroundColor: "#f3f4f6",
+                                    backgroundColor: "#ffffff",
                                     borderRadius: "8px",
                                     border: "1px solid #e5e7eb"
                                 }}>
@@ -2558,10 +2597,10 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                         disabled={isGeneratingPDF}
                                         style={{
                                             flex: 1,
-                                            backgroundColor: "#6b7280",
-                                            color: "white",
+                                            backgroundColor: "#eef2f7",
+                                            color: "#475569",
                                             padding: "10px 24px",
-                                            border: "none",
+                                            border: "1px solid #dbe3ef",
                                             borderRadius: "8px",
                                             fontSize: "1rem",
                                             fontWeight: "600",
@@ -2576,7 +2615,9 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                         disabled={isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1)}
                                         style={{
                                             flex: 1,
-                                            backgroundColor: (isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1)) ? "#9ca3af" : "#10b981",
+                                            background: (isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1))
+                                                ? "#9ca3af"
+                                                : "linear-gradient(90deg, #f97316 0%, #ef4444 100%)",
                                             color: "white",
                                             padding: "10px 24px",
                                             border: "none",
@@ -2584,10 +2625,13 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                             fontSize: "1rem",
                                             fontWeight: "600",
                                             cursor: (isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1)) ? "not-allowed" : "pointer",
-                                            transition: "background-color 0.2s",
+                                            boxShadow: (isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1))
+                                                ? "none"
+                                                : "0 6px 18px rgba(249, 115, 22, 0.35)",
+                                            transition: "all 0.2s",
                                         }}
                                     >
-                                        {isGeneratingPDF ? "Generating..." : (pdfPageCount !== null && pdfPageCount > 1) ? `PDF is ${pdfPageCount} pages - Reduce scale` : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
+                                        {isGeneratingPDF ? "Generating..." : (pdfPageCount !== null && pdfPageCount > 1) ? `Showing ${pdfPageCount} pages - reduce scale` : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
                                     </button>
                                 </div>
                             </div>
@@ -2596,7 +2640,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             <div style={{
                                 flex: 1,
                                 padding: "1.5rem",
-                                backgroundColor: "#f9fafb",
+                                backgroundColor: "#f3f6fb",
                                 display: "flex",
                                 flexDirection: "column",
                                 overflow: "hidden",
@@ -2604,11 +2648,29 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                             }}>
                                 <div style={{
                                     marginBottom: "0.75rem",
-                                    fontSize: "0.875rem",
-                                    color: "#6b7280",
-                                    fontWeight: "600",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: "0.75rem",
                                 }}>
-                                    Live PDF Preview
+                                    <div style={{
+                                        fontSize: "0.875rem",
+                                        color: "#475569",
+                                        fontWeight: "600",
+                                    }}>
+                                        Live PDF Preview
+                                    </div>
+                                    <div style={{
+                                        fontSize: "0.75rem",
+                                        fontWeight: "600",
+                                        color: "#c2410c",
+                                        backgroundColor: "#fff7ed",
+                                        border: "1px solid #fdba74",
+                                        borderRadius: "999px",
+                                        padding: "0.25rem 0.6rem",
+                                    }}>
+                                        {pdfPageCount !== null ? `${pdfPageCount} page${pdfPageCount > 1 ? "s" : ""}` : "Analyzing pages..."}
+                                    </div>
                                 </div>
 
                                 {isGeneratingPreview ? (
@@ -2619,7 +2681,8 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                         alignItems: "center",
                                         justifyContent: "center",
                                         backgroundColor: "white",
-                                        borderRadius: "8px",
+                                        borderRadius: "10px",
+                                        border: "1px solid #e5e7eb",
                                         padding: "2rem",
                                     }}>
                                         <div style={{ textAlign: "center" }}>
@@ -2627,7 +2690,7 @@ The resume will print across multiple pages if needed, ensuring no content is cu
                                                 width: "50px",
                                                 height: "50px",
                                                 border: "4px solid #e5e7eb",
-                                                borderTop: "4px solid #10b981",
+                                                borderTop: "4px solid #f97316",
                                                 borderRadius: "50%",
                                                 animation: "spin 1s linear infinite",
                                                 margin: "0 auto 1.5rem",

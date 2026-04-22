@@ -5,6 +5,7 @@ import { UserContext } from "../state_management/UserContext";
 import { useNavigate } from "react-router-dom";
 import { useOperationsStore } from "../state_management/Operations";
 import { toastUtils, toastMessages } from "../utils/toast";
+import { sanitizeJobTitle, MAX_JOB_TITLE_LENGTH } from "../utils/jobTitle";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -164,7 +165,8 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    const { name, value } = e.target;
+    const { name } = e.target;
+    const value = name === "jobTitle" ? sanitizeJobTitle(e.target.value) : e.target.value;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setError(null);
   };
@@ -471,9 +473,11 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
               name="jobTitle"
               value={formData.jobTitle}
               onChange={handleChange}
+              maxLength={MAX_JOB_TITLE_LENGTH}
               required
               className="w-full px-3 py-2 border rounded-lg"
             />
+            <p className="text-xs text-gray-500 mt-1">Max {MAX_JOB_TITLE_LENGTH} characters.</p>
           </div>
           <div>
             <label className="block text-sm font-medium">Company Name *</label>

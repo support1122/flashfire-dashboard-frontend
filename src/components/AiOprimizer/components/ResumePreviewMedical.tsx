@@ -75,6 +75,7 @@ interface ResumePreviewProps {
     showSummary?: boolean;
     showPublications?: boolean;
     showPrintButtons?: boolean;
+    showDirectPdfButton?: boolean;
     sectionOrder?: string[]; // Add section order prop
     onDownloadClick?: () => void;
 }
@@ -86,6 +87,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     showPublications = false,
     showSummary = true,
     showPrintButtons = true,
+    showDirectPdfButton = true,
     sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education", "publications"],
     onDownloadClick,
 }) => {
@@ -960,6 +962,17 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
         }
     };
 
+    const showPrintInstructions = () => {
+        alert(`How to download your resume:
+
+1. Click "Download Resume" to open the scaling modal.
+2. Adjust the scale slider until the page count is correct.
+3. Confirm the live preview looks right.
+4. Click "Download PDF" to save your resume.
+
+Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PAGES} pages before downloading.`);
+    };
+
     // Generate preview PDF
     const generatePreview = async (scale: number) => {
         let messageInterval: NodeJS.Timeout | null = null;
@@ -1332,7 +1345,8 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        backgroundColor: "rgba(0, 0, 0, 0.5)",
+                        backgroundColor: "rgba(15, 23, 42, 0.48)",
+                        backdropFilter: "blur(2px)",
                         display: "flex",
                         justifyContent: "center",
                         alignItems: "center",
@@ -1343,48 +1357,84 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                     <div
                         style={{
                             backgroundColor: "white",
-                            borderRadius: "12px",
-                            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-                            maxWidth: "1200px",
+                            borderRadius: "16px",
+                            boxShadow: "0 32px 48px -20px rgba(15, 23, 42, 0.4)",
+                            border: "1px solid #e5e7eb",
+                            maxWidth: "1180px",
                             width: "100%",
                             maxHeight: "90vh",
                             display: "flex",
                             flexDirection: "column",
                             overflow: "hidden",
+                            fontFamily: "Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
                         }}
                     >
                         {/* Header */}
-                        <div style={{ padding: "1.5rem", borderBottom: "1px solid #e5e7eb" }}>
-                            <h2
-                                style={{
-                                    fontSize: "1.5rem",
-                                    fontWeight: "bold",
-                                    marginBottom: "0.5rem",
-                                    color: "#1f2937",
+                        <div style={{
+                            padding: "1.25rem 1.5rem",
+                            borderBottom: "1px solid #e5e7eb",
+                            background: "#ffffff",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "1rem",
+                        }}>
+                            <div>
+                                <h2
+                                    style={{
+                                        fontSize: "1.45rem",
+                                        fontWeight: "700",
+                                        marginBottom: "0.35rem",
+                                        color: "#111827",
+                                    }}
+                                >
+                                    Select PDF Scale
+                                </h2>
+                                <p
+                                    style={{
+                                        fontSize: "0.9rem",
+                                        color: "#6b7280",
+                                    }}
+                                >
+                                    Fine-tune scale and confirm 2-page output in live preview.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setShowScaleModal(false);
+                                    setPdfPageCount(null);
                                 }}
-                            >
-                                Select PDF Scale
-                            </h2>
-                            <p
+                                disabled={isPrinting}
                                 style={{
-                                    fontSize: "0.9rem",
-                                    color: "#6b7280",
+                                    width: "34px",
+                                    height: "34px",
+                                    borderRadius: "999px",
+                                    border: "1px solid #e5e7eb",
+                                    backgroundColor: "#f8fafc",
+                                    color: "#64748b",
+                                    fontSize: "1.2rem",
+                                    fontWeight: "600",
+                                    lineHeight: 1,
+                                    cursor: isPrinting ? "not-allowed" : "pointer",
+                                    opacity: isPrinting ? 0.6 : 1,
                                 }}
+                                aria-label="Close PDF scale modal"
                             >
-                                Adjust the scale and see a live preview.
-                            </p>
+                                ×
+                            </button>
                         </div>
 
                         {/* Content Area - Side by Side */}
                         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
                             {/* Left Side - Controls */}
                             <div style={{
-                                width: "400px",
-                                padding: "1.5rem",
+                                width: "360px",
+                                padding: "1.25rem",
                                 borderRight: "1px solid #e5e7eb",
                                 display: "flex",
                                 flexDirection: "column",
                                 overflowY: "auto",
+                                backgroundColor: "#fcfcfd",
                             }}>
                                 <div style={{ marginBottom: "1.5rem" }}>
                                     <label
@@ -1396,7 +1446,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             color: "#374151",
                                         }}
                                     >
-                                        Scale: <span style={{ color: "#10b981", fontSize: "1.1rem", fontWeight: "700" }}>{(selectedScale * 100).toFixed(0)}%</span>
+                                        Scale: <span style={{ color: "#f97316", fontSize: "1.1rem", fontWeight: "700" }}>{(selectedScale * 100).toFixed(0)}%</span>
                                     </label>
                                     <input
                                         type="range"
@@ -1416,7 +1466,8 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             borderRadius: "5px",
                                             outline: "none",
                                             cursor: "pointer",
-                                            background: `linear-gradient(to right, #10b981 0%, #10b981 ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb 100%)`,
+                                            background: `linear-gradient(to right, #f97316 0%, #f97316 ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb 100%)`,
+                                            accentColor: "#f97316",
                                         }}
                                     />
                                     <div
@@ -1445,7 +1496,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             }}
                                             style={{
                                                 padding: "8px 12px",
-                                                backgroundColor: "#10b981",
+                                                backgroundColor: "#ea580c",
                                                 color: "white",
                                                 border: "none",
                                                 borderRadius: "6px",
@@ -1470,7 +1521,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                 width: "80px",
                                                 padding: "8px",
                                                 textAlign: "center",
-                                                border: "2px solid #10b981",
+                                                border: "2px solid #fb923c",
                                                 borderRadius: "6px",
                                                 fontSize: "1rem",
                                                 fontWeight: "600",
@@ -1485,7 +1536,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             }}
                                             style={{
                                                 padding: "8px 12px",
-                                                backgroundColor: "#10b981",
+                                                backgroundColor: "#ea580c",
                                                 color: "white",
                                                 border: "none",
                                                 borderRadius: "6px",
@@ -1500,20 +1551,20 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                 <div style={{
                                     marginBottom: "1.5rem",
                                     padding: "1rem",
-                                    backgroundColor: "#f9fafb",
-                                    borderRadius: "8px",
+                                    backgroundColor: "#ffffff",
+                                    borderRadius: "10px",
                                     border: "1px solid #e5e7eb"
                                 }}>
-                                    <div style={{ fontSize: "0.85rem", color: "#6b7280", lineHeight: "1.5" }}>
-                                        <strong style={{ color: "#374151" }}>Reduce or increase scale to change the PDF scale.</strong>
+                                    <div style={{ fontSize: "0.85rem", color: "#475569", lineHeight: "1.5" }}>
+                                        <strong style={{ color: "#334155" }}>Adjust scale to control final PDF length.</strong>
                                         <br />
-                                        <span style={{ color: "#6b7280", marginTop: "0.5rem", display: "block" }}>
-                                            Medical resumes must be exactly 2 pages. Adjust the scale until the preview shows exactly 2 pages before downloading.
+                                        <span style={{ color: "#64748b", marginTop: "0.5rem", display: "block" }}>
+                                            Keep preview at 2 pages for best medical resume format.
                                         </span>
                                     </div>
                                 </div>
 
-                                {/* Page Count Warning - Medical resume must be exactly 2 pages (1 page) */}
+                                {/* Page Count Warning - Below 2 pages */}
                                 {pdfPageCount !== null && pdfPageCount < REQUIRED_MEDICAL_PDF_PAGES && (
                                     <div style={{
                                         marginBottom: "1rem",
@@ -1530,16 +1581,16 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>⚠️</span>
                                             <strong style={{ color: "#92400e", fontSize: "0.9rem" }}>
-                                                Medical resume must be exactly 2 pages
+                                                Resume currently has {pdfPageCount} page{pdfPageCount === 1 ? "" : "s"}
                                             </strong>
                                         </div>
                                         <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
-                                            PDF is {pdfPageCount} page{pdfPageCount === 1 ? '' : 's'}. Please increase the scale so the resume spans exactly {REQUIRED_MEDICAL_PDF_PAGES} pages before downloading.
+                                            Increase scale slightly so preview reaches {REQUIRED_MEDICAL_PDF_PAGES} pages before download.
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Page Count Warning - Medical resume must be exactly 2 pages (more than 2) */}
+                                {/* Page Count Warning - Above 2 pages */}
                                 {pdfPageCount !== null && pdfPageCount > REQUIRED_MEDICAL_PDF_PAGES && (
                                     <div style={{
                                         marginBottom: "1rem",
@@ -1556,11 +1607,11 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>⚠️</span>
                                             <strong style={{ color: "#92400e", fontSize: "0.9rem" }}>
-                                                Medical resume must be exactly 2 pages
+                                                Resume currently spans {pdfPageCount} pages
                                             </strong>
                                         </div>
                                         <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
-                                            PDF is {pdfPageCount} pages. Please reduce the scale so the resume fits exactly {REQUIRED_MEDICAL_PDF_PAGES} pages before downloading.
+                                            Reduce scale slightly so preview fits in {REQUIRED_MEDICAL_PDF_PAGES} pages before download.
                                         </div>
                                     </div>
                                 )}
@@ -1570,9 +1621,9 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                     <div style={{
                                         marginBottom: "1rem",
                                         padding: "1rem",
-                                        backgroundColor: "#d1fae5",
+                                        backgroundColor: "#fff7ed",
                                         borderRadius: "8px",
-                                        border: "2px solid #10b981"
+                                        border: "2px solid #fdba74"
                                     }}>
                                         <div style={{
                                             display: "flex",
@@ -1580,8 +1631,8 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             gap: "0.5rem"
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>✅</span>
-                                            <strong style={{ color: "#065f46", fontSize: "0.9rem" }}>
-                                                PDF is {REQUIRED_MEDICAL_PDF_PAGES} pages - Ready to download!
+                                            <strong style={{ color: "#9a3412", fontSize: "0.9rem" }}>
+                                                Your resume looks good in {REQUIRED_MEDICAL_PDF_PAGES} pages - Ready to download
                                             </strong>
                                         </div>
                                     </div>
@@ -1591,7 +1642,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                 <div style={{
                                     marginBottom: "1rem",
                                     padding: "0.75rem 1rem",
-                                    backgroundColor: "#f3f4f6",
+                                    backgroundColor: "#ffffff",
                                     borderRadius: "8px",
                                     border: "1px solid #e5e7eb"
                                 }}>
@@ -1627,10 +1678,10 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         disabled={isPrinting}
                                         style={{
                                             flex: 1,
-                                            backgroundColor: "#6b7280",
-                                            color: "white",
+                                            backgroundColor: "#eef2f7",
+                                            color: "#475569",
                                             padding: "10px 24px",
-                                            border: "none",
+                                            border: "1px solid #dbe3ef",
                                             borderRadius: "8px",
                                             fontSize: "1rem",
                                             fontWeight: "600",
@@ -1645,7 +1696,9 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         disabled={isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES)}
                                         style={{
                                             flex: 1,
-                                            backgroundColor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES)) ? "#9ca3af" : "#10b981",
+                                            background: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES))
+                                                ? "#9ca3af"
+                                                : "linear-gradient(90deg, #f97316 0%, #ef4444 100%)",
                                             color: "white",
                                             padding: "10px 24px",
                                             border: "none",
@@ -1653,10 +1706,13 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             fontSize: "1rem",
                                             fontWeight: "600",
                                             cursor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES)) ? "not-allowed" : "pointer",
-                                            transition: "background-color 0.2s",
+                                            boxShadow: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES))
+                                                ? "none"
+                                                : "0 6px 18px rgba(249, 115, 22, 0.35)",
+                                            transition: "all 0.2s",
                                         }}
                                     >
-                                        {isPrinting ? "Generating..." : (pdfPageCount !== null && pdfPageCount < REQUIRED_MEDICAL_PDF_PAGES) ? `Medical resume must be ${REQUIRED_MEDICAL_PDF_PAGES} pages - Increase scale` : (pdfPageCount !== null && pdfPageCount > REQUIRED_MEDICAL_PDF_PAGES) ? `Medical resume must be ${REQUIRED_MEDICAL_PDF_PAGES} pages - Reduce scale` : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
+                                        {isPrinting ? "Generating..." : (pdfPageCount !== null && pdfPageCount < REQUIRED_MEDICAL_PDF_PAGES) ? `Showing ${pdfPageCount} page${pdfPageCount === 1 ? "" : "s"} - increase scale` : (pdfPageCount !== null && pdfPageCount > REQUIRED_MEDICAL_PDF_PAGES) ? `Showing ${pdfPageCount} pages - reduce scale` : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
                                     </button>
                                 </div>
                             </div>
@@ -1665,7 +1721,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                             <div style={{
                                 flex: 1,
                                 padding: "1.5rem",
-                                backgroundColor: "#f9fafb",
+                                backgroundColor: "#f3f6fb",
                                 display: "flex",
                                 flexDirection: "column",
                                 overflow: "hidden",
@@ -1673,11 +1729,29 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                             }}>
                                 <div style={{
                                     marginBottom: "0.75rem",
-                                    fontSize: "0.875rem",
-                                    color: "#6b7280",
-                                    fontWeight: "600",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: "0.75rem",
                                 }}>
-                                    Live PDF Preview
+                                    <div style={{
+                                        fontSize: "0.875rem",
+                                        color: "#475569",
+                                        fontWeight: "600",
+                                    }}>
+                                        Live PDF Preview
+                                    </div>
+                                    <div style={{
+                                        fontSize: "0.75rem",
+                                        fontWeight: "600",
+                                        color: "#c2410c",
+                                        backgroundColor: "#fff7ed",
+                                        border: "1px solid #fdba74",
+                                        borderRadius: "999px",
+                                        padding: "0.25rem 0.6rem",
+                                    }}>
+                                        {pdfPageCount !== null ? `${pdfPageCount} page${pdfPageCount > 1 ? "s" : ""}` : "Analyzing pages..."}
+                                    </div>
                                 </div>
 
                                 {isGeneratingPreview ? (
@@ -1688,7 +1762,8 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                         alignItems: "center",
                                         justifyContent: "center",
                                         backgroundColor: "white",
-                                        borderRadius: "8px",
+                                        borderRadius: "10px",
+                                        border: "1px solid #e5e7eb",
                                         padding: "2rem",
                                     }}>
                                         <div style={{ textAlign: "center" }}>
@@ -1696,7 +1771,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                 width: "50px",
                                                 height: "50px",
                                                 border: "4px solid #e5e7eb",
-                                                borderTop: "4px solid #10b981",
+                                                borderTop: "4px solid #f97316",
                                                 borderRadius: "50%",
                                                 animation: "spin 1s linear infinite",
                                                 margin: "0 auto 1.5rem",
@@ -1783,14 +1858,16 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                     >
                         In-House Scaling
                     </button> */}
+                    {showDirectPdfButton && (
+                        <button
+                            onClick={handlePrint}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                        >
+                            Download PDF
+                        </button>
+                    )}
                     <button
-                        onClick={handlePrint}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
-                    >
-                        Download PDF
-                    </button>
-                    <button
-                        onClick={handlePrint}
+                        onClick={showPrintInstructions}
                         className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm"
                     >
                         Print Instructions
