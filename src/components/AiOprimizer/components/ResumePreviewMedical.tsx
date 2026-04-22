@@ -1446,7 +1446,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                             color: "#374151",
                                         }}
                                     >
-                                        Scale: <span style={{ color: "#f97316", fontSize: "1.1rem", fontWeight: "700" }}>{(selectedScale * 100).toFixed(0)}%</span>
+                                        Scale: <span style={{ color: "#38bdf8", fontSize: "1.1rem", fontWeight: "700" }}>{(selectedScale * 100).toFixed(0)}%</span>
                                     </label>
                                     <input
                                         type="range"
@@ -1466,8 +1466,8 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                             borderRadius: "5px",
                                             outline: "none",
                                             cursor: "pointer",
-                                            background: `linear-gradient(to right, #f97316 0%, #f97316 ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb 100%)`,
-                                            accentColor: "#f97316",
+                                            background: `linear-gradient(to right, #38bdf8 0%, #38bdf8 ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb 100%)`,
+                                            accentColor: "#38bdf8",
                                         }}
                                     />
                                     <div
@@ -1496,7 +1496,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                             }}
                                             style={{
                                                 padding: "8px 12px",
-                                                backgroundColor: "#ea580c",
+                                                backgroundColor: "#0284c7",
                                                 color: "white",
                                                 border: "none",
                                                 borderRadius: "6px",
@@ -1521,7 +1521,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                                 width: "80px",
                                                 padding: "8px",
                                                 textAlign: "center",
-                                                border: "2px solid #fb923c",
+                                                border: "2px solid #7dd3fc",
                                                 borderRadius: "6px",
                                                 fontSize: "1rem",
                                                 fontWeight: "600",
@@ -1536,7 +1536,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                             }}
                                             style={{
                                                 padding: "8px 12px",
-                                                backgroundColor: "#ea580c",
+                                                backgroundColor: "#0284c7",
                                                 color: "white",
                                                 border: "none",
                                                 borderRadius: "6px",
@@ -1569,9 +1569,9 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                     <div style={{
                                         marginBottom: "1rem",
                                         padding: "1rem",
-                                        backgroundColor: "#fef3c7",
+                                        backgroundColor: "#e0f2fe",
                                         borderRadius: "8px",
-                                        border: "2px solid #f59e0b"
+                                        border: "2px solid #38bdf8"
                                     }}>
                                         <div style={{
                                             display: "flex",
@@ -1580,11 +1580,11 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                             marginBottom: "0.5rem"
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>⚠️</span>
-                                            <strong style={{ color: "#92400e", fontSize: "0.9rem" }}>
+                                            <strong style={{ color: "#075985", fontSize: "0.9rem" }}>
                                                 Resume currently has {pdfPageCount} page{pdfPageCount === 1 ? "" : "s"}
                                             </strong>
                                         </div>
-                                        <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
+                                        <div style={{ fontSize: "0.85rem", color: "#0c4a6e", lineHeight: "1.5" }}>
                                             Increase scale slightly so preview reaches {REQUIRED_MEDICAL_PDF_PAGES} pages before download.
                                         </div>
                                     </div>
@@ -1595,9 +1595,9 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                     <div style={{
                                         marginBottom: "1rem",
                                         padding: "1rem",
-                                        backgroundColor: "#fef3c7",
+                                        backgroundColor: "#e0f2fe",
                                         borderRadius: "8px",
-                                        border: "2px solid #f59e0b"
+                                        border: "2px solid #38bdf8"
                                     }}>
                                         <div style={{
                                             display: "flex",
@@ -1606,11 +1606,11 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                             marginBottom: "0.5rem"
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>⚠️</span>
-                                            <strong style={{ color: "#92400e", fontSize: "0.9rem" }}>
+                                            <strong style={{ color: "#075985", fontSize: "0.9rem" }}>
                                                 Resume currently spans {pdfPageCount} pages
                                             </strong>
                                         </div>
-                                        <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
+                                        <div style={{ fontSize: "0.85rem", color: "#0c4a6e", lineHeight: "1.5" }}>
                                             Reduce scale slightly so preview fits in {REQUIRED_MEDICAL_PDF_PAGES} pages before download.
                                         </div>
                                     </div>
@@ -1621,9 +1621,9 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                     <div style={{
                                         marginBottom: "1rem",
                                         padding: "1rem",
-                                        backgroundColor: "#fff7ed",
+                                        backgroundColor: "#f0f9ff",
                                         borderRadius: "8px",
-                                        border: "2px solid #fdba74"
+                                        border: "2px solid #7dd3fc"
                                     }}>
                                         <div style={{
                                             display: "flex",
@@ -1631,7 +1631,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                             gap: "0.5rem"
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>✅</span>
-                                            <strong style={{ color: "#9a3412", fontSize: "0.9rem" }}>
+                                            <strong style={{ color: "#0369a1", fontSize: "0.9rem" }}>
                                                 Your resume looks good in {REQUIRED_MEDICAL_PDF_PAGES} pages - Ready to download
                                             </strong>
                                         </div>
@@ -1698,7 +1698,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                             flex: 1,
                                             background: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES))
                                                 ? "#9ca3af"
-                                                : "linear-gradient(90deg, #f97316 0%, #ef4444 100%)",
+                                                : "linear-gradient(90deg, #38bdf8 0%, #0284c7 100%)",
                                             color: "white",
                                             padding: "10px 24px",
                                             border: "none",
@@ -1708,7 +1708,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                             cursor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES)) ? "not-allowed" : "pointer",
                                             boxShadow: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES))
                                                 ? "none"
-                                                : "0 6px 18px rgba(249, 115, 22, 0.35)",
+                                                : "0 6px 18px rgba(56, 189, 248, 0.35)",
                                             transition: "all 0.2s",
                                         }}
                                     >
@@ -1744,9 +1744,9 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                     <div style={{
                                         fontSize: "0.75rem",
                                         fontWeight: "600",
-                                        color: "#c2410c",
-                                        backgroundColor: "#fff7ed",
-                                        border: "1px solid #fdba74",
+                                        color: "#0369a1",
+                                        backgroundColor: "#f0f9ff",
+                                        border: "1px solid #7dd3fc",
                                         borderRadius: "999px",
                                         padding: "0.25rem 0.6rem",
                                     }}>
@@ -1771,7 +1771,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                                 width: "50px",
                                                 height: "50px",
                                                 border: "4px solid #e5e7eb",
-                                                borderTop: "4px solid #f97316",
+                                                borderTop: "4px solid #38bdf8",
                                                 borderRadius: "50%",
                                                 animation: "spin 1s linear infinite",
                                                 margin: "0 auto 1.5rem",
