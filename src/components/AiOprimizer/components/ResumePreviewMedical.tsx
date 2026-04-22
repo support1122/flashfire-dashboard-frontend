@@ -1446,7 +1446,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                             color: "#374151",
                                         }}
                                     >
-                                        Scale: <span style={{ color: "#2563eb", fontSize: "1.1rem", fontWeight: "700" }}>{(selectedScale * 100).toFixed(0)}%</span>
+                                        Scale: <span style={{ color: "#000000", fontSize: "1.1rem", fontWeight: "700" }}>{(selectedScale * 100).toFixed(0)}%</span>
                                     </label>
                                     <input
                                         type="range"
@@ -1466,8 +1466,8 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                             borderRadius: "5px",
                                             outline: "none",
                                             cursor: "pointer",
-                                            background: `linear-gradient(to right, #2563eb 0%, #2563eb ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb 100%)`,
-                                            accentColor: "#2563eb",
+                                            background: `linear-gradient(to right, #000000 0%, #000000 ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb ${((selectedScale - 0.5) / 1.0) * 100}%, #e5e7eb 100%)`,
+                                            accentColor: "#000000",
                                         }}
                                     />
                                     <div
