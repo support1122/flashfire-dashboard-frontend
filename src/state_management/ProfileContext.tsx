@@ -350,6 +350,10 @@ export interface UserProfile {
   joinTime?: string;
   references?: string;
   referredBy?: string;
+  veteranStatus?: string;
+  disabilityStatus?: string;
+  scholarshipRequired?: string;
+  usWorkEligibility?: string;
   removedJobsCount?: number;
 }
 
@@ -504,6 +508,10 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       availabilityNote: payload.availabilityNote || "in 2 weeks.",
       references: payload.references || "",
       referredBy: payload.referredBy || "",
+      veteranStatus: payload.veteranStatus || "",
+      disabilityStatus: payload.disabilityStatus || "",
+      scholarshipRequired: payload.scholarshipRequired || "",
+      usWorkEligibility: payload.usWorkEligibility || "",
       dashboardManager: payload.dashboardManager || "",
       dashboardManagerContact: payload.dashboardManagerContact || "",
       removedJobsCount: payload.removedJobsCount ?? 0,

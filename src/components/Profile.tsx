@@ -999,17 +999,43 @@ export default function ProfilePage() {
                 </Card>
 
                 {/* Additional */}
-                <Card title="Additional Information">
-                    <InfoRow title="Are you a veteran?" value="No" />
-                    <InfoRow title="Do you have a disability?" value="No" />
-                    <InfoRow title="Will you require a scholarship?" value="No" />
+                <Card
+                    title="Additional Information"
+                    onEdit={() => handleEditClick("additional")}
+                    isEditing={editingSection === "additional"}
+                    onSave={handleSaveClick}
+                    onCancel={handleCancel}
+                >
+                    <InfoRow
+                        title="Are you a veteran?"
+                        value={editingSection === "additional" ? editData.veteranStatus : (data.veteranStatus || "No")}
+                        isEditing={editingSection === "additional"}
+                        onValueChange={(v) => setEditData({ ...editData, veteranStatus: v })}
+                    />
+                    <InfoRow
+                        title="Do you have a disability?"
+                        value={editingSection === "additional" ? editData.disabilityStatus : (data.disabilityStatus || "No")}
+                        isEditing={editingSection === "additional"}
+                        onValueChange={(v) => setEditData({ ...editData, disabilityStatus: v })}
+                    />
+                    <InfoRow
+                        title="Will you require a scholarship?"
+                        value={editingSection === "additional" ? editData.scholarshipRequired : (data.scholarshipRequired || "No")}
+                        isEditing={editingSection === "additional"}
+                        onValueChange={(v) => setEditData({ ...editData, scholarshipRequired: v })}
+                    />
                     <InfoRow
                         title="Are you eligible to work in United States?"
-                        value="Yes"
+                        value={editingSection === "additional" ? editData.usWorkEligibility : (data.usWorkEligibility || "Yes")}
+                        isEditing={editingSection === "additional"}
+                        onValueChange={(v) => setEditData({ ...editData, usWorkEligibility: v })}
                     />
                     <TextAreaRow
                         title="When are you able to join the company?"
-                        value={(() => {
+                        value={editingSection === "additional" ? editData.availabilityNote : (() => {
+                            if (data.availabilityNote?.trim()) {
+                                return data.availabilityNote;
+                            }
                             const joinTime = data.joinTime;
                             if (!joinTime) {
                                 return "I am available to start within 2 weeks of receiving offer.";
@@ -1032,10 +1058,15 @@ export default function ProfilePage() {
                                 "I am available to start within 2 weeks of receiving offer."
                             );
                         })()}
+                        isEditing={editingSection === "additional"}
+                        onValueChange={(v) => setEditData({ ...editData, availabilityNote: v })}
                     />
-                    <InfoRow
+                    <TextAreaRow
                         title="How much salary are you expecting?"
-                        value={(() => {
+                        value={editingSection === "additional" ? editData.expectedSalaryNarrative : (() => {
+                            if (data.expectedSalaryNarrative?.trim()) {
+                                return data.expectedSalaryNarrative;
+                            }
                             const salaryRange = data.expectedSalaryRange;
                             if (!salaryRange || salaryRange === "Other") {
                                 return "I'm seeking a salary in the range of $80,000 to $100,000 annually, depending on the overall compensation package, responsibilities, and growth opportunities within the role.";
@@ -1048,11 +1079,14 @@ export default function ProfilePage() {
                             const range = rangeMap[salaryRange] || "$80,000 to $100,000";
                             return `I'm seeking a salary in the range of ${range} annually, depending on the overall compensation package, responsibilities, and growth opportunities within the role.`;
                         })()}
+                        isEditing={editingSection === "additional"}
+                        onValueChange={(v) => setEditData({ ...editData, expectedSalaryNarrative: v })}
                     />
                     <InfoRow
                         title="Referred by"
-                        value={data.referredBy || "—"}
-                        isEditing={false}
+                        value={editingSection === "additional" ? editData.referredBy : data.referredBy}
+                        isEditing={editingSection === "additional"}
+                        onValueChange={(v) => setEditData({ ...editData, referredBy: v })}
                     />
                 </Card>
 
