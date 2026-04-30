@@ -1905,6 +1905,15 @@ export default function JobModal({
                                                     isOperatorViewer && name
                                                         ? `Added by ${name}`
                                                         : 'Added';
+                                            } else if (evLower === 'saved') {
+                                                displayEvent = 'Saved';
+                                            } else if (evLower.startsWith('applied by')) {
+                                                const tail = event
+                                                    .replace(/^applied by\s+/i, '')
+                                                    .trim();
+                                                displayEvent = tail
+                                                    ? `Applied by ${tail}`
+                                                    : 'Applied';
                                             }
                                             return (
                                                 <li
