@@ -32,6 +32,7 @@ import {
     getOptimizedResumeUrl,
     getOptimizedResumeTitle,
 } from "../utils/getOptimizedResumeUrl.ts";
+import { buildResumeOptimizationInstructionPrompt } from "../utils/resumeOptimizationPrompt.ts";
 import { ResumePreview } from "./AiOprimizer/components/ResumePreview.tsx";
 // import { ResumePreview1 } from "./AiOprimizer/components/ResumePreview1";
 import { ResumePreviewMedical } from "./AiOprimizer/components/ResumePreviewMedical.tsx";
@@ -2078,7 +2079,7 @@ export default function JobModal({
             const isVersion2 = resumeVersion === 2;
 
             // Step 2: Optimize the resume
-            const prompt = "if you recieve any HTML tages please ignore it and optimize the resume according to the given JD. Make sure not to cut down or shorten any points in the Work Experience section. IN all fields please do not cut down or shorten any points or content. For example, if a role in the base resume has 6 points, the optimized version should also retain all 6 points. The content should be aligned with the JD but the number of points per role must remain the same. Do not touch or optimize publications if given to you.";
+            const prompt = buildResumeOptimizationInstructionPrompt(jobDesc);
 
             const filteredResumeForOptimization = {
                 ...resumeData,
