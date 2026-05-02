@@ -27,6 +27,7 @@ import { useJobsSessionStore } from "../../state_management/JobsSessionStore";
 import "./index.css"; //
 import { convertDoubleDashToHyphen, convertDoubleHyphenToHyphen } from "../../utils/generatehypesn";
 import { clearAdminOtpTrust, FLASHFIRE_OPTIMIZER_OTP_TRUST_KEY } from "../../utils/adminOtpTrustStorage";
+import { buildResumeOptimizationInstructionPrompt } from "../../utils/resumeOptimizationPrompt";
 
 // Type definitions remain the same
 interface WorkExperienceItem {
@@ -2084,8 +2085,7 @@ function App() {
 
         try {
             // Get API URL from environment variables
-            const prompt: string =
-                "if you recieve any HTML tages please ignore it and optimize the resume according to the given JD. Make sure not to cut down or shorten any points in the Work Experience section. IN all fields please do not cut down or shorten any points or content. For example, if a role in the base resume has 6 points, the optimized version should also retain all 6 points. The content should be aligned with the JD but the number of points per role must remain the same. Do not touch or optimize publications if given to you.";
+            const prompt = buildResumeOptimizationInstructionPrompt(jobDescription);
             const apiUrl =
                 import.meta.env.VITE_API_URL || "https://resume-maker-backend-lf5z.onrender.com";
 
