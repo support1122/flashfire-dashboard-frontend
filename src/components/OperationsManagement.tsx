@@ -1499,7 +1499,7 @@ const OperationsManagement = () => {
                   Use the client&apos;s connected Gmail accounts to send personalized outreach.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {gmailStatus === "connected" && availableAccounts.length > 0 && (
                   <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-200">
                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -1512,6 +1512,41 @@ const OperationsManagement = () => {
                     Client has not connected Gmail yet
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.open("/inbox", "_blank", "noopener,noreferrer");
+                  }}
+                  disabled={gmailStatus !== "connected" || availableAccounts.length === 0}
+                  title={
+                    gmailStatus !== "connected"
+                      ? "Client must connect a Gmail account first"
+                      : "Open the live inbox in a new tab"
+                  }
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition-colors ${
+                    gmailStatus !== "connected" || availableAccounts.length === 0
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                      : "bg-gray-900 hover:bg-black text-white"
+                  }`}
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  Open inbox
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M14 3h7v7" />
+                    <path d="M10 14L21 3" />
+                    <path d="M21 14v7H3V3h7" />
+                  </svg>
+                </button>
               </div>
             </div>
 
