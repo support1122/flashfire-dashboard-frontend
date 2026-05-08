@@ -112,6 +112,7 @@ const OperationsManagement = () => {
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [selectedTemplateIdForEdit, setSelectedTemplateIdForEdit] = useState<string | null>(null);
   const [loadingTemplateForEdit, setLoadingTemplateForEdit] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
   const [emailLogs, setEmailLogs] = useState<{ id: string; fromEmail: string; toEmail: string; subject: string; status: string; errorMessage: string | null; source: string; sentAt: string }[]>([]);
   const [emailLogsTotal, setEmailLogsTotal] = useState(0);
   const [emailLogsPage, setEmailLogsPage] = useState(1);
@@ -521,6 +522,53 @@ const OperationsManagement = () => {
       toastUtils.error(selectedTemplateIdForEdit ? "Failed to update template" : "Failed to save template");
     } finally {
       setSavingTemplate(false);
+    }
+  };
+
+  const handleAiGenerateTemplate = async () => {
+    if (!userDetails?.email) {
+      toastUtils.error("Missing client email");
+      return;
+    }
+    try {
+      setAiGenerating(true);
+      const res = await fetch(`${API_BASE_URL}/gmail/automation/template/ai-generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ownerEmail: userDetails.email,
+          linkToAutomation: true
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.error === "no_resume_assigned") {
+          toastUtils.error("No resume assigned to this client. Assign one first.");
+        } else if (data.error === "OPENAI key not configured") {
+          toastUtils.error("OpenAI key missing. Set it in admin settings.");
+        } else {
+          toastUtils.error(data.error || "AI generation failed");
+        }
+        return;
+      }
+      const tpl = data?.template;
+      if (tpl?.id) {
+        setEmailTemplates((prev) => {
+          const exists = prev.find((t) => t.id === tpl.id);
+          if (exists) {
+            return prev.map((t) =>
+              t.id === tpl.id ? { ...t, name: tpl.name, subject: tpl.subject } : t
+            );
+          }
+          return [{ id: tpl.id, name: tpl.name, subject: tpl.subject }, ...prev];
+        });
+        setSelectedTemplateId(tpl.id);
+      }
+      toastUtils.success("AI template generated and linked");
+    } catch (error) {
+      toastUtils.error("AI generation failed");
+    } finally {
+      setAiGenerating(false);
     }
   };
 
@@ -1669,18 +1717,44 @@ const OperationsManagement = () => {
                         <label className="block text-xs font-medium text-gray-700">
                           Select template
                         </label>
-                        <select
-                          value={selectedTemplateId}
-                          onChange={(e) => setSelectedTemplateId(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        >
-                          <option value="">Choose template</option>
-                          {emailTemplates.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.name}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="flex gap-2">
+                          <select
+                            value={selectedTemplateId}
+                            onChange={(e) => setSelectedTemplateId(e.target.value)}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          >
+                            <option value="">Choose template</option>
+                            {emailTemplates.map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={handleAiGenerateTemplate}
+                            disabled={aiGenerating}
+                            title="Generate a personalised subject + body from this client's resume + profile using GPT-4o, save it as a template, and link it here."
+                            className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap ${
+                              aiGenerating
+                                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                : "bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white shadow-sm"
+                            }`}
+                          >
+                            {aiGenerating ? (
+                              <>
+                                <span className="inline-block h-3 w-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>✨ Generate with AI</>
+                            )}
+                          </button>
+                        </div>
+                        <p className="mt-1 text-[11px] text-gray-500">
+                          AI will pull this client's resume + profile and write a professional recruiter
+                          outreach email (subject + body), then save it as a reusable template.
+                        </p>
                       </div>
                       <div className="space-y-1">
                         <label className="block text-xs font-medium text-gray-700">
