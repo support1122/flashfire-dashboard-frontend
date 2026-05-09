@@ -102,7 +102,7 @@ const OperationsManagement = () => {
   const [emailTemplates, setEmailTemplates] = useState<{ id: string; name: string; subject: string }[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [automationGroupId, setAutomationGroupId] = useState<string>('');
-  const [automationDailyLimit, setAutomationDailyLimit] = useState<string>('0');
+  const [automationDailyLimit, setAutomationDailyLimit] = useState<string>('20');
   const [automationEnabled, setAutomationEnabled] = useState<boolean>(false);
   const [loadingAutomation, setLoadingAutomation] = useState(false);
   const [savingAutomation, setSavingAutomation] = useState(false);
@@ -252,7 +252,16 @@ const OperationsManagement = () => {
         if (groupsRes.ok) {
           const data = await groupsRes.json();
           const list = Array.isArray(data.groups) ? data.groups : [];
-          setEmailGroups(list.map((g: any) => ({ id: g.id, name: g.name, category: g.category })));
+          const normalizedGroups = list.map((g: any) => ({ id: g.id, name: g.name, category: g.category }));
+          setEmailGroups(normalizedGroups);
+          if (!automationGroupId) {
+            const techGroup = normalizedGroups.find((g: any) => {
+              const name = String(g.name || "").trim().toLowerCase();
+              const category = String(g.category || "").trim().toLowerCase();
+              return name === "technical" || name === "tech" || category === "tech";
+            });
+            if (techGroup?.id) setAutomationGroupId(techGroup.id);
+          }
         }
         if (templatesRes.ok) {
           const data = await templatesRes.json();
@@ -264,21 +273,20 @@ const OperationsManagement = () => {
           if (data.config) {
             setAutomationGroupId(data.config.groupId || '');
             setSelectedTemplateId(data.config.templateId || '');
-            setAutomationDailyLimit(String(data.config.dailyLimit || '0'));
+            setAutomationDailyLimit(String(data.config.dailyLimit || '20'));
             setAutomationEnabled(!!data.config.enabled);
             setHasExistingAutomationConfig(!!(data.config.groupId && data.config.templateId));
           } else {
             setHasExistingAutomationConfig(false);
+            setAutomationDailyLimit("20");
           }
         }
       } finally {
         setLoadingAutomation(false);
       }
     };
-    if (gmailStatus === "connected") {
-      loadEmailMetadata();
-    }
-  }, [API_BASE_URL, gmailStatus, userDetails?.email, operationsSessionUnlocked]);
+    loadEmailMetadata();
+  }, [API_BASE_URL, userDetails?.email, operationsSessionUnlocked, automationGroupId]);
 
   // Auto-save function with debouncing
   const autoSave = useCallback(async () => {
@@ -564,7 +572,20 @@ const OperationsManagement = () => {
         });
         setSelectedTemplateId(tpl.id);
       }
-      toastUtils.success("AI template generated and linked");
+      if (data?.automation) {
+        setAutomationGroupId(data.automation.groupId || automationGroupId);
+        setSelectedTemplateId(data.automation.templateId || tpl?.id || selectedTemplateId);
+        setAutomationDailyLimit(String(data.automation.dailyLimit || 20));
+        setAutomationEnabled(!!data.automation.enabled);
+        setHasExistingAutomationConfig(!!(data.automation.groupId && data.automation.templateId));
+      } else {
+        setAutomationDailyLimit(prev => (Number(prev) > 0 ? prev : "20"));
+      }
+      if (data?.warning) {
+        toastUtils.error(data.warning);
+      } else {
+        toastUtils.success("AI template generated and linked");
+      }
     } catch (error) {
       toastUtils.error("AI generation failed");
     } finally {
@@ -2187,4 +2208,3 @@ const OperationsManagement = () => {
 };
 
 export default OperationsManagement;
-

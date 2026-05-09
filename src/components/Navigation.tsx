@@ -60,6 +60,7 @@ const Navigation: React.FC<NavigationProps> = ({
   const { userProfile } = useUserProfile();
   const { role, reset: resetOperationsStore } = useOperationsStore();
   const { triggerHighlight } = useDownloadHighlightStore();
+  const isOpsRole = role === "operations" || role === "operator";
   const hasProfile = !!userProfile?.email;
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTargetRef = useRef<string | null>(null);
@@ -139,7 +140,10 @@ const Navigation: React.FC<NavigationProps> = ({
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "jobs", label: "Job Tracker", icon: Briefcase },
     { id: "optimizer", label: "Documents", icon: FileText },
-    ...(role === "operations" || role === "operator"
+    ...(isOpsRole
+      ? [{ id: "mail", label: "Mail", icon: Mail }]
+      : []),
+    ...(isOpsRole
       ? [{ id: "operations", label: "Operations", icon: Settings }]
       : []),
   ];

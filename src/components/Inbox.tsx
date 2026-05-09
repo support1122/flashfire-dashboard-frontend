@@ -30,13 +30,10 @@ import {
     ArrowLeft,
     Send,
     AlertCircle,
-    Lock,
     ShieldOff
 } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
-const INBOX_ACCESS_PASSWORD = "flashfire@2025";
-const INBOX_UNLOCK_KEY = "ff_inbox_unlocked";
 
 // =========================
 // Types
@@ -200,29 +197,9 @@ const escapeHtml = (s: string) =>
 export default function Inbox() {
     const ctx = useContext(UserContext);
     const { role } = useOperationsStore();
+    const isOpsRole = role === "operations" || role === "operator";
     const ownerEmail = ctx?.userDetails?.email || "";
     const token = ctx?.token || "";
-
-    const [unlocked, setUnlocked] = useState<boolean>(
-        () => typeof window !== "undefined" && sessionStorage.getItem(INBOX_UNLOCK_KEY) === "true"
-    );
-
-    // Role gate — only operations users see the inbox.
-    if (role !== "operations") {
-        return <ForbiddenScreen role={role} />;
-    }
-
-    // Password gate — even operations must enter the shared key once per session.
-    if (!unlocked) {
-        return (
-            <PasswordGate
-                onUnlock={() => {
-                    sessionStorage.setItem(INBOX_UNLOCK_KEY, "true");
-                    setUnlocked(true);
-                }}
-            />
-        );
-    }
 
     const [accounts, setAccounts] = useState<AccountInfo[]>([]);
     const [activeGmail, setActiveGmail] = useState<string>("");
@@ -253,7 +230,7 @@ export default function Inbox() {
 
     // -------- Accounts --------
     useEffect(() => {
-        if (!ownerEmail) return;
+        if (!isOpsRole || !ownerEmail) return;
         (async () => {
             try {
                 const res = await fetch(`${API_BASE_URL}/gmail/accounts`, {
@@ -270,7 +247,7 @@ export default function Inbox() {
             }
         })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [ownerEmail, authHeaders]);
+    }, [isOpsRole, ownerEmail, authHeaders]);
 
     // -------- Search debounce --------
     useEffect(() => {
@@ -281,7 +258,7 @@ export default function Inbox() {
     // -------- Load threads on filter change --------
     const loadThreads = useCallback(
         async (replace = false, pageToken: string | null = null) => {
-            if (!ownerEmail || !activeGmail) return;
+            if (!isOpsRole || !ownerEmail || !activeGmail) return;
             setLoadingThreads(true);
             setError(null);
             try {
@@ -312,21 +289,21 @@ export default function Inbox() {
                 setLoadingThreads(false);
             }
         },
-        [ownerEmail, activeGmail, labelId, submittedQuery, authHeaders, threads]
+        [isOpsRole, ownerEmail, activeGmail, labelId, submittedQuery, authHeaders, threads]
     );
 
     useEffect(() => {
-        if (!ownerEmail || !activeGmail) return;
+        if (!isOpsRole || !ownerEmail || !activeGmail) return;
         setBulkSelected(new Set());
         setSelectedThreadId(null);
         setMessages([]);
         loadThreads(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [ownerEmail, activeGmail, labelId, submittedQuery]);
+    }, [isOpsRole, ownerEmail, activeGmail, labelId, submittedQuery]);
 
     // -------- Unread count --------
     const refreshUnread = useCallback(async () => {
-        if (!ownerEmail || !activeGmail) return;
+        if (!isOpsRole || !ownerEmail || !activeGmail) return;
         try {
             const res = await fetch(`${API_BASE_URL}/gmail/inbox/unread-count`, {
                 method: "POST",
@@ -338,7 +315,7 @@ export default function Inbox() {
         } catch {
             /* ignore */
         }
-    }, [ownerEmail, activeGmail, authHeaders]);
+    }, [isOpsRole, ownerEmail, activeGmail, authHeaders]);
 
     useEffect(() => {
         refreshUnread();
@@ -659,6 +636,7 @@ export default function Inbox() {
 
     // -------- Keyboard shortcuts --------
     useEffect(() => {
+        if (!isOpsRole) return;
         const onKey = (e: KeyboardEvent) => {
             if (compose) return;
             const target = e.target as HTMLElement;
@@ -699,6 +677,11 @@ export default function Inbox() {
     }, [compose, threads, selectedThreadId, messages]);
 
     // -------- Render --------
+    // Role gate — only operations/operator users see the inbox.
+    if (!isOpsRole) {
+        return <ForbiddenScreen role={role} />;
+    }
+
     if (!ownerEmail) {
         return <div className="p-6 text-gray-500">Sign in to view your inbox.</div>;
     }
@@ -1539,72 +1522,6 @@ function ForbiddenScreen({ role }: { role: string | undefined }) {
                     Back to dashboard
                 </a>
             </div>
-        </div>
-    );
-}
-
-function PasswordGate({ onUnlock }: { onUnlock: () => void }) {
-    const [pw, setPw] = useState("");
-    const [error, setError] = useState<string | null>(null);
-    const inputRef = useRef<HTMLInputElement | null>(null);
-
-    useEffect(() => {
-        inputRef.current?.focus();
-    }, []);
-
-    const submit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (pw === INBOX_ACCESS_PASSWORD) {
-            setError(null);
-            onUnlock();
-        } else {
-            setError("Wrong password. Try again.");
-        }
-    };
-
-    return (
-        <div className="min-h-[60vh] flex items-center justify-center p-6">
-            <form
-                onSubmit={submit}
-                className="max-w-sm w-full bg-white rounded-xl border border-gray-200 shadow-sm p-8"
-            >
-                <div className="mx-auto w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-3">
-                    <Lock size={22} className="text-orange-600" />
-                </div>
-                <h2 className="text-lg font-semibold text-gray-900 text-center mb-1">
-                    Enter inbox password
-                </h2>
-                <p className="text-sm text-gray-600 text-center mb-5">
-                    Operations team access only. The password unlocks the inbox for this browser session.
-                </p>
-                <input
-                    ref={inputRef}
-                    type="password"
-                    value={pw}
-                    onChange={(e) => {
-                        setPw(e.target.value);
-                        if (error) setError(null);
-                    }}
-                    placeholder="Access password"
-                    className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-1 ${
-                        error
-                            ? "border-red-300 focus:ring-red-500"
-                            : "border-gray-300 focus:ring-orange-500"
-                    }`}
-                />
-                {error && (
-                    <div className="mt-2 text-xs text-red-600 flex items-center gap-1">
-                        <AlertCircle size={12} /> {error}
-                    </div>
-                )}
-                <button
-                    type="submit"
-                    disabled={!pw}
-                    className="mt-4 w-full px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white text-sm rounded-md font-semibold"
-                >
-                    Unlock
-                </button>
-            </form>
         </div>
     );
 }
