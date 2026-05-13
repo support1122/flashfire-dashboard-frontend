@@ -140,6 +140,74 @@ function InfoRow({
     );
 }
 
+// CheckboxGroupRow — multi-select row with checkboxes (Profile UI's
+// employment-type field uses this). `value` is the currently-selected
+// option list; `options` defines the universe. Toggle fires
+// `onValueChange` with the new array.
+function CheckboxGroupRow({
+    title,
+    value,
+    options,
+    isEditing = false,
+    onValueChange = () => {},
+}: {
+    title: string;
+    value?: string[];
+    options: string[];
+    isEditing?: boolean;
+    onValueChange?: (value: string[]) => void;
+}) {
+    const list = Array.isArray(value) ? value : [];
+    const display = list.length ? list.join(", ") : "";
+    const toggle = (opt: string) => {
+        const next = list.includes(opt)
+            ? list.filter((v) => v !== opt)
+            : [...list, opt];
+        onValueChange(next);
+    };
+    return (
+        <div className="flex flex-col md:flex-row md:items-start py-3 border-b border-gray-100 last:border-b-0">
+            <div className="w-full md:w-1/3 text-sm font-semibold text-gray-700 mb-1 md:mb-0 pt-1">
+                {title}
+            </div>
+            <div className="w-full md:w-2/3 flex flex-col gap-2">
+                {isEditing ? (
+                    <div className="flex flex-wrap gap-3">
+                        {options.map((opt) => {
+                            const checked = list.includes(opt);
+                            return (
+                                <label
+                                    key={opt}
+                                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition ${
+                                        checked
+                                            ? "bg-blue-50 border-blue-400 text-blue-900"
+                                            : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                                    }`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        className="accent-blue-600"
+                                        checked={checked}
+                                        onChange={() => toggle(opt)}
+                                    />
+                                    {opt}
+                                </label>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="flex items-center w-full">
+                        <span className="flex-1 text-sm text-gray-900 break-words">
+                            {display || <Placeholder />}
+                        </span>
+                        {display && <CopyButton value={display} title={title} />}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 function TextAreaRow({
     title,
     value,
@@ -888,6 +956,20 @@ export default function ProfilePage() {
                         isEditing={editingSection === "professional"}
                         onValueChange={(v) =>
                             setEditData({ ...editData, targetCompanies: v as any })
+                        }
+                    />
+                    <CheckboxGroupRow
+                        title="Employment Types"
+                        options={["Full-time", "Part-time", "Contract", "Internship"]}
+                        value={
+                            (editingSection === "professional"
+                                ? editData.employmentTypes
+                                : data.employmentTypes) as string[] | undefined
+                            ?? (data.employmentTypes ?? ["Full-time"])
+                        }
+                        isEditing={editingSection === "professional"}
+                        onValueChange={(v) =>
+                            setEditData({ ...editData, employmentTypes: v as any })
                         }
                     />
                     <TextAreaRow
