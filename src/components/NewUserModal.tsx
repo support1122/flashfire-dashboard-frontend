@@ -1502,6 +1502,7 @@ type FormData = {
   expectedSalaryRange: string;
   preferredLocations: string;
   targetCompanies: string;
+  employmentTypes: ("Full-time" | "Part-time" | "Contract" | "Internship")[];
   reasonForLeaving: string;
   linkedinUrl: string;
   githubUrl: string;
@@ -1548,6 +1549,7 @@ const initialData: FormData = {
   expectedSalaryRange: "",
   preferredLocations: "",
   targetCompanies: "",
+  employmentTypes: ["Full-time"],
   reasonForLeaving: "",
   linkedinUrl: "",
   githubUrl: "",
@@ -1570,6 +1572,7 @@ const initialData: FormData = {
 const VISA_OPTIONS = ["CPT", "F1", "F1 OPT", "F1 STEM OPT", "H1B", "Green Card", "U.S. Citizen", "Other"];
 const EXPERIENCE_OPTIONS = ["0-2 Years", "2-4 Years", "4-6 Years", "6-8 Years", "8+ Years"];
 const SALARY_OPTIONS = ["60k-100k", "100k-150k", "150k-200k", "Other"];
+const EMPLOYMENT_TYPE_OPTIONS = ["Full-time", "Part-time", "Contract", "Internship"] as const;
 const JOIN_TIME_OPTIONS = ["in 1 week", "in 2 weeks", "in 3 weeks", "in 4 weeks", "in 6-7 weeks"];
 
 /** ---------- UI Helpers ---------- */
@@ -1911,6 +1914,12 @@ useEffect(() => {
     expectedSalaryRange: p.expectedSalaryRange ?? "",
     preferredLocations: arrToLine(p.preferredLocations),
     targetCompanies: arrToLine(p.targetCompanies),
+    employmentTypes:
+      Array.isArray(p.employmentTypes) && p.employmentTypes.length
+        ? p.employmentTypes.filter((t: string) =>
+            (EMPLOYMENT_TYPE_OPTIONS as readonly string[]).includes(t)
+          )
+        : ["Full-time"],
     reasonForLeaving: p.reasonForLeaving ?? "",
     expectedSalaryNarrative: p.expectedSalaryNarrative ?? "",
     ssnNumber: p.ssnNumber ?? "",
@@ -2666,6 +2675,49 @@ const handleSubmit = () => {
                       ))}
                     </Select>
                     <ErrorText>{errors.expectedSalaryRange}</ErrorText>
+                  </div>
+                </div>
+                <div>
+                  <FieldLabel required={false}>Employment Types</FieldLabel>
+                  <p className="text-sm text-gray-500 -mt-1 mb-3">
+                    Select every employment type you're open to. Used to filter the jobs we apply to for you.
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {EMPLOYMENT_TYPE_OPTIONS.map((option) => {
+                      const checked = data.employmentTypes.includes(option);
+                      return (
+                        <label
+                          key={option}
+                          className={[
+                            "flex items-center gap-2.5 rounded-lg border px-4 py-3 cursor-pointer transition-all duration-200 select-none",
+                            checked
+                              ? "border-orange-500 bg-orange-50 ring-2 ring-orange-500/20"
+                              : "border-gray-300 bg-white hover:border-gray-400",
+                          ].join(" ")}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const nextChecked = e.target.checked;
+                              setData((d) => {
+                                const next = nextChecked
+                                  ? [...d.employmentTypes, option]
+                                  : d.employmentTypes.filter((t) => t !== option);
+                                // Never let the list go fully empty — keep the
+                                // last selection so the profile always has a value.
+                                return {
+                                  ...d,
+                                  employmentTypes: next.length ? next : d.employmentTypes,
+                                };
+                              });
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500/30"
+                          />
+                          <span className="text-base text-gray-900">{option}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

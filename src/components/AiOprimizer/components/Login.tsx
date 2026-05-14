@@ -556,7 +556,7 @@ const Login: React.FC<{
                                                 />
                                             </div>
                                             <p className="text-xs text-orange-700">
-                                                This device will be remembered for <strong>30 days</strong>. Logging out clears it.
+                                                This device will be remembered for <strong>30 days</strong> — you won't be asked for an OTP again until then.
                                             </p>
                                             <button
                                                 type="submit"

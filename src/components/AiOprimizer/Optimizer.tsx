@@ -26,7 +26,6 @@ import { ResumePreviewMedical } from "./components/ResumePreviewMedical";
 import { useJobsSessionStore } from "../../state_management/JobsSessionStore";
 import "./index.css"; //
 import { convertDoubleDashToHyphen, convertDoubleHyphenToHyphen } from "../../utils/generatehypesn";
-import { clearAdminOtpTrust, FLASHFIRE_OPTIMIZER_OTP_TRUST_KEY } from "../../utils/adminOtpTrustStorage";
 import { buildResumeOptimizationInstructionPrompt } from "../../utils/resumeOptimizationPrompt";
 
 // Type definitions remain the same
@@ -1301,7 +1300,8 @@ function App() {
         localStorage.removeItem("jwt");
         localStorage.removeItem("role");
         localStorage.removeItem("userEmail");
-        clearAdminOtpTrust(FLASHFIRE_OPTIMIZER_OTP_TRUST_KEY);
+        // Keep the OTP trust token — it stays valid for 30 days so the
+        // admin is not re-prompted for an OTP after a normal logout.
         setIsAuthenticated(false);
         setUserRole("");
         setToken("");
