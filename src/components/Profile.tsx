@@ -65,6 +65,28 @@ const extractDatePart = (dateString: string | undefined): string => {
   }
 };
 
+const validateUrl = (value: string) => {
+    if (!value.trim()) return false;
+    try {
+        if (!value.startsWith("http://") && !value.startsWith("https://")) {
+            return false;
+        }
+        new URL(value);
+        return true;
+    } catch {
+        return false;
+    }
+};
+
+function RowTitle({ title, required = false }: { title: string; required?: boolean }) {
+    return (
+        <>
+            {title}
+            {required && <span className="ml-1 text-red-500">*</span>}
+        </>
+    );
+}
+
 /* ---------------- Helper Components ----------------- */
 function Placeholder({ label }: { label?: string }) {
     return <span className="text-gray-400 italic">{label || "Not provided"}</span>;
@@ -107,44 +129,45 @@ function InfoRow({
     value,
     isEditing = false,
     required = false,
+    error,
     onValueChange = () => { },
 }: {
     title: string;
     value?: string;
     isEditing?: boolean;
     required?: boolean;
+    error?: string;
     onValueChange?: (value: string) => void;
 }) {
-    const isEmpty = !value || !String(value).trim();
     return (
         <div className="flex flex-col md:flex-row md:items-center py-3 border-b border-gray-100 last:border-b-0">
             <div className="w-full md:w-1/3 text-sm font-semibold text-gray-700 mb-1 md:mb-0">
-                {title}
-                {required && <span className="text-red-500 ml-1" aria-label="required">*</span>}
+                <RowTitle title={title} required={required} />
             </div>
-            <div className="w-full md:w-2/3 flex items-center">
+            <div className="w-full md:w-2/3 flex flex-col">
                 {isEditing ? (
                     <input
                         type="text"
                         value={value || ""}
                         onChange={(e) => onValueChange(e.target.value)}
                         required={required}
-                        aria-required={required}
+                        aria-invalid={!!error}
                         className={`w-full text-sm border-b px-2 py-1 focus:outline-none ${
-                            required && isEmpty
+                            error
                                 ? "border-red-400 focus:border-red-500"
                                 : "border-gray-300 focus:border-blue-500"
                         }`}
                         placeholder={`Enter ${title.toLowerCase()}`}
                     />
                 ) : (
-                    <>
+                    <div className="flex items-center">
                         <span className="flex-1 text-sm text-gray-900 break-words">
                             {value || <Placeholder />}
                         </span>
                         {value && <CopyButton value={value} title={title} />}
-                    </>
+                    </div>
                 )}
+                {error && <span className="mt-1 text-xs text-red-600">{error}</span>}
             </div>
         </div>
     );
@@ -261,12 +284,14 @@ function FileUploadRow({
     currentFile,
     isEditing = false,
     required = false,
+    error,
     onFileChange = () => { },
 }: {
     title: string;
     currentFile?: string;
     isEditing?: boolean;
     required?: boolean;
+    error?: string;
     onFileChange?: (file: string) => void;
 }) {
     const [uploading, setUploading] = useState(false);
@@ -320,30 +345,27 @@ function FileUploadRow({
         }
     };
 
-    const missingRequired = required && !currentFile;
     return (
         <div className="flex flex-col md:flex-row md:items-start py-3 border-b border-gray-100 last:border-b-0">
             <div className="w-full md:w-1/3 text-sm font-semibold text-gray-700 pt-1 mb-1 md:mb-0">
-                {title}
-                {required && <span className="text-red-500 ml-1" aria-label="required">*</span>}
+                <RowTitle title={title} required={required} />
             </div>
-            <div className="w-full md:w-2/3 flex items-center flex-wrap">
+            <div className="w-full md:w-2/3 flex flex-col">
                 {isEditing ? (
                     <div className="w-full">
                         <input
                             type="file"
                             accept=".pdf,.doc,.docx"
                             disabled={uploading}
-                            required={required && !currentFile}
-                            aria-required={required}
+                            aria-invalid={!!error}
                             onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
                                     handleFileUpload(file);
                                 }
                             }}
-                            className={`block w-full text-sm text-gray-500 ${
-                                missingRequired ? "ring-1 ring-red-300 rounded" : ""
+                            className={`block w-full text-sm ${
+                                error ? "text-red-600" : "text-gray-500"
                             }`}
                         />
                         {uploading && (
@@ -370,6 +392,7 @@ function FileUploadRow({
                 ) : (
                     <Placeholder label="No file uploaded" />
                 )}
+                {error && <span className="mt-1 text-xs text-red-600">{error}</span>}
             </div>
         </div>
     );
@@ -441,6 +464,7 @@ export default function ProfilePage() {
     const ctx = useContext(UserContext);
     const [showSecretKeyModal, setShowSecretKeyModal] = useState(false);
     const [secretKeyError, setSecretKeyError] = useState<string>("");
+    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
     const { role } = useOperationsStore();
     const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
 
@@ -507,6 +531,7 @@ export default function ProfilePage() {
 
     const handleEditClick = (section: string) => {
         setEditingSection(section);
+        setValidationErrors({});
         // Convert array fields to strings for editing
         const editDataCopy = { ...data };
         if (Array.isArray(editDataCopy.preferredRoles)) {
@@ -521,29 +546,38 @@ export default function ProfilePage() {
         setEditData(editDataCopy);
     };
 
-    // validateLinksSection — blocks save on the Links & Documents card
-    // when LinkedIn URL or Resume file is missing. Both are downstream
-    // requirements: LinkedIn drives outreach checks, Resume gates the AI
-    // optimiser. Empty values here silently corrupt later pipelines.
-    const validateLinksSection = (): string | null => {
-        if (editingSection !== "links") return null;
-        const linkedin = String(editData.linkedinUrl || "").trim();
-        if (!linkedin) return "LinkedIn URL is required.";
-        if (!/^https?:\/\/(www\.)?linkedin\.com\//i.test(linkedin)
-            && !/linkedin\.com\//i.test(linkedin)) {
-            return "Enter a valid LinkedIn URL (linkedin.com/...).";
+    const validateLinksSection = () => {
+        const errors: Record<string, string> = {};
+        const linkedinUrl = editData.linkedinUrl?.trim() || "";
+        const resumeUrl = editData.resumeUrl?.trim() || "";
+
+        if (!linkedinUrl) {
+            errors.linkedinUrl = "LinkedIn URL is required";
+        } else if (!validateUrl(linkedinUrl)) {
+            errors.linkedinUrl = "Please enter a valid LinkedIn URL";
+        } else if (!linkedinUrl.includes("linkedin.com")) {
+            errors.linkedinUrl = "Please enter a valid LinkedIn profile URL";
         }
-        const resume = String(editData.resumeUrl || "").trim();
-        if (!resume) return "Resume file is required — upload a PDF/DOC.";
-        return null;
+
+        if (!resumeUrl) {
+            errors.resumeUrl = "Resume upload is required";
+        }
+
+        setValidationErrors(errors);
+        if (Object.keys(errors).length > 0) {
+            toastUtils.error("Please complete the required fields before saving.");
+            return false;
+        }
+
+        return true;
     };
 
     const handleSaveClick = () => {
-        const linksError = validateLinksSection();
-        if (linksError) {
-            toastUtils.error(linksError);
+        if (editingSection === "links" && !validateLinksSection()) {
             return;
         }
+
+
         if (role === "operations") {
             setSecretKeyError("");
             setShowSecretKeyModal(true);
@@ -614,6 +648,7 @@ export default function ProfilePage() {
     const handleCancel = () => {
         setEditingSection(null);
         setEditData({});
+        setValidationErrors({});
     };
 
     const fullName = useMemo(() => {
@@ -1044,7 +1079,13 @@ export default function ProfilePage() {
                         value={editingSection === "links" ? editData.linkedinUrl : data.linkedinUrl}
                         isEditing={editingSection === "links"}
                         required
-                        onValueChange={(v) => setEditData({ ...editData, linkedinUrl: v })}
+                        error={editingSection === "links" ? validationErrors.linkedinUrl : undefined}
+                        onValueChange={(v) => {
+                            setEditData({ ...editData, linkedinUrl: v });
+                            if (validationErrors.linkedinUrl) {
+                                setValidationErrors({ ...validationErrors, linkedinUrl: "" });
+                            }
+                        }}
                     />
                     <InfoRow
                         title="GitHub"
@@ -1067,7 +1108,13 @@ export default function ProfilePage() {
                         }
                         isEditing={editingSection === "links"}
                         required
-                        onFileChange={(v) => setEditData({ ...editData, resumeUrl: v })}
+                        error={editingSection === "links" ? validationErrors.resumeUrl : undefined}
+                        onFileChange={(v) => {
+                            setEditData({ ...editData, resumeUrl: v });
+                            if (validationErrors.resumeUrl) {
+                                setValidationErrors({ ...validationErrors, resumeUrl: "" });
+                            }
+                        }}
                     />
                     <FileUploadRow
                         title="Cover Letter"
@@ -1148,7 +1195,7 @@ export default function ProfilePage() {
                         onValueChange={(v) => setEditData({ ...editData, disabilityStatus: v })}
                     />
                     <InfoRow
-                        title="Will you require a scholarship?"
+                        title="Will you require a sponsorship?"
                         value={editingSection === "additional" ? editData.scholarshipRequired : (data.scholarshipRequired || "No")}
                         isEditing={editingSection === "additional"}
                         onValueChange={(v) => setEditData({ ...editData, scholarshipRequired: v })}
