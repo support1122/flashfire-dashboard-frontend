@@ -22,6 +22,14 @@ interface ResumeStore {
      // Section ordering for drag and drop
      sectionOrder: string[];
 
+     // Operator-editable section title overrides. Sparse map: only sections
+     // whose default header has been renamed appear here. Empty string or
+     // missing key → renderers fall back to the hard-coded default
+     // (LEADERSHIP & VOLUNTEERING etc.), so old resumes load unchanged.
+     // Only `leadership` is wired today; future sections will reuse the
+     // same setter without schema churn.
+     sectionTitles: Record<string, string>;
+
      // Persistent resume selection
      lastSelectedResume: ResumeDataType | null;
      lastSelectedResumeId: string | null;
@@ -47,6 +55,7 @@ interface ResumeStore {
      setShowChanges: (value: boolean) => void;
      setChangedFields: (fields: Set<string>) => void;
      setSectionOrder: (order: string[]) => void;
+     setSectionTitle: (id: string, title: string) => void;
      resetStore: () => void;
 
      // Persistent resume selection actions
@@ -81,7 +90,7 @@ export const useResumeStore = create<ResumeStore>()(
                     // Section ordering for drag and drop
                     sectionOrder: [
                         "personalInfo",
-                        "summary", 
+                        "summary",
                         "workExperience",
                         "projects",
                         "leadership",
@@ -89,6 +98,7 @@ export const useResumeStore = create<ResumeStore>()(
                         "education",
                         "publications"
                     ],
+                    sectionTitles: {},
 
                     // Persistent resume selection
                     lastSelectedResume: null,
@@ -114,6 +124,14 @@ export const useResumeStore = create<ResumeStore>()(
                     setShowChanges: (value) => set({ showChanges: value }),
                     setChangedFields: (fields) => set({ changedFields: fields }),
                     setSectionOrder: (order) => set({ sectionOrder: order }),
+                    setSectionTitle: (id, title) =>
+                        set((state) => {
+                            const next = { ...(state.sectionTitles || {}) };
+                            const trimmed = String(title || "").trim();
+                            if (!trimmed) delete next[id];
+                            else next[id] = trimmed;
+                            return { sectionTitles: next };
+                        }),
 
                     resetStore: () => {
                          const initialResumeData = getInitialData();
@@ -133,7 +151,7 @@ export const useResumeStore = create<ResumeStore>()(
                               changedFields: new Set(),
                               sectionOrder: [
                                   "personalInfo",
-                                  "summary", 
+                                  "summary",
                                   "workExperience",
                                   "projects",
                                   "leadership",
@@ -141,6 +159,7 @@ export const useResumeStore = create<ResumeStore>()(
                                   "education",
                                   "publications"
                               ],
+                              sectionTitles: {},
                               // Note: We intentionally don't reset lastSelectedResume and lastSelectedResumeId
                               // to maintain persistence across sessions
                          });
@@ -318,6 +337,7 @@ export const useResumeStore = create<ResumeStore>()(
                          changedFields: Array.from(state.changedFields),
                          showPublications: state.showPublications,
                          sectionOrder: state.sectionOrder,
+                         sectionTitles: state.sectionTitles,
                          // Persist the last selected resume data
                          lastSelectedResume: state.lastSelectedResume,
                          lastSelectedResumeId: state.lastSelectedResumeId,
@@ -359,6 +379,13 @@ export const useResumeStore = create<ResumeStore>()(
                          }
                          if (typeof state.showSummary !== 'boolean') {
                               state.showSummary = false;
+                         }
+
+                         // sectionTitles is a sparse map. Coerce nulls / wrong-shape
+                         // values back to an empty object so renderers can spread it
+                         // without guard noise.
+                         if (!state.sectionTitles || typeof state.sectionTitles !== "object" || Array.isArray(state.sectionTitles)) {
+                              state.sectionTitles = {};
                          }
 
                          // Ensure sectionOrder is properly set

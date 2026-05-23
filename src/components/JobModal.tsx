@@ -2268,6 +2268,10 @@ export default function JobModal({
                                     showLeadership: resumeData.checkboxStates?.showLeadership || false,
                                     showPublications: resumeData.checkboxStates?.showPublications || false,
                                 },
+                                sectionTitles:
+                                    (optimizedData as any)?.sectionTitles
+                                    || (resumeData as any)?.sectionTitles
+                                    || {},
                             };
                             const pdfResponse = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
                                 method: "POST",
@@ -2316,6 +2320,10 @@ export default function JobModal({
                                     showLeadership: resumeData.checkboxStates?.showLeadership || false,
                                     showPublications: resumeData.checkboxStates?.showPublications || false,
                                 },
+                                sectionTitles:
+                                    (optimizedData as any)?.sectionTitles
+                                    || (resumeData as any)?.sectionTitles
+                                    || {},
                                 sectionOrder: resumeData.sectionOrder || [
                                     "personalInfo",
                                     "summary",

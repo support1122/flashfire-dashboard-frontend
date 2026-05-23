@@ -529,6 +529,8 @@ function App() {
         setShowPublications,
         sectionOrder,
         setSectionOrder,
+        sectionTitles,
+        setSectionTitle,
         lastSelectedResumeId
     } = useResumeStore();
 
@@ -754,6 +756,17 @@ function App() {
                 "Publications:",
                 finalHasPublications || (resumeData.checkboxStates.showPublications ?? false)
             );
+
+            // Hydrate operator-renamed section headers from the saved resume.
+            // Sparse map keyed by section id; missing keys keep their default
+            // label. Older docs without this field land here as undefined,
+            // which is safe.
+            const savedTitles = (resumeData as any).sectionTitles;
+            if (savedTitles && typeof savedTitles === "object" && !Array.isArray(savedTitles)) {
+                for (const [k, v] of Object.entries(savedTitles)) {
+                    if (typeof v === "string") setSectionTitle(k, v);
+                }
+            }
 
             // Handle sectionOrder if it exists; ensure publications is included (after education) for all resumes
             if (resumeData.sectionOrder && Array.isArray(resumeData.sectionOrder)) {
@@ -1481,6 +1494,10 @@ function App() {
                     showPublications: finalShowPublications,
                 },
                 sectionOrder: finalSectionOrder,
+                // Operator-renamed section headers. Sparse map keyed by
+                // section id. Always sent; older backends ignore unknown
+                // fields, so this is forward-compatible.
+                sectionTitles: sectionTitles || {},
                 createdBy: userRole === "admin" ? "admin" : "user",
             };
             console.log("Saving resume with data:", saveData);
@@ -2496,7 +2513,9 @@ function App() {
                                             },
                                             {
                                                 id: "leadership",
-                                                title: "Leadership & Achievements",
+                                                // Custom heading overrides the default. Falls back to the
+                                                // hard-coded label so unrenamed resumes look unchanged.
+                                                title: sectionTitles?.leadership || "Leadership & Achievements",
                                                 component: showLeadership ? (
                                                     <Leadership
                                                         data={resumeData.leadership}
@@ -2506,6 +2525,7 @@ function App() {
                                                 isEnabled: showLeadership,
                                                 onToggle: (enabled: boolean) => setShowLeadership(enabled),
                                                 showToggle: true,
+                                                onTitleChange: (v: string) => setSectionTitle("leadership", v),
                                             },
                                             {
                                                 id: "skills",
@@ -2755,6 +2775,7 @@ function App() {
                                             }
                                             showPrintButtons={isOptimizeRoute}
                                             sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                         />
                                     ) : null}
 
@@ -2773,6 +2794,7 @@ function App() {
                                             }
                                             showPrintButtons={isOptimizeRoute}
                                             sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                         />
                                     ) : null}
 
@@ -2790,6 +2812,7 @@ function App() {
                                                     : changedFields
                                             }
                                             sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                         />
                                     ) : null}
                                     {/* <ResumePreview
@@ -2887,7 +2910,7 @@ function App() {
                                                             },
                                                             {
                                                                 id: "leadership",
-                                                                title: "Leadership & Achievements",
+                                                                title: sectionTitles?.leadership || "Leadership & Achievements",
                                                                 component: showLeadership ? (
                                                                     <Leadership
                                                                         data={optimizedData.leadership}
@@ -2897,6 +2920,7 @@ function App() {
                                                                 isEnabled: showLeadership,
                                                                 onToggle: (enabled: boolean) => setShowLeadership(enabled),
                                                                 showToggle: true,
+                                                                onTitleChange: (v: string) => setSectionTitle("leadership", v),
                                                             },
                                                             {
                                                                 id: "skills",
@@ -3014,6 +3038,7 @@ function App() {
                                                             }
                                                             showPrintButtons={isOptimizeRoute}
                                                             sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                                         />
                                                     )}
 
@@ -3038,6 +3063,7 @@ function App() {
                                                             }
                                                             showPrintButtons={isOptimizeRoute}
                                                             sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                                         />
                                                     )}
 
@@ -3061,6 +3087,7 @@ function App() {
                                                                 new Set()
                                                             }
                                                             sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                                         />
                                                     )}
                                                 </>
@@ -3111,6 +3138,7 @@ function App() {
                                                 showChanges={false}
                                                 changedFields={new Set()}
                                                 sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                             />
                                         ) : null}
                                         {versionV == 1 ? (
@@ -3123,6 +3151,7 @@ function App() {
                                                 showChanges={false}
                                                 changedFields={new Set()}
                                                 sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                             />
                                         ) : null}
                                         {versionV == 2 ? (
@@ -3133,6 +3162,7 @@ function App() {
                                                 showChanges={false}
                                                 changedFields={new Set()}
                                                 sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                             />
                                         ) : null}
                                     </div>
@@ -3152,6 +3182,7 @@ function App() {
                                                 showChanges={true}
                                                 changedFields={changedFields}
                                                 sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                             />
                                         ) : null}
                                         {versionV == 1 ? (
@@ -3164,6 +3195,7 @@ function App() {
                                                 showChanges={false}
                                                 changedFields={changedFields}
                                                 sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                             />
                                         ) : null}
                                         {versionV == 2 ? (
@@ -3174,6 +3206,7 @@ function App() {
                                                 showChanges={false}
                                                 changedFields={changedFields}
                                                 sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                             />
                                         ) : null}
                                     </div>
@@ -3218,6 +3251,7 @@ function App() {
                                     showChanges={false}
                                     changedFields={new Set()}
                                     sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                 />
                             ) : null}
 
@@ -3231,6 +3265,7 @@ function App() {
                                     showChanges={false}
                                     changedFields={new Set()}
                                     sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                 />
                             ) : null}
 
@@ -3244,6 +3279,7 @@ function App() {
                                     showChanges={false}
                                     changedFields={new Set()}
                                     sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                 />
                             ) : null}
                         </>
@@ -3259,6 +3295,7 @@ function App() {
                                     showChanges={false}
                                     changedFields={new Set()}
                                     sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                 />
                             ) : null}
 
@@ -3272,6 +3309,7 @@ function App() {
                                     showChanges={false}
                                     changedFields={new Set()}
                                     sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                 />
                             ) : null}
 
@@ -3284,6 +3322,7 @@ function App() {
                                     showPublications={showPublications}
                                     showPrintButtons={!isOptimizeRoute}
                                     sectionOrder={sectionOrder}
+                                            sectionTitles={sectionTitles}
                                 />
                             ) : null}
                         </>

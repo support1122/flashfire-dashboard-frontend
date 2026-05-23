@@ -77,6 +77,10 @@ interface ResumePreviewProps {
     showPrintButtons?: boolean; // Add this prop to control print buttons visibility
     showDirectPdfButton?: boolean;
     sectionOrder?: string[]; // Add section order prop
+    // Optional per-section heading overrides keyed by section id (e.g.
+    // { leadership: "Awards & Volunteering" }). Missing keys fall back to
+    // the hard-coded section default so old resumes render unchanged.
+    sectionTitles?: Record<string, string>;
 }
 
 export const ResumePreview: React.FC<ResumePreviewProps> = ({
@@ -91,7 +95,15 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     showPrintButtons = true,
     showDirectPdfButton = true,
     sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education", "publications"],
+    sectionTitles = {},
 }) => {
+    // Resolve a heading: render the operator override uppercased, else the
+    // hard-coded default. Trim guards against an accidental whitespace-only
+    // override that would print as blank.
+    const headingFor = (id: string, def: string): string => {
+        const raw = (sectionTitles?.[id] || "").trim();
+        return (raw || def).toUpperCase();
+    };
     const parseCustomLinkContent = (raw: string) => {
         const content = (raw || "").trim();
         if (!content) return { label: "", href: "" };
@@ -393,6 +405,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                     showLeadership: showLeadership,
                     showPublications: showPublications,
                 },
+                sectionTitles: sectionTitles || {},
                 sectionOrder: finalSectionOrder,
                 scale: scale,
                 overrideAutoScale: overrideAutoScale,
@@ -520,6 +533,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                     showLeadership: showLeadership,
                     showPublications: showPublications,
                 },
+                sectionTitles: sectionTitles || {},
                 sectionOrder: sectionOrder,
                 scale: selectedScale,
                 overrideAutoScale: overrideAutoScale,
@@ -747,6 +761,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                     showLeadership: showLeadership,
                     showPublications: showPublications,
                 },
+                sectionTitles: sectionTitles || {},
                 sectionOrder: finalSectionOrder,
                 scale: selectedScale,
                 overrideAutoScale: overrideAutoScale,
@@ -1442,7 +1457,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                 letterSpacing: "-0.025em",
                             }}
                         >
-                            LEADERSHIP & VOLUNTEERING
+                            {headingFor("leadership", "Leadership & Volunteering")}
                         </div>
                         {data.leadership.map((item, index) => (
                             <div
@@ -2004,6 +2019,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                     showLeadership: showLeadership,
                     showPublications: showPublications,
                 },
+                sectionTitles: sectionTitles || {},
                 sectionOrder: finalSectionOrderForDownload,
                 styles: styles,
                 overrideAutoScale: overrideAutoScale,

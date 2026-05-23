@@ -371,6 +371,11 @@ function FileUploadRow({
                         {uploading && (
                             <span className="text-xs text-orange-600 mt-1">Uploading...</span>
                         )}
+                        {missingRequired && !uploading && (
+                            <span className="text-xs text-red-500 mt-1 block">
+                                {title} is required.
+                            </span>
+                        )}
                     </div>
                 ) : currentFile ? (
                     <>
@@ -571,6 +576,7 @@ export default function ProfilePage() {
         if (editingSection === "links" && !validateLinksSection()) {
             return;
         }
+
 
         if (role === "operations") {
             setSecretKeyError("");
