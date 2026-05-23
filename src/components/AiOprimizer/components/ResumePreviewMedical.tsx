@@ -77,6 +77,7 @@ interface ResumePreviewProps {
     showPrintButtons?: boolean;
     showDirectPdfButton?: boolean;
     sectionOrder?: string[]; // Add section order prop
+    sectionTitles?: Record<string, string>;
     onDownloadClick?: () => void;
 }
 
@@ -89,8 +90,13 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     showPrintButtons = true,
     showDirectPdfButton = true,
     sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education", "publications"],
+    sectionTitles = {},
     onDownloadClick,
 }) => {
+    const headingFor = (id: string, def: string): string => {
+        const raw = (sectionTitles?.[id] || "").trim();
+        return (raw || def).toUpperCase();
+    };
     const parseCustomLinkContent = (raw: string) => {
         const content = (raw || "").trim();
         if (!content) return { label: "", href: "" };
@@ -530,7 +536,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                 fontWeight: "bold",
                             }}
                         >
-                            LEADERSHIP & ACHIEVEMENTS
+                            {headingFor("leadership", "Leadership & Achievements")}
                         </div>
                         {data.leadership.map((item) => (
                             <div
@@ -925,6 +931,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                     showLeadership: showLeadership,
                     showPublications: finalShowPublications,
                 },
+                sectionTitles: sectionTitles || {},
                 sectionOrder: finalSectionOrder,
                 scale: selectedScale,
                 overrideAutoScale: overrideAutoScale,
@@ -1012,6 +1019,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                     showLeadership: showLeadership,
                     showPublications: finalShowPublications,
                 },
+                sectionTitles: sectionTitles || {},
                 sectionOrder: finalSectionOrder,
                 scale: scale,
                 overrideAutoScale: overrideAutoScale,
@@ -1280,6 +1288,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                     showLeadership: showLeadership,
                     showPublications: finalShowPublications,
                 },
+                sectionTitles: sectionTitles || {},
                 sectionOrder: finalSectionOrder,
                 overrideAutoScale: overrideAutoScale,
                 selectedScale: selectedScale,

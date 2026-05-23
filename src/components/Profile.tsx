@@ -106,17 +106,21 @@ function InfoRow({
     title,
     value,
     isEditing = false,
+    required = false,
     onValueChange = () => { },
 }: {
     title: string;
     value?: string;
     isEditing?: boolean;
+    required?: boolean;
     onValueChange?: (value: string) => void;
 }) {
+    const isEmpty = !value || !String(value).trim();
     return (
         <div className="flex flex-col md:flex-row md:items-center py-3 border-b border-gray-100 last:border-b-0">
             <div className="w-full md:w-1/3 text-sm font-semibold text-gray-700 mb-1 md:mb-0">
                 {title}
+                {required && <span className="text-red-500 ml-1" aria-label="required">*</span>}
             </div>
             <div className="w-full md:w-2/3 flex items-center">
                 {isEditing ? (
@@ -124,7 +128,13 @@ function InfoRow({
                         type="text"
                         value={value || ""}
                         onChange={(e) => onValueChange(e.target.value)}
-                        className="w-full text-sm border-b border-gray-300 px-2 py-1 focus:border-blue-500 focus:outline-none"
+                        required={required}
+                        aria-required={required}
+                        className={`w-full text-sm border-b px-2 py-1 focus:outline-none ${
+                            required && isEmpty
+                                ? "border-red-400 focus:border-red-500"
+                                : "border-gray-300 focus:border-blue-500"
+                        }`}
                         placeholder={`Enter ${title.toLowerCase()}`}
                     />
                 ) : (
@@ -250,11 +260,13 @@ function FileUploadRow({
     title,
     currentFile,
     isEditing = false,
+    required = false,
     onFileChange = () => { },
 }: {
     title: string;
     currentFile?: string;
     isEditing?: boolean;
+    required?: boolean;
     onFileChange?: (file: string) => void;
 }) {
     const [uploading, setUploading] = useState(false);
@@ -308,10 +320,12 @@ function FileUploadRow({
         }
     };
 
+    const missingRequired = required && !currentFile;
     return (
         <div className="flex flex-col md:flex-row md:items-start py-3 border-b border-gray-100 last:border-b-0">
             <div className="w-full md:w-1/3 text-sm font-semibold text-gray-700 pt-1 mb-1 md:mb-0">
                 {title}
+                {required && <span className="text-red-500 ml-1" aria-label="required">*</span>}
             </div>
             <div className="w-full md:w-2/3 flex items-center flex-wrap">
                 {isEditing ? (
@@ -320,16 +334,25 @@ function FileUploadRow({
                             type="file"
                             accept=".pdf,.doc,.docx"
                             disabled={uploading}
+                            required={required && !currentFile}
+                            aria-required={required}
                             onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
                                     handleFileUpload(file);
                                 }
                             }}
-                            className="block w-full text-sm text-gray-500"
+                            className={`block w-full text-sm text-gray-500 ${
+                                missingRequired ? "ring-1 ring-red-300 rounded" : ""
+                            }`}
                         />
                         {uploading && (
                             <span className="text-xs text-orange-600 mt-1">Uploading...</span>
+                        )}
+                        {missingRequired && !uploading && (
+                            <span className="text-xs text-red-500 mt-1 block">
+                                {title} is required.
+                            </span>
                         )}
                     </div>
                 ) : currentFile ? (
@@ -498,7 +521,29 @@ export default function ProfilePage() {
         setEditData(editDataCopy);
     };
 
+    // validateLinksSection — blocks save on the Links & Documents card
+    // when LinkedIn URL or Resume file is missing. Both are downstream
+    // requirements: LinkedIn drives outreach checks, Resume gates the AI
+    // optimiser. Empty values here silently corrupt later pipelines.
+    const validateLinksSection = (): string | null => {
+        if (editingSection !== "links") return null;
+        const linkedin = String(editData.linkedinUrl || "").trim();
+        if (!linkedin) return "LinkedIn URL is required.";
+        if (!/^https?:\/\/(www\.)?linkedin\.com\//i.test(linkedin)
+            && !/linkedin\.com\//i.test(linkedin)) {
+            return "Enter a valid LinkedIn URL (linkedin.com/...).";
+        }
+        const resume = String(editData.resumeUrl || "").trim();
+        if (!resume) return "Resume file is required — upload a PDF/DOC.";
+        return null;
+    };
+
     const handleSaveClick = () => {
+        const linksError = validateLinksSection();
+        if (linksError) {
+            toastUtils.error(linksError);
+            return;
+        }
         if (role === "operations") {
             setSecretKeyError("");
             setShowSecretKeyModal(true);
@@ -998,6 +1043,7 @@ export default function ProfilePage() {
                         title="LinkedIn"
                         value={editingSection === "links" ? editData.linkedinUrl : data.linkedinUrl}
                         isEditing={editingSection === "links"}
+                        required
                         onValueChange={(v) => setEditData({ ...editData, linkedinUrl: v })}
                     />
                     <InfoRow
@@ -1020,6 +1066,7 @@ export default function ProfilePage() {
                             editingSection === "links" ? editData.resumeUrl : data.resumeUrl
                         }
                         isEditing={editingSection === "links"}
+                        required
                         onFileChange={(v) => setEditData({ ...editData, resumeUrl: v })}
                     />
                     <FileUploadRow
