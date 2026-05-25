@@ -21,7 +21,7 @@ import {
 const Login: React.FC<{
     onLogin: (token: string, role?: string, userEmail?: string) => void;
 }> = ({ onLogin }) => {
-    const [username, setUsername] = useState("");
+    const [username, setUsername] = useState(localStorage.getItem("userEmail") || "");
     const [password, setPassword] = useState("");
     const [sessionKey, setSessionKey] = useState("");
     const [error, setError] = useState("");
