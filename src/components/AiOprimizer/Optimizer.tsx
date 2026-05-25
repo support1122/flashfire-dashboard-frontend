@@ -926,7 +926,31 @@ function App() {
         const storedRole = localStorage.getItem("role");
         const storedEmail = localStorage.getItem("userEmail");
 
+        // Detect expired JWT before using it.  We decode the payload without
+        // verifying the signature (that is the server's job) just to read the
+        // `exp` claim.  If it is already past, clear the stale credentials so
+        // Login.tsx picks up the OTP trust token from localStorage and the
+        // user can re-authenticate without being asked for a new OTP.
+        function isJwtExpired(token: string): boolean {
+            try {
+                const payload = JSON.parse(atob(token.split(".")[1]));
+                return typeof payload.exp === "number" && Date.now() / 1000 > payload.exp;
+            } catch {
+                return true; // can't decode → treat as expired
+            }
+        }
+
         if (storedToken && storedRole) {
+            if (isJwtExpired(storedToken)) {
+                // JWT expired — wipe it so the Login component surfaces and the
+                // OTP trust token (kept intentionally) can skip the OTP step.
+                console.log("Stored JWT has expired — clearing for re-login via trust token");
+                localStorage.removeItem("jwt");
+                localStorage.removeItem("role");
+                // Keep userEmail and OTP trust token; Login will pre-use trust token
+                setIsInitializing(false);
+                return; // authView stays "login"
+            }
             setToken(storedToken);
             setUserRole(storedRole);
             setIsAuthenticated(true);
