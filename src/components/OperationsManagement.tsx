@@ -102,7 +102,7 @@ const OperationsManagement = () => {
   const [emailTemplates, setEmailTemplates] = useState<{ id: string; name: string; subject: string }[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [automationGroupId, setAutomationGroupId] = useState<string>('');
-  const [automationDailyLimit, setAutomationDailyLimit] = useState<string>('20');
+  const [automationDailyLimit, setAutomationDailyLimit] = useState<string>('5');
   const [automationEnabled, setAutomationEnabled] = useState<boolean>(false);
   const [loadingAutomation, setLoadingAutomation] = useState(false);
   const [savingAutomation, setSavingAutomation] = useState(false);
@@ -273,12 +273,12 @@ const OperationsManagement = () => {
           if (data.config) {
             setAutomationGroupId(data.config.groupId || '');
             setSelectedTemplateId(data.config.templateId || '');
-            setAutomationDailyLimit(String(data.config.dailyLimit || '20'));
+            setAutomationDailyLimit(String(data.config.dailyLimit || '5'));
             setAutomationEnabled(!!data.config.enabled);
             setHasExistingAutomationConfig(!!(data.config.groupId && data.config.templateId));
           } else {
             setHasExistingAutomationConfig(false);
-            setAutomationDailyLimit("20");
+            setAutomationDailyLimit("5");
           }
         }
       } finally {
@@ -575,11 +575,11 @@ const OperationsManagement = () => {
       if (data?.automation) {
         setAutomationGroupId(data.automation.groupId || automationGroupId);
         setSelectedTemplateId(data.automation.templateId || tpl?.id || selectedTemplateId);
-        setAutomationDailyLimit(String(data.automation.dailyLimit || 20));
+        setAutomationDailyLimit(String(data.automation.dailyLimit || 5));
         setAutomationEnabled(!!data.automation.enabled);
         setHasExistingAutomationConfig(!!(data.automation.groupId && data.automation.templateId));
       } else {
-        setAutomationDailyLimit(prev => (Number(prev) > 0 ? prev : "20"));
+        setAutomationDailyLimit(prev => (Number(prev) > 0 ? prev : "5"));
       }
       if (data?.warning) {
         toastUtils.error(data.warning);
@@ -1804,6 +1804,36 @@ const OperationsManagement = () => {
                               </>
                             ) : (
                               <>✨ Generate with AI</>
+                            )}
+                          </button>
+                          {/* Automation Template — loads the template the */}
+                          {/* automation worker is ACTUALLY sending into the */}
+                          {/* editor so ops can verify / tweak the live copy. */}
+                          {/* Disabled when no template linked to automation. */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!selectedTemplateId) {
+                                toastUtils.error("No template linked to automation yet. Generate with AI or pick one above.");
+                                return;
+                              }
+                              loadTemplateForEdit(selectedTemplateId);
+                            }}
+                            disabled={loadingTemplateForEdit || !selectedTemplateId}
+                            title="Load the template the automation worker is currently sending — useful when AI-generated output looks fine but the actual sends look wrong."
+                            className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap ${
+                              loadingTemplateForEdit || !selectedTemplateId
+                                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                            }`}
+                          >
+                            {loadingTemplateForEdit ? (
+                              <>
+                                <span className="inline-block h-3 w-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                Loading...
+                              </>
+                            ) : (
+                              <>📨 Automation Template</>
                             )}
                           </button>
                         </div>
