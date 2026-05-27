@@ -295,6 +295,7 @@ function FileUploadRow({
     onFileChange?: (file: string) => void;
 }) {
     const [uploading, setUploading] = useState(false);
+    const missingRequired = required && !currentFile;
 
     const handleFileUpload = async (file: File) => {
         try {
