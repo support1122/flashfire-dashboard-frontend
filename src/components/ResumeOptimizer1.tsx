@@ -1098,6 +1098,47 @@ export default function DocumentUpload() {
     }
   };
 
+  // fetchBaseResumeData: pull structured JSON for the user's base resume from
+  // dashboard backend (which proxies gemini-resume's /api/resume-by-email),
+  // then render via the same <ResumePreview> component used by optimized
+  // resumes. Returns true on success, false when no parsed JSON exists so
+  // caller can fall back to the iframe path.
+  const fetchBaseResumeData = async () => {
+    const email = context?.userDetails?.email;
+    if (!email) {
+      alert("Not logged in — cannot load base resume.");
+      return false;
+    }
+    setResumeLoading(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/get-base-resume-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ email }),
+      });
+      if (!response.ok) {
+        if (response.status === 404) return false; // no parsed resume — caller falls back to PDF iframe
+        const errText = await response.text();
+        console.error('get-base-resume-data failed:', response.status, errText);
+        return false;
+      }
+      const data = await response.json();
+      if (data?.success && data?.resumeData) {
+        setResumeData(data);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('fetchBaseResumeData error:', err);
+      return false;
+    } finally {
+      setResumeLoading(false);
+    }
+  };
+
   // Default preview per tab (only when in preview mode AND no preview selected yet)
   useEffect(() => {
     if (!previewMode) return;
@@ -1793,7 +1834,12 @@ export default function DocumentUpload() {
               <h3 className="text-lg font-semibold">Base Resume</h3>
               {baseResume && previewMode && (
                 <button
-                  onClick={() => setPreviewMode(false)}
+                  onClick={() => {
+                    setPreviewMode(false);
+                    // Drop the structured-preview payload so a re-open refetches.
+                    setResumeData(null);
+                    setActivePreviewUrl(null);
+                  }}
                   className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700"
                 >
                   <ArrowLeftCircle className="w-4 h-4" /> View All Docs
@@ -1802,17 +1848,45 @@ export default function DocumentUpload() {
             </div>
 
             {baseResume && previewMode ? (
-              <PreviewPanel
-                url={toRawPdfUrl(activePreviewUrl || '') || ''}
-                onChange={() => setPreviewMode(true)}
-              />
+              resumeLoading ? (
+                <div className="flex items-center justify-center py-12 text-sm text-gray-500">
+                  Loading base resume preview…
+                </div>
+              ) : resumeData && resumeData.resumeData ? (
+                // Structured preview — same component used for optimized resumes.
+                <div className="resume-preview-container">
+                  <ResumePreview
+                    data={resumeData.resumeData}
+                    showLeadership={resumeData.showLeadership}
+                    showProjects={resumeData.showProjects}
+                    showSummary={resumeData.showSummary}
+                    showPublications={resumeData.showPublications}
+                    showChanges={false}
+                    changedFields={new Set()}
+                    showPrintButtons={role === "operations"}
+                    sectionOrder={resumeData.sectionOrder}
+                  />
+                </div>
+              ) : (
+                // Fallback: no parsed JSON for this user → render raw PDF.
+                <PreviewPanel
+                  url={toRawPdfUrl(activePreviewUrl || '') || ''}
+                  onChange={() => setPreviewMode(true)}
+                />
+              )
             ) : (
               <>
                 <DocsTable
                   items={Array.isArray(baseResume) ? baseResume : [baseResume]}
                   category="Base"
-                  onPick={(it) => {
-                    setActivePreviewUrl(toRawPdfUrl(it.link || it.url)!);
+                  onPick={async (it) => {
+                    // Try structured preview first (matches optimized-resumes UX);
+                    // fall back to PDF iframe when no parsed JSON exists.
+                    const ok = await fetchBaseResumeData();
+                    if (!ok) {
+                      setResumeData(null);
+                      setActivePreviewUrl(toRawPdfUrl(it.link || it.url)!);
+                    }
                     setPreviewMode(true);
                   }}
                 />
