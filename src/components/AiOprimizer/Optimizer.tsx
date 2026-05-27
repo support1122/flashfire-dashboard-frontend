@@ -531,6 +531,7 @@ function App() {
         setSectionOrder,
         sectionTitles,
         setSectionTitle,
+        setSectionTitles,
         lastSelectedResumeId
     } = useResumeStore();
 
@@ -758,15 +759,15 @@ function App() {
             );
 
             // Hydrate operator-renamed section headers from the saved resume.
-            // Sparse map keyed by section id; missing keys keep their default
-            // label. Older docs without this field land here as undefined,
-            // which is safe.
+            // Per-client field — MUST fully replace the in-memory map (not
+            // merge) so a previous client's renames don't bleed into this
+            // resume. Missing/older docs → reset to {} (defaults restored).
             const savedTitles = (resumeData as any).sectionTitles;
-            if (savedTitles && typeof savedTitles === "object" && !Array.isArray(savedTitles)) {
-                for (const [k, v] of Object.entries(savedTitles)) {
-                    if (typeof v === "string") setSectionTitle(k, v);
-                }
-            }
+            setSectionTitles(
+                savedTitles && typeof savedTitles === "object" && !Array.isArray(savedTitles)
+                    ? (savedTitles as Record<string, string>)
+                    : {}
+            );
 
             // Handle sectionOrder if it exists; ensure publications is included (after education) for all resumes
             if (resumeData.sectionOrder && Array.isArray(resumeData.sectionOrder)) {
