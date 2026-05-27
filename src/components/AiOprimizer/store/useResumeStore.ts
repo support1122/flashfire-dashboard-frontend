@@ -56,6 +56,10 @@ interface ResumeStore {
      setChangedFields: (fields: Set<string>) => void;
      setSectionOrder: (order: string[]) => void;
      setSectionTitle: (id: string, title: string) => void;
+     // Bulk replace — REQUIRED when switching between client resumes so a
+     // previous client's renames don't bleed into the next client. Pass {}
+     // to clear. Per-client setSectionTitle only ADDS keys, hence the leak.
+     setSectionTitles: (map: Record<string, string>) => void;
      resetStore: () => void;
 
      // Persistent resume selection actions
@@ -131,6 +135,21 @@ export const useResumeStore = create<ResumeStore>()(
                             if (!trimmed) delete next[id];
                             else next[id] = trimmed;
                             return { sectionTitles: next };
+                        }),
+                    // Replace the entire map. Used when a different client's
+                    // resume is loaded — guarantees no stale renames carry over.
+                    setSectionTitles: (map) =>
+                        set(() => {
+                            const safe: Record<string, string> = {};
+                            if (map && typeof map === "object" && !Array.isArray(map)) {
+                                for (const [k, v] of Object.entries(map)) {
+                                    if (typeof v === "string") {
+                                        const trimmed = v.trim();
+                                        if (trimmed) safe[k] = trimmed;
+                                    }
+                                }
+                            }
+                            return { sectionTitles: safe };
                         }),
 
                     resetStore: () => {
@@ -337,7 +356,10 @@ export const useResumeStore = create<ResumeStore>()(
                          changedFields: Array.from(state.changedFields),
                          showPublications: state.showPublications,
                          sectionOrder: state.sectionOrder,
-                         sectionTitles: state.sectionTitles,
+                         // sectionTitles intentionally NOT persisted. It's a
+                         // per-resume override that must come from the loaded
+                         // resume payload — persisting it caused renames from
+                         // one client to leak into the next client's resume.
                          // Persist the last selected resume data
                          lastSelectedResume: state.lastSelectedResume,
                          lastSelectedResumeId: state.lastSelectedResumeId,
