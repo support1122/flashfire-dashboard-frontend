@@ -1969,7 +1969,22 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                 if (!showPublications && order.includes("publications")) {
                     order.splice(order.indexOf("publications"), 1);
                 }
-                return order.map(sectionId => renderSection(sectionId));
+                // Wrap every rendered section in a div with a small marginTop
+                // so the section heading gets breathing room from the previous
+                // section's last line (skip the first to avoid pushing it down
+                // below the contact block). Tunable via `styles.sectionMargin`.
+                // Small fixed gap between sections — user-requested. Sits on
+                // top of each section header so the previous section's last
+                // line has breathing room. First section gets 0 to keep it
+                // tight against the contact block.
+                return order.map((sectionId, idx) => (
+                    <div
+                        key={sectionId}
+                        style={{ marginTop: idx === 0 ? 0 : "8px" }}
+                    >
+                        {renderSection(sectionId)}
+                    </div>
+                ));
             })()}
         </>
     );
