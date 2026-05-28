@@ -273,7 +273,8 @@ const OperationsManagement = () => {
           if (data.config) {
             setAutomationGroupId(data.config.groupId || '');
             setSelectedTemplateId(data.config.templateId || '');
-            setAutomationDailyLimit(String(data.config.dailyLimit || '5'));
+            // Clamp to 5 in case Mongo still holds a legacy 20.
+            setAutomationDailyLimit(String(Math.min(5, Number(data.config.dailyLimit) || 5)));
             setAutomationEnabled(!!data.config.enabled);
             setHasExistingAutomationConfig(!!(data.config.groupId && data.config.templateId));
           } else {
@@ -575,7 +576,7 @@ const OperationsManagement = () => {
       if (data?.automation) {
         setAutomationGroupId(data.automation.groupId || automationGroupId);
         setSelectedTemplateId(data.automation.templateId || tpl?.id || selectedTemplateId);
-        setAutomationDailyLimit(String(data.automation.dailyLimit || 5));
+        setAutomationDailyLimit(String(Math.min(5, Number(data.automation.dailyLimit) || 5)));
         setAutomationEnabled(!!data.automation.enabled);
         setHasExistingAutomationConfig(!!(data.automation.groupId && data.automation.templateId));
       } else {
@@ -1844,16 +1845,30 @@ const OperationsManagement = () => {
                       </div>
                       <div className="space-y-1">
                         <label className="block text-xs font-medium text-gray-700">
-                          How many emails per day
+                          How many emails per day <span className="text-gray-400">(max 5)</span>
                         </label>
                         <input
                           type="number"
-                          min={0}
+                          min={1}
+                          max={5}
                           value={automationDailyLimit}
-                          onChange={(e) => setAutomationDailyLimit(e.target.value)}
+                          onChange={(e) => {
+                            // Clamp 1..5 on every keystroke — UI must never
+                            // hint a value above the backend hard cap.
+                            const raw = Math.floor(Number(e.target.value) || 0);
+                            if (e.target.value === "") {
+                              setAutomationDailyLimit("");
+                            } else {
+                              const clamped = Math.max(1, Math.min(5, raw));
+                              setAutomationDailyLimit(String(clamped));
+                            }
+                          }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                          placeholder="Example: 25"
+                          placeholder="1-5"
                         />
+                        <p className="text-[11px] text-gray-500">
+                          Gmail rate-limits the workflow sender; sends past 5/day get bounced ("You have reached a limit for sending mail"). Cap enforced server-side too.
+                        </p>
                       </div>
                       <div className="pt-1">
                         <button
