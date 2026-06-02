@@ -2102,11 +2102,6 @@ useEffect(() => {
         }
       }
       
-      // If master's degree is provided, end date should also be provided
-      if (data.mastersUniDegree.trim() && !mastersEndValue) {
-        e.mastersEndDate = "Please provide end date (graduation) if you have a master's degree";
-      }
-      
       // If master's end date is provided, degree should also be provided
       if (mastersEndValue && !data.mastersUniDegree.trim()) {
         e.mastersUniDegree = "Please provide degree information if you have an end date";
@@ -2682,14 +2677,14 @@ const handleSubmit = () => {
                   <p className="text-sm text-gray-500 -mt-1 mb-3">
                     Select every employment type you're open to. Used to filter the jobs we apply to for you.
                   </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="flex flex-wrap gap-2">
                     {EMPLOYMENT_TYPE_OPTIONS.map((option) => {
                       const checked = data.employmentTypes.includes(option);
                       return (
                         <label
                           key={option}
                           className={[
-                            "flex items-center gap-2.5 rounded-lg border px-4 py-3 cursor-pointer transition-all duration-200 select-none",
+                            "flex items-center gap-2 rounded-lg border px-3 py-2.5 cursor-pointer transition-all duration-200 select-none whitespace-nowrap",
                             checked
                               ? "border-orange-500 bg-orange-50 ring-2 ring-orange-500/20"
                               : "border-gray-300 bg-white hover:border-gray-400",
