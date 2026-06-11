@@ -418,8 +418,17 @@ if (activeTab === "base") defaultUrl = baseResume[0]?.link || null;
 
         for (const file of files) {
             if (type === "base" || type === "coverLetter" || type === "optimized" || type === "transcript") {
-                const name = prompt("Enter a name for this file:");
-                if (!name) return;
+                let name: string;
+
+                if (type === "coverLetter") {
+                    const userName = readAuth()?.userDetails?.name || "";
+                    const cleanName = userName.trim().replace(/\s+/g, "_");
+                    name = cleanName ? `${cleanName}_Cover_Letter` : "Cover_Letter";
+                } else {
+                    const prompted = prompt("Enter a name for this file:");
+                    if (!prompted) return;
+                    name = prompted;
+                }
 
                 if (type === "base") {
                     await uploadBaseResume(file, name);
@@ -803,16 +812,7 @@ const handleDelete = async (item: Entry, category: "base" | "optimized" | "cover
                   {/* Only show download for non-job-based resumes */}
                   {!it.isJobBased && (
                     <a
-                      href={(() => {
-                        const base = toRawPdfUrl(it?.url) || it.link || "";
-                        if (category === "Cover Letter") {
-                          const userName = readAuth()?.userDetails?.name || "";
-                          const cleanName = userName.trim().replace(/\s+/g, "_");
-                          const filename = cleanName ? `${cleanName}_Cover_Letter` : "Cover_Letter";
-                          return base.replace("/upload/", `/upload/fl_attachment:${filename}/`);
-                        }
-                        return base;
-                      })()}
+                      href={toRawPdfUrl(it?.url) || it.link}
                       target="_blank"
                       rel="noreferrer"
                       className="text-gray-700 hover:text-blue-600 p-2"
