@@ -460,8 +460,17 @@ if (activeTab === "base") defaultUrl = baseResume[0]?.link || null;
 
         for (const file of files) {
             if (type === "base" || type === "coverLetter" || type === "optimized" || type === "transcript") {
-                const name = prompt("Enter a name for this file:");
-                if (!name) return;
+                let name: string;
+
+                if (type === "coverLetter") {
+                    const userName = readAuth()?.userDetails?.name || "";
+                    const cleanName = userName.trim().replace(/\s+/g, "_");
+                    name = cleanName ? `${cleanName}_Cover_Letter` : "Cover_Letter";
+                } else {
+                    const prompted = prompt("Enter a name for this file:");
+                    if (!prompted) return;
+                    name = prompted;
+                }
 
                 if (type === "base") {
                     await uploadBaseResume(file, name);
