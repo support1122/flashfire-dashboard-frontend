@@ -104,9 +104,11 @@ const OperationsManagement = () => {
   const [automationGroupId, setAutomationGroupId] = useState<string>('');
   const [automationDailyLimit, setAutomationDailyLimit] = useState<string>('5');
   const [automationEnabled, setAutomationEnabled] = useState<boolean>(false);
+  const [skipThreshold, setSkipThreshold] = useState<boolean>(false);
   const [loadingAutomation, setLoadingAutomation] = useState(false);
   const [savingAutomation, setSavingAutomation] = useState(false);
   const [togglingAutomation, setTogglingAutomation] = useState(false);
+  const [togglingSkipThreshold, setTogglingSkipThreshold] = useState(false);
   const [hasExistingAutomationConfig, setHasExistingAutomationConfig] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -276,9 +278,11 @@ const OperationsManagement = () => {
             // Clamp to 5 in case Mongo still holds a legacy 20.
             setAutomationDailyLimit(String(Math.min(5, Number(data.config.dailyLimit) || 5)));
             setAutomationEnabled(!!data.config.enabled);
+            setSkipThreshold(!!data.config.skipThreshold);
             setHasExistingAutomationConfig(!!(data.config.groupId && data.config.templateId));
           } else {
             setHasExistingAutomationConfig(false);
+            setSkipThreshold(false);
             setAutomationDailyLimit("5");
           }
         }
@@ -670,6 +674,40 @@ const OperationsManagement = () => {
       toastUtils.error("Failed to update automation status");
     } finally {
       setTogglingAutomation(false);
+    }
+  };
+
+  const handleSkipThresholdToggle = async () => {
+    if (!userDetails?.email) return;
+    if (!hasExistingAutomationConfig) {
+      toastUtils.error("Save group, template and limit first, then skip the limit.");
+      return;
+    }
+    const nextSkip = !skipThreshold;
+    setSkipThreshold(nextSkip);
+    try {
+      setTogglingSkipThreshold(true);
+      const res = await fetch(`${API_BASE_URL}/gmail/automation/config`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ownerEmail: userDetails.email, skipThreshold: nextSkip })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSkipThreshold(!nextSkip);
+        toastUtils.error(data.error || "Failed to update 200-limit skip");
+        return;
+      }
+      toastUtils.success(
+        nextSkip
+          ? "200-application limit skipped for this user — emails will send regardless"
+          : "200-application limit re-enabled for this user"
+      );
+    } catch (error) {
+      setSkipThreshold(!nextSkip);
+      toastUtils.error("Failed to update 200-limit skip");
+    } finally {
+      setTogglingSkipThreshold(false);
     }
   };
 
@@ -1744,9 +1782,51 @@ const OperationsManagement = () => {
                       </button>
                     </div>
                   </div>
+
+                  {/* Skip the 200-application limit for this user only */}
+                  <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900">Skip 200 limit</p>
+                      <p className="text-xs text-gray-500">
+                        Send recruiter emails for this user even with fewer than 200 applications.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span
+                        className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                          skipThreshold
+                            ? "bg-indigo-100 text-indigo-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {skipThreshold ? "Limit skipped" : "200 limit on"}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={togglingSkipThreshold || loadingAutomation}
+                        onClick={handleSkipThresholdToggle}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60 ${
+                          skipThreshold ? "bg-indigo-500" : "bg-gray-300"
+                        }`}
+                        aria-label={skipThreshold ? "Re-enable 200 limit" : "Skip 200 limit"}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            skipThreshold ? "translate-x-5" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
                   {!automationEnabled && (
                     <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
                       Automation is off. No emails will be sent at 11 PM IST until you turn it on and save settings.
+                    </p>
+                  )}
+                  {skipThreshold && (
+                    <p className="text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md px-3 py-2">
+                      200-application limit is skipped for this user. Recruiter emails will send at 11 PM IST regardless of application count (Executive plan and an enabled config still required).
                     </p>
                   )}
                   {loadingAutomation ? (
