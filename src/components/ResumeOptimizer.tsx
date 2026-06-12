@@ -60,7 +60,13 @@ function buildDownloadName(
       : category === "Transcript"
       ? "Transcript"
       : "Resume";
-  return `${sanitizeFileName(base)}_${suffix}`;
+  const cleanBase = sanitizeFileName(base);
+  // Avoid doubling the suffix — cover-letter entries are already stored as
+  // "<ClientName>_Cover_Letter", so don't turn it into "..._Cover_Letter_Cover_Letter".
+  if (cleanBase.toLowerCase().endsWith(suffix.toLowerCase())) {
+    return cleanBase;
+  }
+  return `${cleanBase}_${suffix}`;
 }
 
 // Cloudinary sometimes serves PDFs under `image/upload`.
@@ -898,15 +904,28 @@ const handleDelete = async (item: Entry, category: "base" | "optimized" | "cover
         onChange: () => void;
     }) => {
         if (!url) return null;
-        const src = `${url}#toolbar=1&navpanes=0&scrollbar=1`; // tweak viewer UI
         const name = downloadName || "document";
-        const downloadUrl = toRawPdfUrl(url, { download: true, fileName: name });
+        // Serve through our backend proxy so the PDF carries a proper
+        // Content-Disposition filename. The browser's built-in PDF viewer uses
+        // that header for its own download button, so the saved file is named
+        // after the client (e.g. "Manav_Patel_Cover_Letter.pdf") instead of the
+        // raw Cloudinary id. Falls back to the direct Cloudinary URL if the
+        // proxy base isn't configured.
+        const apiBase = import.meta.env.VITE_API_BASE_URL;
+        const proxied = apiBase
+            ? `${apiBase}/doc-proxy?url=${encodeURIComponent(url)}&name=${encodeURIComponent(name)}`
+            : url;
+        const src = `${proxied}#toolbar=1&navpanes=0&scrollbar=1`; // tweak viewer UI
+        // Download button forces attachment disposition (dl=1) with the same name.
+        const downloadUrl = apiBase
+            ? `${apiBase}/doc-proxy?url=${encodeURIComponent(url)}&name=${encodeURIComponent(name)}&dl=1`
+            : toRawPdfUrl(url, { download: true, fileName: name });
 
         return (
             <div className="flex flex-col items-center">
                 <div className="border shadow mb-4 w-full max-w-3xl h-[80vh] bg-gray-50">
                     <iframe
-                        key={url} // force reload when URL changes
+                        key={src} // force reload when URL changes
                         title="pdf-preview"
                         src={src}
                         className="w-full h-full"

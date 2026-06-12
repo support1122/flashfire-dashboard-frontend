@@ -719,9 +719,60 @@ type Entry = {
 // Cloudinary sometimes serves PDFs under `image/upload`.
 // For preview (iframe), use `/raw/upload/`
 // For download, add `/fl_attachment/`
+// Turn an arbitrary label into a safe, readable file name (no extension).
+function sanitizeFileName(name?: string): string {
+  return (name || "document")
+    .trim()
+    .replace(/\.pdf$/i, "")
+    .replace(/[^a-zA-Z0-9-_]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "")
+    .slice(0, 80) || "document";
+}
+
+// Build a friendly download name for a document entry, e.g. "Manav_Patel_Cover_Letter".
+function buildDownloadName(
+  it: { name?: string; jobRole?: string; companyName?: string; title?: string },
+  category: "Resume" | "Cover Letter" | "Base" | "Transcript",
+  clientName?: string
+): string {
+  const base =
+    it?.name?.trim() ||
+    it?.title?.trim() ||
+    [it?.jobRole, it?.companyName].filter(Boolean).join("_") ||
+    // Fall back to the client's name when the entry has no stored name, so a
+    // cover letter still downloads as "<Client>_Cover_Letter" instead of "document".
+    (clientName || "").trim() ||
+    "document";
+  const suffix =
+    category === "Cover Letter"
+      ? "Cover_Letter"
+      : category === "Transcript"
+      ? "Transcript"
+      : "Resume";
+  const cleanBase = sanitizeFileName(base);
+  // Avoid doubling the suffix — cover-letter entries are already stored as
+  // "<ClientName>_Cover_Letter", so don't turn it into "..._Cover_Letter_Cover_Letter".
+  if (cleanBase.toLowerCase().endsWith(suffix.toLowerCase())) {
+    return cleanBase;
+  }
+  return `${cleanBase}_${suffix}`;
+}
+
+// Build a same-backend proxy URL that serves the PDF with a friendly
+// Content-Disposition filename. The browser's built-in PDF viewer uses that
+// header for its own download button, so previews saved from the inline viewer
+// get the client name instead of the raw Cloudinary id. `dl` forces download.
+function toDocProxyUrl(rawUrl: string, fileName: string, dl = false): string {
+  const apiBase = import.meta.env.VITE_API_BASE_URL;
+  if (!apiBase || !rawUrl) return rawUrl;
+  const q = `url=${encodeURIComponent(rawUrl)}&name=${encodeURIComponent(sanitizeFileName(fileName))}${dl ? "&dl=1" : ""}`;
+  return `${apiBase}/doc-proxy?${q}`;
+}
+
 function toRawPdfUrl(
   resume: string | { url?: string; link?: string },
-  opts: { download?: boolean } = {}
+  opts: { download?: boolean; fileName?: string } = {}
 ) {
   let pdfUrl = "";
 
@@ -734,7 +785,10 @@ function toRawPdfUrl(
   if (!pdfUrl) return "";
 
   if (opts.download) {
-    return pdfUrl.replace("/upload/", "/upload/fl_attachment/");
+    const flag = opts.fileName
+      ? `fl_attachment:${sanitizeFileName(opts.fileName)}`
+      : "fl_attachment";
+    return pdfUrl.replace("/upload/", `/upload/${flag}/`);
   }
   return pdfUrl.replace("/upload/", "/upload/"); // ✅ preview inline
 }
@@ -763,6 +817,22 @@ export default function DocumentUpload() {
   const [activeTab, setActiveTab] = useState<DocumentTabId | null>(null);
   // const [fileNamePrompt, setFileNamePrompt] = useState<string>("");
   const context = useContext(UserContext);
+  // Friendly download name for a doc, falling back to the viewed client's name
+  // when the entry itself carries no stored name.
+  const dlName = (
+    it: any,
+    category: "Resume" | "Cover Letter" | "Base" | "Transcript"
+  ) => {
+    let clientName = context?.userDetails?.name || "";
+    if (!clientName) {
+      try {
+        clientName = JSON.parse(localStorage.getItem("userAuth") || "{}")?.userDetails?.name || "";
+      } catch {
+        clientName = "";
+      }
+    }
+    return buildDownloadName(it || {}, category, clientName);
+  };
   const [baseResume, setBaseResume] = useState<any[]>([]);
   const [optimizedList, setOptimizedList] = useState<Entry[]>([]);
   const [coverList, setCoverList] = useState<Entry[]>([]);
@@ -792,6 +862,8 @@ export default function DocumentUpload() {
   const [activePreviewUrl, setActivePreviewUrl] = useState<string | null>(
     null
   );
+  // Friendly name used when downloading the currently-previewed document.
+  const [activePreviewName, setActivePreviewName] = useState<string>("document");
   const [iframeError, setIframeError] = useState<string | null>(null);
 
   // ---- helpers ----
@@ -1146,16 +1218,21 @@ export default function DocumentUpload() {
     setIframeError(null);
 
     let defaultUrl: string | null = null;
+    let defaultEntry: any = null;
+    let defaultCategory: "Resume" | "Cover Letter" | "Base" | "Transcript" = "Resume";
     if (activeTab === "base") {
       const last = Array.isArray(baseResume) && baseResume.length > 0 ? baseResume[baseResume.length - 1] : null;
       defaultUrl = (last?.link || last?.url) ?? null;
+      defaultEntry = last;
+      defaultCategory = "Base";
     }
-    else if (activeTab === "optimized") defaultUrl = optimizedList[0]?.url || null;
-    else if (activeTab === "cover") defaultUrl = coverList[0]?.url || null;
-    else if (activeTab === "transcript") defaultUrl = transcriptList[0]?.url || null;
+    else if (activeTab === "optimized") { defaultEntry = optimizedList[0]; defaultUrl = optimizedList[0]?.url || null; defaultCategory = "Resume"; }
+    else if (activeTab === "cover") { defaultEntry = coverList[0]; defaultUrl = coverList[0]?.url || null; defaultCategory = "Cover Letter"; }
+    else if (activeTab === "transcript") { defaultEntry = transcriptList[0]; defaultUrl = transcriptList[0]?.url || null; defaultCategory = "Transcript"; }
 
     if (defaultUrl) {
       setActivePreviewUrl(toRawPdfUrl(defaultUrl));
+      setActivePreviewName(dlName(defaultEntry || {}, defaultCategory));
     }
   }, [
     activeTab,
@@ -1276,6 +1353,7 @@ export default function DocumentUpload() {
       // 7. Update preview
       setPreviewMode(true);
       setActivePreviewUrl(toRawPdfUrl(uploadedURL));
+      setActivePreviewName(dlName({ name }, "Resume"));
       setIframeError(null);
 
       alert("✅ Optimized resume uploaded successfully!");
@@ -1333,6 +1411,7 @@ export default function DocumentUpload() {
       // 7. Update preview
       setPreviewMode(true);
       setActivePreviewUrl(toRawPdfUrl(uploadedURL));
+      setActivePreviewName(dlName({ name }, "Cover Letter"));
       setIframeError(null);
 
       alert("✅ Cover letter uploaded successfully!");
@@ -1377,6 +1456,7 @@ export default function DocumentUpload() {
 
       setPreviewMode(true);
       setActivePreviewUrl(toRawPdfUrl(uploadedURL));
+      setActivePreviewName(dlName({ name }, "Transcript"));
       setIframeError(null);
 
       alert("✅ Transcript uploaded successfully!");
@@ -1719,7 +1799,8 @@ export default function DocumentUpload() {
                 <div className="col-span-1 flex justify-end gap-2 whitespace-nowrap">
                   {!it.isJobBased && (
                     <a
-                      href={toRawPdfUrl(it.link || it.url) || it.link || it.url}
+                      href={toDocProxyUrl(it.link || it.url || "", dlName(it, category), true) || it.link || it.url}
+                      download={`${dlName(it, category)}.pdf`}
                       target="_blank"
                       rel="noreferrer"
                       onClick={(e) => e.stopPropagation()}
@@ -1742,19 +1823,27 @@ export default function DocumentUpload() {
   // ---- Reusable Preview Panel (iframe) ----
   const PreviewPanel = ({
     url,
+    downloadName,
     onChange,
   }: {
     url: string;
+    downloadName?: string;
     onChange: () => void;
   }) => {
     if (!url) return null;
-    const src = `${url}#toolbar=1&navpanes=0&scrollbar=1`; // tweak viewer UI
+    const name = downloadName || "document";
+    // Preview + download go through our backend proxy so the PDF carries a
+    // proper Content-Disposition filename — the browser PDF viewer's own
+    // download button then saves it as the client name, not the Cloudinary id.
+    const previewSrc = toDocProxyUrl(url, name, false);
+    const src = `${previewSrc}#toolbar=1&navpanes=0&scrollbar=1`; // tweak viewer UI
+    const downloadUrl = toDocProxyUrl(url, name, true);
 
     return (
       <div className="flex flex-col items-center">
         <div className="border shadow mb-4 w-full h-[70vh] md:h-[80vh] bg-gray-50">
           <iframe
-            key={url} // force reload when URL changes
+            key={src} // force reload when URL changes
             title="pdf-preview"
             src={src}
             className="w-full h-full"
@@ -1771,7 +1860,8 @@ export default function DocumentUpload() {
 
         <div className="flex gap-2">
           <a
-            href={url}
+            href={downloadUrl}
+            download={`${name}.pdf`}
             target="_blank"
             rel="noreferrer"
             className="bg-blue-600 text-white px-4 py-2 rounded"
@@ -1871,6 +1961,7 @@ export default function DocumentUpload() {
                 // Fallback: no parsed JSON for this user → render raw PDF.
                 <PreviewPanel
                   url={toRawPdfUrl(activePreviewUrl || '') || ''}
+                  downloadName={activePreviewName}
                   onChange={() => setPreviewMode(true)}
                 />
               )
@@ -1887,6 +1978,7 @@ export default function DocumentUpload() {
                       setResumeData(null);
                       setActivePreviewUrl(toRawPdfUrl(it.link || it.url)!);
                     }
+                    setActivePreviewName(dlName(it, "Base"));
                     setPreviewMode(true);
                   }}
                 />
@@ -2122,6 +2214,7 @@ export default function DocumentUpload() {
                     ) : previewMode && activePreviewUrl ? (
                       <PreviewPanel
                         url={toRawPdfUrl(activePreviewUrl) as string}
+                        downloadName={activePreviewName}
                         onChange={() => setPreviewMode(false)}
                       />
                     ) : resumeLoading ? (
@@ -2160,6 +2253,7 @@ export default function DocumentUpload() {
                           } else {
                             // Fallback to preview for legacy resumes (Cloudinary links)
                             setActivePreviewUrl(toRawPdfUrl(it.url || it.link || '')!);
+                            setActivePreviewName(dlName(it, "Resume"));
                             setPreviewMode(true);
                             setIframeError(null);
                           }
@@ -2173,6 +2267,7 @@ export default function DocumentUpload() {
                     ) : previewMode && activePreviewUrl ? (
                       <PreviewPanel
                         url={toRawPdfUrl(activePreviewUrl) || ''}
+                        downloadName={activePreviewName}
                         onChange={() => setPreviewMode(false)}
                       />
                     ) : (
@@ -2185,6 +2280,9 @@ export default function DocumentUpload() {
                         }
                         onPick={(it) => {
                           setActivePreviewUrl(toRawPdfUrl(it.url)!);
+                          setActivePreviewName(
+                            dlName(it, tab === "cover" ? "Cover Letter" : "Transcript")
+                          );
                           setPreviewMode(true);
                         }}
                       />
