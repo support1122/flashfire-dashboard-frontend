@@ -731,32 +731,59 @@ function sanitizeFileName(name?: string): string {
 }
 
 // Build a friendly download name for a document entry, e.g. "Manav_Patel_Cover_Letter".
+// Placeholder names that carry no real identity — treat these as "no name" so
+// we fall back to the client's name (e.g. an entry literally named "Cover_Letter").
+const GENERIC_DOC_NAMES = new Set([
+  "",
+  "document",
+  "cover_letter",
+  "coverletter",
+  "transcript",
+  "resume",
+  "untitled",
+  "untitled_resume",
+  "unnamed",
+]);
+
 function buildDownloadName(
   it: { name?: string; jobRole?: string; companyName?: string; title?: string },
   category: "Resume" | "Cover Letter" | "Base" | "Transcript",
   clientName?: string
 ): string {
-  const base =
-    it?.name?.trim() ||
-    it?.title?.trim() ||
-    [it?.jobRole, it?.companyName].filter(Boolean).join("_") ||
-    // Fall back to the client's name when the entry has no stored name, so a
-    // cover letter still downloads as "<Client>_Cover_Letter" instead of "document".
-    (clientName || "").trim() ||
-    "document";
   const suffix =
     category === "Cover Letter"
       ? "Cover_Letter"
       : category === "Transcript"
       ? "Transcript"
       : "Resume";
-  const cleanBase = sanitizeFileName(base);
-  // Avoid doubling the suffix — cover-letter entries are already stored as
-  // "<ClientName>_Cover_Letter", so don't turn it into "..._Cover_Letter_Cover_Letter".
-  if (cleanBase.toLowerCase().endsWith(suffix.toLowerCase())) {
-    return cleanBase;
+
+  const client = sanitizeFileName(clientName || "");
+  const clientIsReal = client && !GENERIC_DOC_NAMES.has(client.toLowerCase());
+
+  // The entry's own label, ignored when it's just a generic placeholder.
+  const rawEntry =
+    it?.name?.trim() ||
+    it?.title?.trim() ||
+    [it?.jobRole, it?.companyName].filter(Boolean).join("_") ||
+    "";
+  let entry = sanitizeFileName(rawEntry);
+  if (GENERIC_DOC_NAMES.has(entry.toLowerCase())) entry = "";
+
+  // Prefer the client name as the identity. Keep a meaningful entry label too
+  // (e.g. a job-specific resume), prefixed with the client name when it isn't
+  // already part of it.
+  let base: string;
+  if (clientIsReal && entry && !entry.toLowerCase().includes(client.toLowerCase())) {
+    base = `${client}_${entry}`;
+  } else {
+    base = entry || client || "document";
   }
-  return `${cleanBase}_${suffix}`;
+
+  // Avoid doubling the suffix (e.g. an entry already ending in "_Cover_Letter").
+  if (base.toLowerCase().endsWith(suffix.toLowerCase())) {
+    return base;
+  }
+  return `${base}_${suffix}`;
 }
 
 // Build a same-backend proxy URL that serves the PDF with a friendly
@@ -864,7 +891,32 @@ export default function DocumentUpload() {
   );
   // Friendly name used when downloading the currently-previewed document.
   const [activePreviewName, setActivePreviewName] = useState<string>("document");
+  // Whether the backend `/doc-proxy` route is available. null = still probing.
+  // When unavailable (older backend / unreachable), we load PDFs straight from
+  // Cloudinary so previews never break — only the friendly-download naming is lost.
+  const [proxyAvailable, setProxyAvailable] = useState<boolean | null>(null);
   const [iframeError, setIframeError] = useState<string | null>(null);
+
+  // Probe once whether the backend exposes /doc-proxy. If not (older deploy or
+  // unreachable), previews fall back to direct Cloudinary URLs.
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_BASE_URL;
+    if (!apiBase) {
+      setProxyAvailable(false);
+      return;
+    }
+    let cancelled = false;
+    fetch(`${apiBase}/doc-proxy?probe=1`)
+      .then((r) => {
+        if (!cancelled) setProxyAvailable(r.ok);
+      })
+      .catch(() => {
+        if (!cancelled) setProxyAvailable(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ---- helpers ----
   const readAuth = () => {
@@ -1799,7 +1851,11 @@ export default function DocumentUpload() {
                 <div className="col-span-1 flex justify-end gap-2 whitespace-nowrap">
                   {!it.isJobBased && (
                     <a
-                      href={toDocProxyUrl(it.link || it.url || "", dlName(it, category), true) || it.link || it.url}
+                      href={
+                        proxyAvailable === true
+                          ? toDocProxyUrl(it.link || it.url || "", dlName(it, category), true)
+                          : toRawPdfUrl(it.link || it.url || "", { download: true, fileName: dlName(it, category) }) || it.link || it.url
+                      }
                       download={`${dlName(it, category)}.pdf`}
                       target="_blank"
                       rel="noreferrer"
@@ -1835,9 +1891,14 @@ export default function DocumentUpload() {
     // Preview + download go through our backend proxy so the PDF carries a
     // proper Content-Disposition filename — the browser PDF viewer's own
     // download button then saves it as the client name, not the Cloudinary id.
-    const previewSrc = toDocProxyUrl(url, name, false);
+    // Only use the proxy once we've confirmed it's reachable; otherwise load
+    // straight from Cloudinary so the preview always works.
+    const useProxy = proxyAvailable === true;
+    const previewSrc = useProxy ? toDocProxyUrl(url, name, false) : url;
     const src = `${previewSrc}#toolbar=1&navpanes=0&scrollbar=1`; // tweak viewer UI
-    const downloadUrl = toDocProxyUrl(url, name, true);
+    const downloadUrl = useProxy
+      ? toDocProxyUrl(url, name, true)
+      : toRawPdfUrl(url, { download: true, fileName: name });
 
     return (
       <div className="flex flex-col items-center">
