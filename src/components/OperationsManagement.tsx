@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext, useCallback, useRef } from 'react';
-import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, X, ChevronDown, ChevronUp, Edit2, Mail, Paperclip, Send, MessageSquare, Link2, Loader2, ChevronLeft, ChevronRight, Puzzle } from 'lucide-react';
+import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, X, ChevronDown, ChevronUp, Edit2, Mail, Paperclip, Send, MessageSquare, Link2, Loader2, ChevronLeft, ChevronRight, Puzzle, Check, AlertCircle, RefreshCw } from 'lucide-react';
 import { ExclusionListEditor } from './Operations/ExclusionListEditor.tsx';
 import { UserContext } from '../state_management/UserContext.tsx';
 import { toastUtils, toastMessages } from '../utils/toast.ts';
@@ -109,6 +109,7 @@ const OperationsManagement = () => {
   const [savingAutomation, setSavingAutomation] = useState(false);
   const [togglingAutomation, setTogglingAutomation] = useState(false);
   const [togglingSkipThreshold, setTogglingSkipThreshold] = useState(false);
+  const [sendingNow, setSendingNow] = useState(false);
   const [hasExistingAutomationConfig, setHasExistingAutomationConfig] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -121,6 +122,7 @@ const OperationsManagement = () => {
   const [emailLogsLimit, setEmailLogsLimit] = useState(20);
   const [emailLogsTotalPages, setEmailLogsTotalPages] = useState(0);
   const [loadingEmailLogs, setLoadingEmailLogs] = useState(false);
+  const [resendingLogId, setResendingLogId] = useState<string | null>(null);
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   useEffect(() => {
@@ -711,6 +713,39 @@ const OperationsManagement = () => {
     }
   };
 
+  const handleRunNow = async () => {
+    if (!userDetails?.email) return;
+    if (!hasExistingAutomationConfig) {
+      toastUtils.error("Save group, template and limit first.");
+      return;
+    }
+    if (!automationEnabled) {
+      toastUtils.error("Turn automation on first.");
+      return;
+    }
+    try {
+      setSendingNow(true);
+      const res = await fetch(`${API_BASE_URL}/gmail/automation/run-now`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ownerEmail: userDetails.email })
+      });
+      const data = await res.json();
+      if (res.ok && data.ok && data.status === "sent") {
+        toastUtils.success(`Sent ${data.sent} recruiter email${data.sent === 1 ? "" : "s"} now.`);
+        fetchEmailLogs(1);
+      } else if (data.status === "already_sent_today") {
+        toastUtils.error(data.message || "Today's emails were already sent for this user.");
+      } else {
+        toastUtils.error(data.error || data.message || "Could not send today's emails.");
+      }
+    } catch (error) {
+      toastUtils.error("Failed to send today's emails");
+    } finally {
+      setSendingNow(false);
+    }
+  };
+
   const fetchEmailLogs = useCallback(async (overridePage?: number) => {
     if (!userDetails?.email) return;
     const page = overridePage ?? emailLogsPage;
@@ -740,6 +775,30 @@ const OperationsManagement = () => {
       setLoadingEmailLogs(false);
     }
   }, [API_BASE_URL, userDetails?.email, emailLogsPage, emailLogsLimit]);
+
+  const handleResend = async (logId: string) => {
+    if (!logId || resendingLogId) return;
+    try {
+      setResendingLogId(logId);
+      const res = await fetch(`${API_BASE_URL}/gmail/automation/resend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logId })
+      });
+      const data = await res.json();
+      if (res.ok && data.ok && data.status === "sent") {
+        toastUtils.success(`Resent to ${data.toEmail || "recipient"}.`);
+      } else {
+        toastUtils.error(data.error || "Resend failed.");
+      }
+      // Refresh so the new attempt (success or fail) shows in the log.
+      fetchEmailLogs();
+    } catch {
+      toastUtils.error("Resend failed.");
+    } finally {
+      setResendingLogId(null);
+    }
+  };
 
   useEffect(() => {
     if (activeSection === "email" && userDetails?.email) {
@@ -1829,6 +1888,26 @@ const OperationsManagement = () => {
                       200-application limit is skipped for this user. Recruiter emails will send at 11 PM IST regardless of application count (Executive plan and an enabled config still required).
                     </p>
                   )}
+
+                  {/* Send today's emails right now instead of waiting for 11 PM IST.
+                      Backend enforces one batch per day, so this won't double-send. */}
+                  <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900">Send today's emails now</p>
+                      <p className="text-xs text-gray-500">
+                        Sends this user's batch immediately. Runs once per day — repeat clicks won't send again.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={sendingNow || loadingAutomation || !automationEnabled || !hasExistingAutomationConfig}
+                      onClick={handleRunNow}
+                      className="shrink-0 px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {sendingNow ? "Sending…" : "Send now"}
+                    </button>
+                  </div>
+
                   {loadingAutomation ? (
                     <p className="text-xs text-gray-500">Loading automation data...</p>
                   ) : (
@@ -2070,12 +2149,13 @@ const OperationsManagement = () => {
                           <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
                           <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                           <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Error</th>
+                          <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {emailLogs.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500">
+                            <td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-500">
                               No send logs yet for this client.
                             </td>
                           </tr>
@@ -2094,12 +2174,33 @@ const OperationsManagement = () => {
                                 </span>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
-                                <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-full ${log.status === "success" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+                                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${log.status === "success" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+                                  {log.status === "success" ? (
+                                    <Check className="w-3 h-3" />
+                                  ) : (
+                                    <AlertCircle className="w-3 h-3" />
+                                  )}
                                   {log.status === "success" ? "Success" : "Failed"}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-sm text-red-600 max-w-[200px] truncate" title={log.errorMessage || ""}>
                                 {log.errorMessage || "—"}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-right">
+                                {log.status === "failed" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleResend(log.id)}
+                                    disabled={resendingLogId !== null}
+                                    title="Resend this email"
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border border-red-200 bg-red-50 text-red-700 text-xs font-medium hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <RefreshCw className={`w-3 h-3 ${resendingLogId === log.id ? "animate-spin" : ""}`} />
+                                    {resendingLogId === log.id ? "Sending…" : "Send again"}
+                                  </button>
+                                ) : (
+                                  <span className="text-xs text-gray-400">—</span>
+                                )}
                               </td>
                             </tr>
                           ))
