@@ -95,9 +95,6 @@ const OperationsManagement = () => {
   const [whatsappUnlocked, setWhatsappUnlocked] = useState(false);
   const [showWhatsappSecretModal, setShowWhatsappSecretModal] = useState(false);
   const [whatsappSecretError, setWhatsappSecretError] = useState('');
-  const [emailUnlocked, setEmailUnlocked] = useState(false);
-  const [showEmailSecretModal, setShowEmailSecretModal] = useState(false);
-  const [emailSecretError, setEmailSecretError] = useState('');
   const [emailGroups, setEmailGroups] = useState<{ id: string; name: string; category: string }[]>([]);
   const [emailTemplates, setEmailTemplates] = useState<{ id: string; name: string; subject: string }[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -1114,12 +1111,7 @@ const OperationsManagement = () => {
             <span>TODOs & Lock Periods</span>
           </button>
           <button
-            onClick={() => {
-              setActiveSection("email");
-              if (!emailUnlocked) {
-                setShowEmailSecretModal(true);
-              }
-            }}
+            onClick={() => setActiveSection("email")}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
               activeSection === "email"
                 ? "bg-indigo-600 text-white shadow-md"
@@ -1128,9 +1120,6 @@ const OperationsManagement = () => {
           >
             <Mail className="w-4 h-4" />
             <span>Send Emails to Recruiters</span>
-            {!emailUnlocked && (
-              <Lock className="w-3 h-3 text-gray-500" />
-            )}
           </button>
           <button
             onClick={() => {
@@ -1583,30 +1572,7 @@ const OperationsManagement = () => {
           </>
         )}
 
-        {activeSection === "email" && !emailUnlocked && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
-            <div className="text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 mb-6">
-                <Lock className="h-8 w-8 text-indigo-600" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                Send Emails to Recruiters Locked
-              </h3>
-              <p className="text-sm text-gray-600 mb-6">
-                Enter the secret key to access recruiter email sending
-              </p>
-              <button
-                onClick={() => setShowEmailSecretModal(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-all shadow-md"
-              >
-                <Lock className="w-4 h-4" />
-                <span>Unlock Send Emails</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {activeSection === "email" && emailUnlocked && (
+        {activeSection === "email" && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               <div>
@@ -2411,23 +2377,6 @@ const OperationsManagement = () => {
           setActiveSection("whatsapp");
         }}
         error={whatsappSecretError}
-      />
-      <SecretKeyModal
-        isOpen={showEmailSecretModal}
-        onClose={() => {
-          setShowEmailSecretModal(false);
-          setEmailSecretError('');
-        }}
-        onConfirm={(secretKey) => {
-          if (secretKey !== "flashfire@2025") {
-            setEmailSecretError("Incorrect secret key. Please try again.");
-            return;
-          }
-          setEmailUnlocked(true);
-          setShowEmailSecretModal(false);
-          setEmailSecretError('');
-        }}
-        error={emailSecretError}
       />
     </div>
   );
