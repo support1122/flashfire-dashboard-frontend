@@ -1915,6 +1915,18 @@ export default function JobModal({
                                                 displayEvent = tail
                                                     ? `Applied by ${tail}`
                                                     : 'Applied';
+                                            } else if (
+                                                evLower.startsWith('removed') ||
+                                                evLower.startsWith('deleted')
+                                            ) {
+                                                // Removal steps (incl. "removed by AI" from the
+                                                // second-stage screening worker). Normal clients
+                                                // see a plain "Removed"; operators keep the raw
+                                                // label and get the detailed reason in the red
+                                                // block below ("Failed second-stage screening …").
+                                                if (!isOperatorViewer) {
+                                                    displayEvent = 'Removed';
+                                                }
                                             }
                                             return (
                                                 <li
@@ -1943,6 +1955,60 @@ export default function JobModal({
                                                 </li>
                                             );
                                         }
+                                    )}
+                                    {isOperatorViewer && (jobDetails?.optimizedResume?.hasResume || jobDetails?.autoOptimization?.status) && (
+                                        <li className="mb-10 ms-6">
+                                            <span className="absolute flex items-center justify-center w-6 h-6 bg-emerald-100 rounded-full -start-3 ring-8 ring-white">
+                                                <span className="text-sm">🛠️</span>
+                                            </span>
+                                            <h3 className="flex items-center mb-1 text-md font-semibold text-emerald-800">
+                                                Resume optimization
+                                            </h3>
+                                            <p className="text-sm text-gray-600">
+                                                {jobDetails?.optimizedResume?.hasResume
+                                                    ? 'Resume auto-optimized automatically.'
+                                                    : jobDetails?.autoOptimization?.status === 'failed'
+                                                        ? 'Auto-optimization failed — optimize manually.'
+                                                        : jobDetails?.autoOptimization?.status === 'skipped'
+                                                            ? `Auto-optimization skipped${jobDetails?.autoOptimization?.error ? `: ${jobDetails.autoOptimization.error}` : '.'}`
+                                                            : jobDetails?.autoOptimization?.status === 'processing'
+                                                                ? 'Auto-optimization in progress.'
+                                                                : 'Auto-optimization queued.'}
+                                            </p>
+                                        </li>
+                                    )}
+                                    {isOperatorViewer && jobDetails?.secondJudge?.status && (
+                                        <li className="mb-10 ms-6">
+                                            <span className={`absolute flex items-center justify-center w-6 h-6 rounded-full -start-3 ring-8 ring-white ${
+                                                jobDetails.secondJudge.status === 'passed'
+                                                    ? 'bg-green-100'
+                                                    : jobDetails.secondJudge.status === 'failed'
+                                                        ? 'bg-red-100'
+                                                        : 'bg-blue-100'
+                                            }`}>
+                                                <span className="text-sm">🛡️</span>
+                                            </span>
+                                            <h3 className={`flex items-center mb-1 text-md font-semibold ${
+                                                jobDetails.secondJudge.status === 'passed'
+                                                    ? 'text-green-800'
+                                                    : jobDetails.secondJudge.status === 'failed'
+                                                        ? 'text-red-800'
+                                                        : 'text-blue-800'
+                                            }`}>
+                                                Second-stage screening
+                                            </h3>
+                                            <p className="text-sm text-gray-600">
+                                                {jobDetails.secondJudge.status === 'passed'
+                                                    ? `Passed${jobDetails.secondJudge.score != null ? ` (score ${jobDetails.secondJudge.score})` : ''} — matched the client profile on the real posting.`
+                                                    : jobDetails.secondJudge.status === 'failed'
+                                                        ? `Failed${jobDetails.secondJudge.score != null ? ` (score ${jobDetails.secondJudge.score})` : ''}${jobDetails.secondJudge.reason ? ` — ${jobDetails.secondJudge.reason}` : ''}. Moved to removed.`
+                                                        : jobDetails.secondJudge.status === 'processing'
+                                                            ? 'Opening the employer site and re-judging…'
+                                                            : jobDetails.secondJudge.status === 'skipped'
+                                                                ? `Could not screen${jobDetails.secondJudge.error ? `: ${jobDetails.secondJudge.error}` : ''} — job kept.`
+                                                                : 'Queued for second-stage screening.'}
+                                            </p>
+                                        </li>
                                     )}
                                     {isOperatorViewer && removalReasonData && (
                                         <li className="mb-10 ms-6">
