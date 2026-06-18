@@ -2,9 +2,58 @@ import React, { useRef, useEffect, useState } from "react";
 import { toastUtils } from "../../../utils/toast";
 import * as pdfjsLib from 'pdfjs-dist';
 import { savePdf } from "../../../utils/savePdf.ts";
+import { useOperationsStore } from "../../../state_management/Operations.ts";
 // import { ResumeScalingModal } from "./ResumeScalingModal";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+
+// A single-page resume must fill at least this fraction of the page height with
+// real content before it can be downloaded. Stops operators from shipping
+// half-empty resumes with large blank space at the bottom of the page.
+const MIN_FILL_RATIO = 0.9; // 90%
+
+/**
+ * Render a PDF page to an offscreen canvas and measure how far down the page its
+ * content reaches. Returns a 0-1 ratio: bottom-most non-blank pixel row / page height.
+ * A page that is full top-to-bottom returns ~1.0; a mostly empty page returns a low value.
+ */
+async function measurePageFillRatio(
+    pdf: any,
+    pageNumber: number
+): Promise<number | null> {
+    try {
+        const page = await pdf.getPage(pageNumber);
+        // Modest scale keeps the pixel scan fast while staying accurate enough.
+        const viewport = page.getViewport({ scale: 1.0 });
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        if (!context) return null;
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        // Paint white first so transparent areas read as blank, not black.
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: context, viewport }).promise;
+
+        const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height);
+        // A pixel counts as "content" if it is meaningfully darker than white.
+        const CONTENT_THRESHOLD = 235;
+        // Scan bottom-up; first row containing content is the content bottom.
+        for (let y = height - 1; y >= 0; y--) {
+            const rowStart = y * width * 4;
+            for (let x = 0; x < width; x++) {
+                const i = rowStart + x * 4;
+                if (data[i] < CONTENT_THRESHOLD || data[i + 1] < CONTENT_THRESHOLD || data[i + 2] < CONTENT_THRESHOLD) {
+                    return (y + 1) / height;
+                }
+            }
+        }
+        return 0; // Completely blank page.
+    } catch (err) {
+        console.error("Error measuring PDF fill ratio:", err);
+        return null;
+    }
+}
 
 interface ResumeData {
     personalInfo: {
@@ -186,6 +235,35 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
     const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
     const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
+    // Fraction (0-1) of the last page's height that actually contains content.
+    // Used to block downloads of sparse, mostly-empty single-page resumes.
+    const [pdfFillRatio, setPdfFillRatio] = useState<number | null>(null);
+
+    // The fill rule only applies to operations/operator accounts (they handle many
+    // clients and misuse scaling). Regular users are never blocked or shown the warning.
+    const { role: operationsRole } = useOperationsStore();
+    const isOperator = (() => {
+        const candidates = [operationsRole, localStorage.getItem("role")];
+        return candidates.some((r) => {
+            const n = typeof r === "string" ? r.trim().toLowerCase() : "";
+            return n === "operations" || n === "operator";
+        });
+    })();
+
+    // A single-page resume that doesn't fill enough of the page is "underfilled"
+    // and must not be downloaded (too much wasted blank space at the bottom).
+    // Only enforced for operators.
+    const isUnderfilled =
+        isOperator && pdfPageCount === 1 && pdfFillRatio !== null && pdfFillRatio < MIN_FILL_RATIO;
+    // True only when the preview is a clean, well-filled single page.
+    const isPageCountValid = pdfPageCount !== null && pdfPageCount === 1 && !isUnderfilled;
+    // Single source of truth for whether the Download button is disabled.
+    const isDownloadBlocked =
+        isGeneratingPDF ||
+        isGeneratingPreview ||
+        !previewPdfBlob ||
+        (pdfPageCount !== null && pdfPageCount > 1) ||
+        isUnderfilled;
 
     const loadingMessages = [
         "Our PDF engine is optimizing the PDF view...",
@@ -430,9 +508,18 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                 const numPages = pdf.numPages;
                 setPdfPageCount(numPages);
+                // Measure how full the last page is — operators only (the fill rule is
+                // not enforced for regular users, so there's no need to scan for them).
+                if (isOperator) {
+                    const fillRatio = await measurePageFillRatio(pdf, numPages);
+                    setPdfFillRatio(fillRatio);
+                } else {
+                    setPdfFillRatio(null);
+                }
             } catch (pdfError) {
                 console.error("Error getting PDF page count:", pdfError);
                 setPdfPageCount(null);
+                setPdfFillRatio(null);
             }
 
             // Clean up previous preview
@@ -456,6 +543,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
         if (showScaleModal && selectedScale) {
             // Reset page count when scale changes
             setPdfPageCount(null);
+            setPdfFillRatio(null);
             const timer = setTimeout(() => {
                 generatePreview(selectedScale);
             }, 500); // Debounce preview generation
@@ -472,6 +560,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             setPreviewPdfUrl(null);
             setPreviewPdfBlob(null);
             setPdfPageCount(null);
+            setPdfFillRatio(null);
         }
     }, [showScaleModal, previewPdfUrl]);
 
@@ -712,6 +801,20 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     // Handle PDF download - use the preview PDF if available
     const handleDownloadResume = async () => {
         try {
+            // Hard guards: never download a multi-page or under-filled (mostly blank) resume,
+            // even if the button is somehow triggered while it should be disabled.
+            if (pdfPageCount !== null && pdfPageCount > 1) {
+                toastUtils.error("Resume spans multiple pages. Reduce the scale so it fits on 1 page.");
+                return;
+            }
+            if (isUnderfilled) {
+                toastUtils.error(
+                    `Too much blank space (${Math.round((pdfFillRatio ?? 0) * 100)}% filled). ` +
+                    `Fill at least ${Math.round(MIN_FILL_RATIO * 100)}% of the page before downloading.`
+                );
+                return;
+            }
+
             // Check if filename has been changed from original
             if (downloadFilename !== originalFilename && downloadFilename.trim()) {
                 setShowFilenameConfirmModal(true);
@@ -2379,6 +2482,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                 onClick={() => {
                                     setShowScaleModal(false);
                                     setPdfPageCount(null);
+                                    setPdfFillRatio(null);
                                 }}
                                 disabled={isGeneratingPDF}
                                 style={{
@@ -2566,8 +2670,35 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                     </div>
                                 )}
 
+                                {/* Underfilled (too much blank space) Warning */}
+                                {isUnderfilled && (
+                                    <div style={{
+                                        marginBottom: "1rem",
+                                        padding: "1rem",
+                                        backgroundColor: "#fef3c7",
+                                        borderRadius: "8px",
+                                        border: "2px solid #f59e0b"
+                                    }}>
+                                        <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "0.5rem",
+                                            marginBottom: "0.5rem"
+                                        }}>
+                                            <span style={{ fontSize: "1.25rem" }}>⚠️</span>
+                                            <strong style={{ color: "#92400e", fontSize: "0.9rem" }}>
+                                                Too much blank space ({Math.round((pdfFillRatio ?? 0) * 100)}% filled)
+                                            </strong>
+                                        </div>
+                                        <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
+                                            The page must be at least {Math.round(MIN_FILL_RATIO * 100)}% full before download.
+                                            Increase the scale or add more content so the resume fills the page.
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Page Count Success */}
-                                {pdfPageCount !== null && pdfPageCount === 1 && (
+                                {isPageCountValid && (
                                     <div style={{
                                         marginBottom: "1rem",
                                         padding: "1rem",
@@ -2582,7 +2713,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>✅</span>
                                             <strong style={{ color: "#059669", fontSize: "0.9rem" }}>
-                                                Your resume looks good. Ready to download.
+                                                Your resume looks good{pdfFillRatio !== null ? ` (${Math.round(pdfFillRatio * 100)}% filled)` : ""}. Ready to download.
                                             </strong>
                                         </div>
                                     </div>
@@ -2643,10 +2774,10 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                     </button>
                                     <button
                                         onClick={handleDownloadResume}
-                                        disabled={isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1)}
+                                        disabled={isDownloadBlocked}
                                         style={{
                                             flex: 1,
-                                            background: (isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1))
+                                            background: isDownloadBlocked
                                                 ? "#9ca3af"
                                                 : "linear-gradient(90deg, #10b981 0%, #059669 100%)",
                                             color: "white",
@@ -2655,14 +2786,22 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                             borderRadius: "8px",
                                             fontSize: "1rem",
                                             fontWeight: "600",
-                                            cursor: (isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1)) ? "not-allowed" : "pointer",
-                                            boxShadow: (isGeneratingPDF || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount > 1))
+                                            cursor: isDownloadBlocked ? "not-allowed" : "pointer",
+                                            boxShadow: isDownloadBlocked
                                                 ? "none"
                                                 : "0 6px 18px rgba(16, 185, 129, 0.35)",
                                             transition: "all 0.2s",
                                         }}
                                     >
-                                        {isGeneratingPDF ? "Generating..." : (pdfPageCount !== null && pdfPageCount > 1) ? `Showing ${pdfPageCount} pages - reduce scale` : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
+                                        {isGeneratingPDF
+                                            ? "Generating..."
+                                            : (pdfPageCount !== null && pdfPageCount > 1)
+                                                ? `Showing ${pdfPageCount} pages - reduce scale`
+                                                : isUnderfilled
+                                                    ? "Fill the page to download"
+                                                    : previewPdfBlob
+                                                        ? "Download PDF"
+                                                        : "Generate Preview First"}
                                     </button>
                                 </div>
                             </div>
