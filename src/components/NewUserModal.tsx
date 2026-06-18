@@ -3066,6 +3066,7 @@ const handleSubmit = () => {
               Back
             </button>
             <button
+              onClick={() => setUserProfileFormVisibility(false)}
               className="inline-flex items-center rounded border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-orange-500 hover:bg-orange-50 transition-colors duration-200"
             >
               Save & Continue Later
