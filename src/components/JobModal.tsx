@@ -632,8 +632,13 @@ export default function JobModal({
     }, [jobDetails?.jobID, jobDetails?.jobDescription, activeSection, getJobDescription, isJobDescriptionLoading, loadJobDescription]);
 
     useEffect(() => {
-        if (role === "operations" && jobDetails?.jobID && jobDetails?.userID) {
-            const isRemoved = jobDetails?.currentStatus?.toLowerCase().startsWith('deleted') || 
+        // Fetch the removal reason for BOTH operator roles ('operations' AND
+        // 'operator') — previously only 'operations' fetched it, so an
+        // 'operator' viewer saw an empty removal block. The red detail block
+        // below is gated by isOperatorViewer, which covers both.
+        const isOpsViewer = role === "operations" || role === "operator";
+        if (isOpsViewer && jobDetails?.jobID && jobDetails?.userID) {
+            const isRemoved = jobDetails?.currentStatus?.toLowerCase().startsWith('deleted') ||
                              jobDetails?.currentStatus?.toLowerCase().startsWith('removed');
             
             if (isRemoved) {
