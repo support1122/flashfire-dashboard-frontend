@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useRef} from 'react';
-import { Calendar, Sparkles, ShieldCheck, ShieldX, ShieldQuestion } from 'lucide-react';
+import { Calendar, Sparkles, ShieldCheck, ShieldAlert, ShieldQuestion } from 'lucide-react';
 import { Job } from '../types';
 import { getTimeAgo } from '../utils/getTimeAgo';
 import { useDownloadHighlightStore } from '../state_management/DownloadHighlightStore.ts';
@@ -166,7 +166,7 @@ const JobCard: React.FC<JobCardProps> = ({
               <ShieldCheck className="w-3.5 h-3.5 text-green-600 flex-shrink-0" title={`Second-stage screening passed${sjScoreLabel}`} />
             )}
             {sjFailed && (
-              <ShieldX className="w-3.5 h-3.5 text-red-600 flex-shrink-0" title={`Failed second-stage screening${sjScoreLabel}`} />
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" title={`Flagged in second-stage screening${sjScoreLabel} — review`} />
             )}
             {(sjPending || sjProcessing) && (
               <ShieldQuestion className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 animate-pulse" title="Second-stage screening in progress" />
@@ -244,8 +244,8 @@ const JobCard: React.FC<JobCardProps> = ({
             <p className="text-xs font-medium text-green-600">Second-stage screening passed{sjScoreLabel}.</p>
           )}
           {sjFailed && (
-            <p className="text-xs font-medium text-red-600">
-              Failed second-stage screening{sjScoreLabel}{sjReason ? ` — ${sjReason}` : ''}.
+            <p className="text-xs font-medium text-amber-700">
+              ⚠️ AI flag{sjScoreLabel}{sjReason ? ` — ${sjReason}` : ''}. Kept — review and decide.
             </p>
           )}
           {sjPending && (
