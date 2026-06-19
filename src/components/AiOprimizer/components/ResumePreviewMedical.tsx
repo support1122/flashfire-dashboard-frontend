@@ -93,6 +93,10 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     sectionTitles = {},
     onDownloadClick,
 }) => {
+    // The top-toolbar "Download PDF" button is only useful on the /optimize/:jobId
+    // route. Hide it in the portal (everywhere else).
+    const isOptimizeRoute =
+        typeof window !== "undefined" && window.location.pathname.startsWith("/optimize");
     const headingFor = (id: string, def: string): string => {
         const raw = (sectionTitles?.[id] || "").trim();
         return (raw || def).toUpperCase();
@@ -1867,7 +1871,9 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                     >
                         In-House Scaling
                     </button> */}
-                    {showDirectPdfButton && (
+                    {/* "Download PDF" toolbar button — only shown on /optimize routes,
+                        hidden in the portal (of no use there). */}
+                    {showDirectPdfButton && isOptimizeRoute && (
                         <button
                             onClick={handlePrint}
                             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
