@@ -2006,7 +2006,7 @@ export default function JobModal({
                                                 {jobDetails.secondJudge.status === 'passed'
                                                     ? `Passed${jobDetails.secondJudge.score != null ? ` (score ${jobDetails.secondJudge.score})` : ''} — matched the client profile on the real posting.`
                                                     : jobDetails.secondJudge.status === 'failed'
-                                                        ? `Failed${jobDetails.secondJudge.score != null ? ` (score ${jobDetails.secondJudge.score})` : ''}${jobDetails.secondJudge.reason ? ` — ${jobDetails.secondJudge.reason}` : ''}. Moved to removed.`
+                                                        ? `⚠️ Flagged for review${jobDetails.secondJudge.score != null ? ` (score ${jobDetails.secondJudge.score})` : ''}${jobDetails.secondJudge.reason ? ` — ${jobDetails.secondJudge.reason}` : ''}. Kept — your call whether to remove.`
                                                         : jobDetails.secondJudge.status === 'processing'
                                                             ? 'Opening the employer site and re-judging…'
                                                             : jobDetails.secondJudge.status === 'skipped'
