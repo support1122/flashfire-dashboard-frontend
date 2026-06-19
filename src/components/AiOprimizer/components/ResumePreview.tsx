@@ -239,6 +239,12 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     // Used to block downloads of sparse, mostly-empty single-page resumes.
     const [pdfFillRatio, setPdfFillRatio] = useState<number | null>(null);
 
+    // The top-toolbar "Download PDF" button is only useful on the /optimize/:jobId
+    // route. Hide it in the portal (everywhere else) — downloads there go through the
+    // "Select PDF Scale" modal flow instead.
+    const isOptimizeRoute =
+        typeof window !== "undefined" && window.location.pathname.startsWith("/optimize");
+
     // The fill rule only applies to operations/operator accounts (they handle many
     // clients and misuse scaling). Regular users are never blocked or shown the warning.
     const { role: operationsRole } = useOperationsStore();
@@ -2384,7 +2390,9 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                     >
                         In-House Scaling
                     </button> */}
-                    {showDirectPdfButton && (
+                    {/* "Download PDF" toolbar button — only shown on /optimize routes,
+                        hidden in the portal (of no use there). */}
+                    {showDirectPdfButton && isOptimizeRoute && (
                         <button
                             onClick={handlePrint}
                             style={{
