@@ -1835,6 +1835,7 @@ const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
   const [data, setData] = useState<FormData>({ ...initialData });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const isLast = stepIndex === STEPS.length - 1;
   const ctx = useContext(UserContext);
   const set = (patch: Partial<FormData>) => setData((d) => ({ ...d, ...patch }));
@@ -2240,6 +2241,12 @@ useEffect(() => {
   useEffect(() => {
   setStepIndex(sectionToStep[startSection] ?? 0);
 }, [startSection]);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [stepIndex]);
 
 
   // replace your handleSubmit with this pair:
@@ -3054,7 +3061,7 @@ const handleSubmit = () => {
         {/* Description */}
         <div className="w-full text-center text-sm text-gray-500 px-8 pt-2 pb-3">{STEPS[stepIndex].blurb}</div>
         {/* Form Fields */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-8 py-2 space-y-6 w-full box-border">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-8 py-2 space-y-6 w-full box-border">
           {page}
         </div>
         {/* Footer Buttons */}
