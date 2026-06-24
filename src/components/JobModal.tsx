@@ -2010,7 +2010,7 @@ export default function JobModal({
                                                         : jobDetails.secondJudge.status === 'processing'
                                                             ? 'Opening the employer site and re-judging…'
                                                             : jobDetails.secondJudge.status === 'skipped'
-                                                                ? `Could not screen${jobDetails.secondJudge.error ? `: ${jobDetails.secondJudge.error}` : ''} — job kept.`
+                                                                ? (jobDetails.secondJudge.reason || 'The second-stage check could not be completed — job kept.')
                                                                 : 'Queued for second-stage screening.'}
                                             </p>
                                         </li>
