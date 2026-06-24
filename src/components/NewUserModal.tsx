@@ -1835,6 +1835,7 @@ const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
   const [data, setData] = useState<FormData>({ ...initialData });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const isLast = stepIndex === STEPS.length - 1;
   const ctx = useContext(UserContext);
   const set = (patch: Partial<FormData>) => setData((d) => ({ ...d, ...patch }));
@@ -2241,6 +2242,12 @@ useEffect(() => {
   setStepIndex(sectionToStep[startSection] ?? 0);
 }, [startSection]);
 
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [stepIndex]);
+
 
   // replace your handleSubmit with this pair:
 const submitForm = async () => {
@@ -2438,7 +2445,7 @@ const handleSubmit = () => {
                     </div>
                     <div>
                       <DatePicker
-                        label="End Date (Graduation)"
+                        label="Graduation Date"
                         value={data.bachelorsEndDate || data.bachelorsGradMonthYear ? (data.bachelorsEndDate || (data.bachelorsGradMonthYear ? data.bachelorsGradMonthYear + '-01' : '')) : ''}
                         onChange={(value) => {
                           set({ bachelorsEndDate: value, bachelorsGradMonthYear: value ? value.slice(0, 7) : '' });
@@ -2507,7 +2514,7 @@ const handleSubmit = () => {
                     </div>
                     <div>
                       <DatePicker
-                        label="End Date (Graduation) (Optional)"
+                        label="End Date (Optional)"
                         value={data.mastersEndDate || data.mastersGradMonthYear ? (data.mastersEndDate || (data.mastersGradMonthYear ? data.mastersGradMonthYear + '-01' : '')) : ''}
                         onChange={(value) => {
                           set({ mastersEndDate: value, mastersGradMonthYear: value ? value.slice(0, 7) : '' });
@@ -3032,57 +3039,54 @@ const handleSubmit = () => {
   // removed: if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2">
-      <div className="relative z-10 mx-auto w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-black/5 px-4 sm:px-6 py-5 max-h-[90vh] flex flex-col">
-        {/* Progress Bar Placeholder */}
-        {/* Slim Gradient Header with Icon and Badge */}
-        <div className="w-full flex items-center justify-between bg-gradient-to-r from-orange-500 to-rose-600 rounded-t-xl px-6 py-4 mb-2">
-          <div className="flex items-center gap-2">
-            <span className="bg-white/30 rounded-full p-1"><svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>
-            <span className="text-white font-bold text-base">Step {stepIndex + 1} of 3</span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="relative z-10 mx-auto w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/10 flex flex-col max-h-[92vh]">
+        {/* Gradient Header */}
+        <div className="w-full flex items-center justify-between bg-gradient-to-r from-orange-500 to-rose-600 px-8 py-5">
+          <div className="flex items-center gap-3">
+            <span className="bg-white/25 rounded-full p-1.5"><svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>
+            <div>
+              <p className="text-white/70 text-xs font-medium uppercase tracking-widest">Profile Setup</p>
+              <p className="text-white font-bold text-lg leading-tight">Step {stepIndex + 1} of 3</p>
+            </div>
           </div>
-          <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">All fields required</span>
+          <span className="bg-white/20 text-white text-xs font-semibold px-4 py-1.5 rounded-full">{STEPS[stepIndex].title}</span>
+        </div>
+        {/* Progress Bar */}
+        <div className="w-full flex gap-1.5 px-8 pt-4 pb-1">
+          <div className={`flex-1 h-1.5 rounded-full transition-colors duration-300 ${stepIndex >= 0 ? 'bg-orange-500' : 'bg-gray-200'}`}></div>
+          <div className={`flex-1 h-1.5 rounded-full transition-colors duration-300 ${stepIndex >= 1 ? 'bg-orange-500' : 'bg-gray-200'}`}></div>
+          <div className={`flex-1 h-1.5 rounded-full transition-colors duration-300 ${stepIndex >= 2 ? 'bg-orange-500' : 'bg-gray-200'}`}></div>
         </div>
         {/* Description */}
-        <div className="w-full text-center text-sm text-gray-700 mb-3">{STEPS[stepIndex].blurb}</div>
-        {/* Progress Bar/Stepper */}
-        <div className="w-full flex items-center gap-2 mb-4">
-          <div className={`flex-1 h-2 rounded-full ${stepIndex >= 0 ? 'bg-orange-500' : 'bg-gray-200'}`}></div>
-          <div className={`flex-1 h-2 rounded-full ${stepIndex >= 1 ? 'bg-orange-500' : 'bg-gray-200'}`}></div>
-          <div className={`flex-1 h-2 rounded-full ${stepIndex === 2 ? 'bg-orange-500' : 'bg-gray-200'}`}></div>
-        </div>
-        {/* Form Fields: Full width, icons, spacing */}
-        <div className="max-h-[48vh] overflow-y-auto overflow-x-hidden p-3 space-y-6 w-full box-border">
+        <div className="w-full text-center text-sm text-gray-500 px-8 pt-2 pb-3">{STEPS[stepIndex].blurb}</div>
+        {/* Form Fields */}
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-8 py-2 space-y-6 w-full box-border">
           {page}
         </div>
         {/* Footer Buttons */}
-        <div className="flex items-center justify-between gap-2 border-t border-gray-200 bg-gray-50 px-4 py-3 mt-auto">
+        <div className="flex items-center justify-between gap-2 border-t border-gray-100 bg-gray-50/80 px-8 py-4 mt-auto">
           <div className="flex items-center gap-2">
             <button
               onClick={back}
               disabled={stepIndex === 0}
-              className="inline-flex items-center rounded border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-500 enabled:hover:bg-gray-50 disabled:opacity-40 transition-colors duration-200"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-600 enabled:hover:bg-gray-50 disabled:opacity-30 transition-colors duration-200"
             >
-              Back
-            </button>
-            <button
-              className="inline-flex items-center rounded border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-orange-500 hover:bg-orange-50 transition-colors duration-200"
-            >
-              Save & Continue Later
+              ← Back
             </button>
             {!isLast ? (
               <button
                 onClick={handleNextWithLog}
-                className="inline-flex items-center rounded bg-gradient-to-r from-orange-500 to-rose-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity duration-200"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-orange-500 to-rose-600 px-6 py-2 text-sm font-semibold text-white shadow-md hover:opacity-90 transition-opacity duration-200"
               >
-                Next
+                Next →
               </button>
             ) : (
               <button
                 onClick={handleSubmit}
-                className="inline-flex items-center rounded bg-gradient-to-r from-orange-500 to-rose-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity duration-200"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-orange-500 to-rose-600 px-6 py-2 text-sm font-semibold text-white shadow-md hover:opacity-90 transition-opacity duration-200"
               >
-                Submit
+                Submit ✓
               </button>
             )}
           </div>
