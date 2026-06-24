@@ -255,7 +255,7 @@ const JobCard: React.FC<JobCardProps> = ({
             <p className="text-xs font-medium text-blue-600">Second-stage screening in progress.</p>
           )}
           {sjSkipped && (
-            <p className="text-xs font-medium text-amber-700">Second-stage screening skipped{sjReason ? `: ${sjReason}` : '.'}</p>
+            <p className="text-xs font-medium text-amber-700">{sjReason || 'Second-stage screening skipped — job kept.'}</p>
           )}
         </div>
       )}

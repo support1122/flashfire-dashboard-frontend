@@ -703,6 +703,7 @@ type Entry = {
   jobID?: string;
   hasResume?: boolean;
   isJobBased?: boolean;
+  isAttached?: boolean;
   name: string;
   title?: string;
   version?: number;
@@ -861,6 +862,10 @@ export default function DocumentUpload() {
     return buildDownloadName(it || {}, category, clientName);
   };
   const [baseResume, setBaseResume] = useState<any[]>([]);
+  // Structured "attached" base resume (parsed JSON assigned via ResumeIndex).
+  // When present we show a "Base Resume" row that opens the same structured
+  // preview (ResumePreview / ResumePreviewMedical) used for optimized resumes.
+  const [baseResumeData, setBaseResumeData] = useState<any>(null);
   const [optimizedList, setOptimizedList] = useState<Entry[]>([]);
   const [coverList, setCoverList] = useState<Entry[]>([]);
   const [transcriptList, setTranscriptList] = useState<any[]>([]);
@@ -877,6 +882,11 @@ export default function DocumentUpload() {
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredResumes, setFilteredResumes] = useState<Entry[]>([]);
+
+  // Pagination for the optimized resumes list (sort logic unchanged; we only
+  // slice the already-sorted list per page so latest still shows on top).
+  const OPTIMIZED_PAGE_SIZE = 10;
+  const [optimizedPage, setOptimizedPage] = useState(1);
 
   // const [showMetaModal, setShowMetaModal] = useState<PendingType>(null);
   // const [pendingUploadType, setPendingUploadType] = useState<PendingType>(null);
@@ -1166,6 +1176,7 @@ export default function DocumentUpload() {
   // Effect to filter resumes when search term changes
   useEffect(() => {
     filterResumes(searchTerm);
+    setOptimizedPage(1); // reset to first page on new search / list change
   }, [searchTerm, optimizedList]);
 
   useEffect(() => {
@@ -1222,46 +1233,40 @@ export default function DocumentUpload() {
     }
   };
 
-  // fetchBaseResumeData: pull structured JSON for the user's base resume from
-  // dashboard backend (which proxies gemini-resume's /api/resume-by-email),
-  // then render via the same <ResumePreview> component used by optimized
-  // resumes. Returns true on success, false when no parsed JSON exists so
-  // caller can fall back to the iframe path.
-  const fetchBaseResumeData = async () => {
+  // Load the structured "attached" base resume once (per user). Decides whether
+  // to show the "Base Resume" row that opens the structured preview.
+  useEffect(() => {
     const email = context?.userDetails?.email;
     if (!email) {
-      alert("Not logged in — cannot load base resume.");
-      return false;
+      setBaseResumeData(null);
+      return;
     }
-    setResumeLoading(true);
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/get-base-resume-data`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ email }),
-      });
-      if (!response.ok) {
-        if (response.status === 404) return false; // no parsed resume — caller falls back to PDF iframe
-        const errText = await response.text();
-        console.error('get-base-resume-data failed:', response.status, errText);
-        return false;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/get-base-resume-data`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({ email }),
+        });
+        if (!response.ok) {
+          if (!cancelled) setBaseResumeData(null);
+          return;
+        }
+        const data = await response.json();
+        if (!cancelled) setBaseResumeData(data?.success && data?.resumeData ? data : null);
+      } catch (err) {
+        console.error('load base resume data error:', err);
+        if (!cancelled) setBaseResumeData(null);
       }
-      const data = await response.json();
-      if (data?.success && data?.resumeData) {
-        setResumeData(data);
-        return true;
-      }
-      return false;
-    } catch (err) {
-      console.error('fetchBaseResumeData error:', err);
-      return false;
-    } finally {
-      setResumeLoading(false);
-    }
-  };
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [context?.userDetails?.email]);
 
   // Default preview per tab (only when in preview mode AND no preview selected yet)
   useEffect(() => {
@@ -1849,7 +1854,10 @@ export default function DocumentUpload() {
 
                 {/* Actions */}
                 <div className="col-span-1 flex justify-end gap-2 whitespace-nowrap">
-                  {!it.isJobBased && (
+                  {/* No file to download for the structured "attached" base row.
+                      Base downloads are operator-only; normal users get view only. */}
+                  {!it.isJobBased && !it.isAttached &&
+                    !(category === "Base" && role !== "operations") && (
                     <a
                       href={
                         proxyAvailable === true
@@ -2004,19 +2012,33 @@ export default function DocumentUpload() {
                   Loading base resume preview…
                 </div>
               ) : resumeData && resumeData.resumeData ? (
-                // Structured preview — same component used for optimized resumes.
+                // Structured preview — same components used for optimized resumes.
+                // version 2 = medical template, otherwise normal. Download/print
+                // buttons are gated to operators (normal users get view only).
                 <div className="resume-preview-container">
-                  <ResumePreview
-                    data={resumeData.resumeData}
-                    showLeadership={resumeData.showLeadership}
-                    showProjects={resumeData.showProjects}
-                    showSummary={resumeData.showSummary}
-                    showPublications={resumeData.showPublications}
-                    showChanges={false}
-                    changedFields={new Set()}
-                    showPrintButtons={role === "operations"}
-                    sectionOrder={resumeData.sectionOrder}
-                  />
+                  {resumeData.version === 2 ? (
+                    <ResumePreviewMedical
+                      data={resumeData.resumeData}
+                      showLeadership={resumeData.showLeadership}
+                      showProjects={resumeData.showProjects}
+                      showSummary={resumeData.showSummary}
+                      showPublications={resumeData.showPublications}
+                      showPrintButtons={role === "operations"}
+                      sectionOrder={resumeData.sectionOrder}
+                    />
+                  ) : (
+                    <ResumePreview
+                      data={resumeData.resumeData}
+                      showLeadership={resumeData.showLeadership}
+                      showProjects={resumeData.showProjects}
+                      showSummary={resumeData.showSummary}
+                      showPublications={resumeData.showPublications}
+                      showChanges={false}
+                      changedFields={new Set()}
+                      showPrintButtons={role === "operations"}
+                      sectionOrder={resumeData.sectionOrder}
+                    />
+                  )}
                 </div>
               ) : (
                 // Fallback: no parsed JSON for this user → render raw PDF.
@@ -2029,16 +2051,26 @@ export default function DocumentUpload() {
             ) : (
               <>
                 <DocsTable
-                  items={Array.isArray(baseResume) ? baseResume : [baseResume]}
+                  items={[
+                    // Attached/parsed resume → structured preview (like optimized).
+                    ...(baseResumeData
+                      ? [{ name: "Base Resume", isAttached: true } as Entry]
+                      : []),
+                    ...(Array.isArray(baseResume) ? baseResume : baseResume ? [baseResume] : []),
+                  ]}
                   category="Base"
                   onPick={async (it) => {
-                    // Try structured preview first (matches optimized-resumes UX);
-                    // fall back to PDF iframe when no parsed JSON exists.
-                    const ok = await fetchBaseResumeData();
-                    if (!ok) {
-                      setResumeData(null);
-                      setActivePreviewUrl(toRawPdfUrl(it.link || it.url)!);
+                    if (it.isAttached) {
+                      // Structured preview from already-loaded attached resume.
+                      setResumeData(baseResumeData);
+                      setActivePreviewUrl(null);
+                      setActivePreviewName(dlName(it, "Base"));
+                      setPreviewMode(true);
+                      return;
                     }
+                    // Uploaded PDF row → raw PDF iframe.
+                    setResumeData(null);
+                    setActivePreviewUrl(toRawPdfUrl(it.link || it.url)!);
                     setActivePreviewName(dlName(it, "Base"));
                     setPreviewMode(true);
                   }}
@@ -2201,6 +2233,15 @@ export default function DocumentUpload() {
                     });
                   }
 
+                  // Paginate the already-sorted optimized list (display only;
+                  // sort order untouched so latest stays on top).
+                  const totalPages = Math.max(1, Math.ceil(list.length / OPTIMIZED_PAGE_SIZE));
+                  const safePage = Math.min(Math.max(1, optimizedPage), totalPages);
+                  const pagedList =
+                    tab === "optimized"
+                      ? list.slice((safePage - 1) * OPTIMIZED_PAGE_SIZE, safePage * OPTIMIZED_PAGE_SIZE)
+                      : list;
+
                   if (tab === "optimized") {
                     return fetchingResumes ? (
                       <div className="flex items-center justify-center py-8">
@@ -2292,7 +2333,7 @@ export default function DocumentUpload() {
                           </div>
                         )}
                         <DocsTable
-                          items={list}
+                          items={pagedList}
                           category="Resume"
                           onPick={(it) => {
                           // For job-specific optimized resumes, show resume data directly
@@ -2320,6 +2361,54 @@ export default function DocumentUpload() {
                           }
                         }}
                         />
+
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between mt-4 flex-wrap gap-2">
+                            <p className="text-sm text-gray-500">
+                              Page {safePage} of {totalPages} • {list.length} resumes
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => setOptimizedPage((p) => Math.max(1, p - 1))}
+                                disabled={safePage <= 1}
+                                className="px-3 py-1.5 text-sm rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                Prev
+                              </button>
+                              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                .filter(
+                                  (p) =>
+                                    p === 1 ||
+                                    p === totalPages ||
+                                    Math.abs(p - safePage) <= 1
+                                )
+                                .map((p, idx, arr) => (
+                                  <React.Fragment key={p}>
+                                    {idx > 0 && p - arr[idx - 1] > 1 && (
+                                      <span className="px-1 text-gray-400">…</span>
+                                    )}
+                                    <button
+                                      onClick={() => setOptimizedPage(p)}
+                                      className={`px-3 py-1.5 text-sm rounded border ${
+                                        p === safePage
+                                          ? "bg-blue-600 text-white border-blue-600"
+                                          : "border-gray-300 hover:bg-gray-50"
+                                      }`}
+                                    >
+                                      {p}
+                                    </button>
+                                  </React.Fragment>
+                                ))}
+                              <button
+                                onClick={() => setOptimizedPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={safePage >= totalPages}
+                                className="px-3 py-1.5 text-sm rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   } else {
