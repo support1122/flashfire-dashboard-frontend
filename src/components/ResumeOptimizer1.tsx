@@ -1854,10 +1854,9 @@ export default function DocumentUpload() {
 
                 {/* Actions */}
                 <div className="col-span-1 flex justify-end gap-2 whitespace-nowrap">
-                  {/* No file to download for the structured "attached" base row.
-                      Base downloads are operator-only; normal users get view only. */}
-                  {!it.isJobBased && !it.isAttached &&
-                    !(category === "Base" && role !== "operations") && (
+                  {/* Structured "attached" base row has no stored file — download
+                      happens via the preview's Select PDF Scale component. */}
+                  {!it.isJobBased && !it.isAttached && (
                     <a
                       href={
                         proxyAvailable === true
@@ -2013,8 +2012,8 @@ export default function DocumentUpload() {
                 </div>
               ) : resumeData && resumeData.resumeData ? (
                 // Structured preview — same components used for optimized resumes.
-                // version 2 = medical template, otherwise normal. Download/print
-                // buttons are gated to operators (normal users get view only).
+                // version 2 = medical template, otherwise normal. Scale/download
+                // (Select PDF Scale) shown to all roles for the base resume.
                 <div className="resume-preview-container">
                   {resumeData.version === 2 ? (
                     <ResumePreviewMedical
@@ -2023,7 +2022,7 @@ export default function DocumentUpload() {
                       showProjects={resumeData.showProjects}
                       showSummary={resumeData.showSummary}
                       showPublications={resumeData.showPublications}
-                      showPrintButtons={role === "operations"}
+                      showPrintButtons={true}
                       sectionOrder={resumeData.sectionOrder}
                     />
                   ) : (
@@ -2035,7 +2034,7 @@ export default function DocumentUpload() {
                       showPublications={resumeData.showPublications}
                       showChanges={false}
                       changedFields={new Set()}
-                      showPrintButtons={role === "operations"}
+                      showPrintButtons={true}
                       sectionOrder={resumeData.sectionOrder}
                     />
                   )}
@@ -2054,7 +2053,7 @@ export default function DocumentUpload() {
                   items={[
                     // Attached/parsed resume → structured preview (like optimized).
                     ...(baseResumeData
-                      ? [{ name: "Base Resume", isAttached: true } as Entry]
+                      ? [{ name: "Base Resume", isAttached: true, createdAt: baseResumeData.createdAt } as Entry]
                       : []),
                     ...(Array.isArray(baseResume) ? baseResume : baseResume ? [baseResume] : []),
                   ]}
