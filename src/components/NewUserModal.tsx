@@ -2388,17 +2388,17 @@ const handleSubmit = () => {
                 </div>
                 <div>
                   <FieldLabel>Date of Birth</FieldLabel>
-                  <TextInput 
+                  <DatePicker
                     hasError={!!errors.dob}
-                    type="date" 
-                    placeholder="Date of birth" 
-                    value={data.dob} 
-                    onChange={(e) => {
-                      set({ dob: e.target.value });
+                    placeholder="Date of birth"
+                    value={data.dob}
+                    onChange={(val) => {
+                      set({ dob: val });
                       if (errors.dob) {
                         setErrors(prev => ({ ...prev, dob: '' }));
                       }
-                    }} 
+                    }}
+                    maxDate={new Date(new Date().setFullYear(new Date().getFullYear() - 16)).toISOString().split('T')[0]}
                   />
                   <ErrorText>{errors.dob}</ErrorText>
                 </div>
