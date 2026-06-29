@@ -544,6 +544,8 @@ export default function ProfilePage() {
         if (Array.isArray(editDataCopy.targetCompanies)) {
             editDataCopy.targetCompanies = joinArr(editDataCopy.targetCompanies) as any;
         }
+        // SSN is stored as `ssn` in the DB but the form/edit uses `ssnNumber`.
+        (editDataCopy as any).ssnNumber = (data as any).ssn ?? (data as any).ssnNumber ?? "";
         setEditData(editDataCopy);
     };
 
@@ -1148,7 +1150,7 @@ export default function ProfilePage() {
                     <InfoRow
                         title="SSN Number"
                         value={
-                            editingSection === "compliance" ? editData.ssnNumber : data.ssnNumber
+                            editingSection === "compliance" ? editData.ssnNumber : ((data as any).ssn ?? data.ssnNumber)
                         }
                         isEditing={editingSection === "compliance"}
                         onValueChange={(v) => setEditData({ ...editData, ssnNumber: v })}
