@@ -1002,6 +1002,18 @@ export default function ProfilePage() {
                         }
                     />
                     <InfoRow
+                        title="Years of Experience (YOE)"
+                        value={
+                            editingSection === "professional"
+                                ? ((editData as any).yearsOfExperience ?? "")
+                                : ((data as any).yearsOfExperience ?? "")
+                        }
+                        isEditing={editingSection === "professional"}
+                        onValueChange={(v) =>
+                            setEditData({ ...editData, yearsOfExperience: v } as any)
+                        }
+                    />
+                    <InfoRow
                         title="Expected Base Salary"
                         value={
                             editingSection === "professional"
