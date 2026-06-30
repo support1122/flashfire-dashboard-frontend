@@ -1499,6 +1499,7 @@ type FormData = {
   address: string;
   preferredRoles: string;
   experienceLevel: string;
+  yearsOfExperience: string; // YOE — total years of professional experience
   expectedSalaryRange: string;
   preferredLocations: string;
   targetCompanies: string;
@@ -1546,6 +1547,7 @@ const initialData: FormData = {
   address: "",
   preferredRoles: "",
   experienceLevel: "",
+  yearsOfExperience: "",
   expectedSalaryRange: "",
   preferredLocations: "",
   targetCompanies: "",
@@ -2678,6 +2680,18 @@ const handleSubmit = () => {
                     </Select>
                     <ErrorText>{errors.expectedSalaryRange}</ErrorText>
                   </div>
+                </div>
+                <div>
+                  <FieldLabel required={false}>Years of Experience (YOE)</FieldLabel>
+                  <TextInput
+                    type="number"
+                    min={0}
+                    step="0.5"
+                    inputMode="decimal"
+                    placeholder="Total years of professional experience, e.g. 3"
+                    value={data.yearsOfExperience}
+                    onChange={(e) => set({ yearsOfExperience: e.target.value })}
+                  />
                 </div>
                 <div>
                   <FieldLabel required={false}>Employment Types</FieldLabel>
