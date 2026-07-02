@@ -1760,7 +1760,7 @@ export default function DocumentUpload() {
   category: "Resume" | "Cover Letter" | "Base" | "Transcript";
   onPick: (item: Entry) => void;
 }) => (
-  <div className="border rounded-lg overflow-hidden">
+  <div className="border border-gray-300 overflow-hidden">
     {/* ✅ Scrollable Container */}
     <div className="divide-y sm:hidden">
       {items.length === 0 ? (
@@ -1770,7 +1770,7 @@ export default function DocumentUpload() {
           <button
             key={i}
             type="button"
-            className="block w-full px-4 py-4 text-left hover:bg-gray-50"
+            className="block w-full px-4 py-4 text-left hover:bg-orange-50"
             onClick={() => onPick(it)}
             title="Click to preview"
           >
@@ -1814,7 +1814,7 @@ export default function DocumentUpload() {
                         href={it.jobLink.startsWith("http") ? it.jobLink : `https://${it.jobLink}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
+                        className="text-orange-600 hover:underline"
                         onClick={(e) => e.stopPropagation()}
                       >
                         Link
@@ -1831,7 +1831,7 @@ export default function DocumentUpload() {
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="mt-3 inline-flex items-center gap-2 rounded bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700"
+                className="mt-3 inline-flex items-center gap-2 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700"
                 title="Download"
               >
                 <DownloadIcon />
@@ -1866,7 +1866,7 @@ export default function DocumentUpload() {
             {items.map((it, i) => (
               <li
                 key={i}
-                className="grid grid-cols-12 items-center px-2 py-4 hover:bg-gray-50 cursor-pointer"
+                className="grid grid-cols-12 items-center px-2 py-4 hover:bg-orange-50 cursor-pointer"
                 onClick={() => onPick(it)}
                 title="Click to preview"
               >
@@ -1922,7 +1922,7 @@ export default function DocumentUpload() {
                           }
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
+                          className="text-orange-600 hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
                           Link
@@ -1991,7 +1991,7 @@ export default function DocumentUpload() {
 
     return (
       <div className="flex flex-col items-center">
-        <div className="border shadow mb-4 w-full h-[70vh] md:h-[80vh] bg-gray-50">
+        <div className="border border-gray-300 mb-4 w-full h-[70vh] md:h-[80vh] bg-gray-50">
           <iframe
             key={src} // force reload when URL changes
             title="pdf-preview"
@@ -2014,13 +2014,13 @@ export default function DocumentUpload() {
             download={`${name}.pdf`}
             target="_blank"
             rel="noreferrer"
-            className="bg-blue-600 text-white px-4 py-2 rounded"
+            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 font-medium transition-colors"
           >
             Download
           </a>
           <button
             onClick={onChange}
-            className="bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded"
+            className="border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 font-medium transition-colors"
           >
             View All Docs
           </button>
@@ -2030,18 +2030,29 @@ export default function DocumentUpload() {
   };
 
  return (
-  <div className="mx-auto max-w-6xl p-3 sm:p-4">
+  <div className="min-h-screen bg-gray-50">
+    {/* Header bar */}
+    <div className="bg-white border-b border-gray-200 border-t-4 border-t-orange-500 px-5 py-4">
+      <h1 className="text-lg font-bold text-gray-900 leading-tight">
+        <span className="text-orange-500">Documents</span>
+      </h1>
+      <p className="text-sm text-gray-500 mt-0.5">Manage your resumes, cover letters, and transcripts</p>
+    </div>
+
+    <div className="px-5 py-6">
     <div className="flex flex-col md:grid md:grid-cols-12 gap-4">
-      
+
       {/* Sidebar */}
-      <aside className="md:col-span-3 bg-white rounded-lg shadow border top-20">
-        <h2 className="px-4 py-3 font-semibold border-b">Documents</h2>
+      <aside className="md:col-span-3 bg-white border border-gray-300">
+        <h2 className="px-4 py-3 font-semibold text-gray-900 border-b border-gray-200">Documents</h2>
         <nav className="flex overflow-x-auto md:flex-col md:overflow-visible">
           {documentTabs.map((tab) => (
             <button
               key={tab.id}
-              className={`flex-shrink-0 px-4 py-3 text-left hover:bg-gray-50 transition md:w-full ${
-                activeTab === tab.id ? "bg-blue-50 text-blue-700 font-medium" : ""
+              className={`flex-shrink-0 px-4 py-3 text-left text-sm font-medium transition-colors md:w-full ${
+                activeTab === tab.id
+                  ? "border-2 border-orange-500 bg-orange-50 text-orange-600"
+                  : "text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
               }`}
               onClick={() => {
                 setActiveTab(tab.id);
@@ -2056,7 +2067,7 @@ export default function DocumentUpload() {
       </aside>
 
       {/* Main content */}
-      <main className="min-w-0 md:col-span-9 bg-white rounded-lg shadow border p-3 sm:p-4 md:p-6">
+      <main className="min-w-0 md:col-span-9 bg-white border border-gray-300 p-3 sm:p-4 md:p-6">
         {/* Empty state when no tab is selected */}
         {!activeTab && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -2080,7 +2091,7 @@ export default function DocumentUpload() {
                     setResumeData(null);
                     setActivePreviewUrl(null);
                   }}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700"
+                  className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 font-medium transition-colors"
                 >
                   <ArrowLeftCircle className="w-4 h-4" /> View All Docs
                 </button>
@@ -2167,7 +2178,7 @@ export default function DocumentUpload() {
                       onChange={(e) => handleFileUpload(e, "base")}
                       disabled={isUploading}
                     />
-                    <span className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm">
+                    <span className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 text-sm font-medium transition-colors">
                       Choose File
                     </span>
                   </label>
@@ -2194,7 +2205,7 @@ export default function DocumentUpload() {
                   {previewMode ? (
                     <button
                       onClick={() => setPreviewMode(false)}
-                      className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                      className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 font-medium transition-colors"
                     >
                       <ArrowLeftCircle className="w-4 h-4" /> View All Docs
                     </button>
@@ -2205,7 +2216,7 @@ export default function DocumentUpload() {
                         {tab === "optimized" && (
                           <button
                             onClick={fetchAllOptimizedResumes}
-                            className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white shadow-sm transition-colors hover:bg-green-700 sm:w-auto"
+                            className="flex w-full items-center justify-center gap-2 bg-green-600 px-4 py-2 text-white font-medium transition-colors hover:bg-green-700 sm:w-auto"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -2233,7 +2244,7 @@ export default function DocumentUpload() {
                           </svg>
                           Sort by Date
                         </button> */}
-                        <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white shadow-sm transition-colors hover:bg-blue-700 sm:w-auto">
+                        <label className="inline-flex w-full cursor-pointer items-center justify-center gap-2 bg-orange-500 px-4 py-2 text-white font-medium transition-colors hover:bg-orange-600 sm:w-auto">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                           </svg>
@@ -2269,7 +2280,7 @@ export default function DocumentUpload() {
                               placeholder="Search by role or company..."
                               value={searchTerm}
                               onChange={(e) => setSearchTerm(e.target.value)}
-                              className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+                              className="w-full pl-10 pr-10 py-2 border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                             />
                             {searchTerm && (
                               <button
@@ -2333,9 +2344,9 @@ export default function DocumentUpload() {
                         {searchTerm ? (
                           <p className="text-sm text-gray-500">
                             No resumes found matching "{searchTerm}". 
-                            <button 
-                              onClick={() => setSearchTerm('')} 
-                              className="text-blue-600 hover:underline ml-1"
+                            <button
+                              onClick={() => setSearchTerm('')}
+                              className="text-orange-600 hover:underline ml-1"
                             >
                               Clear search
                             </button>
@@ -2388,7 +2399,7 @@ export default function DocumentUpload() {
                               setPreviewMode(false);
                               setResumeData(null);
                             }}
-                            className="bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded"
+                            className="border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 font-medium transition-colors"
                           >
                             View All Docs
                           </button>
@@ -2407,8 +2418,8 @@ export default function DocumentUpload() {
                     ) : (
                       <div>
                         {searchTerm && (
-                          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                            <p className="text-sm text-blue-700">
+                          <div className="mb-4 p-3 bg-orange-50 border border-orange-200">
+                            <p className="text-sm text-orange-700">
                               Showing {list.length} of {optimizedList.length} resumes matching "{searchTerm}"
                             </p>
                           </div>
@@ -2452,7 +2463,7 @@ export default function DocumentUpload() {
                               <button
                                 onClick={() => setOptimizedPage((p) => Math.max(1, p - 1))}
                                 disabled={safePage <= 1}
-                                className="px-3 py-1.5 text-sm rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="px-3 py-1.5 text-sm border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                               >
                                 Prev
                               </button>
@@ -2470,9 +2481,9 @@ export default function DocumentUpload() {
                                     )}
                                     <button
                                       onClick={() => setOptimizedPage(p)}
-                                      className={`px-3 py-1.5 text-sm rounded border ${
+                                      className={`px-3 py-1.5 text-sm border ${
                                         p === safePage
-                                          ? "bg-blue-600 text-white border-blue-600"
+                                          ? "bg-orange-500 text-white border-orange-500"
                                           : "border-gray-300 hover:bg-gray-50"
                                       }`}
                                     >
@@ -2483,7 +2494,7 @@ export default function DocumentUpload() {
                               <button
                                 onClick={() => setOptimizedPage((p) => Math.min(totalPages, p + 1))}
                                 disabled={safePage >= totalPages}
-                                className="px-3 py-1.5 text-sm rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="px-3 py-1.5 text-sm border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
                               >
                                 Next
                               </button>
@@ -2533,7 +2544,7 @@ export default function DocumentUpload() {
               </p>
             </div>
 
-            <div className="border rounded-lg overflow-hidden mb-6">
+            <div className="border border-gray-300 overflow-hidden mb-6">
               <div className="grid grid-cols-12 bg-gray-100 text-sm font-semibold px-4 py-3 gap-2">
                 <div className="col-span-4">Name</div>
                 <div className="col-span-5">URL</div>
@@ -2562,7 +2573,7 @@ export default function DocumentUpload() {
                             href={href}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline break-all"
+                            className="text-sm text-orange-600 hover:underline break-all"
                           >
                             {item.url}
                           </a>
@@ -2572,7 +2583,7 @@ export default function DocumentUpload() {
                             href={href}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-2 text-gray-600 hover:text-blue-600"
+                            className="p-2 text-gray-600 hover:text-orange-600"
                             title="Open in new tab"
                           >
                             <ExternalLink className="w-4 h-4" />
@@ -2585,7 +2596,7 @@ export default function DocumentUpload() {
               )}
             </div>
 
-            <div className="rounded-lg border border-gray-200 p-4 bg-gray-50">
+            <div className="border border-gray-200 p-4 bg-gray-50">
               <h4 className="text-sm font-semibold text-gray-800 mb-3">
                 Add link
               </h4>
@@ -2599,7 +2610,7 @@ export default function DocumentUpload() {
                     value={newPortfolioName}
                     onChange={(e) => setNewPortfolioName(e.target.value)}
                     placeholder="e.g. GitHub, Case study"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -2611,7 +2622,7 @@ export default function DocumentUpload() {
                     value={newPortfolioUrl}
                     onChange={(e) => setNewPortfolioUrl(e.target.value)}
                     placeholder="https://example.com"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    className="w-full border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -2619,7 +2630,7 @@ export default function DocumentUpload() {
                 type="button"
                 onClick={addPortfolioLink}
                 disabled={isUploading}
-                className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
               >
                 {isUploading ? "Saving…" : "Add portfolio link"}
               </button>
@@ -2628,7 +2639,8 @@ export default function DocumentUpload() {
         )}
       </main>
     </div>
-  
+    </div>
+
 
       {/* {/* Metadata modal */}
       {/* {showMetaModal && ( */}

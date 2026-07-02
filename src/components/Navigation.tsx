@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useRef, useContext, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Home,
   Briefcase,
@@ -39,6 +39,8 @@ const Navigation: React.FC<NavigationProps> = ({
   setUserProfileFormVisibility,
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isProfileRoute = location.pathname === "/profile";
   const ctx = useContext(UserContext);
   const userDetails = ctx?.userDetails;
   const [user, setUser] = useState(userDetails?.name || "");
@@ -274,7 +276,7 @@ const Navigation: React.FC<NavigationProps> = ({
               onTouchStart={() => handleLongPressStart(id)}
               onTouchEnd={handleLongPressEnd}
               className={`flex items-center gap-3 py-2.5 text-sm font-medium transition-colors ${
-                activeTab === id
+                activeTab === id && !isProfileRoute
                   ? "border-2 border-orange-500 bg-orange-50 text-orange-600 px-3"
                   : "px-3 text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
               }`}
@@ -285,7 +287,11 @@ const Navigation: React.FC<NavigationProps> = ({
           ))}
           <Link
             to="/profile"
-            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+            className={`flex items-center gap-3 py-2.5 text-sm font-medium transition-colors ${
+              isProfileRoute
+                ? "border-2 border-orange-500 bg-orange-50 text-orange-600 px-3"
+                : "px-3 text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
+            }`}
           >
             <User className="w-4 h-4 flex-shrink-0" />
             Profile
@@ -371,7 +377,7 @@ const Navigation: React.FC<NavigationProps> = ({
                 onTouchStart={() => handleLongPressStart(id)}
                 onTouchEnd={handleLongPressEnd}
                 className={`w-full flex items-center gap-3 px-5 py-3 text-sm font-medium text-left transition-colors ${
-                  activeTab === id
+                  activeTab === id && !isProfileRoute
                     ? "border-2 border-orange-500 bg-orange-50 text-orange-600"
                     : "text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
                 }`}
@@ -383,7 +389,11 @@ const Navigation: React.FC<NavigationProps> = ({
             <Link
               to="/profile"
               onClick={() => setMenuOpen(false)}
-              className="flex items-center gap-3 px-5 py-3 text-sm font-medium text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+              className={`flex items-center gap-3 px-5 py-3 text-sm font-medium transition-colors ${
+                isProfileRoute
+                  ? "border-2 border-orange-500 bg-orange-50 text-orange-600"
+                  : "text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
+              }`}
             >
               <User className="w-4 h-4" />
               Profile

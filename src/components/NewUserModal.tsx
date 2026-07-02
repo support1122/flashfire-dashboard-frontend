@@ -1447,7 +1447,7 @@
 
 import React, { useContext, useMemo, useState, useEffect } from "react";
 import { UserContext } from "../state_management/UserContext";
-import { CarTaxiFront, X, Check } from "lucide-react";
+import { Check, User, Briefcase, FileCheck2, ChevronLeft, ChevronRight, ShieldCheck, Sparkles } from "lucide-react";
 import { useUserProfile } from "../state_management/ProfileContext";
 import { useNavigate } from 'react-router-dom';
 import { DatePicker } from "./DatePicker";
@@ -1576,31 +1576,7 @@ const EMPLOYMENT_TYPE_OPTIONS = ["Full-time", "Part-time", "Contract", "Internsh
 const JOIN_TIME_OPTIONS = ["in 1 week", "in 2 weeks", "in 3 weeks", "in 4 weeks", "in 6-7 weeks"];
 
 /** ---------- UI Helpers ---------- */
-function Header({ stepIndex }: { stepIndex: number }) {
-  const step = STEPS[stepIndex];
-  const percent = ((stepIndex + 1) / STEPS.length) * 100;
-  return (
-    <div className="relative overflow-hidden rounded-t-2xl">
-      <div className="bg-gradient-to-r from-orange-500 to-rose-600 p-8 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="uppercase tracking-widest text-xs font-semibold text-white/90 mb-2">FlashFire — Client Onboarding</p>
-            <h2 className="text-2xl font-bold mb-2">
-              Step {stepIndex + 1} of {STEPS.length}: {step.title}
-            </h2>
-            <p className="text-white/95 text-base">{step.blurb}</p>
-          </div>
-          <div className="hidden sm:block text-right">
-            <span className="inline-block rounded-full bg-white/20 px-4 py-2 text-sm font-medium backdrop-blur-sm">All fields required</span>
-          </div>
-        </div>
-      </div>
-      <div className="h-2 w-full bg-gray-100">
-        <div className="h-full bg-gradient-to-r from-orange-500 to-rose-600 transition-all duration-500 ease-out" style={{ width: `${percent}%` }} />
-      </div>
-    </div>
-  );
-}
+const STEP_ICONS = [User, Briefcase, FileCheck2] as const;
 
 function FieldLabel({ children, required = true }: { children: React.ReactNode; required?: boolean }) {
   return (
@@ -3040,53 +3016,124 @@ const handleSubmit = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="relative z-10 mx-auto w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/10 flex flex-col max-h-[92vh]">
-        {/* Gradient Header */}
-        <div className="w-full flex items-center justify-between bg-gradient-to-r from-orange-500 to-rose-600 px-8 py-5">
-          <div className="flex items-center gap-3">
-            <span className="bg-white/25 rounded-full p-1.5"><svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></span>
-            <div>
-              <p className="text-white/70 text-xs font-medium uppercase tracking-widest">Profile Setup</p>
-              <p className="text-white font-bold text-lg leading-tight">Step {stepIndex + 1} of 3</p>
+      <div className="relative z-10 mx-auto flex w-full max-w-4xl max-h-[92vh] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/10 md:flex-row">
+
+        {/* Left rail — branded step overview (desktop only) */}
+        <div className="hidden md:flex md:w-72 md:flex-shrink-0 flex-col justify-between bg-gradient-to-b from-orange-500 to-rose-600 px-8 py-8 text-white">
+          <div>
+            <div className="mb-8 flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-bold uppercase tracking-wide text-white/90">FlashFire</span>
+            </div>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-white/70">Client Onboarding</p>
+            <h2 className="mb-8 text-2xl font-bold leading-snug">Let's set up your profile</h2>
+
+            <ol className="space-y-6">
+              {STEPS.map((step, i) => {
+                const Icon = STEP_ICONS[i];
+                const isDone = stepIndex > i;
+                const isCurrent = stepIndex === i;
+                return (
+                  <li key={step.key} className="flex items-start gap-3">
+                    <span
+                      className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors ${
+                        isDone
+                          ? "border-white bg-white text-orange-600"
+                          : isCurrent
+                          ? "border-white bg-white/20 text-white"
+                          : "border-white/40 text-white/60"
+                      }`}
+                    >
+                      {isDone ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+                    </span>
+                    <div className={isCurrent ? "opacity-100" : "opacity-70"}>
+                      <p className="text-sm font-semibold leading-tight">{step.title}</p>
+                      <p className="mt-0.5 text-xs leading-snug text-white/70">{step.blurb}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+
+          <div className="flex items-start gap-2 rounded-lg bg-white/10 px-3 py-3 text-xs text-white/80">
+            <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <span>Your information is kept confidential and used only to personalize your job search.</span>
+          </div>
+        </div>
+
+        {/* Right pane — active step content */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Mobile header (rail is hidden below md) */}
+          <div className="bg-gradient-to-r from-orange-500 to-rose-600 px-6 py-5 text-white md:hidden">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/80">Profile Setup</p>
+              <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+                Step {stepIndex + 1} of {STEPS.length}
+              </span>
+            </div>
+            <h2 className="mb-1 text-lg font-bold leading-tight">{STEPS[stepIndex].title}</h2>
+            <p className="text-sm text-white/90">{STEPS[stepIndex].blurb}</p>
+            <div className="mt-4 flex gap-1.5">
+              {STEPS.map((step, i) => (
+                <div
+                  key={step.key}
+                  className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+                    stepIndex >= i ? "bg-white" : "bg-white/30"
+                  }`}
+                />
+              ))}
             </div>
           </div>
-          <span className="bg-white/20 text-white text-xs font-semibold px-4 py-1.5 rounded-full">{STEPS[stepIndex].title}</span>
-        </div>
-        {/* Progress Bar */}
-        <div className="w-full flex gap-1.5 px-8 pt-4 pb-1">
-          <div className={`flex-1 h-1.5 rounded-full transition-colors duration-300 ${stepIndex >= 0 ? 'bg-orange-500' : 'bg-gray-200'}`}></div>
-          <div className={`flex-1 h-1.5 rounded-full transition-colors duration-300 ${stepIndex >= 1 ? 'bg-orange-500' : 'bg-gray-200'}`}></div>
-          <div className={`flex-1 h-1.5 rounded-full transition-colors duration-300 ${stepIndex >= 2 ? 'bg-orange-500' : 'bg-gray-200'}`}></div>
-        </div>
-        {/* Description */}
-        <div className="w-full text-center text-sm text-gray-500 px-8 pt-2 pb-3">{STEPS[stepIndex].blurb}</div>
-        {/* Form Fields */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-8 py-2 space-y-6 w-full box-border">
-          {page}
-        </div>
-        {/* Footer Buttons */}
-        <div className="flex items-center justify-between gap-2 border-t border-gray-100 bg-gray-50/80 px-8 py-4 mt-auto">
-          <div className="flex items-center gap-2">
+
+          {/* Desktop step label */}
+          <div className="hidden flex-shrink-0 items-center justify-between border-b border-gray-100 px-8 py-4 md:flex">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+                Step {stepIndex + 1} of {STEPS.length}
+              </p>
+              <h3 className="text-lg font-bold text-gray-900">{STEPS[stepIndex].title}</h3>
+            </div>
+            <span className="border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-600">
+              All fields required
+            </span>
+          </div>
+
+          {/* Form Fields */}
+          <div
+            ref={scrollContainerRef}
+            className="box-border w-full flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-6 py-6 md:px-8"
+          >
+            {page}
+          </div>
+
+          {/* Footer */}
+          <div className="mt-auto flex flex-shrink-0 items-center justify-between gap-2 border-t border-gray-200 bg-gray-50 px-6 py-4 md:px-8">
             <button
               onClick={back}
               disabled={stepIndex === 0}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-5 py-2 text-sm font-medium text-gray-600 enabled:hover:bg-gray-50 disabled:opacity-30 transition-colors duration-200"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition-colors enabled:hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
             >
-              ← Back
+              <ChevronLeft className="h-4 w-4" /> Back
             </button>
+            <span className="hidden text-xs font-medium text-gray-400 sm:inline">
+              Step {stepIndex + 1} of {STEPS.length}
+            </span>
             {!isLast ? (
               <button
                 onClick={handleNextWithLog}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-orange-500 to-rose-600 px-6 py-2 text-sm font-semibold text-white shadow-md hover:opacity-90 transition-opacity duration-200"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
               >
-                Next →
+                Continue <ChevronRight className="h-4 w-4" />
               </button>
             ) : (
               <button
                 onClick={handleSubmit}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-orange-500 to-rose-600 px-6 py-2 text-sm font-semibold text-white shadow-md hover:opacity-90 transition-opacity duration-200"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-orange-500 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
               >
-                Submit ✓
+                <Check className="h-4 w-4" /> Submit Profile
               </button>
             )}
           </div>

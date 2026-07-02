@@ -155,7 +155,7 @@ function InfoRow({
                         className={`w-full text-sm border-b px-2 py-1 focus:outline-none ${
                             error
                                 ? "border-red-400 focus:border-red-500"
-                                : "border-gray-300 focus:border-blue-500"
+                                : "border-gray-300 focus:border-orange-500"
                         }`}
                         placeholder={`Enter ${title.toLowerCase()}`}
                     />
@@ -211,15 +211,15 @@ function CheckboxGroupRow({
                             return (
                                 <label
                                     key={opt}
-                                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm cursor-pointer transition ${
+                                    className={`inline-flex items-center gap-2 px-3 py-1.5 border text-sm cursor-pointer transition-colors ${
                                         checked
-                                            ? "bg-blue-50 border-blue-400 text-blue-900"
+                                            ? "bg-orange-50 border-orange-400 text-orange-700"
                                             : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                                     }`}
                                 >
                                     <input
                                         type="checkbox"
-                                        className="accent-blue-600"
+                                        className="accent-orange-500"
                                         checked={checked}
                                         onChange={() => toggle(opt)}
                                     />
@@ -262,7 +262,7 @@ function TextAreaRow({
                     <textarea
                         value={value || ""}
                         onChange={(e) => onValueChange(e.target.value)}
-                        className="w-full text-sm border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none rounded-lg"
+                        className="w-full text-sm border border-gray-300 px-3 py-2 focus:border-orange-500 focus:outline-none"
                         rows={3}
                         placeholder={`Enter ${title.toLowerCase()}`}
                     />
@@ -381,7 +381,7 @@ function FileUploadRow({
                 ) : currentFile ? (
                     <>
                         <a
-                            className="text-blue-600 underline text-sm break-words hover:text-blue-800"
+                            className="text-orange-600 underline text-sm break-words hover:text-orange-800"
                             href={currentFile}
                             target="_blank"
                             rel="noreferrer"
@@ -416,7 +416,7 @@ function Card({
     onCancel?: () => void;
 }) {
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+        <div className="bg-white border border-gray-300 p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
                 <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 sm:mb-0">
                     {title}
@@ -425,13 +425,13 @@ function Card({
                     <div className="flex flex-wrap items-center gap-3">
                         <button
                             onClick={onSave}
-                            className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-600 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 rounded-lg shadow-md transition-all"
+                            className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-colors"
                         >
                             <Save size={16} /> Save
                         </button>
                         <button
                             onClick={onCancel}
-                            className="inline-flex items-center gap-2 border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 rounded-lg transition-all"
+                            className="inline-flex items-center gap-2 border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                         >
                             <X size={16} /> Cancel
                         </button>
@@ -440,7 +440,7 @@ function Card({
                     onEdit && (
                         <button
                             onClick={onEdit}
-                            className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-600 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 rounded-lg shadow-md transition-all"
+                            className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-colors"
                         >
                             <Pencil size={16} /> Edit
                         </button>
@@ -674,42 +674,39 @@ export default function ProfilePage() {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <div className="bg-gradient-to-r from-orange-500 to-rose-500 shadow-md">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    {/* Back button */}
-                    <div className="flex justify-center sm:justify-start w-full sm:w-auto">
+            <div className="bg-white border-b border-gray-200 border-t-4 border-t-orange-500 px-5 py-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-4">
                         <Link
                             to="/"
-                            className="flex items-center gap-2 rounded-lg bg-white/20 backdrop-blur-sm px-4 py-2 text-white hover:bg-white/30 transition-all duration-200"
+                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-300 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 transition-colors"
                         >
                             <ArrowLeft size={16} />
-                            <span className="text-sm font-medium">Back to Dashboard</span>
+                            Back to Dashboard
                         </Link>
-                    </div>
-
-                    {/* Centered profile title block */}
-                    <div className="flex-1 text-center">
-                        <p className="text-xs uppercase tracking-wider text-white/80 font-semibold">
-                            Professional Profile
-                        </p>
-                        <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold text-white drop-shadow-md">
-                            {fullName}
-                        </h1>
+                        <div>
+                            <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">
+                                Professional Profile
+                            </p>
+                            <h1 className="text-lg font-bold text-gray-900 leading-tight">
+                                <span className="text-orange-500">{fullName}</span>
+                            </h1>
+                        </div>
                     </div>
 
                     {gmailConnected !== null && role === 'operations' && (
-                        <div className="flex justify-center sm:justify-end w-full sm:w-auto">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                             {gmailConnected ? (
                                 <button
                                     type="button"
                                     onClick={handleConnectGmail}
-                                    className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-emerald-50 border border-emerald-300/60 shadow-sm hover:bg-white/20 hover:border-emerald-200 transition-all"
+                                    className="inline-flex items-center gap-2 bg-white px-4 py-2 text-sm font-medium text-emerald-700 border border-emerald-300 hover:bg-emerald-50 transition-colors"
                                     title="Click to change or reconnect the Gmail account used for recruiter outreach"
                                 >
-                                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+                                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
                                     <span>
                                         Gmail connected for recruiter outreach
-                                        <span className="ml-1 underline decoration-emerald-200 decoration-dotted">
+                                        <span className="ml-1 underline decoration-emerald-400 decoration-dotted">
                                             (click to change)
                                         </span>
                                     </span>
@@ -717,9 +714,9 @@ export default function ProfilePage() {
                             ) : (
                                 <button
                                     onClick={handleConnectGmail}
-                                    className="inline-flex items-center gap-2 rounded-lg bg-white text-sm font-semibold text-orange-600 px-4 py-2 shadow-md hover:shadow-lg hover:bg-orange-50 transition-all"
+                                    className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-sm font-semibold text-white px-4 py-2 transition-colors"
                                 >
-                                    <span className="inline-block h-2 w-2 rounded-full bg-red-400" />
+                                    <span className="inline-block h-2 w-2 rounded-full bg-red-300" />
                                     <span>Connect Gmail for recruiter emails</span>
                                 </button>
                             )}
@@ -1269,14 +1266,14 @@ export default function ProfilePage() {
 
                 {/* Credentials */}
                 <Card title="Account Access Credentials">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <div className="bg-orange-50 border border-orange-200 p-4 mb-6">
                         <div className="flex items-center gap-2 mb-2">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                            <span className="text-sm font-semibold text-blue-800">
+                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                            <span className="text-sm font-semibold text-orange-800">
                                 Account Credentials
                             </span>
                         </div>
-                        <p className="text-sm text-blue-700">
+                        <p className="text-sm text-orange-700">
                             These are the credentials which you can use while applying in
                             different portals.
                         </p>
@@ -1286,7 +1283,7 @@ export default function ProfilePage() {
                         value={ctx?.userDetails?.email || "Not available"}
                     />
                     <InfoRow title="Password" value="Flashfire@1357" />
-                    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <div className="mt-6 p-4 bg-gray-50 border border-gray-200">
                         <h4 className="text-sm font-semibold text-gray-700 mb-2">
                             Important Notes:
                         </h4>
