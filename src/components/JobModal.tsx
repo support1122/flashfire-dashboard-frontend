@@ -2011,7 +2011,9 @@ export default function JobModal({
                                                             ? 'Opening the employer site and re-judging…'
                                                             : jobDetails.secondJudge.status === 'skipped'
                                                                 ? (jobDetails.secondJudge.reason || 'The second-stage check could not be completed — job kept.')
-                                                                : 'Queued for second-stage screening.'}
+                                                                : (jobDetails.secondJudge.status === 'pending' && (jobDetails.secondJudge.attempts ?? 0) > 0 && jobDetails.secondJudge.error)
+                                                                    ? `Paused after a temporary error opening the posting — retrying automatically (attempt ${jobDetails.secondJudge.attempts}). Backoff grows to several hours before it gives up and keeps the job.`
+                                                                    : 'Queued for second-stage screening.'}
                                             </p>
                                         </li>
                                     )}
