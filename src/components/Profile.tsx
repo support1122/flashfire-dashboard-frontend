@@ -1005,8 +1005,8 @@ export default function ProfilePage() {
                         title="Years of Experience (YOE)"
                         value={
                             editingSection === "professional"
-                                ? ((editData as any).yearsOfExperience ?? "")
-                                : ((data as any).yearsOfExperience ?? "")
+                                ? String((editData as any).yearsOfExperience ?? "")
+                                : String((data as any).yearsOfExperience ?? "")
                         }
                         isEditing={editingSection === "professional"}
                         onValueChange={(v) =>
