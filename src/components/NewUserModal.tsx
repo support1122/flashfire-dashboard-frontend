@@ -1571,7 +1571,7 @@ const initialData: FormData = {
   referredBy: '',              // optional
 };
 
-const VISA_OPTIONS = ["CPT", "F1", "F1 OPT", "F1 STEM OPT", "H1B", "Green Card", "U.S. Citizen", "Other"];
+const VISA_OPTIONS = ["CPT", "F1", "F1 OPT", "F1 STEM OPT", "H1B", "Green Card", "U.S. Citizen", "Canadian Citizen", "Permanent Resident (PR)", "Post-Graduation Work Permit (PGWP)", "Open Work Permit (OWP)", "Employer-Specific (Closed) Work Permit", "Study Permit", "Other"];
 const EXPERIENCE_OPTIONS = ["0-2 Years", "2-4 Years", "4-6 Years", "6-8 Years", "8+ Years"];
 const SALARY_OPTIONS = ["60k-100k", "100k-150k", "150k-200k", "Other"];
 const EMPLOYMENT_TYPE_OPTIONS = ["Full-time", "Part-time", "Contract", "Internship"] as const;
