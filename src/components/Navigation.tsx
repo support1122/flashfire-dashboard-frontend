@@ -19,12 +19,15 @@ import { useUserProfile } from "../state_management/ProfileContext.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
 import { useDownloadHighlightStore } from "../state_management/DownloadHighlightStore.ts";
 import { toastUtils, toastMessages } from "../utils/toast.ts";
-import ReferAndEarnCard from "./ReferAndEarnCard.tsx";
+
+type DocumentCategoryId = "base" | "optimized" | "cover" | "transcript" | "portfolio";
 
 interface NavigationProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   setUserProfileFormVisibility?: any;
+  documentCategory?: DocumentCategoryId | null;
+  onDocumentCategoryChange?: (category: DocumentCategoryId | null) => void;
 }
 
 interface TabItem {
@@ -37,6 +40,8 @@ const Navigation: React.FC<NavigationProps> = ({
   activeTab,
   onTabChange,
   setUserProfileFormVisibility,
+  documentCategory = null,
+  onDocumentCategoryChange,
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,7 +58,6 @@ const Navigation: React.FC<NavigationProps> = ({
   const [extraInput, setExtraInput] = useState<string>("");
   const [savingLimit, setSavingLimit] = useState(false);
   const [limitSaveMsg, setLimitSaveMsg] = useState<string | null>(null);
-  const [showReferAndEarnCard, setShowReferAndEarnCard] = useState(false);
 
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -147,11 +151,24 @@ const Navigation: React.FC<NavigationProps> = ({
 
   const tabs: TabItem[] = [
     { id: "dashboard", label: "Overview", icon: Home },
-    { id: "jobs", label: "Job tracker", icon: Briefcase },
+    { id: "jobs", label: "Job Tracker", icon: Briefcase },
     { id: "optimizer", label: "Document", icon: FileText },
     ...(isOpsRole ? [{ id: "mail", label: "Mail", icon: Mail }] : []),
     ...(isOpsRole ? [{ id: "operations", label: "Operations", icon: Settings }] : []),
   ];
+
+  const documentSubItems: { id: DocumentCategoryId; label: string }[] = [
+    { id: "base", label: "Base Resume" },
+    { id: "optimized", label: "Optimized Resumes" },
+    { id: "cover", label: "Cover Letters" },
+    { id: "transcript", label: "Transcripts" },
+    ...(isOpsRole ? [{ id: "portfolio" as DocumentCategoryId, label: "Portfolio" }] : []),
+  ];
+
+  const selectDocumentCategory = (category: DocumentCategoryId | null) => {
+    onTabChange("optimizer");
+    onDocumentCategoryChange?.(category);
+  };
 
   useEffect(() => { setUser(userDetails?.name || ""); }, [userDetails]);
 
@@ -265,26 +282,66 @@ const Navigation: React.FC<NavigationProps> = ({
 
         {/* Nav Items */}
         <nav className="flex-1 px-3 pt-4 space-y-0.5 overflow-y-auto">
-          {tabs.map(({ id, label, icon: Icon }) => (
-            <Link
-              key={id}
-              to="/"
-              onClick={() => onTabChange(id)}
-              onMouseDown={() => handleLongPressStart(id)}
-              onMouseUp={handleLongPressEnd}
-              onMouseLeave={handleLongPressEnd}
-              onTouchStart={() => handleLongPressStart(id)}
-              onTouchEnd={handleLongPressEnd}
-              className={`flex items-center gap-3 py-2.5 text-sm font-medium transition-colors ${
-                activeTab === id && !isProfileRoute
-                  ? "border-2 border-orange-500 bg-orange-50 text-orange-600 px-3"
-                  : "px-3 text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
-              }`}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
-            </Link>
-          ))}
+          {tabs.map(({ id, label, icon: Icon }) => {
+            if (id === "optimizer") {
+              const docActive = activeTab === "optimizer" && !documentCategory;
+              return (
+                <div key={id}>
+                  <Link
+                    to="/"
+                    onClick={() => selectDocumentCategory(null)}
+                    className={`flex items-center gap-3 py-2.5 text-sm font-medium transition-colors ${
+                      docActive && !isProfileRoute
+                        ? "border-2 border-orange-500 bg-orange-50 text-orange-600 px-3"
+                        : "px-3 text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 flex-shrink-0" />
+                    {label}
+                  </Link>
+                  {activeTab === "optimizer" && !isProfileRoute && (
+                    <div className="mt-0.5 ml-4 space-y-0.5 border-l border-gray-200 pl-3">
+                      {documentSubItems.map((sub) => (
+                        <Link
+                          key={sub.id}
+                          to="/"
+                          onClick={() => selectDocumentCategory(sub.id)}
+                          className={`block border-l-2 py-2 pl-2 text-sm font-medium transition-colors ${
+                            documentCategory === sub.id
+                              ? "border-orange-500 text-orange-600"
+                              : "border-transparent text-gray-600 hover:text-orange-600"
+                          }`}
+                        >
+                          {sub.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                key={id}
+                to="/"
+                onClick={() => onTabChange(id)}
+                onMouseDown={() => handleLongPressStart(id)}
+                onMouseUp={handleLongPressEnd}
+                onMouseLeave={handleLongPressEnd}
+                onTouchStart={() => handleLongPressStart(id)}
+                onTouchEnd={handleLongPressEnd}
+                className={`flex items-center gap-3 py-2.5 text-sm font-medium transition-colors ${
+                  activeTab === id && !isProfileRoute
+                    ? "border-2 border-orange-500 bg-orange-50 text-orange-600 px-3"
+                    : "px-3 text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
+                }`}
+              >
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                {label}
+              </Link>
+            );
+          })}
           <Link
             to="/profile"
             className={`flex items-center gap-3 py-2.5 text-sm font-medium transition-colors ${
@@ -301,13 +358,18 @@ const Navigation: React.FC<NavigationProps> = ({
         {/* Bottom actions */}
         <div className="px-3 pb-5 space-y-1">
           {user && (
-            <button
-              onClick={() => setShowReferAndEarnCard(true)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white border border-orange-500 hover:border-orange-400 transition-colors"
+            <Link
+              to="/"
+              onClick={() => onTabChange("refer")}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold border transition-colors ${
+                activeTab === "refer" && !isProfileRoute
+                  ? "bg-orange-600 border-orange-600 text-white"
+                  : "bg-orange-500 hover:bg-orange-600 text-white border-orange-500 hover:border-orange-400"
+              }`}
             >
               <Gift className="w-4 h-4 flex-shrink-0" />
               Refer n Earn
-            </button>
+            </Link>
           )}
           {user ? (
             role === "operations" ? (
@@ -349,7 +411,7 @@ const Navigation: React.FC<NavigationProps> = ({
           <div className="flex items-center gap-2">
             {user && (
               <button
-                onClick={() => { setShowReferAndEarnCard(true); setMenuOpen(false); }}
+                onClick={() => { onTabChange("refer"); setMenuOpen(false); }}
                 className="p-2 bg-orange-500 text-white"
                 title="Refer & Earn"
               >
@@ -368,24 +430,62 @@ const Navigation: React.FC<NavigationProps> = ({
 
         {menuOpen && (
           <div ref={mobileMenuRef} className="absolute top-14 left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-50">
-            {tabs.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => { onTabChange(id); setMenuOpen(false); }}
-                onMouseDown={() => handleLongPressStart(id)}
-                onMouseUp={handleLongPressEnd}
-                onTouchStart={() => handleLongPressStart(id)}
-                onTouchEnd={handleLongPressEnd}
-                className={`w-full flex items-center gap-3 px-5 py-3 text-sm font-medium text-left transition-colors ${
-                  activeTab === id && !isProfileRoute
-                    ? "border-2 border-orange-500 bg-orange-50 text-orange-600"
-                    : "text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </button>
-            ))}
+            {tabs.map(({ id, label, icon: Icon }) => {
+              if (id === "optimizer") {
+                const docActive = activeTab === "optimizer" && !documentCategory;
+                return (
+                  <div key={id}>
+                    <button
+                      onClick={() => { selectDocumentCategory(null); setMenuOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-5 py-3 text-sm font-medium text-left transition-colors ${
+                        docActive && !isProfileRoute
+                          ? "border-2 border-orange-500 bg-orange-50 text-orange-600"
+                          : "text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </button>
+                    {activeTab === "optimizer" && !isProfileRoute && (
+                      <div className="border-t border-gray-100 bg-gray-50 py-1">
+                        {documentSubItems.map((sub) => (
+                          <button
+                            key={sub.id}
+                            onClick={() => { selectDocumentCategory(sub.id); setMenuOpen(false); }}
+                            className={`block w-full border-l-2 py-2 pl-9 pr-5 text-left text-sm font-medium transition-colors ${
+                              documentCategory === sub.id
+                                ? "border-orange-500 text-orange-600"
+                                : "border-transparent text-gray-600 hover:text-orange-600"
+                            }`}
+                          >
+                            {sub.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <button
+                  key={id}
+                  onClick={() => { onTabChange(id); setMenuOpen(false); }}
+                  onMouseDown={() => handleLongPressStart(id)}
+                  onMouseUp={handleLongPressEnd}
+                  onTouchStart={() => handleLongPressStart(id)}
+                  onTouchEnd={handleLongPressEnd}
+                  className={`w-full flex items-center gap-3 px-5 py-3 text-sm font-medium text-left transition-colors ${
+                    activeTab === id && !isProfileRoute
+                      ? "border-2 border-orange-500 bg-orange-50 text-orange-600"
+                      : "text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              );
+            })}
             <Link
               to="/profile"
               onClick={() => setMenuOpen(false)}
@@ -410,8 +510,6 @@ const Navigation: React.FC<NavigationProps> = ({
           </div>
         )}
       </nav>
-
-      <ReferAndEarnCard isOpen={showReferAndEarnCard} onClose={() => setShowReferAndEarnCard(false)} />
     </>
   );
 };

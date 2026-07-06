@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useContext, Suspense, lazy, useRef } from "react";
 import { Search, Plus, MessageSquare, Loader2, Clock, Filter, Home, Briefcase, FileText, Gift, ChevronDown, Menu, X } from "lucide-react";
-import ReferAndEarnCard from "./ReferAndEarnCard.tsx";
 import { Job, JobStatus } from "../types/index.ts";
 const JobForm = lazy(() => import("./JobForm.tsx"));
 const JobCard = lazy(() => import("./JobCard.tsx"));
@@ -107,7 +106,6 @@ const JobTracker = ({ onTabChange, activeTab: activeTabProp }: JobTrackerProps) 
     const name = useOperationsStore((state) => state.name);
     const operationsEmail = useOperationsStore((state) => state.email);
 
-    const [showReferAndEarn, setShowReferAndEarn] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const userMenuRef = useRef<HTMLDivElement | null>(null);
@@ -1098,7 +1096,7 @@ const JobTracker = ({ onTabChange, activeTab: activeTabProp }: JobTrackerProps) 
                     {/* Refer and earn — desktop */}
                     {userDetails?.name && (
                         <button
-                            onClick={() => setShowReferAndEarn(true)}
+                            onClick={() => onTabChange?.("refer")}
                             className="hidden sm:flex items-center gap-2 px-4 py-2 border border-orange-300 bg-orange-50 text-orange-500 text-sm font-semibold hover:bg-orange-100 transition-colors"
                         >
                             Refer and earn <Gift className="w-4 h-4" />
@@ -1119,7 +1117,7 @@ const JobTracker = ({ onTabChange, activeTab: activeTabProp }: JobTrackerProps) 
                         {showUserMenu && (
                             <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 shadow-lg z-50">
                                 <button
-                                    onClick={() => { setShowUserMenu(false); setShowReferAndEarn(true); }}
+                                    onClick={() => { setShowUserMenu(false); onTabChange?.("refer"); }}
                                     className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                                 >
                                     <Gift className="w-4 h-4" />
@@ -1159,7 +1157,7 @@ const JobTracker = ({ onTabChange, activeTab: activeTabProp }: JobTrackerProps) 
                     ))}
                     {userDetails?.name && (
                         <button
-                            onClick={() => { setShowReferAndEarn(true); setMobileMenuOpen(false); }}
+                            onClick={() => { onTabChange?.("refer"); setMobileMenuOpen(false); }}
                             className="w-full flex items-center gap-3 px-5 py-3 text-sm font-medium text-orange-500 hover:bg-orange-50 transition-colors border-t border-gray-100"
                         >
                             <Gift className="w-4 h-4" />
@@ -1169,8 +1167,6 @@ const JobTracker = ({ onTabChange, activeTab: activeTabProp }: JobTrackerProps) 
                 </div>
             )}
             </div>{/* end navbar wrapper */}
-
-            <ReferAndEarnCard isOpen={showReferAndEarn} onClose={() => setShowReferAndEarn(false)} />
 
             <div className="px-4 sm:px-6 lg:px-8 py-6">
             {/* Header */}

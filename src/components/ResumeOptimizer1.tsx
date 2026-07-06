@@ -684,8 +684,8 @@
 //   );
 // }
 
-import { ArrowLeftCircle, ExternalLink } from "lucide-react";
-import React, { useEffect, useState, useContext, useMemo } from "react";
+import { ArrowLeftCircle, ExternalLink, Mail, FileText, Eye, Pencil, Trash2, Download, Upload } from "lucide-react";
+import React, { useEffect, useState, useContext } from "react";
 import { UserContext } from '../state_management/UserContext.js';
 import { ResumePreview } from './AiOprimizer/components/ResumePreview.tsx';
 // import { ResumePreview1 } from './AiOprimizer/components/ResumePreview1.tsx';
@@ -831,18 +831,24 @@ function toRawPdfUrl(
 //     })
 //     : "—";
 
-// Small download icon (no external deps)
-const DownloadIcon = () => (
-  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-    <path d="M12 3a1 1 0 011 1v9.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4A1 1 0 118.707 11.293L11 13.586V4a1 1 0 011-1z"></path>
-    <path d="M5 18a1 1 0 011-1h12a1 1 0 110 2H6a1 1 0 01-1-1z"></path>
-  </svg>
-);
 
 type DocumentTabId = "base" | "optimized" | "cover" | "transcript" | "portfolio";
 
-export default function DocumentUpload() {
-  const [activeTab, setActiveTab] = useState<DocumentTabId | null>(null);
+interface DocumentUploadProps {
+  documentCategory?: DocumentTabId | null;
+  onDocumentCategoryChange?: (category: DocumentTabId | null) => void;
+}
+
+export default function DocumentUpload({ documentCategory = null, onDocumentCategoryChange }: DocumentUploadProps = {}) {
+  const [activeTab, setActiveTabState] = useState<DocumentTabId | null>(documentCategory);
+  // Keep in sync with the sidebar's "Job tracker" document sub-links.
+  useEffect(() => {
+    setActiveTabState(documentCategory);
+  }, [documentCategory]);
+  const setActiveTab = (tab: DocumentTabId | null) => {
+    setActiveTabState(tab);
+    onDocumentCategoryChange?.(tab);
+  };
   // const [fileNamePrompt, setFileNamePrompt] = useState<string>("");
   const context = useContext(UserContext);
   // Friendly download name for a doc, falling back to the viewed client's name
@@ -1184,19 +1190,6 @@ export default function DocumentUpload() {
       setActiveTab(null);
     }
   }, [role, activeTab]);
-
-  const documentTabs = useMemo(() => {
-    const core: { id: DocumentTabId; label: string }[] = [
-      { id: "base", label: "Base Resume" },
-      { id: "optimized", label: "Optimized Resumes" },
-      { id: "cover", label: "Cover Letters" },
-      { id: "transcript", label: "Transcripts" },
-    ];
-    if (role === "operations") {
-      core.push({ id: "portfolio", label: "Portfolio" });
-    }
-    return core;
-  }, [role]);
 
   // Function to fetch resume data from a job
   const fetchResumeDataFromJob = async (jobId: string) => {
@@ -1751,218 +1744,169 @@ export default function DocumentUpload() {
   //         )}
   //       </div>
   //     );
- const DocsTable = ({
+ const fmtUploaded = (createdAt?: string | Date) => {
+  if (!createdAt) return null;
+  try {
+    const date = new Date(createdAt);
+    if (isNaN(date.getTime())) return String(createdAt);
+    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  } catch {
+    return String(createdAt);
+  }
+};
+
+const DocsTable = ({
   items,
   category,
   onPick,
+  groupActive = false,
 }: {
   items: Entry[];
   category: "Resume" | "Cover Letter" | "Base" | "Transcript";
   onPick: (item: Entry) => void;
-}) => (
-  <div className="border border-gray-300 overflow-hidden">
-    {/* ✅ Scrollable Container */}
-    <div className="divide-y sm:hidden">
-      {items.length === 0 ? (
-        <div className="px-4 py-6 text-sm text-gray-500">No documents yet.</div>
-      ) : (
-        items.map((it, i) => (
-          <button
-            key={i}
-            type="button"
-            className="block w-full px-4 py-4 text-left hover:bg-orange-50"
-            onClick={() => onPick(it)}
-            title="Click to preview"
+  groupActive?: boolean;
+}) => {
+  const RowIcon = category === "Cover Letter" ? Mail : FileText;
+
+  const canDownload = (it: Entry) =>
+    !it.isJobBased && !it.isAttached && !(category === "Base" && role !== "operations");
+
+  const Row = ({ it, isActive }: { it: Entry; isActive?: boolean }) => {
+    const title =
+      category === "Base" || category === "Cover Letter" || category === "Transcript"
+        ? it.name || "Unnamed"
+        : `${it.jobRole || "—"} at ${it.companyName || "—"}`;
+    const uploaded = fmtUploaded(it.createdAt);
+
+    return (
+      <div
+        className={`flex items-center justify-between gap-3 px-4 py-3 ${
+          isActive
+            ? "border border-orange-300 bg-orange-50"
+            : "border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
+        }`}
+      >
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          onClick={() => onPick(it)}
+          title="Click to preview"
+        >
+          <div
+            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center ${
+              isActive ? "border border-orange-200 bg-white text-orange-500" : "bg-gray-100 text-gray-400"
+            }`}
           >
-            <div className="mb-2 text-sm font-semibold text-gray-900">
-              {category === "Base" ||
-              category === "Cover Letter" ||
-              category === "Transcript"
-                ? it.name || "Unnamed"
-                : `${it.jobRole || "â€”"} at ${it.companyName || "â€”"}`}
-            </div>
-            <div className="space-y-1 text-xs text-gray-600">
-              <div>
-                <span className="font-medium text-gray-500">Created On: </span>
-                {it.createdAt
-                  ? (() => {
-                      try {
-                        const date = new Date(it.createdAt);
-                        if (isNaN(date.getTime())) return String(it.createdAt || "â€”");
-                        return date.toLocaleDateString("en-GB", {
-                          day: "2-digit",
-                          month: "long",
-                          year: "numeric",
-                        });
-                      } catch {
-                        return String(it.createdAt || "â€”");
-                      }
-                    })()
-                  : "â€”"}
-              </div>
-              <div>
-                <span className="font-medium text-gray-500">Category: </span>
-                {category} {category == "Base" ? "Resume" : ""}
-              </div>
-              {activeTab !== "base" &&
-                activeTab !== "cover" &&
-                activeTab !== "transcript" && (
-                  <div>
-                    <span className="font-medium text-gray-500">Job Link: </span>
-                    {it.jobLink ? (
-                      <a
-                        href={it.jobLink.startsWith("http") ? it.jobLink : `https://${it.jobLink}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-orange-600 hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Link
-                      </a>
-                    ) : (
-                      "â€”"
-                    )}
-                  </div>
-                )}
-            </div>
-            {!it.isJobBased && (
-              <a
-                href={toRawPdfUrl(it.link || it.url) || it.link || it.url}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="mt-3 inline-flex items-center gap-2 bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700"
-                title="Download"
-              >
-                <DownloadIcon />
-                Download
-              </a>
-            )}
+            <RowIcon className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-gray-900">{title}</p>
+            <p className="truncate text-xs text-gray-500">
+              {uploaded ? `Uploaded ${uploaded}` : "—"}
+              {it.jobLink && category === "Resume" && (
+                <>
+                  {" • "}
+                  <a
+                    href={it.jobLink.startsWith("http") ? it.jobLink : `https://${it.jobLink}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-orange-600 hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Job link
+                  </a>
+                </>
+              )}
+            </p>
+          </div>
+        </button>
+
+        <div className="flex flex-shrink-0 items-center gap-3">
+          {groupActive && !isActive && (
+            <span className="px-2 py-1 text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200">
+              Set as Active
+            </span>
+          )}
+          {canDownload(it) && (
+            <a
+              href={
+                proxyAvailable === true
+                  ? toDocProxyUrl(it.link || it.url || "", dlName(it, category), true)
+                  : toRawPdfUrl(it.link || it.url || "", { download: true, fileName: dlName(it, category) }) || it.link || it.url
+              }
+              download={`${dlName(it, category)}.pdf`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-gray-400 hover:text-gray-700"
+              title="Download"
+            >
+              <Download className="w-4 h-4" />
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={() => onPick(it)}
+            className="text-gray-400 hover:text-gray-700"
+            title="View"
+          >
+            <Eye className="w-4 h-4" />
           </button>
-        ))
+          <button type="button" className="cursor-not-allowed text-gray-300" title="Edit" disabled>
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button type="button" className="cursor-not-allowed text-gray-300" title="Delete" disabled>
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  if (items.length === 0) {
+    return (
+      <div className="border border-gray-300 px-4 py-6 text-sm text-gray-500">
+        No documents yet.
+      </div>
+    );
+  }
+
+  if (!groupActive) {
+    return (
+      <div className="border border-gray-300 overflow-hidden">
+        {items.map((it, i) => (
+          <Row key={i} it={it} />
+        ))}
+      </div>
+    );
+  }
+
+  // Base Resume: the most recently uploaded version is the one actively used
+  // for new tailored resumes; everything else is a previous version.
+  const activeItem = items[items.length - 1];
+  const previousItems = items.slice(0, -1).reverse();
+
+  return (
+    <div>
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        Active — used for every new tailored resume
+      </p>
+      <Row it={activeItem} isActive />
+
+      {previousItems.length > 0 && (
+        <>
+          <p className="mt-5 mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+            Previous versions
+          </p>
+          <div className="border border-gray-300 overflow-hidden">
+            {previousItems.map((it, i) => (
+              <Row key={i} it={it} />
+            ))}
+          </div>
+        </>
       )}
     </div>
-
-    <div className="hidden overflow-x-auto sm:block">
-      <div className="min-w-[500px]"> {/* ensures proper column spacing */}
-        {/* ✅ Header */}
-        <div className="grid grid-cols-12 bg-gray-100 text-sm font-bold px-4 py-3 sticky top-0 z-10">
-          <div className="col-span-5">Title</div>
-          <div className="col-span-3">Created On</div>
-          <div className="col-span-2">Category</div>
-          {activeTab !== "base" &&
-            activeTab !== "cover" &&
-            activeTab !== "transcript" && (
-              <div className="col-span-1">Job Link</div>
-            )}
-          <div className="col-span-1 text-right">Actions</div>
-        </div>
-
-        {/* ✅ Body */}
-        {items.length === 0 ? (
-          <div className="px-4 py-6 text-sm text-gray-500">No documents yet.</div>
-        ) : (
-          <ul className="divide-y flex flex-col">
-            {items.map((it, i) => (
-              <li
-                key={i}
-                className="grid grid-cols-12 items-center px-2 py-4 hover:bg-orange-50 cursor-pointer"
-                onClick={() => onPick(it)}
-                title="Click to preview"
-              >
-                {/* Title */}
-                <div className="col-span-5 truncate w-full">
-                  {category === "Base" ||
-                  category === "Cover Letter" ||
-                  category === "Transcript"
-                    ? it.name || "Unnamed"
-                    : `${it.jobRole || "—"} at ${it.companyName || "—"}`}
-                </div>
-
-                {/* Created On */}
-                <div className="col-span-3 text-sm text-gray-600 whitespace-nowrap">
-                  {it.createdAt
-                    ? (() => {
-                        try {
-                          const date = new Date(it.createdAt);
-                          if (isNaN(date.getTime())) {
-                            // If date is invalid, try to parse it manually
-                            console.warn('Invalid date format:', it.createdAt);
-                            return String(it.createdAt || "—");
-                          }
-                          return date.toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "long",
-                            year: "numeric",
-                          });
-                        } catch (error) {
-                          console.error('Error parsing date:', it.createdAt, error);
-                          return String(it.createdAt || "—");
-                        }
-                      })()
-                    : "—"}
-                </div>
-
-                {/* Category */}
-                <div className="col-span-2 whitespace-nowrap">
-                  {category} {category == "Base" ? "Resume" : ""}
-                </div>
-
-                {/* Job Link */}
-                {activeTab !== "base" &&
-                  activeTab !== "cover" &&
-                  activeTab !== "transcript" && (
-                    <div className="col-span-1 whitespace-nowrap">
-                      {it.jobLink ? (
-                        <a
-                          href={
-                            it.jobLink.startsWith("http")
-                              ? it.jobLink
-                              : `https://${it.jobLink}`
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-orange-600 hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          Link
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </div>
-                  )}
-
-                {/* Actions */}
-                <div className="col-span-1 flex justify-end gap-2 whitespace-nowrap">
-                  {/* No file to download for the structured "attached" base row.
-                      Base downloads are operator-only; normal users get view only. */}
-                  {!it.isJobBased && !it.isAttached &&
-                    !(category === "Base" && role !== "operations") && (
-                    <a
-                      href={
-                        proxyAvailable === true
-                          ? toDocProxyUrl(it.link || it.url || "", dlName(it, category), true)
-                          : toRawPdfUrl(it.link || it.url || "", { download: true, fileName: dlName(it, category) }) || it.link || it.url
-                      }
-                      download={`${dlName(it, category)}.pdf`}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      title="Download"
-                    >
-                      <DownloadIcon />
-                    </a>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 
   // ---- Reusable Preview Panel (iframe) ----
@@ -2040,34 +1984,9 @@ export default function DocumentUpload() {
     </div>
 
     <div className="px-5 py-6">
-    <div className="flex flex-col md:grid md:grid-cols-12 gap-4">
-
-      {/* Sidebar */}
-      <aside className="md:col-span-3 bg-white border border-gray-300">
-        <h2 className="px-4 py-3 font-semibold text-gray-900 border-b border-gray-200">Documents</h2>
-        <nav className="flex overflow-x-auto md:flex-col md:overflow-visible">
-          {documentTabs.map((tab) => (
-            <button
-              key={tab.id}
-              className={`flex-shrink-0 px-4 py-3 text-left text-sm font-medium transition-colors md:w-full ${
-                activeTab === tab.id
-                  ? "border-2 border-orange-500 bg-orange-50 text-orange-600"
-                  : "text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
-              }`}
-              onClick={() => {
-                setActiveTab(tab.id);
-                setPreviewMode(false);
-                setActivePreviewUrl(null);
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
-      </aside>
 
       {/* Main content */}
-      <main className="min-w-0 md:col-span-9 bg-white border border-gray-300 p-3 sm:p-4 md:p-6">
+      <main className="bg-white border border-gray-300 p-3 sm:p-4 md:p-6">
         {/* Empty state when no tab is selected */}
         {!activeTab && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -2083,7 +2002,7 @@ export default function DocumentUpload() {
           <section>
             <div className="flex items-center justify-between flex-wrap mb-4 gap-2">
               <h3 className="text-lg font-semibold">Base Resume</h3>
-              {baseResume && previewMode && (
+              {baseResume && previewMode ? (
                 <button
                   onClick={() => {
                     setPreviewMode(false);
@@ -2095,6 +2014,18 @@ export default function DocumentUpload() {
                 >
                   <ArrowLeftCircle className="w-4 h-4" /> View All Docs
                 </button>
+              ) : (
+                <label className="inline-flex cursor-pointer items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 text-sm font-medium transition-colors">
+                  <Upload className="w-4 h-4" />
+                  Upload New Version
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={(e) => handleFileUpload(e, "base")}
+                    disabled={isUploading}
+                  />
+                </label>
               )}
             </div>
 
@@ -2151,6 +2082,7 @@ export default function DocumentUpload() {
                     ...(Array.isArray(baseResume) ? baseResume : baseResume ? [baseResume] : []),
                   ]}
                   category="Base"
+                  groupActive
                   onPick={async (it) => {
                     if (it.isAttached) {
                       // Structured preview from already-loaded attached resume.
@@ -2167,22 +2099,6 @@ export default function DocumentUpload() {
                     setPreviewMode(true);
                   }}
                 />
-
-                <div className="mt-4">
-                  <label className="inline-flex items-center gap-2 cursor-pointer">
-                    <span className="text-sm font-medium">Upload / Replace Base Resume</span>
-                    <input
-                      type="file"
-                      accept="application/pdf"
-                      className="hidden"
-                      onChange={(e) => handleFileUpload(e, "base")}
-                      disabled={isUploading}
-                    />
-                    <span className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 text-sm font-medium transition-colors">
-                      Choose File
-                    </span>
-                  </label>
-                </div>
               </>
             )}
           </section>
@@ -2639,8 +2555,6 @@ export default function DocumentUpload() {
         )}
       </main>
     </div>
-    </div>
-
 
       {/* {/* Metadata modal */}
       {/* {showMetaModal && ( */}

@@ -108,14 +108,18 @@ const ResumeOptimizer = lazy(()=>import('./ResumeOptimizer1'))
 const ResumeOptimizerDashboard = lazy(()=>import('./ResumeOptimizerDashboard'))
 const OperationsManagement = lazy(()=>import('./OperationsManagement'))
 const Inbox = lazy(()=>import('./Inbox'))
+const ReferAndEarn = lazy(()=>import('./ReferAndEarn'))
 import { UserContext } from '../state_management/UserContext';
 import LoadingScreen from './LoadingScreen';
 import { useOperationsStore } from "../state_management/Operations";
 
 
 
+export type DocumentCategoryId = "base" | "optimized" | "cover" | "transcript" | "portfolio";
+
 export default function MainContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [documentCategory, setDocumentCategory] = useState<DocumentCategoryId | null>(null);
   const context = useContext(UserContext);
   const navigate = useNavigate();
   const { role } = useOperationsStore();
@@ -190,7 +194,12 @@ useEffect(() => {
     <div className="min-h-screen bg-gray-50">
       {activeTab !== 'jobs' && (
         <Suspense fallback={<LoadingScreen />}>
-          <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+          <Navigation
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            documentCategory={documentCategory}
+            onDocumentCategoryChange={setDocumentCategory}
+          />
         </Suspense>
       )}
       <main className={activeTab !== 'jobs' ? "md:ml-56" : ""}>
@@ -205,7 +214,7 @@ useEffect(() => {
 
           {activeTab === 'optimizer' && (
             <Suspense fallback={<LoadingScreen />}>
-            <ResumeOptimizer />
+            <ResumeOptimizer documentCategory={documentCategory} onDocumentCategoryChange={setDocumentCategory} />
             </Suspense>
           )}
 
@@ -224,6 +233,12 @@ useEffect(() => {
           {activeTab === 'operations' && (
             <Suspense fallback={<LoadingScreen />}>
             <OperationsManagement />
+            </Suspense>
+          )}
+
+          {activeTab === 'refer' && (
+            <Suspense fallback={<LoadingScreen />}>
+            <ReferAndEarn />
             </Suspense>
           )}
         </main>
