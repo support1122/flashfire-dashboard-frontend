@@ -2116,21 +2116,6 @@ useEffect(() => {
         data.mastersGradMonthYear = mastersEndValue.slice(0, 7);
       }
       
-      // GPA Validation (optional but if provided, must be valid)
-      if (data.bachelorsGPA && data.bachelorsGPA.trim()) {
-        const gpa = parseFloat(data.bachelorsGPA);
-        if (isNaN(gpa) || gpa < 0 || gpa > 4) {
-          e.bachelorsGPA = "GPA must be between 0.0 and 4.0";
-        }
-      }
-      
-      if (data.mastersGPA && data.mastersGPA.trim()) {
-        const gpa = parseFloat(data.mastersGPA);
-        if (isNaN(gpa) || gpa < 0 || gpa > 4) {
-          e.mastersGPA = "GPA must be between 0.0 and 4.0";
-        }
-      }
-      
       // Visa Status Validation
       if (!data.visaStatus) {
         e.visaStatus = "Visa status is required";
@@ -2464,11 +2449,11 @@ const handleSubmit = () => {
                     </div>
                   </div>
                   <div>
-                    <FieldLabel>GPA</FieldLabel>
-                    <TextInput 
+                    <FieldLabel required={false}>GPA</FieldLabel>
+                    <TextInput
                       hasError={!!errors.bachelorsGPA}
-                      type="text" 
-                      placeholder="Bachelor's GPA (e.g., 3.8)" 
+                      type="text"
+                      placeholder="Bachelor's GPA (e.g., 3.8) or N/A"
                       value={data.bachelorsGPA} 
                       onChange={(e) => {
                         set({ bachelorsGPA: e.target.value });
@@ -2533,11 +2518,11 @@ const handleSubmit = () => {
                     </div>
                   </div>
                   <div>
-                    <FieldLabel>GPA</FieldLabel>
-                    <TextInput 
+                    <FieldLabel required={false}>GPA</FieldLabel>
+                    <TextInput
                       hasError={!!errors.mastersGPA}
-                      type="text" 
-                      placeholder="Master's GPA (e.g., 3.9)" 
+                      type="text"
+                      placeholder="Master's GPA (e.g., 3.9) or N/A"
                       value={data.mastersGPA} 
                       onChange={(e) => {
                         set({ mastersGPA: e.target.value });
