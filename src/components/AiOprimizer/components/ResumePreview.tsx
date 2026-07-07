@@ -10,7 +10,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.j
 // A single-page resume must fill at least this fraction of the page height with
 // real content before it can be downloaded. Stops operators from shipping
 // half-empty resumes with large blank space at the bottom of the page.
-const MIN_FILL_RATIO = 0.9; // 90%
+const MIN_FILL_RATIO = 0.94; // 94%
 
 /**
  * Render a PDF page to an offscreen canvas and measure how far down the page its
