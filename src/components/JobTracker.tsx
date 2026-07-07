@@ -1172,10 +1172,10 @@ const JobTracker = ({ onTabChange, activeTab: activeTabProp }: JobTrackerProps) 
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
                 <div className="flex flex-col justify-around items-start w-full">
-                    <h2 className="text-4xl md:text-4xl font-semibold text-zinc-900 mb-2 tracking-tight leading-[1.1]">Job Tracker</h2>
-                    <p className="text-gray-400 text-3x1 ">Track your job applications and manage your career pipeline</p>
+                    <h2 className="text-2xl sm:text-4xl font-semibold text-zinc-900 mb-2 tracking-tight leading-[1.1]">Job Tracker</h2>
+                    <p className="text-gray-400 text-sm sm:text-base">Track your job applications and manage your career pipeline</p>
                 </div>
-                <div className="mt-4 sm:mt-0 flex items-center justify-end gap-4 w-full">
+                <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 sm:gap-4 w-full">
                     {role === "operations" && userDetails?.email && (
                         <button
                             onClick={() => {
@@ -1183,7 +1183,7 @@ const JobTracker = ({ onTabChange, activeTab: activeTabProp }: JobTrackerProps) 
                                 setShowNotifyPasswordModal(true);
                             }}
                             disabled={notifyCooldown > 0 || notifyLoading}
-                            className={`whitespace-nowrap px-4 py-2 font-medium transition-all duration-200 shadow-sm flex items-center gap-2 ${
+                            className={`w-full sm:w-auto justify-center whitespace-nowrap px-4 py-2 font-medium transition-all duration-200 shadow-sm flex items-center gap-2 ${
                                 notifyCooldown > 0
                                     ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                                     : notifyLoading
@@ -1211,14 +1211,14 @@ const JobTracker = ({ onTabChange, activeTab: activeTabProp }: JobTrackerProps) 
                             )}
                         </button>
                     )}
-                    <div className="relative">
+                    <div className="relative w-full sm:w-auto">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="text"
                             placeholder="Search jobs..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 pr-6 py-3 border border-orange-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white shadow-sm"
+                            className="w-full sm:w-auto pl-10 pr-6 py-3 border border-orange-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white shadow-sm"
                         />
                         {filteredJobs.length > 0 && (
                             <div className="absolute top-full mt-2 w-full bg-white border border-gray-300 shadow-lg z-50 max-h-60 overflow-y-auto">
@@ -1240,26 +1240,28 @@ const JobTracker = ({ onTabChange, activeTab: activeTabProp }: JobTrackerProps) 
                             </div>
                         )}
                     </div>
-                    <button
-                        onClick={() => setShowJobForm(true)}
-                        className="whitespace-nowrap bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-6 py-3 font-medium transition-all duration-200 shadow-sm hover:shadow-md"
-                    >
-                        Add Jobs
-                    </button>
-                    {(role === "operations" || role === "operator") && (
+                    <div className="flex gap-3 w-full sm:w-auto">
                         <button
-                            onClick={handleQueueAutoOptimizeSavedJobs}
-                            disabled={autoOptimizeLoading}
-                            className={`whitespace-nowrap px-3 py-1.5 text-sm font-medium transition-all duration-200 shadow-sm ${
-                                autoOptimizeLoading
-                                    ? "bg-purple-300 text-white cursor-wait"
-                                    : "bg-gradient-to-br from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white hover:shadow-md"
-                            }`}
-                            title="Optimize saved jobs only (5-minute spacing)"
+                            onClick={() => setShowJobForm(true)}
+                            className="flex-1 sm:flex-none justify-center whitespace-nowrap bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-6 py-3 font-medium transition-all duration-200 shadow-sm hover:shadow-md flex items-center"
                         >
-                            {autoOptimizeLoading ? "Queueing..." : "Auto Optimize"}
+                            Add Jobs
                         </button>
-                    )}
+                        {(role === "operations" || role === "operator") && (
+                            <button
+                                onClick={handleQueueAutoOptimizeSavedJobs}
+                                disabled={autoOptimizeLoading}
+                                className={`flex-1 sm:flex-none justify-center whitespace-nowrap px-3 py-1.5 text-sm font-medium transition-all duration-200 shadow-sm flex items-center ${
+                                    autoOptimizeLoading
+                                        ? "bg-purple-300 text-white cursor-wait"
+                                        : "bg-gradient-to-br from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white hover:shadow-md"
+                                }`}
+                                title="Optimize saved jobs only (5-minute spacing)"
+                            >
+                                {autoOptimizeLoading ? "Queueing..." : "Auto Optimize"}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 

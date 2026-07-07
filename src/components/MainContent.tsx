@@ -132,8 +132,15 @@ export default function MainContent() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
-    if (tabParam === 'jobtracker' || tabParam === 'jobs') {
+    const docParam = urlParams.get('doc') as DocumentCategoryId | null;
+    const validTabs = ['dashboard', 'jobs', 'optimizer', 'mail', 'operations', 'refer'];
+    if (tabParam === 'jobtracker') {
       setActiveTab('jobs');
+    } else if (tabParam && validTabs.includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+    if (docParam) {
+      setDocumentCategory(docParam);
     }
   }, []);
 

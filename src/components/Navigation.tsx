@@ -170,6 +170,18 @@ const Navigation: React.FC<NavigationProps> = ({
     onDocumentCategoryChange?.(category);
   };
 
+  // Builds a link back to the main dashboard route that also encodes which
+  // tab (and, for Documents, which category) to land on. This matters when
+  // navigating from a different route (e.g. /profile, /inbox) since those
+  // pages mount their own Navigation instance with its own throwaway
+  // activeTab state — MainContent needs the query params to pick up the
+  // intended tab on mount instead of always defaulting to "dashboard".
+  const tabHref = (id: string, doc?: string | null) => {
+    const params = new URLSearchParams({ tab: id });
+    if (doc) params.set("doc", doc);
+    return `/?${params.toString()}`;
+  };
+
   useEffect(() => { setUser(userDetails?.name || ""); }, [userDetails]);
 
   useEffect(() => {
@@ -288,7 +300,7 @@ const Navigation: React.FC<NavigationProps> = ({
               return (
                 <div key={id}>
                   <Link
-                    to="/"
+                    to={tabHref("optimizer")}
                     onClick={() => selectDocumentCategory(null)}
                     className={`flex items-center gap-3 py-2.5 text-sm font-medium transition-colors ${
                       docActive && !isProfileRoute
@@ -304,7 +316,7 @@ const Navigation: React.FC<NavigationProps> = ({
                       {documentSubItems.map((sub) => (
                         <Link
                           key={sub.id}
-                          to="/"
+                          to={tabHref("optimizer", sub.id)}
                           onClick={() => selectDocumentCategory(sub.id)}
                           className={`block border-l-2 py-2 pl-2 text-sm font-medium transition-colors ${
                             documentCategory === sub.id
@@ -324,7 +336,7 @@ const Navigation: React.FC<NavigationProps> = ({
             return (
               <Link
                 key={id}
-                to="/"
+                to={tabHref(id)}
                 onClick={() => onTabChange(id)}
                 onMouseDown={() => handleLongPressStart(id)}
                 onMouseUp={handleLongPressEnd}
@@ -359,7 +371,7 @@ const Navigation: React.FC<NavigationProps> = ({
         <div className="px-3 pb-5 space-y-1">
           {user && (
             <Link
-              to="/"
+              to={tabHref("refer")}
               onClick={() => onTabChange("refer")}
               className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold border transition-colors ${
                 activeTab === "refer" && !isProfileRoute
@@ -410,13 +422,14 @@ const Navigation: React.FC<NavigationProps> = ({
           </div>
           <div className="flex items-center gap-2">
             {user && (
-              <button
+              <Link
+                to={tabHref("refer")}
                 onClick={() => { onTabChange("refer"); setMenuOpen(false); }}
                 className="p-2 bg-orange-500 text-white"
                 title="Refer & Earn"
               >
                 <Gift className="w-4 h-4" />
-              </button>
+              </Link>
             )}
             <button
               data-nav-trigger
@@ -435,8 +448,9 @@ const Navigation: React.FC<NavigationProps> = ({
                 const docActive = activeTab === "optimizer" && !documentCategory;
                 return (
                   <div key={id}>
-                    <button
-                      onClick={() => { selectDocumentCategory(null); setMenuOpen(false); }}
+                    <Link
+                      to={tabHref("optimizer")}
+                      onClick={() => selectDocumentCategory(null)}
                       className={`w-full flex items-center gap-3 px-5 py-3 text-sm font-medium text-left transition-colors ${
                         docActive && !isProfileRoute
                           ? "border-2 border-orange-500 bg-orange-50 text-orange-600"
@@ -445,12 +459,13 @@ const Navigation: React.FC<NavigationProps> = ({
                     >
                       <Icon className="w-4 h-4" />
                       {label}
-                    </button>
+                    </Link>
                     {activeTab === "optimizer" && !isProfileRoute && (
                       <div className="border-t border-gray-100 bg-gray-50 py-1">
                         {documentSubItems.map((sub) => (
-                          <button
+                          <Link
                             key={sub.id}
+                            to={tabHref("optimizer", sub.id)}
                             onClick={() => { selectDocumentCategory(sub.id); setMenuOpen(false); }}
                             className={`block w-full border-l-2 py-2 pl-9 pr-5 text-left text-sm font-medium transition-colors ${
                               documentCategory === sub.id
@@ -459,7 +474,7 @@ const Navigation: React.FC<NavigationProps> = ({
                             }`}
                           >
                             {sub.label}
-                          </button>
+                          </Link>
                         ))}
                       </div>
                     )}
@@ -468,8 +483,9 @@ const Navigation: React.FC<NavigationProps> = ({
               }
 
               return (
-                <button
+                <Link
                   key={id}
+                  to={tabHref(id)}
                   onClick={() => { onTabChange(id); setMenuOpen(false); }}
                   onMouseDown={() => handleLongPressStart(id)}
                   onMouseUp={handleLongPressEnd}
@@ -483,7 +499,7 @@ const Navigation: React.FC<NavigationProps> = ({
                 >
                   <Icon className="w-4 h-4" />
                   {label}
-                </button>
+                </Link>
               );
             })}
             <Link
