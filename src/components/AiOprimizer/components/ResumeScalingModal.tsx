@@ -20,7 +20,7 @@ const DPI = 96;
 // Minimum portion of the printable page the content MUST fill before it can be
 // downloaded. Prevents operators from scaling a resume so small that the first
 // page is half-empty and looks unprofessional.
-const MIN_FILL_RATIO = 0.94; // 94%
+const MIN_FILL_RATIO = 0.92; // 92%
 
 export const ResumeScalingModal: React.FC<ResumeScalingModalProps> = ({
     isOpen,
