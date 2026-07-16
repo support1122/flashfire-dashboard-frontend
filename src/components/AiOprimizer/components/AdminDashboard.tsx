@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
-  Users, Activity, UserPlus, Edit, Trash2, Shield,
+  Users, Activity, UserPlus, Trash2, Shield,
   FileText, TrendingUp, Search, Filter,
   Calendar, Clock, MapPin, Settings,
   BarChart3, RefreshCw, CheckCircle,
   Mail, LogOut, Key, ChevronDown, ChevronRight, Copy, Check
 } from 'lucide-react';
+import { guardedPasswordInputProps } from '../../../utils/passwordManagerGuard';
 import RegisterOPS from './Operations/RegisterOPS';
 import AddignUser from './Operations/AddignUser';
 import OperationsDirectory from './Operations/OperationsDirectory';
@@ -144,7 +145,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
         const data = await response.json();
         const resumesList = Array.isArray(data) ? data : [];
         // Ensure _id is converted to string for consistent matching
-        const normalizedResumes = resumesList.map((r: any) => ({
+        const normalizedResumes = resumesList.map((r: { _id?: string | { toString(): string }; firstName?: string; lastName?: string }) => ({
           ...r,
           _id: r._id?.toString() || r._id,
           firstName: r.firstName || '',
@@ -167,7 +168,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
       if (response.ok) {
         const data = await response.json();
         const rawList = data.users || [];
-        const userList: User[] = rawList.map((u: any) => ({
+        const userList: User[] = rawList.map((u: Partial<User> & { createdAt?: string }) => ({
           ...u,
           // normalize
           username: u.username || u.name || u.email || '',
@@ -419,49 +420,6 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
     } catch (error) {
       console.error('Failed to revoke session:', error);
       alert('Failed to revoke session');
-    }
-  };
-
-  const handleRevokeUserSessions = async (username: string) => {
-    if (!confirm(`Are you sure you want to revoke all sessions for ${username}?`)) return;
-
-    try {
-      const response = await authFetch(API_OPTIMIZER, '/api/sessions/revoke-user-sessions', {
-        method: 'POST',
-        body: JSON.stringify({ username })
-      });
-
-      if (response.ok) {
-        loadLoginHistory();
-        alert(`All sessions revoked for ${username}`);
-      } else {
-        alert('Failed to revoke user sessions');
-      }
-    } catch (error) {
-      console.error('Failed to revoke user sessions:', error);
-      alert('Failed to revoke user sessions');
-    }
-  };
-
-  const handleDeleteUserAccount = async (username: string) => {
-    if (!confirm(`Are you sure you want to delete ${username}'s account? This will log them out from all devices.`)) return;
-
-    try {
-      const response = await authFetch(API_OPTIMIZER, '/api/sessions/delete-user', {
-        method: 'DELETE',
-        body: JSON.stringify({ username })
-      });
-
-      if (response.ok) {
-        loadUsers();
-        loadLoginHistory();
-        alert(`User ${username} deleted and all sessions revoked`);
-      } else {
-        alert('Failed to delete user');
-      }
-    } catch (error) {
-      console.error('Failed to delete user:', error);
-      alert('Failed to delete user');
     }
   };
 
@@ -1410,7 +1368,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
                     <input
-                      type="password"
+                      {...guardedPasswordInputProps(true, false)}
                       required
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}

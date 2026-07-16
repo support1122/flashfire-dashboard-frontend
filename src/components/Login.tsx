@@ -338,15 +338,21 @@ import { UserContext } from "../state_management/UserContext"
 import { useUserProfile } from "../state_management/ProfileContext"
 import { useOperationsStore } from "../state_management/Operations"
 import { toastUtils, toastMessages } from "../utils/toast"
+import { isInternalEmail, guardedPasswordInputProps } from "../utils/passwordManagerGuard"
 import { GoogleLogin } from "@react-oauth/google"
 
 interface LoginResponse {
   message: string
   token?: string
-  userDetails?: any
-  userProfile?: any
+  userDetails?: unknown
+  userProfile?: unknown
   hasProfile?: boolean
-  user?: any
+  user?: {
+    name: string
+    email: string
+    role: string
+    managedUsers: { _id: string; name: string; email: string; userID: string }[]
+  }
 }
 
 const statsData = [
@@ -393,6 +399,10 @@ export default function Login() {
   const [useSessionKey, setUseSessionKey] = useState<boolean>(false)
   const [rememberFor30Days, setRememberFor30Days] = useState<boolean>(true)
 
+  // Ops accounts must never be captured by Google Password Manager (the shared
+  // Google profile handed to clients would expose them).
+  const hidePasswordFromManager = isInternalEmail(email)
+
   const navigate = useNavigate()
   const { setName, setEmailOperations, setRole, setManagedUsers, setOperatorNamesMap, reset: resetOperationsStore } = useOperationsStore()
   const userContext = useContext(UserContext)
@@ -418,7 +428,7 @@ export default function Login() {
       } else {
         toastUtils.error(data?.error || 'Failed to send OTP')
       }
-    } catch (e) {
+    } catch {
       toastUtils.dismissToast(loadingToast)
       toastUtils.error('Network error while sending OTP')
     } finally {
@@ -459,7 +469,7 @@ export default function Login() {
         toastUtils.dismissToast(loadingToast)
         toastUtils.error(data?.error || 'Invalid or expired OTP')
       }
-    } catch (e) {
+    } catch {
       toastUtils.dismissToast(loadingToast)
       toastUtils.error('Network error while verifying OTP')
     }
@@ -488,7 +498,7 @@ export default function Login() {
         toastUtils.dismissToast(loadingToast)
         toastUtils.error(data?.error || 'Invalid or expired session key')
       }
-    } catch (e) {
+    } catch {
       toastUtils.dismissToast(loadingToast)
       toastUtils.error('Network error while verifying key')
     }
@@ -498,11 +508,9 @@ export default function Login() {
   useEffect(() => {
     // Clear any existing Google OAuth state immediately
     try {
-      const google = (window as any).google
-      if (google && google.accounts && google.accounts.id && google.accounts.id.cancel) {
-        google.accounts.id.cancel()
-      }
-    } catch (e) {
+      const google = (window as { google?: { accounts?: { id?: { cancel?: () => void } } } }).google
+      google?.accounts?.id?.cancel?.()
+    } catch {
       // Ignore errors
     }
     
@@ -537,7 +545,7 @@ export default function Login() {
       setResponse(data)
 
       if (loginEndpoint === "/operations/login") {
-        if (data?.message === "Login successful") {
+        if (data?.message === "Login successful" && data.user) {
           setName(data.user.name)
           setEmailOperations(data.user.email)
           setRole(data.user.role)
@@ -572,7 +580,7 @@ export default function Login() {
                   return
                 }
               }
-            } catch {}
+            } catch { /* corrupt stored key — fall through to OTP */ }
           }
 
           const storedOtpTrust = localStorage.getItem('opsOtpTrust')
@@ -592,7 +600,7 @@ export default function Login() {
                   return
                 }
               }
-            } catch {}
+            } catch { /* corrupt stored trust token — fall through to OTP */ }
           }
 
           setRequireSessionKey(true)
@@ -965,6 +973,7 @@ export default function Login() {
                   type="email"
                   placeholder="example@email.com"
                   value={email}
+                  autoComplete={hidePasswordFromManager ? "off" : "email"}
                   onChange={(e) => setEmail(normalizeEmail(e.target.value))}
                   className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all text-sm"
                 />
@@ -977,7 +986,7 @@ export default function Login() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
-                  type={showPassword ? "text" : "password"}
+                  {...guardedPasswordInputProps(hidePasswordFromManager, showPassword)}
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
