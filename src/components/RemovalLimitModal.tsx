@@ -64,16 +64,6 @@ export default function RemovalLimitModal({ isOpen, onClose }: RemovalLimitModal
             >
               Got it
             </button>
-            <button
-              onClick={() => {
-                // You can add contact support functionality here
-                window.open('mailto:support@flashfirehq.com?subject=Job Removal Limit Exceeded', '_blank');
-                onClose();
-              }}
-              className="flex-1 bg-orange-500 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-orange-600 transition-colors"
-            >
-              Contact Support
-            </button>
           </div>
         </div>
       </div>
