@@ -44,19 +44,6 @@ export default function RemovalLimitModal({ isOpen, onClose }: RemovalLimitModal
             </p>
           </div>
 
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-700">
-                  <strong>Need to remove more jobs?</strong> Contact our support team for assistance.
-                </p>
-              </div>
-            </div>
-          </div>
-
           <div className="flex gap-3">
             <button
               onClick={onClose}
