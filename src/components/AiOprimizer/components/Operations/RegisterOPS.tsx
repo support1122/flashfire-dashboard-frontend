@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { toastUtils } from "../../../../utils/toast";
+import { guardedPasswordInputProps } from "../../../../utils/passwordManagerGuard";
 
 interface RegisterFormProps {
     onRegister ?: (email: string, password: string) => void;
 }
 
-const RegisterOPS: React.FC<RegisterFormProps> = ({  }) => {
+const RegisterOPS: React.FC<RegisterFormProps> = () => {
 
     const [formData, setFormData] = useState({ email: "", password: "", otpEmail: "" });
     const [otpTouched, setOtpTouched] = useState(false);
@@ -28,7 +29,7 @@ const RegisterOPS: React.FC<RegisterFormProps> = ({  }) => {
         setLoading(true);
         const loadingToast = toastUtils.loading("Creating operations user...");
         try {
-            const Api = (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:8086";
+            const Api = import.meta.env.VITE_API_BASE_URL || "http://localhost:8086";
             const res = await fetch(`${Api}/operations/register`, {
                 method: "POST",
                 headers: {
@@ -50,9 +51,9 @@ const RegisterOPS: React.FC<RegisterFormProps> = ({  }) => {
             toastUtils.dismissToast(loadingToast);
             toastUtils.success(result?.message || "Operation user created successfully");
             setFormData({ email: "", password: "", otpEmail: "" });
-        } catch (error: any) {
+        } catch (error) {
             toastUtils.dismissToast(loadingToast);
-            toastUtils.error(error?.message || "Registration failed");
+            toastUtils.error(error instanceof Error ? error.message : "Registration failed");
         } finally {
             setLoading(false);
         }
@@ -73,6 +74,7 @@ const RegisterOPS: React.FC<RegisterFormProps> = ({  }) => {
                         <input
                             type="text"
                             required
+                            autoComplete="off"
                             value={formData.email}
                             onChange={(e) => {
                                 const value = e.target.value;
@@ -120,7 +122,7 @@ const RegisterOPS: React.FC<RegisterFormProps> = ({  }) => {
                     <div className="relative">
                         <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <input
-                            type={showPassword ? "text" : "password"}
+                            {...guardedPasswordInputProps(true, showPassword)}
                             required
                             value={formData.password}
                             onChange={(e) =>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useResumeUnlockStore } from "../store/resumeStore";
 import { getStoredPin, storePin, clearStoredPin, getPinTimeRemainingString } from "../../../utils/pinStorage";
+import { guardedPasswordInputProps } from "../../../utils/passwordManagerGuard";
 
 interface UnlockModalProps {
     isOpen: boolean;
@@ -94,7 +95,7 @@ export default function UnlockModal({ isOpen, onClose }: UnlockModalProps) {
                                 Unlock Key
                             </label>
                             <input
-                                type="password"
+                                {...guardedPasswordInputProps(true, false)}
                                 id="unlock-key"
                                 value={unlockKey}
                                 onChange={(e) => setUnlockKey(e.target.value)}

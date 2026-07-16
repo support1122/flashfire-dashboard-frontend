@@ -226,7 +226,8 @@ const JobTracker = () => {
                                 if (!Number.isNaN(d.getTime()) && d.getTime() > 0 && d.getTime() <= now + 86400000) { // Allow 1 day in future for timezone issues
                                     bestTimestamp = d.getTime();
                                 }
-                            } catch (e) {
+                            } catch {
+                                // Invalid date
                             }
                         }
                     }
@@ -244,7 +245,7 @@ const JobTracker = () => {
                                         bestTimestamp = d.getTime();
                                     }
                                 }
-                            } catch (e) {
+                            } catch {
                                 // Invalid date
                             }
                         }
@@ -323,140 +324,6 @@ const JobTracker = () => {
 
     console.log("Role in job tracker is ", role);
 
-    const handleEditJob = async (jobData: Partial<Job>) => {
-        if (!editingJob) return;
-
-        if (role === "operations") {
-            try {
-                const updatedJobDetails = {
-                    ...editingJob,
-                    ...jobData,
-                    userID: userDetails?.email,
-                };
-                console.log("operations ");
-                const response = await fetch(
-                    `${API_BASE_URL}/operations/jobs`,
-                    {
-                        method: "PUT",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            token,
-                            jobID: editingJob.jobID,
-                            userDetails,
-                            jobDetails: updatedJobDetails,
-                            action: "edited by " + (name || "operations"),
-                        }),
-                    }
-                );
-
-                const result = await response.json();
-
-                if (result.message === "Jobs updated successfully") {
-                    setUserJobs(result.updatedJobs);
-                    toastUtils.success(toastMessages.jobUpdated);
-                    console.log("Job updated:", result.updatedJobs);
-                } else {
-                    toastUtils.error(toastMessages.jobError);
-                }
-            } catch (err) {
-                console.error("Failed to update job", err);
-                toastUtils.error(toastMessages.jobError);
-            } finally {
-                setEditingJob(null);
-                setShowJobForm(false);
-            }
-        } else {
-            try {
-                const updatedJobDetails = {
-                    ...editingJob,
-                    ...jobData,
-                    userID: userDetails?.email,
-                };
-
-                const response = await fetch(`${API_BASE_URL}/updatechanges`, {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        token,
-                        jobID: editingJob.jobID,
-                        userDetails,
-                        jobDetails: updatedJobDetails,
-                        action: "edited by ",
-                    }),
-                });
-
-                const result = await response.json();
-
-                if (result.message === "Jobs updated successfully") {
-                    setUserJobs(result.updatedJobs);
-                    toastUtils.success(toastMessages.jobUpdated);
-                    console.log("Job updated:", result.updatedJobs);
-                } else if (result.message === "Removal limit exceeded") {
-                    setShowRemovalLimitModal(true);
-                } else {
-                    toastUtils.error(toastMessages.jobError);
-                }
-            } catch (err) {
-                console.error("Failed to update job", err);
-                toastUtils.error(toastMessages.jobError);
-            } finally {
-                setEditingJob(null);
-                setShowJobForm(false);
-            }
-        }
-    };
-
-    const handleAddJob = async (
-        jobData: Omit<Job, "jobID" | "createdAt" | "updatedAt">
-    ) => {
-        try {
-            const jobDetails = {
-                ...jobData,
-                jobID: Date.now().toString(),
-                userID: userDetails?.email,
-            };
-
-            const saveJobsToDb = await fetch(`${API_BASE_URL}/api/jobs`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ jobDetails, userDetails, token }),
-            });
-
-            const responseFromServer = await saveJobsToDb.json().catch(() => ({}));
-            if (saveJobsToDb.status === 403) {
-                const msg =
-                    responseFromServer?.error === "BLOCKED_COMPANY" ||
-                    responseFromServer?.error === "BLOCKED_LOCATION"
-                        ? responseFromServer?.message ||
-                          (responseFromServer?.error === "BLOCKED_COMPANY"
-                              ? "This company is blocked for this client."
-                              : "This location is blocked for this client.")
-                        : responseFromServer?.message || "Cannot add this job.";
-                toastUtils.error(msg);
-                return;
-            }
-            if (!saveJobsToDb.ok) {
-                toastUtils.error(responseFromServer?.message || "Failed to save job.");
-                return;
-            }
-            setUserJobs(responseFromServer.NewJobList);
-            setShowJobForm(false);
-            if (responseFromServer.message == 'Job Added Succesfully') {
-                setUserJobs(responseFromServer.NewJobList);
-                return;
-            }
-        } catch (err) {
-            console.log(err);
-            toastUtils.error("Failed to save job. Please try again.");
-        }
-    }
-
     // const handleDragStart = (e: React.DragEvent, job: Job) => {
     //   e.dataTransfer.setData('jobId', job.jobID);
     // };
@@ -520,7 +387,7 @@ const JobTracker = () => {
         const edgeSize = 100; // Reduced for more responsive scrolling
 
         // Throttle scroll updates for better performance
-        const scrollContainer = container as any;
+        const scrollContainer = container as HTMLElement & { _scrollTimeout?: boolean };
         if (!scrollContainer._scrollTimeout) {
             scrollContainer._scrollTimeout = true;
 
@@ -545,7 +412,7 @@ const JobTracker = () => {
 
     const onDeleteJob = async (jobID: string) => {
         try {
-            let Code = prompt("Enter The Code to Delete.");
+            const Code = prompt("Enter The Code to Delete.");
             if (Code !== import.meta.env.VITE_JOB_DELETION_CODE) return;
             else {
                 if (role === "operations") {
@@ -622,9 +489,13 @@ const JobTracker = () => {
                     : userDetails.firstName || userDetails.lastName || null;
             }
             clientName = clientName || userDetails?.email || 'Unknown Client';
-            
-            const webhookUrl = 'https://discord.com/api/webhooks/1416080143914635436/culXkTHvJQuPW8rbtdgIUICyJFlXzXH9yNzQ8iDVmM_Ikzw2XoYnv7JD2M7Mrz7oJbo2';
-            
+
+            const webhookUrl = import.meta.env.VITE_DISCORD_REMOVED_WEBHOOK_URL;
+            if (!webhookUrl) {
+                console.warn('VITE_DISCORD_REMOVED_WEBHOOK_URL is not set; skipping Discord notification');
+                return;
+            }
+
             const message = {
                 embeds: [{
                     title: 'Job Card Moved to Removed',
@@ -668,7 +539,7 @@ const JobTracker = () => {
         }
     };
 
-    const onUpdateJobStatus = async (jobID: string, status: JobStatus, userDetails: any, removalReason?: string) => {
+    const onUpdateJobStatus = async (jobID: string, status: JobStatus, userDetails: unknown, removalReason?: string) => {
         const originalJob = userJobs?.find((job) => job.jobID === jobID);
         if (!originalJob) return;
 
@@ -702,7 +573,7 @@ const JobTracker = () => {
                     ? `${API_BASE_URL}/operations/jobs`
                     : `${API_BASE_URL}/updatechanges`;
 
-            let reqToServer = await fetch(endpoint, {
+            const reqToServer = await fetch(endpoint, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -723,7 +594,7 @@ const JobTracker = () => {
                 }),
             });
 
-            let resFromServer = await reqToServer.json();
+            const resFromServer = await reqToServer.json();
             if (resFromServer.message === "Jobs updated successfully") {
                 // Server confirmed - update with server data
                 setUserJobs(resFromServer?.updatedJobs);
