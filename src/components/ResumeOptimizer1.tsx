@@ -712,6 +712,7 @@ type Entry = {
   showProjects?: boolean;
   showLeadership?: boolean;
   showPublications?: boolean;
+  showTherapeuticAreas?: boolean;
   sectionOrder?: string[];
 };
 
@@ -1076,6 +1077,7 @@ export default function DocumentUpload() {
               showProjects: resume.showProjects,
               showLeadership: resume.showLeadership,
               showPublications: resume.showPublications,
+              showTherapeuticAreas: resume.showTherapeuticAreas,
               sectionOrder: resume.sectionOrder
             };
           });
@@ -2022,6 +2024,7 @@ export default function DocumentUpload() {
                       showProjects={resumeData.showProjects}
                       showSummary={resumeData.showSummary}
                       showPublications={resumeData.showPublications}
+                      showTherapeuticAreas={resumeData.showTherapeuticAreas}
                       showPrintButtons={true}
                       sectionOrder={resumeData.sectionOrder}
                     />
@@ -2296,6 +2299,7 @@ export default function DocumentUpload() {
                             showProjects={resumeData.showProjects}
                             showSummary={resumeData.showSummary}
                             showPublications={resumeData.showPublications}
+                            showTherapeuticAreas={resumeData.showTherapeuticAreas}
                             showPrintButtons={role === "operations"}
                             sectionOrder={resumeData.sectionOrder}
                           />
@@ -2345,6 +2349,7 @@ export default function DocumentUpload() {
                               showProjects: it.showProjects,
                               showLeadership: it.showLeadership,
                               showPublications: it.showPublications,
+                              showTherapeuticAreas: it.showTherapeuticAreas,
                               sectionOrder: it.sectionOrder
                             });
                             setPreviewMode(true);

@@ -1763,6 +1763,7 @@ export default function JobModal({
                                                     showProjects={resumeData.showProjects}
                                                     showSummary={resumeData.showSummary}
                                                     showPublications={resumeData.showPublications}
+                                                    showTherapeuticAreas={resumeData.showTherapeuticAreas}
                                                     showPrintButtons
                                                     showDirectPdfButton={role === "operations"}
                                                     sectionOrder={resumeData.sectionOrder}
@@ -2255,6 +2256,7 @@ export default function JobModal({
                         showProjects: resumeData.checkboxStates?.showProjects || false,
                         showLeadership: resumeData.checkboxStates?.showLeadership || false,
                         showPublications: resumeData.checkboxStates?.showPublications || false,
+                        showTherapeuticAreas: resumeData.checkboxStates?.showTherapeuticAreas || false,
                         version: resumeData.V || 0,
                         sectionOrder: resumeData.sectionOrder || [
                             "personalInfo",
@@ -2283,6 +2285,7 @@ export default function JobModal({
                 showProjects: resumeData.checkboxStates?.showProjects || false,
                 showLeadership: resumeData.checkboxStates?.showLeadership || false,
                 showPublications: resumeData.checkboxStates?.showPublications || false,
+                showTherapeuticAreas: resumeData.checkboxStates?.showTherapeuticAreas || false,
                 version: resumeData.V || 0,
                 sectionOrder: resumeData.sectionOrder || [
                     "personalInfo",
@@ -2310,6 +2313,7 @@ export default function JobModal({
                     showProjects: resumeData.checkboxStates?.showProjects || false,
                     showLeadership: resumeData.checkboxStates?.showLeadership || false,
                     showPublications: resumeData.checkboxStates?.showPublications || false,
+                    showTherapeuticAreas: resumeData.checkboxStates?.showTherapeuticAreas || false,
                     version: resumeData.V || 0,
                     sectionOrder: resumeData.sectionOrder || [
                         "personalInfo",
@@ -2337,11 +2341,13 @@ export default function JobModal({
                                 skills: optimizedData.skills || [],
                                 education: optimizedData.education || [],
                                 publications: optimizedData.publications || [],
+                                therapeuticAreas: optimizedData.therapeuticAreas || "",
                                 checkboxStates: {
                                     showSummary: resumeData.checkboxStates?.showSummary !== false,
                                     showProjects: resumeData.checkboxStates?.showProjects || false,
                                     showLeadership: resumeData.checkboxStates?.showLeadership || false,
                                     showPublications: resumeData.checkboxStates?.showPublications || false,
+                                    showTherapeuticAreas: resumeData.checkboxStates?.showTherapeuticAreas || false,
                                 },
                                 sectionTitles:
                                     (optimizedData as any)?.sectionTitles
@@ -2911,6 +2917,7 @@ export default function JobModal({
                                         showProjects={optimizedResumeMetadata.showProjects}
                                         showSummary={optimizedResumeMetadata.showSummary}
                                         showPublications={optimizedResumeMetadata.showPublications}
+                                        showTherapeuticAreas={optimizedResumeMetadata.showTherapeuticAreas}
                                         showPrintButtons
                                         showDirectPdfButton={role === "operations"}
                                         sectionOrder={optimizedResumeMetadata.sectionOrder}
