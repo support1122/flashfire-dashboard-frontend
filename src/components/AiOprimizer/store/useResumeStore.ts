@@ -388,6 +388,13 @@ export const useResumeStore = create<ResumeStore>()(
                          });
                          state.changedFields = new Set(state.changedFields || []);
 
+                         // Ensure customSections arrays exist (operator-defined sections)
+                         for (const r of [state.resumeData, state.baseResume, state.lastSelectedResume, state.optimizedData]) {
+                              if (r && !Array.isArray(r.customSections)) {
+                                   r.customSections = [];
+                              }
+                         }
+
                          // Ensure personalInfo.profileLinks exists (new scalable links)
                          if (state.resumeData?.personalInfo && !Array.isArray(state.resumeData.personalInfo.profileLinks)) {
                               state.resumeData.personalInfo.profileLinks = [];

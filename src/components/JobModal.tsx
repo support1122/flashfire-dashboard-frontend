@@ -2342,6 +2342,7 @@ export default function JobModal({
                                 education: optimizedData.education || [],
                                 publications: optimizedData.publications || [],
                                 therapeuticAreas: optimizedData.therapeuticAreas || "",
+                                customSections: optimizedData.customSections || [],
                                 checkboxStates: {
                                     showSummary: resumeData.checkboxStates?.showSummary !== false,
                                     showProjects: resumeData.checkboxStates?.showProjects || false,
@@ -2395,6 +2396,7 @@ export default function JobModal({
                                 skills: optimizedData.skills || [],
                                 education: optimizedData.education || [],
                                 publications: optimizedData.publications || [],
+                                customSections: optimizedData.customSections || [],
                                 checkboxStates: {
                                     showSummary: resumeData.checkboxStates?.showSummary !== false,
                                     showProjects: resumeData.checkboxStates?.showProjects || false,
