@@ -79,6 +79,10 @@ export interface ResumeData {
     skills: SkillCategory[];
     education: EducationItem[];
     publications: PublicationItem[];
+    /** Medical-resume-only plain text section (e.g. "Oncology • Neuroscience ...").
+     *  Optional so resumes saved before this field existed still typecheck.
+     *  Never sent to / returned by AI optimization. */
+    therapeuticAreas?: string;
 
 }
 

@@ -64,6 +64,7 @@ const emptyInitialData: ResumeData = {
         },
     ],
     publications: [],
+    therapeuticAreas: "",
 };
 
 // Function to get initial data, checking for last selected resume first

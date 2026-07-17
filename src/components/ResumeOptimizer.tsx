@@ -26,6 +26,7 @@ type Entry = {
   showProjects?: boolean;
   showLeadership?: boolean;
   showPublications?: boolean;
+  showTherapeuticAreas?: boolean;
 };
 
 // Cloudinary sometimes serves PDFs under `image/upload`.
@@ -294,7 +295,8 @@ const fetchAllOptimizedResumes = async () => {
             showSummary: resume.showSummary,
             showProjects: resume.showProjects,
             showLeadership: resume.showLeadership,
-            showPublications: resume.showPublications
+            showPublications: resume.showPublications,
+            showTherapeuticAreas: resume.showTherapeuticAreas
           };
         });
         allResumes = [...allResumes, ...jobResumes];
@@ -1206,6 +1208,7 @@ const handleDelete = async (item: Entry, category: "base" | "optimized" | "cover
                                                 showProjects={resumeData.showProjects}
                                                 showSummary={resumeData.showSummary}
                                                 showPublications={resumeData.showPublications}
+                                                showTherapeuticAreas={resumeData.showTherapeuticAreas}
                                                 showPrintButtons={context?.userDetails?.role !== "user" && localStorage.getItem("role") !== "user"}
                                             />
                                         )}
@@ -1250,7 +1253,8 @@ const handleDelete = async (item: Entry, category: "base" | "optimized" | "cover
                                                     showSummary: it.showSummary,
                                                     showProjects: it.showProjects,
                                                     showLeadership: it.showLeadership,
-                                                    showPublications: it.showPublications
+                                                    showPublications: it.showPublications,
+                                                    showTherapeuticAreas: it.showTherapeuticAreas
                                                 });
                                                 setPreviewMode(true);
                                             } else if (it.isJobBased && (it.jobID || it.jobId) && it.hasResume) {

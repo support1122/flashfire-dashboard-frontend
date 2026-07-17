@@ -22,6 +22,7 @@ import AdminDashboard from "./components/AdminDashboard";
 // import { ResumePreview1 } from "./components/ResumePreview1";
 import { PreviewStore } from "./store/PreviewStore";
 import { Publications } from "./components/Publications";
+import { TherapeuticAreas } from "./components/TherapeuticAreas";
 import { ResumePreviewMedical } from "./components/ResumePreviewMedical";
 import { useJobsSessionStore } from "../../state_management/JobsSessionStore";
 import "./index.css"; //
@@ -527,6 +528,8 @@ function App() {
         // setUserId,
         showPublications,
         setShowPublications,
+        showTherapeuticAreas,
+        setShowTherapeuticAreas,
         sectionOrder,
         setSectionOrder,
         sectionTitles,
@@ -746,7 +749,8 @@ function App() {
                 hasValidPublications && !hasOnlyEmptyPublications;
             
             setShowPublications(finalHasPublications || (resumeData.checkboxStates.showPublications ?? false));
-            
+            setShowTherapeuticAreas(resumeData.checkboxStates.showTherapeuticAreas ?? false);
+
             console.log(
                 "Checkboxes set from saved states - Summary:",
                 resumeData.checkboxStates.showSummary,
@@ -772,9 +776,12 @@ function App() {
             // Handle sectionOrder if it exists; ensure publications is included (after education) for all resumes
             if (resumeData.sectionOrder && Array.isArray(resumeData.sectionOrder)) {
                 console.log("Found saved sectionOrder:", resumeData.sectionOrder);
-                let updatedSectionOrder = [...resumeData.sectionOrder];
+                const updatedSectionOrder = [...resumeData.sectionOrder];
                 if (!updatedSectionOrder.includes("publications")) {
                     updatedSectionOrder.push("publications");
+                }
+                if (!updatedSectionOrder.includes("therapeuticAreas")) {
+                    updatedSectionOrder.push("therapeuticAreas");
                 }
                 setSectionOrder(updatedSectionOrder);
             } else {
@@ -786,7 +793,8 @@ function App() {
                     "leadership",
                     "skills",
                     "education",
-                    "publications"
+                    "publications",
+                    "therapeuticAreas"
                 ];
                 setSectionOrder(defaultOrder);
             }
@@ -901,6 +909,9 @@ function App() {
         setShowProjects(finalHasProjects);
         setShowLeadership(finalHasLeadership);
         setShowPublications(finalHasPublications);
+        setShowTherapeuticAreas(
+            Boolean(resumeData.therapeuticAreas && resumeData.therapeuticAreas.trim() !== "")
+        );
 
         console.log(
             "Checkboxes set from content analysis - Summary:",
@@ -1418,6 +1429,22 @@ function App() {
         setResumeData({ ...resumeData, education: data });
         trackChanges("education");
     };
+    const updateTherapeuticAreas = (value: string) => {
+        setResumeData({ ...resumeData, therapeuticAreas: value });
+        trackChanges("therapeuticAreas");
+    };
+    const updateOptimizedTherapeuticAreas = (value: string) => {
+        if (optimizedData) {
+            setOptimizedData((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        therapeuticAreas: value,
+                    }
+                    : null
+            );
+        }
+    };
 
     const updateOptimizedSummary = (value: string) => {
         if (optimizedData) {
@@ -1499,16 +1526,19 @@ function App() {
             const apiUrl =
                 import.meta.env.VITE_API_URL || "https://resume-maker-backend-lf5z.onrender.com";
             
-            let finalSectionOrder = [...sectionOrder];
+            const finalSectionOrder = [...sectionOrder];
             if (!finalSectionOrder.includes("publications")) {
                 finalSectionOrder.push("publications");
+            }
+            if (!finalSectionOrder.includes("therapeuticAreas")) {
+                finalSectionOrder.push("therapeuticAreas");
             }
 
             const hasPublications = resumeData.publications &&
                 resumeData.publications.length > 0 &&
                 resumeData.publications.some(pub => pub.details && pub.details.trim() !== "");
             const finalShowPublications = versionV === 2 ? (hasPublications || showPublications) : showPublications;
-            
+
             const saveData = {
                 filename,
                 data: resumeData,
@@ -1517,6 +1547,7 @@ function App() {
                     showProjects,
                     showLeadership,
                     showPublications: finalShowPublications,
+                    showTherapeuticAreas,
                 },
                 sectionOrder: finalSectionOrder,
                 // Operator-renamed section headers. Sparse map keyed by
@@ -2087,6 +2118,7 @@ function App() {
                         showProjects: showProjects,
                         showLeadership: showLeadership,
                         showPublications: showPublications,
+                        showTherapeuticAreas: showTherapeuticAreas,
                         version: versionV,
                         sectionOrder: sectionOrder
                     }
@@ -2138,6 +2170,9 @@ function App() {
                 leadership: showLeadership ? resumeData.leadership : [],
                 publications: showPublications ? (resumeData as any).publications : [],
             } as typeof resumeData;
+            // Therapeutic areas must never reach the AI — enabled or not, the
+            // text stays exactly as the operator wrote it.
+            delete (filteredResumeForOptimization as any).therapeuticAreas;
             const t = convertDoubleHyphenToHyphen(filteredResumeForOptimization.summary);
             // console.log("filteredResumeForOptimization", t);
             const t2 = convertDoubleDashToHyphen(filteredResumeForOptimization.projects.map((project: any) => project.company).join(", "));
@@ -2199,6 +2234,8 @@ function App() {
                     publications: showPublications
                         ? optimizedDataResult.publications || (resumeData as any).publications
                         : (resumeData as any).publications,
+                    // Always the untouched original — never taken from the AI response.
+                    therapeuticAreas: (resumeData as any).therapeuticAreas || "",
                 } as typeof resumeData;
 
                 setOptimizedData(newOptimizedData);
@@ -2589,6 +2626,21 @@ function App() {
                                                 onToggle: (enabled: boolean) => setShowPublications(enabled),
                                                 showToggle: true,
                                             },
+                                            // Medical template only — plain text, never AI-optimized
+                                            ...(versionV === 2 ? [{
+                                                id: "therapeuticAreas",
+                                                title: sectionTitles?.therapeuticAreas || "Therapeutic Areas",
+                                                component: showTherapeuticAreas ? (
+                                                    <TherapeuticAreas
+                                                        data={resumeData.therapeuticAreas || ""}
+                                                        onChange={updateTherapeuticAreas}
+                                                    />
+                                                ) : <div className="text-gray-500 italic">Therapeutic Areas section is disabled</div>,
+                                                isEnabled: showTherapeuticAreas,
+                                                onToggle: (enabled: boolean) => setShowTherapeuticAreas(enabled),
+                                                showToggle: true,
+                                                onTitleChange: (v: string) => setSectionTitle("therapeuticAreas", v),
+                                            }] : []),
                                         ];
                                         const order = sectionOrder.filter((id) => id !== "personalInfo");
                                         const ordered = order
@@ -2830,6 +2882,7 @@ function App() {
                                             showProjects={showProjects}
                                             showSummary={showSummary}
                                             showPublications={showPublications}
+                                            showTherapeuticAreas={showTherapeuticAreas}
                                             showChanges={userRole !== "admin"}
                                             changedFields={
                                                 userRole === "admin"
@@ -2984,6 +3037,21 @@ function App() {
                                                                 onToggle: (enabled: boolean) => setShowPublications(enabled),
                                                                 showToggle: true,
                                                             },
+                                                            // Medical template only — plain text, never AI-optimized
+                                                            ...(versionV === 2 ? [{
+                                                                id: "therapeuticAreas",
+                                                                title: sectionTitles?.therapeuticAreas || "Therapeutic Areas",
+                                                                component: showTherapeuticAreas ? (
+                                                                    <TherapeuticAreas
+                                                                        data={optimizedData.therapeuticAreas || ""}
+                                                                        onChange={updateOptimizedTherapeuticAreas}
+                                                                    />
+                                                                ) : <div className="text-gray-500 italic">Therapeutic Areas section is disabled</div>,
+                                                                isEnabled: showTherapeuticAreas,
+                                                                onToggle: (enabled: boolean) => setShowTherapeuticAreas(enabled),
+                                                                showToggle: true,
+                                                                onTitleChange: (v: string) => setSectionTitle("therapeuticAreas", v),
+                                                            }] : []),
                                                         ];
                                                         const order = sectionOrder.filter((id) => id !== "personalInfo");
                                                         const ordered = order
@@ -3107,6 +3175,9 @@ function App() {
                                                             showPublications={
                                                                 showPublications
                                                             }
+                                                            showTherapeuticAreas={
+                                                                showTherapeuticAreas
+                                                            }
                                                             showChanges={false}
                                                             changedFields={
                                                                 new Set()
@@ -3184,6 +3255,7 @@ function App() {
                                                 data={resumeData}
                                                 showLeadership={showLeadership}
                                                 showProjects={showProjects}
+                                                showTherapeuticAreas={showTherapeuticAreas}
                                                 showChanges={false}
                                                 changedFields={new Set()}
                                                 sectionOrder={sectionOrder}
@@ -3228,6 +3300,7 @@ function App() {
                                                 data={resumeData}
                                                 showLeadership={showLeadership}
                                                 showProjects={showProjects}
+                                                showTherapeuticAreas={showTherapeuticAreas}
                                                 showChanges={false}
                                                 changedFields={changedFields}
                                                 sectionOrder={sectionOrder}
@@ -3301,6 +3374,7 @@ function App() {
                                     showProjects={showProjects}
                                     showSummary={showSummary}
                                     showPublications={showPublications}
+                                    showTherapeuticAreas={showTherapeuticAreas}
                                     showChanges={false}
                                     changedFields={new Set()}
                                     sectionOrder={sectionOrder}
@@ -3345,6 +3419,7 @@ function App() {
                                     showProjects={showProjects}
                                     showSummary={showSummary}
                                     showPublications={showPublications}
+                                    showTherapeuticAreas={showTherapeuticAreas}
                                     showPrintButtons={!isOptimizeRoute}
                                     sectionOrder={sectionOrder}
                                             sectionTitles={sectionTitles}
