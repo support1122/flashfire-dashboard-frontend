@@ -69,6 +69,14 @@ interface ResumeData {
     // Plain text section (e.g. "Oncology • Neuroscience • ..."). Optional —
     // resumes saved before this field existed don't have it.
     therapeuticAreas?: string;
+    // Operator-defined free-form sections. Ordered via sectionOrder entries
+    // of the form `custom:<id>`. Never AI-optimized.
+    customSections?: Array<{
+        id: string;
+        title: string;
+        content: string;
+        enabled: boolean;
+    }>;
 }
 
 interface ResumePreviewProps {
@@ -265,6 +273,47 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
 
     // Function to render sections based on section order
     const renderSection = (sectionId: string) => {
+        // Operator-defined custom sections use ids of the form `custom:<id>`
+        if (sectionId.startsWith("custom:")) {
+            const cs = (data.customSections || []).find(
+                (c) => `custom:${c.id}` === sectionId
+            );
+            const csContent = (cs?.content || "").trim();
+            if (!cs || !cs.enabled || !csContent) return null;
+
+            return (
+                <div style={{ marginBottom: "12px" }}>
+                    <div
+                        style={{
+                            fontSize: "9pt",
+                            borderBottom: "1px solid #000",
+                            paddingBottom: "8px",
+                            marginBottom: "6px",
+                            fontWeight: "bold",
+                        }}
+                    >
+                        {(cs.title || "Custom Section").toUpperCase()}
+                    </div>
+                    {csContent.split("\n").map((line, i) =>
+                        line.trim() ? (
+                            <div
+                                key={i}
+                                style={{
+                                    textAlign: "justify",
+                                    fontSize: "9pt",
+                                    lineHeight: "1.3",
+                                    letterSpacing: "-0.025em",
+                                    marginBottom: "3px",
+                                }}
+                            >
+                                {renderMarkedText(line)}
+                            </div>
+                        ) : null
+                    )}
+                </div>
+            );
+        }
+
         switch (sectionId) {
             case "summary":
                 if (!showSummary) return null;
@@ -969,6 +1018,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 education: data.education || [],
                 publications: data.publications || [],
                 therapeuticAreas: data.therapeuticAreas || "",
+                customSections: data.customSections || [],
                 checkboxStates: {
                     showSummary: showSummary,
                     showProjects: showProjects,
@@ -1062,6 +1112,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                 education: data.education || [],
                 publications: data.publications || [],
                 therapeuticAreas: data.therapeuticAreas || "",
+                customSections: data.customSections || [],
                 checkboxStates: {
                     showSummary: showSummary,
                     showProjects: showProjects,
@@ -1336,6 +1387,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                 education: data.education || [],
                 publications: data.publications || [],
                 therapeuticAreas: data.therapeuticAreas || "",
+                customSections: data.customSections || [],
                 checkboxStates: {
                     showSummary: showSummary,
                     showProjects: showProjects,

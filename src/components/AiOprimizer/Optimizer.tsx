@@ -8,7 +8,7 @@ import { Education } from "./components/Education";
 import { ResumePreview } from "./components/ResumePreview";
 import { ChangesComparison } from "./components/ChangesComparison";
 import { DraggableSections } from "./components/DraggableSections";
-import { RotateCcw, Save, Check, LucideSaveAll } from "lucide-react";
+import { RotateCcw, Save, Check, LucideSaveAll, Plus } from "lucide-react";
 import { useResumeStore } from "./store/useResumeStore";
 import { useResumeUnlockStore } from "./store/resumeStore";
 import { initialData } from "./data/initialData";
@@ -23,6 +23,8 @@ import AdminDashboard from "./components/AdminDashboard";
 import { PreviewStore } from "./store/PreviewStore";
 import { Publications } from "./components/Publications";
 import { TherapeuticAreas } from "./components/TherapeuticAreas";
+import { CustomSectionEditor } from "./components/CustomSectionEditor";
+import { CustomSectionItem } from "./types/ResumeTypes";
 import { ResumePreviewMedical } from "./components/ResumePreviewMedical";
 import { useJobsSessionStore } from "../../state_management/JobsSessionStore";
 import "./index.css"; //
@@ -774,14 +776,28 @@ function App() {
             );
 
             // Handle sectionOrder if it exists; ensure publications is included (after education) for all resumes
+            // Operator-defined custom sections: their sectionOrder entries are
+            // `custom:<id>`. Drop entries whose section no longer exists and
+            // append entries for sections the saved order doesn't know yet.
+            const customSectionIds = (resumeData.customSections || []).map(
+                (cs: CustomSectionItem) => `custom:${cs.id}`
+            );
+
             if (resumeData.sectionOrder && Array.isArray(resumeData.sectionOrder)) {
                 console.log("Found saved sectionOrder:", resumeData.sectionOrder);
-                const updatedSectionOrder = [...resumeData.sectionOrder];
+                const updatedSectionOrder = resumeData.sectionOrder.filter(
+                    (id) => !id.startsWith("custom:") || customSectionIds.includes(id)
+                );
                 if (!updatedSectionOrder.includes("publications")) {
                     updatedSectionOrder.push("publications");
                 }
                 if (!updatedSectionOrder.includes("therapeuticAreas")) {
                     updatedSectionOrder.push("therapeuticAreas");
+                }
+                for (const cid of customSectionIds) {
+                    if (!updatedSectionOrder.includes(cid)) {
+                        updatedSectionOrder.push(cid);
+                    }
                 }
                 setSectionOrder(updatedSectionOrder);
             } else {
@@ -794,7 +810,8 @@ function App() {
                     "skills",
                     "education",
                     "publications",
-                    "therapeuticAreas"
+                    "therapeuticAreas",
+                    ...customSectionIds
                 ];
                 setSectionOrder(defaultOrder);
             }
@@ -1432,6 +1449,79 @@ function App() {
     const updateTherapeuticAreas = (value: string) => {
         setResumeData({ ...resumeData, therapeuticAreas: value });
         trackChanges("therapeuticAreas");
+    };
+    // --- Custom sections (operator-defined, never AI-optimized) ---
+    const updateCustomSection = (id: string, next: CustomSectionItem) => {
+        setResumeData({
+            ...resumeData,
+            customSections: (resumeData.customSections || []).map((cs) =>
+                cs.id === id ? next : cs
+            ),
+        });
+        trackChanges("customSections");
+    };
+    const updateOptimizedCustomSection = (id: string, next: CustomSectionItem) => {
+        if (optimizedData) {
+            setOptimizedData((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        customSections: (prev.customSections || []).map((cs) =>
+                            cs.id === id ? next : cs
+                        ),
+                    }
+                    : null
+            );
+        }
+    };
+    const addCustomSection = () => {
+        const id = Date.now().toString();
+        const next: CustomSectionItem = { id, title: "", content: "", enabled: true };
+        setResumeData({
+            ...resumeData,
+            customSections: [...(resumeData.customSections || []), next],
+        });
+        // Keep the optimized copy in sync so the section shows in both editors
+        setOptimizedData((prev) =>
+            prev
+                ? { ...prev, customSections: [...(prev.customSections || []), next] }
+                : prev
+        );
+        if (!sectionOrder.includes(`custom:${id}`)) {
+            setSectionOrder([...sectionOrder, `custom:${id}`]);
+        }
+        trackChanges("customSections");
+    };
+    const removeCustomSection = (id: string) => {
+        setResumeData({
+            ...resumeData,
+            customSections: (resumeData.customSections || []).filter((cs) => cs.id !== id),
+        });
+        setOptimizedData((prev) =>
+            prev
+                ? {
+                    ...prev,
+                    customSections: (prev.customSections || []).filter((cs) => cs.id !== id),
+                }
+                : prev
+        );
+        setSectionOrder(sectionOrder.filter((sid) => sid !== `custom:${id}`));
+        trackChanges("customSections");
+    };
+    const setCustomSectionEnabled = (id: string, enabled: boolean) => {
+        const cs = (resumeData.customSections || []).find((c) => c.id === id);
+        if (cs) updateCustomSection(id, { ...cs, enabled });
+        // Mirror the toggle into the optimized copy so both previews agree
+        setOptimizedData((prev) =>
+            prev
+                ? {
+                    ...prev,
+                    customSections: (prev.customSections || []).map((c) =>
+                        c.id === id ? { ...c, enabled } : c
+                    ),
+                }
+                : prev
+        );
     };
     const updateOptimizedTherapeuticAreas = (value: string) => {
         if (optimizedData) {
@@ -2170,9 +2260,10 @@ function App() {
                 leadership: showLeadership ? resumeData.leadership : [],
                 publications: showPublications ? (resumeData as any).publications : [],
             } as typeof resumeData;
-            // Therapeutic areas must never reach the AI — enabled or not, the
-            // text stays exactly as the operator wrote it.
+            // Therapeutic areas and custom sections must never reach the AI —
+            // enabled or not, the text stays exactly as the operator wrote it.
             delete (filteredResumeForOptimization as any).therapeuticAreas;
+            delete (filteredResumeForOptimization as any).customSections;
             const t = convertDoubleHyphenToHyphen(filteredResumeForOptimization.summary);
             // console.log("filteredResumeForOptimization", t);
             const t2 = convertDoubleDashToHyphen(filteredResumeForOptimization.projects.map((project: any) => project.company).join(", "));
@@ -2234,8 +2325,9 @@ function App() {
                     publications: showPublications
                         ? optimizedDataResult.publications || (resumeData as any).publications
                         : (resumeData as any).publications,
-                    // Always the untouched original — never taken from the AI response.
+                    // Always the untouched originals — never taken from the AI response.
                     therapeuticAreas: (resumeData as any).therapeuticAreas || "",
+                    customSections: (resumeData as any).customSections || [],
                 } as typeof resumeData;
 
                 setOptimizedData(newOptimizedData);
@@ -2641,6 +2733,21 @@ function App() {
                                                 showToggle: true,
                                                 onTitleChange: (v: string) => setSectionTitle("therapeuticAreas", v),
                                             }] : []),
+                                            // Operator-defined custom sections — plain text, never AI-optimized
+                                            ...(resumeData.customSections || []).map((cs) => ({
+                                                id: `custom:${cs.id}`,
+                                                title: cs.title || "Custom Section",
+                                                component: (
+                                                    <CustomSectionEditor
+                                                        section={cs}
+                                                        onChange={(next) => updateCustomSection(cs.id, next)}
+                                                        onRemove={() => removeCustomSection(cs.id)}
+                                                    />
+                                                ),
+                                                isEnabled: cs.enabled,
+                                                onToggle: (enabled: boolean) => setCustomSectionEnabled(cs.id, enabled),
+                                                showToggle: true,
+                                            })),
                                         ];
                                         const order = sectionOrder.filter((id) => id !== "personalInfo");
                                         const ordered = order
@@ -2653,6 +2760,16 @@ function App() {
                                             />
                                         );
                                     })()}
+
+                                    {/* New sections land at the end of the order; drag to reposition */}
+                                    <button
+                                        type="button"
+                                        onClick={addCustomSection}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 text-gray-600 rounded-md hover:border-blue-400 hover:text-blue-600 transition-colors font-medium"
+                                    >
+                                        <Plus size={18} />
+                                        Add Custom Section
+                                    </button>
 
                                     {/* Save Button - Also lock this */}
 
@@ -3052,6 +3169,21 @@ function App() {
                                                                 showToggle: true,
                                                                 onTitleChange: (v: string) => setSectionTitle("therapeuticAreas", v),
                                                             }] : []),
+                                                            // Operator-defined custom sections — plain text, never AI-optimized
+                                                            ...(optimizedData.customSections || []).map((cs) => ({
+                                                                id: `custom:${cs.id}`,
+                                                                title: cs.title || "Custom Section",
+                                                                component: (
+                                                                    <CustomSectionEditor
+                                                                        section={cs}
+                                                                        onChange={(next) => updateOptimizedCustomSection(cs.id, next)}
+                                                                        onRemove={() => removeCustomSection(cs.id)}
+                                                                    />
+                                                                ),
+                                                                isEnabled: cs.enabled,
+                                                                onToggle: (enabled: boolean) => setCustomSectionEnabled(cs.id, enabled),
+                                                                showToggle: true,
+                                                            })),
                                                         ];
                                                         const order = sectionOrder.filter((id) => id !== "personalInfo");
                                                         const ordered = order

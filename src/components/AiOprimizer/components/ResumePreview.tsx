@@ -112,6 +112,14 @@ interface ResumeData {
         id: string;
         details: string;
     }>;
+    // Operator-defined free-form sections. Ordered via sectionOrder entries
+    // of the form `custom:<id>`. Never AI-optimized.
+    customSections?: Array<{
+        id: string;
+        title: string;
+        content: string;
+        enabled: boolean;
+    }>;
 }
 
 interface ResumePreviewProps {
@@ -483,6 +491,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 skills: data.skills || [],
                 education: data.education || [],
                 publications: data.publications || [],
+                customSections: data.customSections || [],
                 checkboxStates: {
                     showSummary: showSummary,
                     showProjects: showProjects,
@@ -622,6 +631,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 skills: data.skills || [],
                 education: data.education || [],
                 publications: data.publications || [],
+                customSections: data.customSections || [],
                 checkboxStates: {
                     showSummary: showSummary,
                     showProjects: showProjects,
@@ -864,6 +874,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 skills: data.skills || [],
                 education: data.education || [],
                 publications: data.publications || [],
+                customSections: data.customSections || [],
                 checkboxStates: {
                     showSummary: showSummary,
                     showProjects: showProjects,
@@ -1203,6 +1214,47 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
 
     // Function to render sections based on section order
     const renderSection = (sectionId: string) => {
+        // Operator-defined custom sections use ids of the form `custom:<id>`
+        if (sectionId.startsWith("custom:")) {
+            const cs = (data.customSections || []).find(
+                (c) => `custom:${c.id}` === sectionId
+            );
+            const csContent = (cs?.content || "").trim();
+            if (!cs || !cs.enabled || !csContent) return null;
+
+            return (
+                <div style={{ marginBottom: styles.sectionMargin }}>
+                    <div
+                        style={{
+                            fontSize: styles.fontSize,
+                            borderBottom: "1px solid #000",
+                            paddingBottom: "2px",
+                            marginBottom: styles.itemMargin,
+                            fontWeight: "bold",
+                            letterSpacing: "-0.025em",
+                        }}
+                    >
+                        {(cs.title || "Custom Section").toUpperCase()}
+                    </div>
+                    {csContent.split("\n").map((line, i) =>
+                        line.trim() ? (
+                            <div
+                                key={i}
+                                style={{
+                                    textAlign: "justify",
+                                    fontSize: styles.fontSize,
+                                    lineHeight: styles.lineHeight,
+                                    letterSpacing: "-0.025em",
+                                }}
+                            >
+                                {renderMarkedText(line)}
+                            </div>
+                        ) : null
+                    )}
+                </div>
+            );
+        }
+
         switch (sectionId) {
             case "summary":
                 if (!showSummary) return null;
@@ -2137,6 +2189,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                 skills: data.skills || [],
                 education: data.education || [],
                 publications: data.publications || [],
+                customSections: data.customSections || [],
                 checkboxStates: {
                     showSummary: showSummary,
                     showProjects: showProjects,
