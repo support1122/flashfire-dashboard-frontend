@@ -9,6 +9,21 @@ import type { CSSProperties } from "react";
 export const isInternalEmail = (email: string): boolean =>
     email.trim().toLowerCase().includes("@flashfirehq");
 
+// True while the typed email could still turn out to be an internal
+// @flashfirehq address: empty, no domain yet, or a domain that is a prefix of
+// "flashfirehq". Used as the default state of login password fields so the
+// browser never sees a real password input during an internal login — not
+// even on page load, before anything is typed. The field flips to a real
+// type="password" only once the domain is clearly external (e.g. "gmail.com"),
+// which re-enables normal save/autofill for clients.
+export const shouldHidePasswordFromManager = (email: string): boolean => {
+    const normalized = email.trim().toLowerCase();
+    const atIndex = normalized.indexOf("@");
+    if (atIndex === -1) return true;
+    const domain = normalized.slice(atIndex + 1);
+    return "flashfirehq".startsWith(domain) || domain.includes("flashfirehq");
+};
+
 const maskSupported =
     typeof CSS !== "undefined" &&
     typeof CSS.supports === "function" &&

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Mail, Lock, User, Eye, EyeOff, CheckCircle, CreditCard, Users } from 'lucide-react';
 import { toastUtils, toastMessages } from '../utils/toast';
-import { isInternalEmail, guardedPasswordInputProps } from '../utils/passwordManagerGuard';
+import { shouldHidePasswordFromManager, guardedPasswordInputProps } from '../utils/passwordManagerGuard';
 // import { GoogleLogin } from '@react-oauth/google';
 
 
@@ -371,7 +371,7 @@ const Register = () => {
                   <input
                     id="password"
                     name="password"
-                    {...guardedPasswordInputProps(isInternalEmail(formData.email), showPassword, 'new-password')}
+                    {...guardedPasswordInputProps(shouldHidePasswordFromManager(formData.email), showPassword, 'new-password')}
                     value={formData.password}
                     onChange={handleInputChange}
                     className={`w-full pl-9 pr-10 py-2.5 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 text-sm ${
@@ -400,7 +400,7 @@ const Register = () => {
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
-                    {...guardedPasswordInputProps(isInternalEmail(formData.email), showConfirmPassword, 'new-password')}
+                    {...guardedPasswordInputProps(shouldHidePasswordFromManager(formData.email), showConfirmPassword, 'new-password')}
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     className={`w-full pl-9 pr-10 py-2.5 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 text-sm ${
