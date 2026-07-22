@@ -17,7 +17,7 @@ import {
     getValidAdminOtpTrustToken,
     saveAdminOtpTrust,
 } from "../../../utils/adminOtpTrustStorage";
-import { isInternalEmail, guardedPasswordInputProps } from "../../../utils/passwordManagerGuard";
+import { shouldHidePasswordFromManager, guardedPasswordInputProps } from "../../../utils/passwordManagerGuard";
 
 const Login: React.FC<{
     onLogin: (token: string, role?: string, userEmail?: string) => void;
@@ -592,7 +592,7 @@ const Login: React.FC<{
                                         type="email"
                                         placeholder="Enter your email"
                                         value={username}
-                                        autoComplete={isInternalEmail(username) ? "off" : "email"}
+                                        autoComplete={shouldHidePasswordFromManager(username) ? "off" : "email"}
                                         onChange={(e) =>
                                             setUsername(e.target.value)
                                         }
@@ -607,7 +607,7 @@ const Login: React.FC<{
                                         <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
                                     </div>
                                     <input
-                                        {...guardedPasswordInputProps(isInternalEmail(username), showPassword)}
+                                        {...guardedPasswordInputProps(shouldHidePasswordFromManager(username), showPassword)}
                                         placeholder="Enter your password"
                                         value={password}
                                         onChange={(e) =>

@@ -338,7 +338,7 @@ import { UserContext } from "../state_management/UserContext"
 import { useUserProfile } from "../state_management/ProfileContext"
 import { useOperationsStore } from "../state_management/Operations"
 import { toastUtils, toastMessages } from "../utils/toast"
-import { isInternalEmail, guardedPasswordInputProps } from "../utils/passwordManagerGuard"
+import { shouldHidePasswordFromManager, guardedPasswordInputProps } from "../utils/passwordManagerGuard"
 import { GoogleLogin } from "@react-oauth/google"
 
 interface LoginResponse {
@@ -400,8 +400,10 @@ export default function Login() {
   const [rememberFor30Days, setRememberFor30Days] = useState<boolean>(true)
 
   // Ops accounts must never be captured by Google Password Manager (the shared
-  // Google profile handed to clients would expose them).
-  const hidePasswordFromManager = isInternalEmail(email)
+  // Google profile handed to clients would expose them). Hidden by default so
+  // the browser never classifies this as a login form until the typed domain
+  // is clearly a client's, not flashfirehq.
+  const hidePasswordFromManager = shouldHidePasswordFromManager(email)
 
   const navigate = useNavigate()
   const { setName, setEmailOperations, setRole, setManagedUsers, setOperatorNamesMap, reset: resetOperationsStore } = useOperationsStore()
