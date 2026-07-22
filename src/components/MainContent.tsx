@@ -199,23 +199,21 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {activeTab !== 'jobs' && (
-        <Suspense fallback={<LoadingScreen />}>
-          <Navigation
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            documentCategory={documentCategory}
-            onDocumentCategoryChange={setDocumentCategory}
-          />
-        </Suspense>
-      )}
-      <main className={activeTab !== 'jobs' ? "md:ml-56" : ""}>
+      <Suspense fallback={<LoadingScreen />}>
+        <Navigation
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          documentCategory={documentCategory}
+          onDocumentCategoryChange={setDocumentCategory}
+        />
+      </Suspense>
+      <main className="md:ml-56">
           {/* Dashboard now manages its own profile modal */}
           {activeTab === 'dashboard' && <Suspense fallback={<LoadingScreen />}><Dashboard /></Suspense>}
           
           {activeTab === 'jobs' && (
           <Suspense fallback={<LoadingScreen />}>
-            <JobTracker onTabChange={setActiveTab} activeTab={activeTab} />
+            <JobTracker />
           </Suspense>
           )}
 
