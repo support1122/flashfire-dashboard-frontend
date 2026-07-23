@@ -267,7 +267,12 @@ const RecentActivity = React.memo(({ recentJobs }: { recentJobs: any[] }) => (
         <h2 className="text-lg font-bold text-gray-900">Recent Activites</h2>
         <p className="text-sm text-gray-400 mt-0.5">Track your recent application activities</p>
       </div>
-      <button className="text-sm text-gray-400 hover:text-gray-600 transition-colors mt-1">View all</button>
+      <button
+        onClick={() => { window.location.href = "/?tab=jobs"; }}
+        className="text-sm text-gray-400 hover:text-gray-600 transition-colors mt-1"
+      >
+        View all
+      </button>
     </div>
 
     {/* Table */}

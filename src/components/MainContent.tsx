@@ -112,6 +112,7 @@ const ReferAndEarn = lazy(()=>import('./ReferAndEarn'))
 import { UserContext } from '../state_management/UserContext';
 import LoadingScreen from './LoadingScreen';
 import { useOperationsStore } from "../state_management/Operations";
+import { useSidebarStore } from "../state_management/SidebarStore";
 
 
 
@@ -123,6 +124,7 @@ export default function MainContent() {
   const context = useContext(UserContext);
   const navigate = useNavigate();
   const { role } = useOperationsStore();
+  const { isOpen: sidebarOpen } = useSidebarStore();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
   
   const userDetails = context?.userDetails;
@@ -207,7 +209,7 @@ useEffect(() => {
           onDocumentCategoryChange={setDocumentCategory}
         />
       </Suspense>
-      <main className="md:ml-56">
+      <main className={`transition-[margin] duration-200 ease-in-out ${sidebarOpen ? "md:ml-56" : "md:ml-0"}`}>
           {/* Dashboard now manages its own profile modal */}
           {activeTab === 'dashboard' && <Suspense fallback={<LoadingScreen />}><Dashboard /></Suspense>}
           

@@ -13,11 +13,14 @@ import {
   Settings,
   Gift,
   Mail,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { UserContext } from "../state_management/UserContext.tsx";
 import { useUserProfile } from "../state_management/ProfileContext.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
 import { useDownloadHighlightStore } from "../state_management/DownloadHighlightStore.ts";
+import { useSidebarStore } from "../state_management/SidebarStore.ts";
 import { toastUtils, toastMessages } from "../utils/toast.ts";
 
 type DocumentCategoryId = "base" | "optimized" | "cover" | "transcript" | "portfolio";
@@ -64,6 +67,7 @@ const Navigation: React.FC<NavigationProps> = ({
   const { userProfile } = useUserProfile();
   const { role, reset: resetOperationsStore } = useOperationsStore();
   const { triggerHighlight } = useDownloadHighlightStore();
+  const { isOpen: sidebarOpen, toggle: toggleSidebar } = useSidebarStore();
   const isOpsRole = role === "operations" || role === "operator";
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTargetRef = useRef<string | null>(null);
@@ -285,7 +289,20 @@ const Navigation: React.FC<NavigationProps> = ({
       )}
 
       {/* ========== DESKTOP SIDEBAR ========== */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-56 bg-white border-r border-gray-200 flex-col z-40">
+      <aside
+        className={`hidden md:flex fixed inset-y-0 left-0 w-56 bg-white border-r border-gray-200 flex-col z-40 transition-transform duration-200 ease-in-out ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Collapse toggle tab */}
+        <button
+          onClick={toggleSidebar}
+          title="Collapse sidebar"
+          className="hidden md:flex absolute top-6 -right-3.5 w-7 h-7 items-center justify-center bg-white border border-gray-200 rounded-full text-gray-500 hover:text-orange-600 hover:border-orange-300 shadow-sm transition-colors"
+        >
+          <PanelLeftClose className="w-4 h-4" />
+        </button>
+
         {/* Logo */}
         <div className="flex items-center gap-2.5 px-5 py-5 border-b border-gray-100">
           <img src="./logo2.png" alt="FlashFire" className="w-8 h-8 object-contain flex-shrink-0" />
@@ -412,6 +429,17 @@ const Navigation: React.FC<NavigationProps> = ({
           )}
         </div>
       </aside>
+
+      {/* Reopen tab — visible only when the desktop sidebar is collapsed */}
+      {!sidebarOpen && (
+        <button
+          onClick={toggleSidebar}
+          title="Expand sidebar"
+          className="hidden md:flex fixed top-6 left-0 w-7 h-7 items-center justify-center bg-white border border-gray-200 rounded-r-full text-gray-500 hover:text-orange-600 hover:border-orange-300 shadow-sm z-40 transition-colors"
+        >
+          <PanelLeftOpen className="w-4 h-4" />
+        </button>
+      )}
 
       {/* ========== MOBILE TOP NAV ========== */}
       <nav className="md:hidden bg-white border-b border-gray-200 sticky top-0 z-50">
