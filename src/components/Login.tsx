@@ -340,6 +340,7 @@ import { useOperationsStore } from "../state_management/Operations"
 import { toastUtils, toastMessages } from "../utils/toast"
 import { shouldHidePasswordFromManager, guardedPasswordInputProps } from "../utils/passwordManagerGuard"
 import { postJsonWithRetry } from "../utils/postJson"
+import { reportNetworkError } from "../utils/reportNetworkError"
 import { GoogleLogin } from "@react-oauth/google"
 
 interface LoginResponse {
@@ -536,9 +537,9 @@ export default function Login() {
 
     setIsLoading(true)
     const loadingToast = toastUtils.loading(toastMessages.loggingIn)
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+    const loginEndpoint = normalizedEmail.includes("@flashfirehq") ? "/operations/login" : "/login"
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
-      const loginEndpoint = normalizedEmail.includes("@flashfirehq") ? "/operations/login" : "/login"
       const { data } = await postJsonWithRetry<LoginResponse>(
         `${API_BASE_URL}${loginEndpoint}`,
         { email: normalizedEmail, password },
@@ -645,6 +646,7 @@ export default function Login() {
       }
     } catch (err) {
       console.error(err)
+      reportNetworkError("Login", normalizedEmail, err, `${API_BASE_URL}${loginEndpoint}`)
       toastUtils.dismissToast(loadingToast)
       toastUtils.error(toastMessages.networkError)
     } finally {
@@ -943,6 +945,7 @@ export default function Login() {
           }
         } catch (err) {
           console.error(err)
+          reportNetworkError("Google OAuth", "", err, `${import.meta.env.VITE_API_BASE_URL}/google-oauth`)
           toastUtils.dismissToast(loadingToast)
           toastUtils.error(toastMessages.networkError)
         }
