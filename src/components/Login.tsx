@@ -339,6 +339,7 @@ import { useUserProfile } from "../state_management/ProfileContext"
 import { useOperationsStore } from "../state_management/Operations"
 import { toastUtils, toastMessages } from "../utils/toast"
 import { shouldHidePasswordFromManager, guardedPasswordInputProps } from "../utils/passwordManagerGuard"
+import { postJsonWithRetry } from "../utils/postJson"
 import { GoogleLogin } from "@react-oauth/google"
 
 interface LoginResponse {
@@ -538,12 +539,10 @@ export default function Login() {
     try {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
       const loginEndpoint = normalizedEmail.includes("@flashfirehq") ? "/operations/login" : "/login"
-      const res = await fetch(`${API_BASE_URL}${loginEndpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: normalizedEmail, password }),
-      })
-      const data: LoginResponse = await res.json()
+      const { data } = await postJsonWithRetry<LoginResponse>(
+        `${API_BASE_URL}${loginEndpoint}`,
+        { email: normalizedEmail, password },
+      )
       setResponse(data)
 
       if (loginEndpoint === "/operations/login") {
@@ -900,12 +899,10 @@ export default function Login() {
       onSuccess={async (credentialResponse) => {
         const loadingToast = toastUtils.loading(toastMessages.loggingIn)
         try {
-          const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/google-oauth`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: credentialResponse.credential }),
-          })
-          const data = await res.json()
+          const { data } = await postJsonWithRetry<LoginResponse>(
+            `${import.meta.env.VITE_API_BASE_URL}/google-oauth`,
+            { token: credentialResponse.credential },
+          )
 
           if (data?.message === "User not found") {
             toastUtils.dismissToast(loadingToast)
