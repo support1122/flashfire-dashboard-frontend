@@ -298,7 +298,7 @@ const Navigation: React.FC<NavigationProps> = ({
         <button
           onClick={toggleSidebar}
           title="Collapse sidebar"
-          className="hidden md:flex absolute top-6 -right-3.5 w-7 h-7 items-center justify-center bg-white border border-gray-200 rounded-full text-gray-500 hover:text-orange-600 hover:border-orange-300 shadow-sm transition-colors"
+          className="hidden md:flex absolute bottom-6 -right-3.5 w-7 h-7 items-center justify-center bg-white border border-gray-200 rounded-full text-gray-500 hover:text-orange-600 hover:border-orange-300 shadow-sm transition-colors"
         >
           <PanelLeftClose className="w-4 h-4" />
         </button>
@@ -435,7 +435,7 @@ const Navigation: React.FC<NavigationProps> = ({
         <button
           onClick={toggleSidebar}
           title="Expand sidebar"
-          className="hidden md:flex fixed top-6 left-0 w-7 h-7 items-center justify-center bg-white border border-gray-200 rounded-r-full text-gray-500 hover:text-orange-600 hover:border-orange-300 shadow-sm z-40 transition-colors"
+          className="hidden md:flex fixed bottom-6 left-0 w-7 h-7 items-center justify-center bg-white border border-gray-200 rounded-r-full text-gray-500 hover:text-orange-600 hover:border-orange-300 shadow-sm z-40 transition-colors"
         >
           <PanelLeftOpen className="w-4 h-4" />
         </button>

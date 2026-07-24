@@ -636,8 +636,8 @@ export default function Login() {
             <span className="text-[#ff4b00]">better resume.</span>
           </h2>
           <p className="text-gray-500 text-sm lg:text-base leading-relaxed mb-6 lg:mb-10">
-            AI that rewrites, scores, and tailors your resume to beat
-            ATS filters — so recruiters actually see you.
+            Our experts and AI tailor your resume and apply to hundreds
+            of jobs for you — so you land more interviews, faster.
           </p>
 
           {/* Stats - 3 column */}
@@ -666,7 +666,7 @@ export default function Login() {
       {/* RIGHT PANEL */}
       <div className="w-full lg:w-[480px] xl:w-[520px] flex flex-col justify-center px-6 sm:px-10 lg:px-16 py-10 bg-gray-100 min-h-screen lg:min-h-0">
         <h3 className="text-3xl font-bold text-gray-900 mb-1">Welcome back</h3>
-        <p className="text-gray-500 text-sm mb-8">Sign in to your Flashfire account</p>
+        <p className="text-gray-500 text-sm mb-8">Login to your Flashfire account</p>
 
         {/* Google Login Button */}
         <div className="w-full mb-6 overflow-hidden" id="google-button-wrapper">
@@ -818,22 +818,6 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Remember me + Forgot password */}
-          <div className="flex items-center justify-between pt-1">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={rememberFor30Days}
-                onChange={(e) => setRememberFor30Days(e.target.checked)}
-                className="w-4 h-4 accent-[#ff4b00] rounded"
-              />
-              <span className="text-sm text-gray-600">Remember me</span>
-            </label>
-            <button type="button" className="text-sm text-[#ff4b00] hover:text-[#cc3d00] font-medium">
-              Forgot password?
-            </button>
-          </div>
-
           {/* Sign In Button */}
           <button
             type="submit"
@@ -847,18 +831,6 @@ export default function Login() {
             )}
           </button>
         </form>
-
-        {/* No account */}
-        <p className="text-center text-sm text-gray-500 mt-5">
-          No account yet?{" "}
-          <button
-            type="button"
-            onClick={() => navigate("/signup")}
-            className="text-[#ff4b00] hover:text-[#cc3d00] font-medium"
-          >
-            Create one free
-          </button>
-        </p>
       </div>
       <SessionKeyModal 
         visible={requireSessionKey}

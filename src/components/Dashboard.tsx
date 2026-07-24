@@ -269,7 +269,7 @@ const RecentActivity = React.memo(({ recentJobs }: { recentJobs: any[] }) => (
       </div>
       <button
         onClick={() => { window.location.href = "/?tab=jobs"; }}
-        className="text-sm text-gray-400 hover:text-gray-600 transition-colors mt-1"
+        className="text-sm text-gray-600 hover:text-gray-800 transition-colors mt-1"
       >
         View all
       </button>
@@ -280,9 +280,9 @@ const RecentActivity = React.memo(({ recentJobs }: { recentJobs: any[] }) => (
       <table className="w-full min-w-[420px]">
         <thead>
           <tr>
-            <th className="text-left text-sm font-normal text-gray-500 pb-3 w-1/2">Role</th>
-            <th className="text-left text-sm font-normal text-gray-500 pb-3 w-1/4">Company</th>
-            <th className="text-left text-sm font-normal text-gray-500 pb-3 w-1/4">Status</th>
+            <th className="text-left text-sm font-normal text-gray-500 pb-3 w-1/3">Role</th>
+            <th className="text-left text-sm font-normal text-gray-500 pb-3 w-1/3">Company</th>
+            <th className="text-left text-sm font-normal text-gray-500 pb-3 w-1/3">Status</th>
           </tr>
         </thead>
         <tbody>
