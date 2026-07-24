@@ -81,7 +81,7 @@ export default function RemovalReasonModal({
 
   if (!isOpen) return null;
 
-  const initials = companyName?.trim()?.charAt(0)?.toUpperCase() || '?';
+  const companyLabel = companyName?.trim() || '?';
 
   return (
     <div
@@ -91,46 +91,46 @@ export default function RemovalReasonModal({
       aria-labelledby="removal-reason-title"
       aria-describedby="removal-reason-description"
     >
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl">
+      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-xl">
         {/* Close button */}
         <button
           onClick={handleCancel}
           disabled={isSubmitting}
-          className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-white border border-gray-300 text-gray-500 hover:text-gray-700 hover:border-gray-400 shadow-sm flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white border border-gray-300 text-gray-500 hover:text-gray-700 hover:border-gray-400 shadow-sm flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Close modal"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-gray-100">
+        <div className="px-7 pt-7 pb-4 border-b border-gray-100">
           <h2
             id="removal-reason-title"
-            className="flex items-center gap-2 text-2xl font-bold text-gray-800"
+            className="flex items-center gap-2 text-[26px] leading-tight font-semibold text-gray-600"
           >
             Remove Job Card
             <Trash2 className="w-5 h-5 text-gray-500" />
           </h2>
-          <p className="text-sm text-gray-500 mt-1">Please provide a reason</p>
+          <p className="text-base text-gray-800 mt-1">Please provide a reason</p>
         </div>
 
         {/* Content */}
-        <div className="p-6">
-          <div className="border border-gray-200 rounded-xl p-4 mb-5">
-            <p className="text-lg font-bold text-gray-900 mb-3">{jobTitle}</p>
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-md ${companyBadgeColor(companyName)} text-white flex items-center justify-center text-sm font-bold flex-shrink-0`}>
-                {initials}
+        <div className="p-7">
+          <div className="border border-gray-300 rounded-2xl p-5 mb-7">
+            <p className="text-xl font-bold text-gray-900 mb-6">{jobTitle}</p>
+            <div className="flex items-center gap-4">
+              <div className={`w-14 h-14 rounded-lg ${companyBadgeColor(companyName)} text-white flex items-center justify-center text-[10px] font-semibold flex-shrink-0 px-1.5 text-center leading-tight break-words`}>
+                {companyLabel}
               </div>
-              <span className="text-gray-700 font-medium">{companyName}</span>
+              <span className="text-lg text-gray-600 font-medium">{companyName}</span>
             </div>
           </div>
 
           <label
             htmlFor="removal-reason-textarea"
-            className="block text-base font-medium text-gray-700 mb-2"
+            className="block text-lg font-medium text-gray-600 mb-3"
           >
-            Reason for Removal <span className="text-red-500">*</span>
+            Reason for Removal<span className="text-red-500">*</span>
           </label>
           <textarea
             id="removal-reason-textarea"
@@ -140,30 +140,30 @@ export default function RemovalReasonModal({
             placeholder="Enter the reason for  moving this job card to removed."
             rows={4}
             disabled={isSubmitting}
-            className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 disabled:cursor-not-allowed resize-none transition-all"
+            className="w-full px-5 py-4 bg-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 disabled:cursor-not-allowed resize-none transition-all placeholder:text-gray-500"
             aria-required="true"
             aria-describedby="removal-reason-description"
           />
           <p
             id="removal-reason-description"
-            className="mt-4 text-sm text-center text-gray-500 border border-orange-200 rounded-lg py-2.5"
+            className="mt-5 text-sm text-center text-gray-500 border border-orange-200 rounded-xl py-3"
           >
-            This information will be sent to the operations teams.
+            This Information will be sent to the operations teams.
           </p>
 
           {/* Action Buttons */}
-          <div className="flex gap-4 mt-5">
+          <div className="flex gap-4 mt-6">
             <button
               onClick={handleCancel}
               disabled={isSubmitting}
-              className="flex-1 bg-gray-100 text-gray-500 px-4 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-300"
+              className="flex-1 bg-gray-200 text-gray-500 px-4 py-4 rounded-2xl font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-300"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={!reason.trim() || isSubmitting}
-              className="flex-1 bg-orange-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-300"
+              className="flex-1 bg-orange-600 text-white px-4 py-4 rounded-2xl font-semibold hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-300"
             >
               {isSubmitting ? 'Removing...' : 'Remove'}
             </button>
