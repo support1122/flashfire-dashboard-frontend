@@ -6,18 +6,18 @@ import { PAGE_CONTAINER, PAGE_MAIN } from "../styles/layout"
 const STEPS = [
   {
     icon: Share2,
-    title: "Share your referral link",
-    description: "Send your unique link to a friend who's actively job searching.",
+    title: "Share your name",
+    description: "Give your name to a friend who's job hunting. That's your referral code.",
   },
   {
     icon: Gift,
-    title: "Friend joins a plan",
-    description: "Your friend enrolls in an eligible Flashfire plan using your link.",
+    title: "They name you at signup",
+    description: "Your friend types your name into the referral field while onboarding.",
   },
   {
     icon: CheckCircle2,
-    title: "Applications added automatically",
-    description: "Bonus applications appear in your job tracker — no action needed.",
+    title: "Applications land automatically",
+    description: "Bonus applications appear in your job tracker. Nothing to claim.",
   },
 ]
 
@@ -31,20 +31,12 @@ export default function ReferAndEarn() {
   const context = useContext(UserContext)
   const userDetails = context?.userDetails
 
-  const slug = (userDetails?.name || "flashfire-user")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
-  const suffixSeed = userDetails?.email || userDetails?.name || slug
-  const suffix = Array.from(suffixSeed as string)
-    .reduce((acc: number, ch: string) => (acc * 31 + ch.charCodeAt(0)) % 46656, 7)
-    .toString(36)
-    .padStart(4, "0")
-  const referralLink = `flashfire.io/ref/${slug}-${suffix}`
+  const referralName = (userDetails?.name || "").trim()
 
-  const copyLink = async () => {
+  const copyName = async () => {
+    if (!referralName) return
     try {
-      await navigator.clipboard.writeText(`https://${referralLink}`)
+      await navigator.clipboard.writeText(referralName)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
@@ -58,7 +50,7 @@ export default function ReferAndEarn() {
         <div className={`${PAGE_CONTAINER} py-5`}>
         <h1 className="text-lg font-bold text-gray-900 leading-tight">Refer n Earn</h1>
         <p className="text-sm text-gray-500 mt-0.5">
-          Invite friends to Flashfire and get bonus job applications added to your plan automatically.
+          Your name is your referral code. Every friend who names you at signup adds bonus applications to your plan.
         </p>
         </div>
       </div>
@@ -106,23 +98,33 @@ export default function ReferAndEarn() {
             </div>
           </div>
 
-          {/* REFERRAL LINK */}
+          {/* REFERRAL NAME */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Your referral link</h3>
-            <div className="flex max-w-xl">
-              <input
-                readOnly
-                value={referralLink}
-                className="flex-1 min-w-0 border border-gray-300 px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none"
-              />
-              <button
-                onClick={copyLink}
-                className="flex items-center gap-2 border border-l-0 border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex-shrink-0"
-              >
-                {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-                {copied ? "Copied!" : "Copy link"}
-              </button>
-            </div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-1">Your referral name</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              Ask your friend to enter this exactly as it appears here.
+            </p>
+            {referralName ? (
+              <div className="flex max-w-xl">
+                <input
+                  readOnly
+                  value={referralName}
+                  aria-label="Your referral name"
+                  className="flex-1 min-w-0 border border-gray-300 px-3 py-2 text-sm font-medium text-gray-900 bg-white focus:outline-none"
+                />
+                <button
+                  onClick={copyName}
+                  className="flex items-center gap-2 border border-l-0 border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex-shrink-0"
+                >
+                  {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                  {copied ? "Copied!" : "Copy name"}
+                </button>
+              </div>
+            ) : (
+              <p className="max-w-xl border border-dashed border-gray-300 px-3 py-2 text-sm text-gray-500">
+                Add your name in your profile and it will show up here as your referral name.
+              </p>
+            )}
           </div>
         </main>
       </div>

@@ -2181,6 +2181,12 @@ useEffect(() => {
       if (!data.agreeTos) {
         e.agreeTos = "You must agree to the Terms of Service to continue";
       }
+
+      // The label carries a red asterisk, so the field has to actually be
+      // required. "None" is the documented way out for organic signups.
+      if (!data.referredBy.trim()) {
+        e.referredBy = "Enter the name of whoever referred you, or type None";
+      }
     }
     
     setErrors(e);
@@ -2992,16 +2998,26 @@ const handleSubmit = () => {
               </div>
             </div>
 
-            {/* Referred By — optional, last field */}
+            {/* Referred By — required, last field */}
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2 pb-2 border-b border-gray-200">Referral</h3>
               <div>
-                <FieldLabel>Are you referred by someone?</FieldLabel>
+                <FieldLabel>Who referred you to Flashfire?</FieldLabel>
+                <p className="text-sm text-gray-500 -mt-1 mb-3">
+                  Enter their full name exactly as they gave it to you. It credits their account with bonus applications.
+                </p>
                 <TextInput
+                  hasError={!!errors.referredBy}
                   value={data.referredBy}
-                  onChange={(e) => set({ referredBy: e.target.value })}
-                  placeholder="Name of referrer (optional)"
+                  onChange={(e) => {
+                    set({ referredBy: e.target.value });
+                    if (errors.referredBy) {
+                      setErrors(prev => ({ ...prev, referredBy: '' }));
+                    }
+                  }}
+                  placeholder="Their full name, or type None if nobody referred you"
                 />
+                <ErrorText>{errors.referredBy}</ErrorText>
               </div>
             </div>
           </div>
