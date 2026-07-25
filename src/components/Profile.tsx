@@ -753,12 +753,25 @@ export default function ProfilePage() {
                         isEditing={editingSection === "personal"}
                         onValueChange={(v) => setEditData({ ...editData, contactNumber: v })}
                     />
-                    <InfoRow
-                        title="Date of Birth"
-                        value={editingSection === "personal" ? formatDateOnly(editData.dob) : formatDateOnly(data.dob)}
-                        isEditing={editingSection === "personal"}
-                        onValueChange={(v) => setEditData({ ...editData, dob: v })}
-                    />
+                    {editingSection === "personal" ? (
+                        <div className="flex flex-col md:flex-row md:items-center py-3 border-b border-gray-100">
+                            <div className="w-full md:w-1/3 text-sm font-semibold text-gray-700 mb-1 md:mb-0">Date of Birth</div>
+                            <div className="w-full md:w-2/3">
+                                <DatePicker
+                                    value={editData.dob ? editData.dob.split('T')[0] : ""}
+                                    onChange={(v) => setEditData({ ...editData, dob: v })}
+                                    placeholder="Select date of birth"
+                                    maxDate={new Date(new Date().setFullYear(new Date().getFullYear() - 16)).toISOString().split('T')[0]}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <InfoRow
+                            title="Date of Birth"
+                            value={formatDateOnly(data.dob)}
+                            isEditing={false}
+                        />
+                    )}
                     <TextAreaRow
                         title="Address"
                         value={editingSection === "personal" ? editData.address : data.address}
@@ -994,6 +1007,18 @@ export default function ProfilePage() {
                         isEditing={editingSection === "professional"}
                         onValueChange={(v) =>
                             setEditData({ ...editData, experienceLevel: v })
+                        }
+                    />
+                    <InfoRow
+                        title="Years of Experience (YOE)"
+                        value={
+                            editingSection === "professional"
+                                ? String((editData as any).yearsOfExperience ?? "")
+                                : String((data as any).yearsOfExperience ?? "")
+                        }
+                        isEditing={editingSection === "professional"}
+                        onValueChange={(v) =>
+                            setEditData({ ...editData, yearsOfExperience: v } as any)
                         }
                     />
                     <InfoRow

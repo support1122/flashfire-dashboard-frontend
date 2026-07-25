@@ -44,35 +44,12 @@ export default function RemovalLimitModal({ isOpen, onClose }: RemovalLimitModal
             </p>
           </div>
 
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <div className="flex items-start gap-3">
-              <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-700">
-                  <strong>Need to remove more jobs?</strong> Contact our support team for assistance.
-                </p>
-              </div>
-            </div>
-          </div>
-
           <div className="flex gap-3">
             <button
               onClick={onClose}
               className="flex-1 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg font-medium hover:bg-gray-200 transition-colors"
             >
               Got it
-            </button>
-            <button
-              onClick={() => {
-                // You can add contact support functionality here
-                window.open('mailto:support@flashfirehq.com?subject=Job Removal Limit Exceeded', '_blank');
-                onClose();
-              }}
-              className="flex-1 bg-orange-500 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-orange-600 transition-colors"
-            >
-              Contact Support
             </button>
           </div>
         </div>

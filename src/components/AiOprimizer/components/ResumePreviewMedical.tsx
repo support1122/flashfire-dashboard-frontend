@@ -66,6 +66,17 @@ interface ResumeData {
         id: string;
         details: string;
     }>;
+    // Plain text section (e.g. "Oncology • Neuroscience • ..."). Optional —
+    // resumes saved before this field existed don't have it.
+    therapeuticAreas?: string;
+    // Operator-defined free-form sections. Ordered via sectionOrder entries
+    // of the form `custom:<id>`. Never AI-optimized.
+    customSections?: Array<{
+        id: string;
+        title: string;
+        content: string;
+        enabled: boolean;
+    }>;
 }
 
 interface ResumePreviewProps {
@@ -74,6 +85,7 @@ interface ResumePreviewProps {
     showProjects?: boolean;
     showSummary?: boolean;
     showPublications?: boolean;
+    showTherapeuticAreas?: boolean;
     showPrintButtons?: boolean;
     showDirectPdfButton?: boolean;
     sectionOrder?: string[]; // Add section order prop
@@ -86,6 +98,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     showLeadership = true,
     showProjects = false,
     showPublications = false,
+    showTherapeuticAreas = false,
     showSummary = true,
     showPrintButtons = true,
     showDirectPdfButton = true,
@@ -260,6 +273,47 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
 
     // Function to render sections based on section order
     const renderSection = (sectionId: string) => {
+        // Operator-defined custom sections use ids of the form `custom:<id>`
+        if (sectionId.startsWith("custom:")) {
+            const cs = (data.customSections || []).find(
+                (c) => `custom:${c.id}` === sectionId
+            );
+            const csContent = (cs?.content || "").trim();
+            if (!cs || !cs.enabled || !csContent) return null;
+
+            return (
+                <div style={{ marginBottom: "12px" }}>
+                    <div
+                        style={{
+                            fontSize: "9pt",
+                            borderBottom: "1px solid #000",
+                            paddingBottom: "8px",
+                            marginBottom: "6px",
+                            fontWeight: "bold",
+                        }}
+                    >
+                        {(cs.title || "Custom Section").toUpperCase()}
+                    </div>
+                    {csContent.split("\n").map((line, i) =>
+                        line.trim() ? (
+                            <div
+                                key={i}
+                                style={{
+                                    textAlign: "justify",
+                                    fontSize: "9pt",
+                                    lineHeight: "1.3",
+                                    letterSpacing: "-0.025em",
+                                    marginBottom: "3px",
+                                }}
+                            >
+                                {renderMarkedText(line)}
+                            </div>
+                        ) : null
+                    )}
+                </div>
+            );
+        }
+
         switch (sectionId) {
             case "summary":
                 if (!showSummary) return null;
@@ -788,6 +842,37 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                     </div>
                 );
 
+            case "therapeuticAreas": {
+                const therapeuticAreasText = (data.therapeuticAreas || "").trim();
+                if (!showTherapeuticAreas || !therapeuticAreasText) return null;
+
+                return (
+                    <div style={{ marginBottom: "12px" }}>
+                        <div
+                            style={{
+                                fontSize: "9pt",
+                                borderBottom: "1px solid #000",
+                                paddingBottom: "8px",
+                                marginBottom: "6px",
+                                fontWeight: "bold",
+                            }}
+                        >
+                            {headingFor("therapeuticAreas", "Therapeutic Areas")}
+                        </div>
+                        <div
+                            style={{
+                                textAlign: "justify",
+                                fontSize: "9pt",
+                                lineHeight: "1.3",
+                                letterSpacing: "-0.025em",
+                            }}
+                        >
+                            {renderMarkedText(therapeuticAreasText)}
+                        </div>
+                    </div>
+                );
+            }
+
             default:
                 return null;
         }
@@ -915,9 +1000,12 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             const finalShowPublications = hasPublications || showPublications;
 
             // Ensure publications is in sectionOrder
-            let finalSectionOrder = [...sectionOrder];
+            const finalSectionOrder = [...sectionOrder];
             if (!finalSectionOrder.includes("publications")) {
                 finalSectionOrder.push("publications");
+            }
+            if (!finalSectionOrder.includes("therapeuticAreas")) {
+                finalSectionOrder.push("therapeuticAreas");
             }
 
             const pdfPayload = {
@@ -929,11 +1017,14 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 skills: data.skills || [],
                 education: data.education || [],
                 publications: data.publications || [],
+                therapeuticAreas: data.therapeuticAreas || "",
+                customSections: data.customSections || [],
                 checkboxStates: {
                     showSummary: showSummary,
                     showProjects: showProjects,
                     showLeadership: showLeadership,
                     showPublications: finalShowPublications,
+                    showTherapeuticAreas: showTherapeuticAreas,
                 },
                 sectionTitles: sectionTitles || {},
                 sectionOrder: finalSectionOrder,
@@ -1003,9 +1094,12 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
             const finalShowPublications = hasPublications || showPublications;
             
             // Ensure publications is in sectionOrder
-            let finalSectionOrder = [...sectionOrder];
+            const finalSectionOrder = [...sectionOrder];
             if (!finalSectionOrder.includes("publications")) {
                 finalSectionOrder.push("publications");
+            }
+            if (!finalSectionOrder.includes("therapeuticAreas")) {
+                finalSectionOrder.push("therapeuticAreas");
             }
 
             const pdfPayload = {
@@ -1017,11 +1111,14 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                 skills: data.skills || [],
                 education: data.education || [],
                 publications: data.publications || [],
+                therapeuticAreas: data.therapeuticAreas || "",
+                customSections: data.customSections || [],
                 checkboxStates: {
                     showSummary: showSummary,
                     showProjects: showProjects,
                     showLeadership: showLeadership,
                     showPublications: finalShowPublications,
+                    showTherapeuticAreas: showTherapeuticAreas,
                 },
                 sectionTitles: sectionTitles || {},
                 sectionOrder: finalSectionOrder,
@@ -1272,9 +1369,12 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
             const finalShowPublications = hasPublications || showPublications;
 
             // Ensure publications is in sectionOrder
-            let finalSectionOrder = [...sectionOrder];
+            const finalSectionOrder = [...sectionOrder];
             if (!finalSectionOrder.includes("publications")) {
                 finalSectionOrder.push("publications");
+            }
+            if (!finalSectionOrder.includes("therapeuticAreas")) {
+                finalSectionOrder.push("therapeuticAreas");
             }
 
             const pdfPayload = {
@@ -1286,11 +1386,14 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                 skills: data.skills || [],
                 education: data.education || [],
                 publications: data.publications || [],
+                therapeuticAreas: data.therapeuticAreas || "",
+                customSections: data.customSections || [],
                 checkboxStates: {
                     showSummary: showSummary,
                     showProjects: showProjects,
                     showLeadership: showLeadership,
                     showPublications: finalShowPublications,
+                    showTherapeuticAreas: showTherapeuticAreas,
                 },
                 sectionTitles: sectionTitles || {},
                 sectionOrder: finalSectionOrder,

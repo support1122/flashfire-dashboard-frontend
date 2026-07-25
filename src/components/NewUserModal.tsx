@@ -1499,6 +1499,7 @@ type FormData = {
   address: string;
   preferredRoles: string;
   experienceLevel: string;
+  yearsOfExperience: string; // YOE — total years of professional experience
   expectedSalaryRange: string;
   preferredLocations: string;
   targetCompanies: string;
@@ -1546,6 +1547,7 @@ const initialData: FormData = {
   address: "",
   preferredRoles: "",
   experienceLevel: "",
+  yearsOfExperience: "",
   expectedSalaryRange: "",
   preferredLocations: "",
   targetCompanies: "",
@@ -1569,7 +1571,7 @@ const initialData: FormData = {
   referredBy: '',              // optional
 };
 
-const VISA_OPTIONS = ["CPT", "F1", "F1 OPT", "F1 STEM OPT", "H1B", "Green Card", "U.S. Citizen", "Other"];
+const VISA_OPTIONS = ["CPT", "F1", "F1 OPT", "F1 STEM OPT", "H1B", "Green Card", "U.S. Citizen", "Canadian Citizen", "Permanent Resident (PR)", "Post-Graduation Work Permit (PGWP)", "Open Work Permit (OWP)", "Employer-Specific (Closed) Work Permit", "Study Permit", "Other"];
 const EXPERIENCE_OPTIONS = ["0-2 Years", "2-4 Years", "4-6 Years", "6-8 Years", "8+ Years"];
 const SALARY_OPTIONS = ["60k-100k", "100k-150k", "150k-200k", "Other"];
 const EMPLOYMENT_TYPE_OPTIONS = ["Full-time", "Part-time", "Contract", "Internship"] as const;
@@ -2090,21 +2092,6 @@ useEffect(() => {
         data.mastersGradMonthYear = mastersEndValue.slice(0, 7);
       }
       
-      // GPA Validation (optional but if provided, must be valid)
-      if (data.bachelorsGPA && data.bachelorsGPA.trim()) {
-        const gpa = parseFloat(data.bachelorsGPA);
-        if (isNaN(gpa) || gpa < 0 || gpa > 4) {
-          e.bachelorsGPA = "GPA must be between 0.0 and 4.0";
-        }
-      }
-      
-      if (data.mastersGPA && data.mastersGPA.trim()) {
-        const gpa = parseFloat(data.mastersGPA);
-        if (isNaN(gpa) || gpa < 0 || gpa > 4) {
-          e.mastersGPA = "GPA must be between 0.0 and 4.0";
-        }
-      }
-      
       // Visa Status Validation
       if (!data.visaStatus) {
         e.visaStatus = "Visa status is required";
@@ -2364,17 +2351,17 @@ const handleSubmit = () => {
                 </div>
                 <div>
                   <FieldLabel>Date of Birth</FieldLabel>
-                  <TextInput 
+                  <DatePicker
                     hasError={!!errors.dob}
-                    type="date" 
-                    placeholder="Date of birth" 
-                    value={data.dob} 
-                    onChange={(e) => {
-                      set({ dob: e.target.value });
+                    placeholder="Date of birth"
+                    value={data.dob}
+                    onChange={(val) => {
+                      set({ dob: val });
                       if (errors.dob) {
                         setErrors(prev => ({ ...prev, dob: '' }));
                       }
-                    }} 
+                    }}
+                    maxDate={new Date(new Date().setFullYear(new Date().getFullYear() - 16)).toISOString().split('T')[0]}
                   />
                   <ErrorText>{errors.dob}</ErrorText>
                 </div>
@@ -2438,11 +2425,11 @@ const handleSubmit = () => {
                     </div>
                   </div>
                   <div>
-                    <FieldLabel>GPA</FieldLabel>
-                    <TextInput 
+                    <FieldLabel required={false}>GPA</FieldLabel>
+                    <TextInput
                       hasError={!!errors.bachelorsGPA}
-                      type="text" 
-                      placeholder="Bachelor's GPA (e.g., 3.8)" 
+                      type="text"
+                      placeholder="Bachelor's GPA (e.g., 3.8) or N/A"
                       value={data.bachelorsGPA} 
                       onChange={(e) => {
                         set({ bachelorsGPA: e.target.value });
@@ -2507,11 +2494,11 @@ const handleSubmit = () => {
                     </div>
                   </div>
                   <div>
-                    <FieldLabel>GPA</FieldLabel>
-                    <TextInput 
+                    <FieldLabel required={false}>GPA</FieldLabel>
+                    <TextInput
                       hasError={!!errors.mastersGPA}
-                      type="text" 
-                      placeholder="Master's GPA (e.g., 3.9)" 
+                      type="text"
+                      placeholder="Master's GPA (e.g., 3.9) or N/A"
                       value={data.mastersGPA} 
                       onChange={(e) => {
                         set({ mastersGPA: e.target.value });
@@ -2654,6 +2641,18 @@ const handleSubmit = () => {
                     </Select>
                     <ErrorText>{errors.expectedSalaryRange}</ErrorText>
                   </div>
+                </div>
+                <div>
+                  <FieldLabel required={false}>Years of Experience (YOE)</FieldLabel>
+                  <TextInput
+                    type="number"
+                    min={0}
+                    step="0.5"
+                    inputMode="decimal"
+                    placeholder="Total years of professional experience, e.g. 3"
+                    value={data.yearsOfExperience}
+                    onChange={(e) => set({ yearsOfExperience: e.target.value })}
+                  />
                 </div>
                 <div>
                   <FieldLabel required={false}>Employment Types</FieldLabel>

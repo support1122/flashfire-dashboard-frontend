@@ -18,6 +18,9 @@ interface ResumeStore {
      showChanges: boolean;
      changedFields: Set<string>;
      showPublications: boolean;
+     // Medical resume "Therapeutic Areas" section. Optional include toggle;
+     // the section content is never AI-optimized regardless of this flag.
+     showTherapeuticAreas: boolean;
 
      // Section ordering for drag and drop
      sectionOrder: string[];
@@ -42,6 +45,7 @@ interface ResumeStore {
      setShowProjects: (value: boolean) => void;
      setShowSummary: (value: boolean) => void;
      setShowPublications: (value: boolean) => void;
+     setShowTherapeuticAreas: (value: boolean) => void;
      setIsSaved: (value: boolean) => void;
      setJobDescription: (value: string) => void;
      setIsOptimizing: (value: boolean) => void;
@@ -90,6 +94,7 @@ export const useResumeStore = create<ResumeStore>()(
                     showChanges: false,
                     changedFields: new Set(),
                     showPublications: false,
+                    showTherapeuticAreas: false,
 
                     // Section ordering for drag and drop
                     sectionOrder: [
@@ -100,7 +105,8 @@ export const useResumeStore = create<ResumeStore>()(
                         "leadership",
                         "skills",
                         "education",
-                        "publications"
+                        "publications",
+                        "therapeuticAreas"
                     ],
                     sectionTitles: {},
 
@@ -109,6 +115,7 @@ export const useResumeStore = create<ResumeStore>()(
                     lastSelectedResumeId: null,
 
                     setShowPublications: (value) => set({ showPublications: value }),
+                    setShowTherapeuticAreas: (value) => set({ showTherapeuticAreas: value }),
                     setResumeData: (data) => set({ resumeData: data }),
                     setBaseResume: (data) => set({ baseResume: data }),
                     setShowLeadership: (value) => set({ showLeadership: value }),
@@ -162,6 +169,7 @@ export const useResumeStore = create<ResumeStore>()(
                               showSummary: false, // Will be set based on database check
                               isSaved: false,
                               showPublications: false,
+                              showTherapeuticAreas: false,
                               jobDescription: "",
                               isOptimizing: false,
                               optimizedData: null,
@@ -176,7 +184,8 @@ export const useResumeStore = create<ResumeStore>()(
                                   "leadership",
                                   "skills",
                                   "education",
-                                  "publications"
+                                  "publications",
+                                  "therapeuticAreas"
                               ],
                               sectionTitles: {},
                               // Note: We intentionally don't reset lastSelectedResume and lastSelectedResumeId
@@ -355,6 +364,7 @@ export const useResumeStore = create<ResumeStore>()(
                          showChanges: state.showChanges,
                          changedFields: Array.from(state.changedFields),
                          showPublications: state.showPublications,
+                         showTherapeuticAreas: state.showTherapeuticAreas,
                          sectionOrder: state.sectionOrder,
                          // sectionTitles intentionally NOT persisted. It's a
                          // per-resume override that must come from the loaded
@@ -377,6 +387,13 @@ export const useResumeStore = create<ResumeStore>()(
                               showPublications: state.showPublications
                          });
                          state.changedFields = new Set(state.changedFields || []);
+
+                         // Ensure customSections arrays exist (operator-defined sections)
+                         for (const r of [state.resumeData, state.baseResume, state.lastSelectedResume, state.optimizedData]) {
+                              if (r && !Array.isArray(r.customSections)) {
+                                   r.customSections = [];
+                              }
+                         }
 
                          // Ensure personalInfo.profileLinks exists (new scalable links)
                          if (state.resumeData?.personalInfo && !Array.isArray(state.resumeData.personalInfo.profileLinks)) {
@@ -402,6 +419,9 @@ export const useResumeStore = create<ResumeStore>()(
                          if (typeof state.showSummary !== 'boolean') {
                               state.showSummary = false;
                          }
+                         if (typeof state.showTherapeuticAreas !== 'boolean') {
+                              state.showTherapeuticAreas = false;
+                         }
 
                          // sectionTitles is a sparse map. Coerce nulls / wrong-shape
                          // values back to an empty object so renderers can spread it
@@ -414,14 +434,18 @@ export const useResumeStore = create<ResumeStore>()(
                          if (!state.sectionOrder || !Array.isArray(state.sectionOrder)) {
                               state.sectionOrder = [
                                    "personalInfo",
-                                   "summary", 
+                                   "summary",
                                    "workExperience",
                                    "projects",
                                    "leadership",
                                    "skills",
                                    "education",
-                                   "publications"
+                                   "publications",
+                                   "therapeuticAreas"
                               ];
+                         } else if (!state.sectionOrder.includes("therapeuticAreas")) {
+                              // Older persisted orders predate this section
+                              state.sectionOrder = [...state.sectionOrder, "therapeuticAreas"];
                          }
 
                          // If we have stored resume data, load it immediately

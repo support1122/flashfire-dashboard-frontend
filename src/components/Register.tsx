@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Mail, Lock, User, Eye, EyeOff, CheckCircle, CreditCard, Users } from 'lucide-react';
 import { toastUtils, toastMessages } from '../utils/toast';
+import { shouldHidePasswordFromManager, guardedPasswordInputProps } from '../utils/passwordManagerGuard';
 // import { GoogleLogin } from '@react-oauth/google';
 
 
@@ -16,7 +17,7 @@ const Register = () => {
     planType: 'Free Trial',
     dashboardManager: ''
   });
-  let [response, setResponse] = useState<{message?: string}>({});
+  const [response, setResponse] = useState<{message?: string}>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -108,7 +109,6 @@ const Register = () => {
     
     setIsLoading(true);
     const loadingToast = toastUtils.loading("Creating your account...");
-    let name = formData.firstName + formData.lastName;
     // Simulate API call
      try {
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -351,7 +351,7 @@ const Register = () => {
                     <option value="">
                       {loadingManagers ? 'Loading managers...' : 'Select your dashboard manager'}
                     </option>
-                    {dashboardManagers.map((manager: any) => (
+                    {dashboardManagers.map((manager: { _id: string; fullName: string }) => (
                       <option key={manager._id} value={manager.fullName}>
                         {manager.fullName}
                       </option>
@@ -371,7 +371,7 @@ const Register = () => {
                   <input
                     id="password"
                     name="password"
-                    type={showPassword ? 'text' : 'password'}
+                    {...guardedPasswordInputProps(shouldHidePasswordFromManager(formData.email), showPassword, 'new-password')}
                     value={formData.password}
                     onChange={handleInputChange}
                     className={`w-full min-w-0 rounded-xl border py-2.5 pl-9 pr-10 text-sm transition-all duration-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500 ${
@@ -400,7 +400,7 @@ const Register = () => {
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
+                    {...guardedPasswordInputProps(shouldHidePasswordFromManager(formData.email), showConfirmPassword, 'new-password')}
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     className={`w-full min-w-0 rounded-xl border py-2.5 pl-9 pr-10 text-sm transition-all duration-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-500 ${

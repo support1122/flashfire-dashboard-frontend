@@ -130,6 +130,8 @@ export default function ResumeOptimizerDashboard() {
         setSectionOrder,
         showPublications,
         setShowPublications,
+        showTherapeuticAreas,
+        setShowTherapeuticAreas,
         setLastSelectedResume,
     } = useResumeStore();
 
@@ -442,6 +444,7 @@ export default function ResumeOptimizerDashboard() {
                     showProjects,
                     showLeadership,
                     showPublications: showPublications,
+                    showTherapeuticAreas: showTherapeuticAreas,
                 },
                 sectionOrder: sectionOrder,
                 createdBy: "operations",
@@ -617,6 +620,7 @@ export default function ResumeOptimizerDashboard() {
                         showProjects: showProjects,
                         showLeadership: showLeadership,
                         showPublications: showPublications,
+                        showTherapeuticAreas: showTherapeuticAreas,
                         version: versionV,
                         sectionOrder: sectionOrder
                     }
@@ -664,6 +668,10 @@ export default function ResumeOptimizerDashboard() {
                 leadership: showLeadership ? resumeData.leadership : [],
                 publications: (resumeData as any).publications ? (resumeData as any).publications : [],
             } as typeof resumeData;
+            // Therapeutic areas and custom sections must never reach the AI —
+            // enabled or not, the text stays exactly as the operator wrote it.
+            delete (filteredResumeForOptimization as any).therapeuticAreas;
+            delete (filteredResumeForOptimization as any).customSections;
 
             const response = await fetch(`${apiUrl}/api/optimize-with-gemini`, {
                 method: "POST",
@@ -718,6 +726,9 @@ export default function ResumeOptimizerDashboard() {
                     publications: (resumeData as any).publications
                         ? (resumeData as any).publications
                         : (resumeData as any).publications,
+                    // Always the untouched originals — never taken from the AI response.
+                    therapeuticAreas: (resumeData as any).therapeuticAreas || "",
+                    customSections: (resumeData as any).customSections || [],
                 } as typeof resumeData;
 
                 setOptimizedData(newOptimizedData);
@@ -796,7 +807,8 @@ export default function ResumeOptimizerDashboard() {
                     (item) => item.details && item.details.trim() !== ""
                 );
             setShowPublications(hasValidPublications);
-            
+            setShowTherapeuticAreas(resumeData.checkboxStates.showTherapeuticAreas ?? false);
+
             if (resumeData.sectionOrder && Array.isArray(resumeData.sectionOrder)) {
                 setSectionOrder(resumeData.sectionOrder);
             }
@@ -1302,6 +1314,7 @@ export default function ResumeOptimizerDashboard() {
                                                 showProjects={showProjects}
                                                 showSummary={showSummary}
                                                 showPublications={showPublications}
+                                                showTherapeuticAreas={showTherapeuticAreas}
                                                 showPrintButtons={true}
                                                 sectionOrder={sectionOrder}
                                             />
@@ -1496,6 +1509,7 @@ export default function ResumeOptimizerDashboard() {
                                                                 showProjects={showProjects}
                                                                 showSummary={showSummary}
                                                                 showPublications={showPublications}
+                                                                showTherapeuticAreas={showTherapeuticAreas}
                                                                 showPrintButtons={true}
                                                                 sectionOrder={sectionOrder}
                                                             />

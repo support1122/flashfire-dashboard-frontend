@@ -70,6 +70,16 @@ export interface PublicationItem{
     details: string;
 }
 
+/** Operator-defined free-form section (name + plain text). Rendered verbatim
+ *  in previews and the PDF; NEVER sent to / returned by AI optimization.
+ *  Ordering uses sectionOrder entries of the form `custom:<id>`. */
+export interface CustomSectionItem {
+    id: string;
+    title: string;
+    content: string;
+    enabled: boolean;
+}
+
 export interface ResumeData {
     personalInfo: PersonalInfo;
     summary: string;
@@ -79,6 +89,12 @@ export interface ResumeData {
     skills: SkillCategory[];
     education: EducationItem[];
     publications: PublicationItem[];
+    /** Medical-resume-only plain text section (e.g. "Oncology • Neuroscience ...").
+     *  Optional so resumes saved before this field existed still typecheck.
+     *  Never sent to / returned by AI optimization. */
+    therapeuticAreas?: string;
+    /** Operator-defined extra sections; optional for pre-existing resumes. */
+    customSections?: CustomSectionItem[];
 
 }
 

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { X, Lock, Eye, EyeOff } from "lucide-react";
+import { guardedPasswordInputProps } from "../utils/passwordManagerGuard";
 
 interface NotifyClientPasswordModalProps {
     isOpen: boolean;
@@ -75,7 +76,7 @@ export default function NotifyClientPasswordModal({
                             <div className="relative">
                                 <input
                                     id="notifyPassword"
-                                    type={showPassword ? "text" : "password"}
+                                    {...guardedPasswordInputProps(true, showPassword)}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all text-gray-900"

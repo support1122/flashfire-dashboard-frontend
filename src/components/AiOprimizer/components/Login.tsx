@@ -17,6 +17,7 @@ import {
     getValidAdminOtpTrustToken,
     saveAdminOtpTrust,
 } from "../../../utils/adminOtpTrustStorage";
+import { shouldHidePasswordFromManager, guardedPasswordInputProps } from "../../../utils/passwordManagerGuard";
 
 const Login: React.FC<{
     onLogin: (token: string, role?: string, userEmail?: string) => void;
@@ -136,7 +137,7 @@ const Login: React.FC<{
             }
 
             // Try admin login (with optional stored OTP trust token)
-            let adminPayload: { username: string; password: string; trustToken?: string } = { username, password };
+            const adminPayload: { username: string; password: string; trustToken?: string } = { username, password };
             const trustFromStorage = getValidAdminOtpTrustToken(FLASHFIRE_OPTIMIZER_OTP_TRUST_KEY, username);
             if (trustFromStorage) {
                 adminPayload.trustToken = trustFromStorage;
@@ -591,6 +592,7 @@ const Login: React.FC<{
                                         type="email"
                                         placeholder="Enter your email"
                                         value={username}
+                                        autoComplete={shouldHidePasswordFromManager(username) ? "off" : "email"}
                                         onChange={(e) =>
                                             setUsername(e.target.value)
                                         }
@@ -605,9 +607,7 @@ const Login: React.FC<{
                                         <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" />
                                     </div>
                                     <input
-                                        type={
-                                            showPassword ? "text" : "password"
-                                        }
+                                        {...guardedPasswordInputProps(shouldHidePasswordFromManager(username), showPassword)}
                                         placeholder="Enter your password"
                                         value={password}
                                         onChange={(e) =>
@@ -639,11 +639,7 @@ const Login: React.FC<{
                                             <Key className="h-5 w-5 text-orange-400 group-focus-within:text-orange-600 transition-colors" />
                                         </div>
                                         <input
-                                            type={
-                                                showSessionKey
-                                                    ? "text"
-                                                    : "password"
-                                            }
+                                            {...guardedPasswordInputProps(true, showSessionKey)}
                                             placeholder="Enter 8-digit session key (e.g., 12345678)"
                                             value={sessionKey}
                                             onChange={(e) =>

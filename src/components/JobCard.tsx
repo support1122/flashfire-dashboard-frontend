@@ -121,6 +121,20 @@ const JobCard: React.FC<JobCardProps> = ({
   const sjProcessing = isOps && sjStatus === 'processing';
   const sjSkipped = isOps && sjStatus === 'skipped';
   const sjScoreLabel = (sjScore !== null && sjScore !== undefined) ? ` (score ${sjScore})` : '';
+  // A 'pending' job with attempts>0 + a stored error isn't just queued — it
+  // tried, hit a snag (slow ATS / bot wall / AI blip) and is in retry backoff
+  // (attempts 3+ wait HOURS). Surface that so it doesn't look silently "stopped".
+  const sjAttempts = job.secondJudge?.attempts ?? 0;
+  const sjError = job.secondJudge?.error?.trim?.();
+  const sjRetrying = sjPending && sjAttempts > 0 && !!sjError;
+  const sjHiccup = (() => {
+    const m = String(sjError || '').toLowerCase();
+    if (/(timed out|scraper|econnrefused|fetch failed|network|nav_timeout|http_)/.test(m)) return 'the job site was slow or unavailable';
+    if (/(thin|empty|content|page text)/.test(m)) return 'the posting had almost no readable text (login/bot wall)';
+    if (/(openai|grader|json)/.test(m)) return 'the AI screener was briefly unavailable';
+    if (/profile/.test(m)) return 'no client profile to check against';
+    return 'a temporary error';
+  })();
   const sanitizeCompanyDomain = (name) => {
   if (!name) return "example.com";
 
@@ -210,12 +224,39 @@ const JobCard: React.FC<JobCardProps> = ({
       )}
 
       {isOps && (sjPassed || sjFailed || sjPending || sjProcessing || sjSkipped) && (
+<<<<<<< HEAD
         <div className="mt-2">
           {sjPassed && <p className="text-xs font-medium text-green-600">Second-stage screening passed{sjScoreLabel}.</p>}
           {sjFailed && <p className="text-xs font-medium text-amber-700">⚠️ AI flag{sjScoreLabel}{sjReason ? ` — ${sjReason}` : ''}. Kept — review and decide.</p>}
           {sjPending && <p className="text-xs font-medium text-blue-600">Second-stage screening queued.</p>}
           {sjProcessing && <p className="text-xs font-medium text-blue-600">Second-stage screening in progress.</p>}
           {sjSkipped && <p className="text-xs font-medium text-amber-700">{sjReason || 'Second-stage screening skipped — job kept.'}</p>}
+=======
+        <div className="mb-2">
+          {sjPassed && (
+            <p className="text-xs font-medium text-green-600">Second-stage screening passed{sjScoreLabel}.</p>
+          )}
+          {sjFailed && (
+            <p className="text-xs font-medium text-amber-700">
+              ⚠️ AI flag{sjScoreLabel}{sjReason ? ` — ${sjReason}` : ''}. Kept — review and decide.
+            </p>
+          )}
+          {sjPending && (
+            sjRetrying ? (
+              <p className="text-xs font-medium text-amber-700">
+                Second-stage screening paused — {sjHiccup}. Retrying (attempt {sjAttempts}).
+              </p>
+            ) : (
+              <p className="text-xs font-medium text-blue-600">Second-stage screening queued.</p>
+            )
+          )}
+          {sjProcessing && (
+            <p className="text-xs font-medium text-blue-600">Second-stage screening in progress.</p>
+          )}
+          {sjSkipped && (
+            <p className="text-xs font-medium text-amber-700">{sjReason || 'Second-stage screening skipped — job kept.'}</p>
+          )}
+>>>>>>> a2044b30fa7150a2ba780e95b66c675bd2d4cabe
         </div>
       )}
     </div>
