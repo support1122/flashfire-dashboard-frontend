@@ -2,8 +2,6 @@ import {
   FileText,
   TrendingUp,
   Users,
-  CheckCircle,
-  XCircle,
   Clock,
 } from "lucide-react";
 import React, { useEffect, useContext, useState, Suspense, lazy, useMemo, useCallback } from "react";
@@ -14,6 +12,7 @@ import { useUserProfile } from "../state_management/ProfileContext.tsx";
 import LoadingScreen from "./LoadingScreen.tsx";
 import NewUserModal from "./NewUserModal.tsx";
 import DashboardManagerDisplay from "./DashboardManagerDisplay.tsx";
+import { PAGE_HEADER_BAR, PAGE_HEADER_INNER, PAGE_MAIN } from "../styles/layout.ts";
 import ReferralBenefitsDisplay from "./ReferralBenefitsDisplay.tsx";
 
 const JobForm = lazy(() => import("./JobForm.tsx"));
@@ -155,13 +154,13 @@ const Dashboard: React.FC = () => {
       )}
 
       {/* Header bar */}
-      <div className="bg-white border-b border-gray-200 border-t-4 border-t-orange-500 px-5 py-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className={PAGE_HEADER_BAR}>
+        <div className={`${PAGE_HEADER_INNER} flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4`}>
           <div>
             <h1 className="text-lg font-bold text-gray-900 leading-tight">
               Welcome, <span className="text-orange-500">{fullName}</span>
             </h1>
-            <p className="text-sm text-gray-500 mt-0.5">Track your applications here, success starts today</p>
+            <p className="text-sm text-gray-500 mt-1">Track your applications here, success starts today</p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <DashboardManagerDisplay />
@@ -171,9 +170,9 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Main content */}
-      <main className="px-5 py-6">
+      <main className={PAGE_MAIN}>
         {/* Overview heading */}
-        <h2 className="text-3xl font-extrabold text-gray-900 mb-5">Overview</h2>
+        <h2 className="text-3xl font-extrabold text-gray-900 mb-6">Overview</h2>
 
         {/* Empty state */}
         {uniqueJobs.length === 0 && (
@@ -190,8 +189,8 @@ const Dashboard: React.FC = () => {
         )}
 
         {/* Stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white border border-gray-300 p-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          <div className="bg-white border border-gray-300 p-6">
             <div className="w-10 h-10 bg-blue-100 flex items-center justify-center mb-4">
               <FileText className="w-5 h-5 text-blue-500" />
             </div>
@@ -199,7 +198,7 @@ const Dashboard: React.FC = () => {
             <p className="text-gray-500 text-sm">Total Applications</p>
           </div>
 
-          <div className="bg-white border border-gray-300 p-5">
+          <div className="bg-white border border-gray-300 p-6">
             <div className="w-10 h-10 bg-orange-100 flex items-center justify-center mb-4">
               <Users className="w-5 h-5 text-orange-500" />
             </div>
@@ -207,7 +206,7 @@ const Dashboard: React.FC = () => {
             <p className="text-gray-500 text-sm">Active Interviews</p>
           </div>
 
-          <div className="bg-white border border-gray-300 p-5">
+          <div className="bg-white border border-gray-300 p-6">
             <div className="w-10 h-10 bg-green-100 flex items-center justify-center mb-4">
               <Clock className="w-5 h-5 text-green-500" />
             </div>
@@ -215,7 +214,7 @@ const Dashboard: React.FC = () => {
             <p className="text-gray-500 text-sm">Offers Received</p>
           </div>
 
-          <div className="bg-white border border-gray-300 p-5">
+          <div className="bg-white border border-gray-300 p-6">
             <div className="w-10 h-10 bg-purple-100 flex items-center justify-center mb-4">
               <TrendingUp className="w-5 h-5 text-purple-500" />
             </div>
@@ -248,15 +247,6 @@ const statusBadgeClass = (status: string): string => {
   if (key.startsWith("offer")) return "bg-green-50 text-green-700 border border-green-200";
   if (key.startsWith("rejected")) return "bg-red-50 text-red-700 border border-red-200";
   return "bg-white text-gray-600 border border-gray-300";
-};
-
-const statusIcon = (status: string) => {
-  const key = status.toLowerCase().split(" ")[0];
-  if (key.startsWith("applied")) return <FileText className="w-4 h-4 text-yellow-500" />;
-  if (key.startsWith("interviewing")) return <Users className="w-4 h-4 text-blue-500" />;
-  if (key.startsWith("offer")) return <CheckCircle className="w-4 h-4 text-green-500" />;
-  if (key.startsWith("rejected")) return <XCircle className="w-4 h-4 text-red-400" />;
-  return <Clock className="w-4 h-4 text-gray-400" />;
 };
 
 const RecentActivity = React.memo(({ recentJobs }: { recentJobs: any[] }) => (

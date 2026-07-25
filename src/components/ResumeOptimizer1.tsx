@@ -685,12 +685,13 @@
 // }
 
 import { ArrowLeftCircle, ExternalLink, Mail, FileText, Eye, Pencil, Trash2, Download, Upload } from "lucide-react";
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useMemo } from "react";
 import { UserContext } from '../state_management/UserContext.js';
 import { ResumePreview } from './AiOprimizer/components/ResumePreview.tsx';
 // import { ResumePreview1 } from './AiOprimizer/components/ResumePreview1.tsx';
 import { ResumePreviewMedical } from './AiOprimizer/components/ResumePreviewMedical.tsx';
-import { useOperationsStore } from "../state_management/Operations.ts";
+import { useOperationsStore, isOpsRole } from "../state_management/Operations.ts";
+import { PAGE_HEADER_BAR, PAGE_HEADER_INNER, PAGE_MAIN } from "../styles/layout.ts";
 
 type Entry = {
   jobRole: string;
@@ -712,7 +713,6 @@ type Entry = {
   showProjects?: boolean;
   showLeadership?: boolean;
   showPublications?: boolean;
-  showTherapeuticAreas?: boolean;
   sectionOrder?: string[];
 };
 
@@ -1083,7 +1083,6 @@ export default function DocumentUpload({ documentCategory = null, onDocumentCate
               showProjects: resume.showProjects,
               showLeadership: resume.showLeadership,
               showPublications: resume.showPublications,
-              showTherapeuticAreas: resume.showTherapeuticAreas,
               sectionOrder: resume.sectionOrder
             };
           });
@@ -1192,6 +1191,25 @@ export default function DocumentUpload({ documentCategory = null, onDocumentCate
       setActiveTab(null);
     }
   }, [role, activeTab]);
+
+  // Operators navigate with the top bar, which has no Documents sub-menu, so
+  // this page has to supply its own category rail or the categories become
+  // unreachable. Clients get the same list as sidebar sub-items instead, so
+  // showing it here too would duplicate it.
+  const showCategoryRail = isOpsRole(role);
+
+  const documentTabs = useMemo(() => {
+    const core: { id: DocumentTabId; label: string }[] = [
+      { id: "base", label: "Base Resume" },
+      { id: "optimized", label: "Optimized Resumes" },
+      { id: "cover", label: "Cover Letters" },
+      { id: "transcript", label: "Transcripts" },
+    ];
+    if (role === "operations") {
+      core.push({ id: "portfolio", label: "Portfolio" });
+    }
+    return core;
+  }, [role]);
 
   // Function to fetch resume data from a job
   const fetchResumeDataFromJob = async (jobId: string) => {
@@ -1766,128 +1784,149 @@ const DocsTable = ({
   items: Entry[];
   category: "Resume" | "Cover Letter" | "Base" | "Transcript";
   onPick: (item: Entry) => void;
-}) => (
-  <div className="border rounded-lg overflow-hidden">
-    {/* ✅ Scrollable Container */}
-    <div className="overflow-x-auto">
-      <div className="min-w-[500px]"> {/* ensures proper column spacing */}
-        {/* ✅ Header */}
-        <div className="grid grid-cols-12 bg-gray-100 text-sm font-bold px-4 py-3 sticky top-0 z-10">
-          <div className="col-span-5">Title</div>
-          <div className="col-span-3">Created On</div>
-          <div className="col-span-2">Category</div>
-          {activeTab !== "base" &&
-            activeTab !== "cover" &&
-            activeTab !== "transcript" && (
-              <div className="col-span-1">Job Link</div>
-            )}
-          <div className="col-span-1 text-right">Actions</div>
+  groupActive?: boolean;
+}) => {
+  const RowIcon = category === "Cover Letter" ? Mail : FileText;
+
+  const canDownload = (it: Entry) =>
+    !it.isJobBased && !it.isAttached && !(category === "Base" && role !== "operations");
+
+  const Row = ({ it, isActive }: { it: Entry; isActive?: boolean }) => {
+    const title =
+      category === "Base" || category === "Cover Letter" || category === "Transcript"
+        ? it.name || "Unnamed"
+        : `${it.jobRole || "—"} at ${it.companyName || "—"}`;
+    const uploaded = fmtUploaded(it.createdAt);
+
+    return (
+      <div
+        className={`flex items-center justify-between gap-3 px-4 py-3 ${
+          isActive
+            ? "border border-orange-300 bg-orange-50"
+            : "border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
+        }`}
+      >
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          onClick={() => onPick(it)}
+          title="Click to preview"
+        >
+          <div
+            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center ${
+              isActive ? "border border-orange-200 bg-white text-orange-500" : "bg-gray-100 text-gray-400"
+            }`}
+          >
+            <RowIcon className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-gray-900">{title}</p>
+            <p className="truncate text-xs text-gray-500">
+              {uploaded ? `Uploaded ${uploaded}` : "—"}
+              {it.jobLink && category === "Resume" && (
+                <>
+                  {" • "}
+                  <a
+                    href={it.jobLink.startsWith("http") ? it.jobLink : `https://${it.jobLink}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-orange-600 hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Job link
+                  </a>
+                </>
+              )}
+            </p>
+          </div>
+        </button>
+
+        <div className="flex flex-shrink-0 items-center gap-3">
+          {groupActive && !isActive && (
+            <span className="px-2 py-1 text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200">
+              Set as Active
+            </span>
+          )}
+          {canDownload(it) && (
+            <a
+              href={
+                proxyAvailable === true
+                  ? toDocProxyUrl(it.link || it.url || "", dlName(it, category), true)
+                  : toRawPdfUrl(it.link || it.url || "", { download: true, fileName: dlName(it, category) }) || it.link || it.url
+              }
+              download={`${dlName(it, category)}.pdf`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-gray-400 hover:text-gray-700"
+              title="Download"
+            >
+              <Download className="w-4 h-4" />
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={() => onPick(it)}
+            className="text-gray-400 hover:text-gray-700"
+            title="View"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button type="button" className="cursor-not-allowed text-gray-300" title="Edit" disabled>
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button type="button" className="cursor-not-allowed text-gray-300" title="Delete" disabled>
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
-
-        {/* ✅ Body */}
-        {items.length === 0 ? (
-          <div className="px-4 py-6 text-sm text-gray-500">No documents yet.</div>
-        ) : (
-          <ul className="divide-y flex flex-col">
-            {items.map((it, i) => (
-              <li
-                key={i}
-                className="grid grid-cols-12 items-center px-2 py-4 hover:bg-gray-50 cursor-pointer"
-                onClick={() => onPick(it)}
-                title="Click to preview"
-              >
-                {/* Title */}
-                <div className="col-span-5 truncate w-full">
-                  {category === "Base" ||
-                  category === "Cover Letter" ||
-                  category === "Transcript"
-                    ? it.name || "Unnamed"
-                    : `${it.jobRole || "—"} at ${it.companyName || "—"}`}
-                </div>
-
-                {/* Created On */}
-                <div className="col-span-3 text-sm text-gray-600 whitespace-nowrap">
-                  {it.createdAt
-                    ? (() => {
-                        try {
-                          const date = new Date(it.createdAt);
-                          if (isNaN(date.getTime())) {
-                            // If date is invalid, try to parse it manually
-                            console.warn('Invalid date format:', it.createdAt);
-                            return String(it.createdAt || "—");
-                          }
-                          return date.toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "long",
-                            year: "numeric",
-                          });
-                        } catch (error) {
-                          console.error('Error parsing date:', it.createdAt, error);
-                          return String(it.createdAt || "—");
-                        }
-                      })()
-                    : "—"}
-                </div>
-
-                {/* Category */}
-                <div className="col-span-2 whitespace-nowrap">
-                  {category} {category == "Base" ? "Resume" : ""}
-                </div>
-
-                {/* Job Link */}
-                {activeTab !== "base" &&
-                  activeTab !== "cover" &&
-                  activeTab !== "transcript" && (
-                    <div className="col-span-1 whitespace-nowrap">
-                      {it.jobLink ? (
-                        <a
-                          href={
-                            it.jobLink.startsWith("http")
-                              ? it.jobLink
-                              : `https://${it.jobLink}`
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          Link
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </div>
-                  )}
-
-                {/* Actions */}
-                <div className="col-span-1 flex justify-end gap-2 whitespace-nowrap">
-                  {/* Structured "attached" base row has no stored file — download
-                      happens via the preview's Select PDF Scale component. */}
-                  {!it.isJobBased && !it.isAttached && (
-                    <a
-                      href={
-                        proxyAvailable === true
-                          ? toDocProxyUrl(it.link || it.url || "", dlName(it, category), true)
-                          : toRawPdfUrl(it.link || it.url || "", { download: true, fileName: dlName(it, category) }) || it.link || it.url
-                      }
-                      download={`${dlName(it, category)}.pdf`}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      title="Download"
-                    >
-                      <DownloadIcon />
-                    </a>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
+    );
+  };
+
+  if (items.length === 0) {
+    return (
+      <div className="border border-gray-300 px-4 py-6 text-sm text-gray-500">
+        No documents yet.
+      </div>
+    );
+  }
+
+  if (!groupActive) {
+    return (
+      <div className="border border-gray-300 overflow-hidden">
+        {items.map((it, i) => (
+          <Row key={i} it={it} />
+        ))}
+      </div>
+    );
+  }
+
+  // Base Resume: the most recently uploaded version is the one actively used
+  // for new tailored resumes; everything else is a previous version.
+  const activeItem = items[items.length - 1];
+  const previousItems = items.slice(0, -1).reverse();
+
+  return (
+    <div>
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        Active — used for every new tailored resume
+      </p>
+      <Row it={activeItem} isActive />
+
+      {previousItems.length > 0 && (
+        <>
+          <p className="mt-5 mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+            Previous versions
+          </p>
+          <div className="border border-gray-300 overflow-hidden">
+            {previousItems.map((it, i) => (
+              <Row key={i} it={it} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 
   // ---- Reusable Preview Panel (iframe) ----
@@ -1955,19 +1994,54 @@ const DocsTable = ({
   };
 
  return (
-  <div className="min-h-screen bg-gray-50">
-    {/* Header bar */}
-    <div className="bg-white border-b border-gray-200 border-t-4 border-t-orange-500 px-5 py-4">
-      <h1 className="text-lg font-bold text-gray-900 leading-tight">
-        <span className="text-orange-500">Documents</span>
-      </h1>
-      <p className="text-sm text-gray-500 mt-0.5">Manage your resumes, cover letters, and transcripts</p>
-    </div>
+  <div className={showCategoryRail ? "max-w-6xl mx-auto p-4" : "min-h-screen bg-gray-50"}>
+    {/* Header bar — clients only. The operator rail carries its own "Documents"
+        heading, so showing both would title the page twice. */}
+    {!showCategoryRail && (
+      <div className={PAGE_HEADER_BAR}>
+        <div className={PAGE_HEADER_INNER}>
+          <h1 className="text-lg font-bold text-gray-900 leading-tight">
+            <span className="text-orange-500">Documents</span>
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">Manage your resumes, cover letters, and transcripts</p>
+        </div>
+      </div>
+    )}
 
-    <div className="px-5 py-6">
+    <div className={showCategoryRail ? "flex flex-col md:grid md:grid-cols-12 gap-4" : PAGE_MAIN}>
+
+      {/* Category rail — operators only; clients pick categories in the sidebar */}
+      {showCategoryRail && (
+        <aside className="md:col-span-3 bg-white rounded-lg shadow border top-20">
+          <h2 className="px-4 py-3 font-semibold border-b">Documents</h2>
+          <nav className="flex flex-wrap md:flex-col">
+            {documentTabs.map((tab) => (
+              <button
+                key={tab.id}
+                className={`px-4 py-3 text-left w-full hover:bg-gray-50 transition ${
+                  activeTab === tab.id ? "bg-blue-50 text-blue-700 font-medium" : ""
+                }`}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setPreviewMode(false);
+                  setActivePreviewUrl(null);
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </aside>
+      )}
 
       {/* Main content */}
-      <main className="bg-white border border-gray-300 p-3 sm:p-4 md:p-6">
+      <main
+        className={
+          showCategoryRail
+            ? "md:col-span-9 bg-white rounded-lg shadow border p-4 md:p-6"
+            : "bg-white border border-gray-300 p-3 sm:p-4 md:p-6"
+        }
+      >
         {/* Empty state when no tab is selected */}
         {!activeTab && (
           <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -2017,8 +2091,8 @@ const DocsTable = ({
                 </div>
               ) : resumeData && resumeData.resumeData ? (
                 // Structured preview — same components used for optimized resumes.
-                // version 2 = medical template, otherwise normal. Scale/download
-                // (Select PDF Scale) shown to all roles for the base resume.
+                // version 2 = medical template, otherwise normal. Download/print
+                // buttons are gated to operators (normal users get view only).
                 <div className="resume-preview-container">
                   {resumeData.version === 2 ? (
                     <ResumePreviewMedical
@@ -2027,8 +2101,7 @@ const DocsTable = ({
                       showProjects={resumeData.showProjects}
                       showSummary={resumeData.showSummary}
                       showPublications={resumeData.showPublications}
-                      showTherapeuticAreas={resumeData.showTherapeuticAreas}
-                      showPrintButtons={true}
+                      showPrintButtons={role === "operations"}
                       sectionOrder={resumeData.sectionOrder}
                     />
                   ) : (
@@ -2040,7 +2113,7 @@ const DocsTable = ({
                       showPublications={resumeData.showPublications}
                       showChanges={false}
                       changedFields={new Set()}
-                      showPrintButtons={true}
+                      showPrintButtons={role === "operations"}
                       sectionOrder={resumeData.sectionOrder}
                     />
                   )}
@@ -2059,7 +2132,7 @@ const DocsTable = ({
                   items={[
                     // Attached/parsed resume → structured preview (like optimized).
                     ...(baseResumeData
-                      ? [{ name: "Base Resume", isAttached: true, createdAt: baseResumeData.createdAt } as Entry]
+                      ? [{ name: "Base Resume", isAttached: true } as Entry]
                       : []),
                     ...(Array.isArray(baseResume) ? baseResume : baseResume ? [baseResume] : []),
                   ]}
@@ -2287,7 +2360,6 @@ const DocsTable = ({
                             showProjects={resumeData.showProjects}
                             showSummary={resumeData.showSummary}
                             showPublications={resumeData.showPublications}
-                            showTherapeuticAreas={resumeData.showTherapeuticAreas}
                             showPrintButtons={role === "operations"}
                             sectionOrder={resumeData.sectionOrder}
                           />
@@ -2337,7 +2409,6 @@ const DocsTable = ({
                               showProjects: it.showProjects,
                               showLeadership: it.showLeadership,
                               showPublications: it.showPublications,
-                              showTherapeuticAreas: it.showTherapeuticAreas,
                               sectionOrder: it.sectionOrder
                             });
                             setPreviewMode(true);

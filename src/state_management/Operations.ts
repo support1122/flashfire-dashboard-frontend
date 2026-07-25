@@ -67,3 +67,9 @@ export const useOperationsStore = create<Operations>()(
           }
      )
 );
+
+/** True for internal staff. Drives which navigation renders and whether the
+ *  layout reserves room for the client sidebar, so both must agree — keep this
+ *  the single definition rather than re-testing the strings at each call site. */
+export const isOpsRole = (role: string | undefined | null): boolean =>
+     role === "operations" || role === "operator";

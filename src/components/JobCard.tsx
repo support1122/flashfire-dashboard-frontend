@@ -121,7 +121,7 @@ const JobCard: React.FC<JobCardProps> = ({
   const sjProcessing = isOps && sjStatus === 'processing';
   const sjSkipped = isOps && sjStatus === 'skipped';
   const sjScoreLabel = (sjScore !== null && sjScore !== undefined) ? ` (score ${sjScore})` : '';
-  // A 'pending' job with attempts>0 + a stored error isn't just queued — it
+  // A 'pending' job with attempts>0 + a stored error isn't just queued - it
   // tried, hit a snag (slow ATS / bot wall / AI blip) and is in retry backoff
   // (attempts 3+ wait HOURS). Surface that so it doesn't look silently "stopped".
   const sjAttempts = job.secondJudge?.attempts ?? 0;
@@ -224,15 +224,9 @@ const JobCard: React.FC<JobCardProps> = ({
       )}
 
       {isOps && (sjPassed || sjFailed || sjPending || sjProcessing || sjSkipped) && (
-        <div className="mb-2">
-          {sjPassed && (
-            <p className="text-xs font-medium text-green-600">Second-stage screening passed{sjScoreLabel}.</p>
-          )}
-          {sjFailed && (
-            <p className="text-xs font-medium text-amber-700">
-              ⚠️ AI flag{sjScoreLabel}{sjReason ? ` — ${sjReason}` : ''}. Kept — review and decide.
-            </p>
-          )}
+        <div className="mt-2">
+          {sjPassed && <p className="text-xs font-medium text-green-600">Second-stage screening passed{sjScoreLabel}.</p>}
+          {sjFailed && <p className="text-xs font-medium text-amber-700">⚠️ AI flag{sjScoreLabel}{sjReason ? ` — ${sjReason}` : ''}. Kept — review and decide.</p>}
           {sjPending && (
             sjRetrying ? (
               <p className="text-xs font-medium text-amber-700">
@@ -242,12 +236,8 @@ const JobCard: React.FC<JobCardProps> = ({
               <p className="text-xs font-medium text-blue-600">Second-stage screening queued.</p>
             )
           )}
-          {sjProcessing && (
-            <p className="text-xs font-medium text-blue-600">Second-stage screening in progress.</p>
-          )}
-          {sjSkipped && (
-            <p className="text-xs font-medium text-amber-700">{sjReason || 'Second-stage screening skipped — job kept.'}</p>
-          )}
+          {sjProcessing && <p className="text-xs font-medium text-blue-600">Second-stage screening in progress.</p>}
+          {sjSkipped && <p className="text-xs font-medium text-amber-700">{sjReason || 'Second-stage screening skipped — job kept.'}</p>}
         </div>
       )}
     </div>

@@ -331,9 +331,9 @@
 //   )
 // }
 
-import { useState, useContext, useEffect, useRef, type FormEvent } from "react"
+import { useState, useContext, useEffect, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
-import { Eye, EyeOff, Lock } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 import { UserContext } from "../state_management/UserContext"
 import { useUserProfile } from "../state_management/ProfileContext"
 import { useOperationsStore } from "../state_management/Operations"
@@ -366,8 +366,6 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [, setResponse] = useState<LoginResponse | null>(null)
   const [googleButtonKey, setGoogleButtonKey] = useState<number>(Date.now())
-  const googleButtonWrapperRef = useRef<HTMLDivElement>(null)
-  const [googleButtonWidth, setGoogleButtonWidth] = useState<number>(400)
   const [requireSessionKey, setRequireSessionKey] = useState<boolean>(false)
   const [sessionKeyInput, setSessionKeyInput] = useState<string>("")
   const [otpInput, setOtpInput] = useState<string>("")
@@ -375,12 +373,6 @@ export default function Login() {
   const [sendingOtp, setSendingOtp] = useState<boolean>(false)
   const [useSessionKey, setUseSessionKey] = useState<boolean>(false)
   const [rememberFor30Days, setRememberFor30Days] = useState<boolean>(true)
-
-  // Ops accounts must never be captured by Google Password Manager (the shared
-  // Google profile handed to clients would expose them). Hidden by default so
-  // the browser never classifies this as a login form until the typed domain
-  // is clearly a client's, not flashfirehq.
-  const hidePasswordFromManager = shouldHidePasswordFromManager(email)
 
   const navigate = useNavigate()
   const { setName, setEmailOperations, setRole, setManagedUsers, setOperatorNamesMap, reset: resetOperationsStore } = useOperationsStore()
@@ -499,26 +491,6 @@ export default function Login() {
     }, 100)
     
     return () => clearTimeout(timer)
-  }, [])
-
-  // Google renders its button inside a cross-origin iframe at a fixed pixel
-  // width — CSS on our side can't stretch that internal content, so measure
-  // the actual container width and pass it to GoogleLogin directly.
-  useEffect(() => {
-    const el = googleButtonWrapperRef.current
-    if (!el) return
-
-    const updateWidth = () => {
-      const width = el.getBoundingClientRect().width
-      if (width > 0) {
-        setGoogleButtonWidth(Math.round(width))
-      }
-    }
-
-    updateWidth()
-    const observer = new ResizeObserver(updateWidth)
-    observer.observe(el)
-    return () => observer.disconnect()
   }, [])
 
   const handleLogin = async (e: FormEvent) => {
@@ -649,6 +621,12 @@ export default function Login() {
     }
   }
 
+  // Ops accounts must never be captured by Google Password Manager (the shared
+  // Google profile handed to clients would expose them). Hidden by default so
+  // the browser never classifies this as a login form until the typed domain
+  // is clearly a client's, not flashfirehq.
+  const hidePasswordFromManager = shouldHidePasswordFromManager(email)
+
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
       {/* LEFT PANEL */}
@@ -702,12 +680,34 @@ export default function Login() {
         <p className="text-gray-500 text-sm mb-8">Login to your Flashfire account</p>
 
         {/* Google Login Button */}
-        <div
-          ref={googleButtonWrapperRef}
-          className="w-full mb-6 flex justify-center overflow-hidden rounded-lg"
-          id="google-button-wrapper"
-        >
+        <div className="w-full mb-6 overflow-hidden" id="google-button-wrapper">
           <style>{`
+            #google-button-wrapper > div > div,
+            #google-button-wrapper > div {
+              width: 100% !important;
+            }
+            #google-button-wrapper iframe {
+              width: 100% !important;
+              border-radius: 8px !important;
+            }
+            #google-button-wrapper div[role="button"] {
+              width: 100% !important;
+              min-width: 100% !important;
+              border: 1px solid #d1d5db !important;
+              border-radius: 8px !important;
+              background: #ffffff !important;
+              box-shadow: none !important;
+              height: 44px !important;
+              min-height: 44px !important;
+            }
+            #google-button-wrapper div[role="button"]:hover {
+              border-color: #9ca3af !important;
+              background: #f9fafb !important;
+            }
+            #google-button-wrapper div[role="button"] > div {
+              justify-content: center !important;
+              width: 100% !important;
+            }
             #google-button-wrapper > div:empty,
             #google-button-wrapper > div > div:empty {
               display: none !important;
@@ -720,12 +720,12 @@ export default function Login() {
             }
           `}</style>
           <GoogleLogin
-            key={`google-login-button-${googleButtonKey}-${googleButtonWidth}`}
+            key={`google-login-button-${googleButtonKey}`}
             theme="outline"
             size="large"
             shape="rectangular"
             text="continue_with"
-            width={String(googleButtonWidth)}
+            width="400"
             useOneTap={false}
             auto_select={false}
             cancel_on_tap_outside={true}
@@ -801,6 +801,7 @@ export default function Login() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
+              autoComplete={hidePasswordFromManager ? "off" : "email"}
               placeholder="eg. johnfrans@gmail.com"
               value={email}
               onChange={(e) => setEmail(normalizeEmail(e.target.value))}
@@ -808,27 +809,26 @@ export default function Login() {
             />
           </div>
 
-            {/* Password */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-900 mb-1">Password *</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  {...guardedPasswordInputProps(hidePasswordFromManager, showPassword)}
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
+          {/* Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <div className="relative">
+              <input
+                {...guardedPasswordInputProps(hidePasswordFromManager, showPassword)}
+                placeholder="Enter Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 pr-10 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ff4b00]/30 focus:border-[#ff4b00] transition-all text-base sm:text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
+          </div>
 
           {/* Sign In Button */}
           <button

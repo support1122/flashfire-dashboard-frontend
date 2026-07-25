@@ -327,6 +327,7 @@ const JobTracker = () => {
 
     console.log("Role in job tracker is ", role);
 
+
     // const handleDragStart = (e: React.DragEvent, job: Job) => {
     //   e.dataTransfer.setData('jobId', job.jobID);
     // };
@@ -898,7 +899,11 @@ const JobTracker = () => {
 
     return (
         <div className="min-h-screen">
-            <div className="px-4 sm:px-6 lg:px-8 py-6">
+            {/* Deliberately not width-capped like the other pages: the board
+                below is a horizontally scrolling kanban, so narrowing it to a
+                centred column would waste a wide monitor and force scrolling
+                that is otherwise unnecessary. Gutter matches PAGE_CONTAINER. */}
+            <div className="px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
                 <div className="flex flex-col justify-around items-start w-full">
@@ -1042,7 +1047,7 @@ const JobTracker = () => {
                 className="flex gap-6 overflow-x-auto pb-6"
                 onDragOver={handleDragOverBoard}
             >
-                {statusColumns.filter(({ status }) => !hiddenStatuses.includes(status)).map(({ status, label, color }) => {
+                {statusColumns.filter(({ status }) => !hiddenStatuses.includes(status)).map(({ status, label }) => {
                     const filteredAndSortedJobs =
                         (userJobs && Array.isArray(userJobs))
                             ? userJobs

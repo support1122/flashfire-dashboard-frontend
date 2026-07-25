@@ -544,6 +544,8 @@ export default function ProfilePage() {
         if (Array.isArray(editDataCopy.targetCompanies)) {
             editDataCopy.targetCompanies = joinArr(editDataCopy.targetCompanies) as any;
         }
+        // SSN is stored as `ssn` in the DB but the form/edit uses `ssnNumber`.
+        (editDataCopy as any).ssnNumber = (data as any).ssn ?? (data as any).ssnNumber ?? "";
         setEditData(editDataCopy);
     };
 
@@ -674,8 +676,11 @@ export default function ProfilePage() {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 border-t-4 border-t-orange-500 px-5 py-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            {/* Inner width matches the sections below (max-w-5xl) so the back
+                button and title line up with the cards instead of hugging the
+                viewport edge. */}
+            <div className="bg-white border-b border-gray-200 border-t-4 border-t-orange-500">
+                <div className="mx-auto max-w-5xl px-3 sm:px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-4">
                         <Link
                             to="/"
@@ -1170,7 +1175,7 @@ export default function ProfilePage() {
                     <InfoRow
                         title="SSN Number"
                         value={
-                            editingSection === "compliance" ? editData.ssnNumber : data.ssnNumber
+                            editingSection === "compliance" ? editData.ssnNumber : ((data as any).ssn ?? data.ssnNumber)
                         }
                         isEditing={editingSection === "compliance"}
                         onValueChange={(v) => setEditData({ ...editData, ssnNumber: v })}

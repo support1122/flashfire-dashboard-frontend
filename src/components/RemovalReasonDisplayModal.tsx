@@ -28,8 +28,8 @@ export default function RemovalReasonDisplayModal({
       aria-modal="true"
       aria-labelledby="removal-reason-display-title"
     >
-      <div className="relative w-full max-w-lg bg-white rounded-xl shadow-xl border border-gray-200">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      <div className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
+        <div className="flex-shrink-0 flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
               <AlertCircle className="w-5 h-5 text-orange-600" />
@@ -53,7 +53,7 @@ export default function RemovalReasonDisplayModal({
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="flex-1 overflow-y-auto p-6">
           <div className="bg-gray-50 rounded-lg p-4 mb-4">
             <p className="text-sm text-gray-600 mb-2">
               <span className="font-medium">Job:</span> {jobTitle}
@@ -81,19 +81,19 @@ export default function RemovalReasonDisplayModal({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Reason
             </label>
-            <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900">
+            <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 whitespace-pre-wrap break-words">
               {removalReason}
             </div>
           </div>
+        </div>
 
-          <div className="flex justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-lg bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
-            >
-              Close
-            </button>
-          </div>
+        <div className="flex-shrink-0 flex justify-end px-6 py-4 border-t border-gray-200 bg-white">
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-lg bg-gray-900 text-white font-medium hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>

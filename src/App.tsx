@@ -16,14 +16,14 @@ import ManagePage from './components/Operations/Manage.tsx';
 import Optimizer from './components/AiOprimizer/Optimizer.tsx';
 import Inbox from './components/Inbox.tsx';
 import { PostHogSessionControl } from './components/PostHogSessionControl.tsx';
-import { useSidebarStore } from './state_management/SidebarStore.ts';
+import { useContentOffsetClass } from './state_management/useContentOffset.ts';
 
 // Component to handle Profile page with proper navigation
 function ProfileWithNavigation() {
   const [activeTab, setActiveTab] = useState('dashboard');
   // Don't show modal on profile page - user explicitly navigated here to view/edit
   const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
-  const { isOpen: sidebarOpen } = useSidebarStore();
+  const contentOffset = useContentOffsetClass();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -32,7 +32,7 @@ function ProfileWithNavigation() {
         onTabChange={setActiveTab}
         setUserProfileFormVisibility={setUserProfileFormVisibility}
       />
-      <div className={`transition-[margin] duration-200 ease-in-out ${sidebarOpen ? "md:ml-56" : "md:ml-0"}`}>
+      <div className={contentOffset}>
         <ProfilePage />
         {userProfileFormVisibility && (
           <NewUserModal
@@ -51,7 +51,7 @@ function ProfileWithNavigation() {
 function InboxWithNavigation() {
   const [activeTab, setActiveTab] = useState('inbox');
   const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
-  const { isOpen: sidebarOpen } = useSidebarStore();
+  const contentOffset = useContentOffsetClass();
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation
@@ -59,7 +59,7 @@ function InboxWithNavigation() {
         onTabChange={setActiveTab}
         setUserProfileFormVisibility={setUserProfileFormVisibility}
       />
-      <div className={`transition-[margin] duration-200 ease-in-out ${sidebarOpen ? "md:ml-56" : "md:ml-0"}`}>
+      <div className={contentOffset}>
         <Inbox />
         {userProfileFormVisibility && (
           <NewUserModal
