@@ -224,14 +224,6 @@ const JobCard: React.FC<JobCardProps> = ({
       )}
 
       {isOps && (sjPassed || sjFailed || sjPending || sjProcessing || sjSkipped) && (
-<<<<<<< HEAD
-        <div className="mt-2">
-          {sjPassed && <p className="text-xs font-medium text-green-600">Second-stage screening passed{sjScoreLabel}.</p>}
-          {sjFailed && <p className="text-xs font-medium text-amber-700">⚠️ AI flag{sjScoreLabel}{sjReason ? ` — ${sjReason}` : ''}. Kept — review and decide.</p>}
-          {sjPending && <p className="text-xs font-medium text-blue-600">Second-stage screening queued.</p>}
-          {sjProcessing && <p className="text-xs font-medium text-blue-600">Second-stage screening in progress.</p>}
-          {sjSkipped && <p className="text-xs font-medium text-amber-700">{sjReason || 'Second-stage screening skipped — job kept.'}</p>}
-=======
         <div className="mb-2">
           {sjPassed && (
             <p className="text-xs font-medium text-green-600">Second-stage screening passed{sjScoreLabel}.</p>
@@ -256,7 +248,6 @@ const JobCard: React.FC<JobCardProps> = ({
           {sjSkipped && (
             <p className="text-xs font-medium text-amber-700">{sjReason || 'Second-stage screening skipped — job kept.'}</p>
           )}
->>>>>>> a2044b30fa7150a2ba780e95b66c675bd2d4cabe
         </div>
       )}
     </div>

@@ -1885,36 +1885,9 @@ const DocsTable = ({
           </ul>
         )}
       </div>
-    );
-  }
-
-  // Base Resume: the most recently uploaded version is the one actively used
-  // for new tailored resumes; everything else is a previous version.
-  const activeItem = items[items.length - 1];
-  const previousItems = items.slice(0, -1).reverse();
-
-  return (
-    <div>
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-        Active — used for every new tailored resume
-      </p>
-      <Row it={activeItem} isActive />
-
-      {previousItems.length > 0 && (
-        <>
-          <p className="mt-5 mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-            Previous versions
-          </p>
-          <div className="border border-gray-300 overflow-hidden">
-            {previousItems.map((it, i) => (
-              <Row key={i} it={it} />
-            ))}
-          </div>
-        </>
-      )}
     </div>
-  );
-};
+  </div>
+);
 
 
   // ---- Reusable Preview Panel (iframe) ----
