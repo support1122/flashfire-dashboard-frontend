@@ -331,7 +331,7 @@
 //   )
 // }
 
-import { useState, useContext, useEffect, type FormEvent } from "react"
+import { useState, useContext, useEffect, useRef, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import { Eye, EyeOff } from "lucide-react"
 import { UserContext } from "../state_management/UserContext"
@@ -358,6 +358,8 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [, setResponse] = useState<LoginResponse | null>(null)
   const [googleButtonKey, setGoogleButtonKey] = useState<number>(Date.now())
+  const googleButtonWrapperRef = useRef<HTMLDivElement>(null)
+  const [googleButtonWidth, setGoogleButtonWidth] = useState<number>(400)
   const [requireSessionKey, setRequireSessionKey] = useState<boolean>(false)
   const [sessionKeyInput, setSessionKeyInput] = useState<string>("")
   const [otpInput, setOtpInput] = useState<string>("")
@@ -485,6 +487,26 @@ export default function Login() {
     }, 100)
     
     return () => clearTimeout(timer)
+  }, [])
+
+  // Google renders its button inside a cross-origin iframe at a fixed pixel
+  // width — CSS on our side can't stretch that internal content, so measure
+  // the actual container width and pass it to GoogleLogin directly.
+  useEffect(() => {
+    const el = googleButtonWrapperRef.current
+    if (!el) return
+
+    const updateWidth = () => {
+      const width = el.getBoundingClientRect().width
+      if (width > 0) {
+        setGoogleButtonWidth(Math.round(width))
+      }
+    }
+
+    updateWidth()
+    const observer = new ResizeObserver(updateWidth)
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [])
 
   const handleLogin = async (e: FormEvent) => {
@@ -669,34 +691,12 @@ export default function Login() {
         <p className="text-gray-500 text-sm mb-8">Login to your Flashfire account</p>
 
         {/* Google Login Button */}
-        <div className="w-full mb-6 overflow-hidden" id="google-button-wrapper">
+        <div
+          ref={googleButtonWrapperRef}
+          className="w-full mb-6 flex justify-center overflow-hidden rounded-lg"
+          id="google-button-wrapper"
+        >
           <style>{`
-            #google-button-wrapper > div > div,
-            #google-button-wrapper > div {
-              width: 100% !important;
-            }
-            #google-button-wrapper iframe {
-              width: 100% !important;
-              border-radius: 8px !important;
-            }
-            #google-button-wrapper div[role="button"] {
-              width: 100% !important;
-              min-width: 100% !important;
-              border: 1px solid #d1d5db !important;
-              border-radius: 8px !important;
-              background: #ffffff !important;
-              box-shadow: none !important;
-              height: 44px !important;
-              min-height: 44px !important;
-            }
-            #google-button-wrapper div[role="button"]:hover {
-              border-color: #9ca3af !important;
-              background: #f9fafb !important;
-            }
-            #google-button-wrapper div[role="button"] > div {
-              justify-content: center !important;
-              width: 100% !important;
-            }
             #google-button-wrapper > div:empty,
             #google-button-wrapper > div > div:empty {
               display: none !important;
@@ -709,12 +709,12 @@ export default function Login() {
             }
           `}</style>
           <GoogleLogin
-            key={`google-login-button-${googleButtonKey}`}
+            key={`google-login-button-${googleButtonKey}-${googleButtonWidth}`}
             theme="outline"
             size="large"
             shape="rectangular"
             text="continue_with"
-            width="400"
+            width={String(googleButtonWidth)}
             useOneTap={false}
             auto_select={false}
             cancel_on_tap_outside={true}
