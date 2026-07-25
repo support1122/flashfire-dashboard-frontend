@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { X, Copy } from "lucide-react";
+import { X, Copy, Briefcase, Building2, MapPin, FileText, Link2, ImagePlus, AlertCircle } from "lucide-react";
 import { Job, JobStatus } from "../types";
 import { UserContext } from "../state_management/UserContext";
 import { useNavigate } from "react-router-dom";
@@ -184,6 +184,14 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
       setImages((prev) => [...prev, ...newFiles]);
       setPreviews((prev) => [...prev, ...newFiles.map((f) => URL.createObjectURL(f))]);
     }
+  };
+
+  const handleRemoveImage = (idx: number) => {
+    setPreviews((prev) => {
+      URL.revokeObjectURL(prev[idx]);
+      return prev.filter((_, i) => i !== idx);
+    });
+    setImages((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const uploadImagesToCloudinary = async (): Promise<string[]> => {
@@ -440,137 +448,192 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
     }
   };
 
+  const fieldDisabledClass = isEditMode
+    ? "disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
+    : "";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
-      
+      <div className="absolute inset-0 backdrop-blur-sm" onClick={onCancel} />
+
       {/* Modal Card */}
-      <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {isEditMode ? "Edit Job Application" : "Add New Job Application"}
-            </h3>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-      {error && <div className="mb-4 text-red-600 text-sm">{error}</div>}
-
-      <form onSubmit={handleAddJob} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium">Job Title *</label>
-            <input
-              disabled={isEditMode}
-              readOnly={isEditMode}
-              name="jobTitle"
-              value={formData.jobTitle}
-              onChange={handleChange}
-              maxLength={MAX_JOB_TITLE_LENGTH}
-              required
-              className="w-full px-3 py-2 border rounded-lg"
-            />
-            <p className="text-xs text-gray-500 mt-1">Max {MAX_JOB_TITLE_LENGTH} characters.</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Company Name *</label>
-            <input
-              disabled={isEditMode}
-              readOnly={isEditMode}
-              name="companyName"
-              value={formData.companyName}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border rounded-lg"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Location (optional)</label>
-          <input
-            disabled={isEditMode}
-            readOnly={isEditMode}
-            name="jobLocation"
-            value={formData.jobLocation}
-            onChange={handleChange}
-            placeholder="e.g. Remote, USA or City, ST"
-            className="w-full px-3 py-2 border rounded-lg"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Used for client location exclusions. Leave blank if unknown.
-          </p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Job Description{!isEditMode ? ' *' : ''}</label>
-          <textarea
-            disabled={isEditMode}
-            readOnly={isEditMode}
-            name="jobDescription"
-            value={formData.jobDescription}
-            onChange={handleChange}
-            rows={4}
-            className="w-full px-3 py-2 border rounded-lg"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Paste Resume Images (Ctrl+V)</label>
-          <div
-            onPaste={handlePaste}
-            className="border-2 border-dotted border-red-600 p-4 min-h-[80px] rounded-lg"
-          >
-            {previews.length ? (
-              <div className="flex flex-wrap gap-2">
-                {previews.map((src, idx) => (
-                  <img key={idx} src={src} alt="preview" className="w-20 h-20 object-cover" />
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 flex items-center">
-                <Copy className="w-4 h-4 mr-1" /> Paste one or more images here
+      <div className="relative bg-white shadow-2xl border border-gray-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 px-6 py-4 bg-white border-b border-gray-200">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 flex items-center justify-center bg-gradient-to-br from-orange-500 to-red-500 text-white flex-shrink-0 shadow-sm">
+              <Briefcase className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-base font-semibold text-gray-900 truncate">
+                {isEditMode ? "Edit Job Application" : "Add New Job Application"}
+              </h3>
+              <p className="text-xs text-gray-400">
+                {isEditMode ? "Attach supporting resume images below" : "Track a new opportunity in your pipeline"}
               </p>
-            )}
+            </div>
           </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium">Job Link</label>
-          <input
-            disabled={isEditMode}
-            readOnly={isEditMode}
-            name="joblink"
-            value={formData.joblink}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border rounded-lg"
-          />
-        </div>
-
-        <div className="flex justify-end gap-3 pt-6 border-t">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
           >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
-          >
-            {isSubmitting ? "Saving..." : isEditMode ? "Update Job" : "Add Job"}
+            <X className="w-5 h-5" />
           </button>
         </div>
-      </form>
+
+        <div className="p-6">
+          {error && (
+            <div className="mb-5 flex items-start gap-2 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleAddJob} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+                  <Briefcase className="w-3.5 h-3.5 text-gray-400" />
+                  Job Title *
+                </label>
+                <input
+                  disabled={isEditMode}
+                  readOnly={isEditMode}
+                  name="jobTitle"
+                  value={formData.jobTitle}
+                  onChange={handleChange}
+                  maxLength={MAX_JOB_TITLE_LENGTH}
+                  required
+                  placeholder="e.g. Senior Product Manager"
+                  className={`w-full px-3 py-2.5 border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow ${fieldDisabledClass}`}
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  {formData.jobTitle.length}/{MAX_JOB_TITLE_LENGTH} characters
+                </p>
+              </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-gray-400" />
+                  Company Name *
+                </label>
+                <input
+                  disabled={isEditMode}
+                  readOnly={isEditMode}
+                  name="companyName"
+                  value={formData.companyName}
+                  onChange={handleChange}
+                  required
+                  placeholder="e.g. Acme Corp"
+                  className={`w-full px-3 py-2.5 border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow ${fieldDisabledClass}`}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+                <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                Location <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                disabled={isEditMode}
+                readOnly={isEditMode}
+                name="jobLocation"
+                value={formData.jobLocation}
+                onChange={handleChange}
+                placeholder="e.g. Remote, USA or City, ST"
+                className={`w-full px-3 py-2.5 border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow ${fieldDisabledClass}`}
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Used for client location exclusions. Leave blank if unknown.
+              </p>
+            </div>
+
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+                <FileText className="w-3.5 h-3.5 text-gray-400" />
+                Job Description{!isEditMode ? ' *' : ''}
+              </label>
+              <textarea
+                disabled={isEditMode}
+                readOnly={isEditMode}
+                name="jobDescription"
+                value={formData.jobDescription}
+                onChange={handleChange}
+                rows={4}
+                placeholder="Paste the job description here..."
+                className={`w-full px-3 py-2.5 border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow resize-none ${fieldDisabledClass}`}
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+                <ImagePlus className="w-3.5 h-3.5 text-gray-400" />
+                Resume Screenshots <span className="text-gray-400 font-normal">(paste with Ctrl+V)</span>
+              </label>
+              <div
+                onPaste={handlePaste}
+                tabIndex={0}
+                className="border-2 border-dashed border-gray-300 hover:border-orange-400 focus:border-orange-500 focus:outline-none p-4 min-h-[96px] transition-colors"
+              >
+                {previews.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {previews.map((src, idx) => (
+                      <div key={idx} className="relative group w-20 h-20 flex-shrink-0">
+                        <img src={src} alt="preview" className="w-20 h-20 object-cover border border-gray-200" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(idx)}
+                          className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center bg-gray-900 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full py-4 text-gray-400">
+                    <Copy className="w-5 h-5 mb-1.5" />
+                    <p className="text-sm">Click here, then paste one or more images</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 mb-1.5">
+                <Link2 className="w-3.5 h-3.5 text-gray-400" />
+                Job Link
+              </label>
+              <input
+                disabled={isEditMode}
+                readOnly={isEditMode}
+                name="joblink"
+                value={formData.joblink}
+                onChange={handleChange}
+                placeholder="https://..."
+                className={`w-full px-3 py-2.5 border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-shadow ${fieldDisabledClass}`}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-5 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-5 py-2.5 text-sm font-medium bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-5 py-2.5 text-sm font-medium bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Saving..." : isEditMode ? "Update Job" : "Add Job"}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
