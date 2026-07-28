@@ -7,6 +7,18 @@ interface DecodedToken {
   iat: number;
 }
 
+// The auth payload the backend returns. Known fields are typed; the index
+// signature covers the plan/resume extras that vary between the client and
+// operations login responses.
+export interface StoredUserDetails {
+  name?: string;
+  email?: string;
+  role?: string;
+  planType?: string;
+  userType?: string;
+  [key: string]: unknown;
+}
+
 export class TokenManager {
   private static readonly TOKEN_REFRESH_THRESHOLD = 60 * 60 * 1000; // 1 hour before expiry
 
@@ -33,18 +45,32 @@ export class TokenManager {
     }
   }
 
-  static async refreshToken(email: string): Promise<{ token: string; userDetails: any } | null> {
+  // The backend now renews only a token the caller already holds - it will not
+  // mint one from a bare email - so the current token has to be presented here.
+  static async refreshToken(email: string): Promise<{ token: string; userDetails: StoredUserDetails } | null> {
     try {
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+      const currentToken = this.getStoredToken();
+
+      if (!currentToken) {
+        return null;
+      }
+
       const response = await fetch(`${API_BASE_URL}/refresh-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${currentToken}`,
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, token: currentToken }),
       });
 
       if (!response.ok) {
+        // 401/403 means the session is genuinely over; drop it so the app
+        // sends the user back to login instead of retrying a dead token.
+        if (response.status === 401 || response.status === 403) {
+          this.clearStoredToken();
+        }
         throw new Error('Token refresh failed');
       }
 
@@ -72,7 +98,7 @@ export class TokenManager {
     }
   }
 
-  static getStoredUserDetails(): any {
+  static getStoredUserDetails(): StoredUserDetails | null {
     try {
       const userAuth = localStorage.getItem('userAuth');
       if (!userAuth) return null;
@@ -85,7 +111,7 @@ export class TokenManager {
     }
   }
 
-  static updateStoredToken(token: string, userDetails: any): void {
+  static updateStoredToken(token: string, userDetails: StoredUserDetails): void {
     try {
       const userAuth = localStorage.getItem('userAuth');
       const existing = userAuth ? JSON.parse(userAuth) : {};

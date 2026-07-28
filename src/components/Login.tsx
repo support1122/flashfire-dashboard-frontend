@@ -345,6 +345,7 @@ import { GoogleLogin } from "@react-oauth/google"
 
 interface LoginResponse {
   message: string
+  code?: string
   token?: string
   userDetails?: unknown
   userProfile?: unknown
@@ -354,6 +355,28 @@ interface LoginResponse {
     email: string
     role: string
     managedUsers: { _id: string; name: string; email: string; userID: string }[]
+  }
+}
+
+// Google sign-in only works for accounts that already exist - the backend never
+// creates one. Map its refusal codes to something a client can act on.
+const googleLoginErrorMessage = (data: LoginResponse | null): string => {
+  switch (data?.code) {
+    case "ACCOUNT_NOT_FOUND":
+      return "No FlashFire account exists for this Google address. Please contact your account manager."
+    case "EMAIL_NOT_VERIFIED":
+      return "This Google account's email is not verified. Verify it with Google and try again."
+    case "INVALID_CREDENTIAL":
+    case "MISSING_CREDENTIAL":
+      return "Google sign-in could not be verified. Please try again."
+    case "GOOGLE_NOT_CONFIGURED":
+      return "Google sign-in is temporarily unavailable. Please use your email and password."
+    default:
+      // Older backend builds answered with this message and no code.
+      if (data?.message === "User not found") {
+        return "No FlashFire account exists for this Google address. Please contact your account manager."
+      }
+      return data?.message || toastMessages.networkError
   }
 }
 
@@ -901,18 +924,22 @@ export default function Login() {
       onSuccess={async (credentialResponse) => {
         const loadingToast = toastUtils.loading(toastMessages.loggingIn)
         try {
-          const { data } = await postJsonWithRetry<LoginResponse>(
+          const { ok, data } = await postJsonWithRetry<LoginResponse>(
             `${import.meta.env.VITE_API_BASE_URL}/google-oauth`,
             { token: credentialResponse.credential },
           )
 
-          if (data?.message === "User not found") {
+          // Only a 2xx with a token is a login. Anything else used to fall
+          // through to the success branch and write an empty session.
+          if (!ok || !data?.token) {
             toastUtils.dismissToast(loadingToast)
-            toastUtils.error("Account does not exist. Please register first.")
+            toastUtils.error(googleLoginErrorMessage(data))
             return
           }
 
-          if (data?.user?.email?.includes("@flashfirehq")) {
+          // The backend attaches `user` only on the operations branch, so its
+          // presence - not the email domain - is what distinguishes the two.
+          if (data?.user) {
             setName(data.user.name)
             setEmailOperations(data.user.email)
             setRole(data.user.role)
