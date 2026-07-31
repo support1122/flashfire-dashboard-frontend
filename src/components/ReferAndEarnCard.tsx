@@ -1,9 +1,10 @@
 'use client'
 
 import React from "react"
-import { Users, Gift, CreditCard, X } from "lucide-react"
-import { useState, useEffect } from "react"
+import { Users, Gift, CreditCard, X, Copy, Check } from "lucide-react"
+import { useState, useEffect, useContext } from "react"
 import { createPortal } from "react-dom"
+import { UserContext } from "../state_management/UserContext"
 
 
 interface ReferAndEarnModalProps {
@@ -17,6 +18,21 @@ export default function ReferAndEarnModal({
   onClose,
 }: ReferAndEarnModalProps) {
   const [mounted, setMounted] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const context = useContext(UserContext)
+  // The client's own name is the referral code — friends type it during onboarding.
+  const referralName = (context?.userDetails?.name || "").trim()
+
+  const copyName = async () => {
+    if (!referralName) return
+    try {
+      await navigator.clipboard.writeText(referralName)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // clipboard API unavailable — no-op
+    }
+  }
 
 
   // Ensure component is mounted before using portal
@@ -62,39 +78,53 @@ export default function ReferAndEarnModal({
                 Refer & Earn Free Applications
               </h2>
               <p className="text-sm text-gray-600">
-                Invite friends to Flashfire and get{" "}
+                Your name is your referral code. Every friend who names you at
+                signup adds{" "}
                 <span className="font-semibold text-[#ff4c00]">
-                  bonus job applications added to your plan automatically.
+                  bonus job applications to your plan automatically.
                 </span>
               </p>
             </div>
 
 
-            {/* REFERRAL LINK */}
-            {/* <div className="mb-6">
+            {/* REFERRAL NAME */}
+            <div className="mb-6">
               <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                Your FlashFire Referral Link
+                Your referral name
               </label>
 
-              <div className="flex items-center gap-2 group">
-                <input
-                  readOnly
-                  value={referralLink}
-                  className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs bg-gray-50 text-gray-700 focus:outline-none focus:border-[#ff4c00] focus:bg-white transition-all duration-200 group-hover:border-[#ff4c00]/50"
-                />
+              {referralName ? (
+                <>
+                  <div className="flex items-center gap-2 group">
+                    <input
+                      readOnly
+                      value={referralName}
+                      aria-label="Your referral name"
+                      className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium bg-gray-50 text-gray-900 focus:outline-none focus:border-[#ff4c00] focus:bg-white transition-all duration-200 group-hover:border-[#ff4c00]/50"
+                    />
 
-                <button
-                  onClick={copyLink}
-                  className={`flex items-center justify-center rounded-lg px-3 py-2 transition-all duration-300 ${
-                    copied
-                      ? "bg-green-500 text-white"
-                      : "bg-[#ff4c00] text-white hover:bg-[#e64400] active:scale-95"
-                  }`}
-                >
-                  {copied ? <Check size={16} /> : <Copy size={16} />}
-                </button>
-              </div>
-            </div> */}
+                    <button
+                      onClick={copyName}
+                      aria-label="Copy referral name"
+                      className={`flex items-center justify-center rounded-lg px-3 py-2 transition-all duration-300 ${
+                        copied
+                          ? "bg-green-500 text-white"
+                          : "bg-[#ff4c00] text-white hover:bg-[#e64400] active:scale-95"
+                      }`}
+                    >
+                      {copied ? <Check size={16} /> : <Copy size={16} />}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[11px] text-gray-500">
+                    Ask your friend to enter this exactly as it appears here.
+                  </p>
+                </>
+              ) : (
+                <p className="rounded-lg border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-500">
+                  Add your name in your profile and it will show up here as your referral name.
+                </p>
+              )}
+            </div>
 
 
             {/* HOW IT WORKS */}
@@ -111,7 +141,7 @@ export default function ReferAndEarnModal({
                     <Users size={14} className="text-[#ff4c00]" />
                   </div>
                   <p className="text-xs font-medium text-gray-900">
-                    Share your referral link with a friend who's actively job searching.
+                    Share your name with a friend who's actively job searching.
                   </p>
                 </div>
 
@@ -122,7 +152,7 @@ export default function ReferAndEarnModal({
                     <Gift size={14} className="text-[#ff4c00]" />
                   </div>
                   <p className="text-xs font-medium text-gray-900">
-                    Friend enrolls in an eligible Flashfire plan.
+                    They enter your name at signup and join an eligible plan.
                   </p>
                 </div>
 

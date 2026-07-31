@@ -16,37 +16,15 @@ import ManagePage from './components/Operations/Manage.tsx';
 import Optimizer from './components/AiOprimizer/Optimizer.tsx';
 import Inbox from './components/Inbox.tsx';
 import { PostHogSessionControl } from './components/PostHogSessionControl.tsx';
+import { useContentOffsetClass } from './state_management/useContentOffset.ts';
 
 // Component to handle Profile page with proper navigation
 function ProfileWithNavigation() {
   const [activeTab, setActiveTab] = useState('dashboard');
   // Don't show modal on profile page - user explicitly navigated here to view/edit
   const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
+  const contentOffset = useContentOffsetClass();
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab} 
-        setUserProfileFormVisibility={setUserProfileFormVisibility} 
-      />
-      <ProfilePage />
-      {userProfileFormVisibility && (
-        <NewUserModal 
-          setUserProfileFormVisibility={setUserProfileFormVisibility}
-          onProfileComplete={() => {
-            console.log("Profile completed callback triggered in App");
-            setUserProfileFormVisibility(false);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function InboxWithNavigation() {
-  const [activeTab, setActiveTab] = useState('inbox');
-  const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation
@@ -54,13 +32,42 @@ function InboxWithNavigation() {
         onTabChange={setActiveTab}
         setUserProfileFormVisibility={setUserProfileFormVisibility}
       />
-      <Inbox />
-      {userProfileFormVisibility && (
-        <NewUserModal
-          setUserProfileFormVisibility={setUserProfileFormVisibility}
-          onProfileComplete={() => setUserProfileFormVisibility(false)}
-        />
-      )}
+      <div className={contentOffset}>
+        <ProfilePage />
+        {userProfileFormVisibility && (
+          <NewUserModal
+            setUserProfileFormVisibility={setUserProfileFormVisibility}
+            onProfileComplete={() => {
+              console.log("Profile completed callback triggered in App");
+              setUserProfileFormVisibility(false);
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InboxWithNavigation() {
+  const [activeTab, setActiveTab] = useState('inbox');
+  const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
+  const contentOffset = useContentOffsetClass();
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navigation
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        setUserProfileFormVisibility={setUserProfileFormVisibility}
+      />
+      <div className={contentOffset}>
+        <Inbox />
+        {userProfileFormVisibility && (
+          <NewUserModal
+            setUserProfileFormVisibility={setUserProfileFormVisibility}
+            onProfileComplete={() => setUserProfileFormVisibility(false)}
+          />
+        )}
+      </div>
     </div>
   );
 }

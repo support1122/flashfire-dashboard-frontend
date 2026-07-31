@@ -1,6 +1,3 @@
-// import { Loader2 } from "lucide-react";
-import { Briefcase } from "lucide-react";
-
 function LoadingScreen() {
   return (
     // <div className="w-screen h-screen bg-gradient-to-br from-indigo-800 via-purple-700 to-pink-600 flex justify-center items-center relative overflow-hidden">
@@ -14,16 +11,6 @@ function LoadingScreen() {
           <Loader2 className="absolute inset-0 m-auto h-16 w-16 text-indigo-100 animate-pulse" />
         </div> */}
         
-        {/* Logo and Brand */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-            <Briefcase className="h-7 w-7 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">FLASHFIRE</h1>
-            <p className="text-sm text-gray-500">Complete Workflow Optimization</p>
-          </div>
-        </div>
         {/* Loading Animation */}
         <div className="relative">
           <div className="w-16 h-16 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin"></div>
