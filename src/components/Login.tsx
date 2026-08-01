@@ -665,8 +665,9 @@ export default function Login() {
           <p className="text-[#ff4b00] text-xs font-semibold tracking-widest uppercase mb-4 lg:mb-6">
             Designed to Get You Hired
           </p>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-5xl font-bold text-gray-900 leading-tight mb-4 lg:mb-5">
-            Focus on Interviews.<br />
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 leading-tight mb-4 lg:mb-5">
+            Focus on<br />
+            Interviews.<br />
             <span className="text-[#ff4b00]">We'll Handle the<br />Rest.</span>
           </h2>
           <p className="text-gray-500 text-sm lg:text-base leading-relaxed mb-6 lg:mb-10">
