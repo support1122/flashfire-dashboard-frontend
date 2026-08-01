@@ -667,7 +667,7 @@ export default function Login() {
           </p>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 leading-tight mb-4 lg:mb-5">
             Focus on Interviews.<br />
-            <span className="text-[#ff4b00]">We'll Handle the Rest.</span>
+            <span className="text-[#ff4b00]">We'll Handle the<br />Rest.</span>
           </h2>
           <p className="text-gray-500 text-sm lg:text-base leading-relaxed mb-6 lg:mb-10">
             Spend less time applying and more time preparing for the opportunities that matter.
