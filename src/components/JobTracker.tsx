@@ -1113,6 +1113,22 @@ const JobTracker = () => {
                                     }`}
                                 />
                                 <h3 className="text-xs font-bold text-gray-700 uppercase tracking-widest">{label}</h3>
+                                {/* Total in this column. Counts every job in the
+                                    status, not just the current page or the
+                                    active search, so the number stays a stable
+                                    "how many do I have here". */}
+                                <span
+                                    className={`ml-auto flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                                        status === "saved" ? "bg-gray-100 text-gray-700"
+                                        : status === "applied" ? "bg-blue-100 text-blue-700"
+                                        : status === "interviewing" ? "bg-amber-100 text-amber-700"
+                                        : status === "offer" ? "bg-green-100 text-green-700"
+                                        : status === "rejected" ? "bg-red-100 text-red-700"
+                                        : "bg-gray-200 text-gray-700"
+                                    }`}
+                                >
+                                    {userJobs?.filter((item) => item.currentStatus?.startsWith(status)).length ?? 0}
+                                </span>
                             </div>
 
                             {/* Job Cards */}

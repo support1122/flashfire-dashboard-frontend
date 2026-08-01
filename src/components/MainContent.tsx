@@ -155,27 +155,46 @@ export default function MainContent() {
       navigate("/login");
   }
   },[])
-useEffect(() => { 
+useEffect(() => {
+  // Guarded and keyed on the email. With an empty dep array this fired on the
+  // very first render, before the context had hydrated, and POSTed
+  // {"email": undefined} - which the backend now correctly rejects with 400.
+  // Waiting for the email means the call happens once, with something to look
+  // up.
+  const email = userDetails?.email;
+  if (!email) return;
+
   const updateUserDetails = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/get-updated-user`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userDetails?.email }),
+        body: JSON.stringify({ email }),
       });
 
       if (!response.ok) throw new Error("Failed to fetch updated user data");
 
       const data = await response.json();
 
+      // A payload with no email is not a user record. Older backends answered
+      // 200 with an empty body when the lookup missed (operators live in a
+      // different collection), and replacing userDetails with it wiped the
+      // stored email - leaving the app half-authenticated until the user
+      // cleared site data. Keep whatever we already have instead.
+      if (!data?.email) {
+        console.warn("get-updated-user returned no email; keeping the existing session");
+        return;
+      }
+
       // 1️⃣ Read current userAuth from localStorage
       const storedAuth = localStorage.getItem("userAuth");
       const parsed = storedAuth ? JSON.parse(storedAuth) : {};
 
-      // 2️⃣ Merge new userDetails into existing object
+      // 2️⃣ Merge onto the existing details rather than replacing them, so a
+      //    response that omits a field can never drop it from the session.
       const updatedAuth = {
         ...parsed,
-        userDetails: data,  // only replace this key
+        userDetails: { ...(parsed.userDetails || {}), ...data },
       };
 
       // 3️⃣ Save it back to localStorage
@@ -196,7 +215,7 @@ useEffect(() => {
   };
 
   updateUserDetails();
-}, []);
+}, [userDetails?.email]);
 
 
 

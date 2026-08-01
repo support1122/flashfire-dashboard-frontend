@@ -345,6 +345,7 @@ import { GoogleLogin } from "@react-oauth/google"
 
 interface LoginResponse {
   message: string
+  code?: string
   token?: string
   userDetails?: unknown
   userProfile?: unknown
@@ -354,6 +355,28 @@ interface LoginResponse {
     email: string
     role: string
     managedUsers: { _id: string; name: string; email: string; userID: string }[]
+  }
+}
+
+// Google sign-in only works for accounts that already exist - the backend never
+// creates one. Map its refusal codes to something a client can act on.
+const googleLoginErrorMessage = (data: LoginResponse | null): string => {
+  switch (data?.code) {
+    case "ACCOUNT_NOT_FOUND":
+      return "No FlashFire account exists for this Google address. Please contact your account manager."
+    case "EMAIL_NOT_VERIFIED":
+      return "This Google account's email is not verified. Verify it with Google and try again."
+    case "INVALID_CREDENTIAL":
+    case "MISSING_CREDENTIAL":
+      return "Google sign-in could not be verified. Please try again."
+    case "GOOGLE_NOT_CONFIGURED":
+      return "Google sign-in is temporarily unavailable. Please use your email and password."
+    default:
+      // Older backend builds answered with this message and no code.
+      if (data?.message === "User not found") {
+        return "No FlashFire account exists for this Google address. Please contact your account manager."
+      }
+      return data?.message || toastMessages.networkError
   }
 }
 
@@ -640,15 +663,15 @@ export default function Login() {
         {/* Main content */}
         <div className="max-w-lg py-8 lg:py-12">
           <p className="text-[#ff4b00] text-xs font-semibold tracking-widest uppercase mb-4 lg:mb-6">
-            Career Intelligence Platform
+            Designed to Get You Hired
           </p>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 leading-tight mb-4 lg:mb-5">
-            Your next job<br />starts with a<br />
-            <span className="text-[#ff4b00]">better resume.</span>
+            Focus on<br />
+            Interviews.<br />
+            <span className="text-[#ff4b00]">We'll Handle the<br />Rest.</span>
           </h2>
           <p className="text-gray-500 text-sm lg:text-base leading-relaxed mb-6 lg:mb-10">
-            Our experts and AI tailor your resume and apply to hundreds
-            of jobs for you — so you land more interviews, faster.
+            Spend less time applying and more time preparing for the opportunities that matter.
           </p>
 
           {/* Stats - 3 column */}
@@ -682,28 +705,53 @@ export default function Login() {
         {/* Google Login Button */}
         <div className="group relative w-full h-11 mb-6" id="google-button-wrapper">
           <style>{`
-            #google-button-wrapper > div:first-child {
+            /* Google's real button sits underneath at full opacity, covered by
+               our skin. It must NOT be transparent: GSI refuses to start the
+               sign-in flow for a button it considers hidden - an
+               anti-clickjacking guard - which is why the old opacity:0 version
+               did nothing in production. Covering an opaque button passes that
+               check while the user still sees our design.
+
+               Stretching is needed because Google hard-caps the widget at
+               400px. Matched by id and role="button" rather than its generated
+               class names, which change without notice. */
+            #google-button-wrapper > div,
+            #google-button-wrapper > div > div,
+            #google-button-wrapper > div > div > div,
+            #google-button-wrapper > div > div > div > div,
+            #google-button-wrapper iframe,
+            #google-button-wrapper [role="button"] {
               width: 100% !important;
+              max-width: 100% !important;
             }
-            #google-button-wrapper > div:first-child > div,
-            #google-button-wrapper > div:first-child iframe {
-              width: 100% !important;
+
+            /* Pin Google's subtree to the wrapper box and clip it. While GSI
+               initialises, its container is ~88px tall (a 40px button plus a
+               48px iframe stacked beneath), which spilled 44px past our 44px
+               skin - so for roughly half a second on every load a second,
+               fully rendered Google button appeared underneath. Clipping here
+               rather than on the wrapper keeps the skin's shadow and focus
+               ring from being cut off too. */
+            #google-button-wrapper > div:not(.gsi-skin) {
+              position: absolute;
+              inset: 0;
+              overflow: hidden;
+            }
+
+            /* Google paints a 2px blue focus ring on its own button, which
+               shows around the edges of our skin on click. Suppress it there
+               and redraw the indicator on the skin, so keyboard users still
+               get one. */
+            #google-button-wrapper [role="button"]:focus,
+            #google-button-wrapper [role="button"]:focus-visible {
+              outline: none !important;
+            }
+            #google-button-wrapper:has([role="button"]:focus-visible) .gsi-skin {
+              outline: 2px solid #ea580c;
+              outline-offset: 2px;
             }
           `}</style>
 
-          {/* Decorative custom button (visual only, sits underneath so clicks pass through to the real Google button on top) */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-sm transition-colors group-hover:border-gray-400 group-hover:bg-gray-50">
-            <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            <span>Continue with Google</span>
-          </div>
-
-          {/* Real Google button, rendered transparent and stretched to fill the container so clicks land on it */}
-          <div className="absolute inset-0 overflow-hidden opacity-0">
           <GoogleLogin
             key={`google-login-button-${googleButtonKey}`}
             theme="outline"
@@ -718,20 +766,22 @@ export default function Login() {
             onSuccess={async (credentialResponse) => {
               const loadingToast = toastUtils.loading(toastMessages.loggingIn)
               try {
-                const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/google-oauth`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ token: credentialResponse.credential }),
-                })
-                const data = await res.json()
+                const { ok, data } = await postJsonWithRetry<LoginResponse>(
+                  `${import.meta.env.VITE_API_BASE_URL}/google-oauth`,
+                  { token: credentialResponse.credential },
+                )
 
-                if (data?.message === "User not found") {
+                // Only a 2xx with a token is a login. Anything else used to fall
+                // through to the success branch and write an empty session.
+                if (!ok || !data?.token) {
                   toastUtils.dismissToast(loadingToast)
-                  toastUtils.error("Account does not exist. Please register first.")
+                  toastUtils.error(googleLoginErrorMessage(data))
                   return
                 }
 
-                if (data?.user?.email?.includes("@flashfirehq")) {
+                // The backend attaches `user` only on the operations branch, so
+                // its presence - not the email domain - distinguishes the two.
+                if (data?.user) {
                   setName(data.user.name)
                   setEmailOperations(data.user.email)
                   setRole(data.user.role)
@@ -770,6 +820,21 @@ export default function Login() {
               toastUtils.error("Google login failed. Please try again.")
             }}
           />
+
+          {/* Our skin, painted over Google's button. The button underneath
+              keeps opacity 1 so GSI still counts it as visible; this layer is
+              pointer-events-none so every click passes straight through to it.
+              Also hides Google's personalised "Continue as <name>" variant,
+              which otherwise shows whenever the visitor has a live Google
+              session. */}
+          <div className="gsi-skin pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-sm transition-colors group-hover:border-gray-400 group-hover:bg-gray-50">
+            <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            <span>Continue with Google</span>
           </div>
         </div>
 
