@@ -663,15 +663,14 @@ export default function Login() {
         {/* Main content */}
         <div className="max-w-lg py-8 lg:py-12">
           <p className="text-[#ff4b00] text-xs font-semibold tracking-widest uppercase mb-4 lg:mb-6">
-            Career Intelligence Platform
+            Designed to Get You Hired
           </p>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 leading-tight mb-4 lg:mb-5">
-            Your next job<br />starts with a<br />
-            <span className="text-[#ff4b00]">better resume.</span>
+            Focus on Interviews.<br />
+            <span className="text-[#ff4b00]">We'll Handle the Rest.</span>
           </h2>
           <p className="text-gray-500 text-sm lg:text-base leading-relaxed mb-6 lg:mb-10">
-            Our experts and AI tailor your resume and apply to hundreds
-            of jobs for you — so you land more interviews, faster.
+            Spend less time applying and more time preparing for the opportunities that matter.
           </p>
 
           {/* Stats - 3 column */}
