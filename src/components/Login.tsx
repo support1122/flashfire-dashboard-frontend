@@ -1,6 +1,6 @@
 // import { useState, useContext, type FormEvent } from "react"
 // import { useNavigate } from "react-router-dom"
-// import { Eye, EyeOff, Mail, Lock, CheckCircle, TrendingUp, Users, Award, Clock, ArrowRight } from "lucide-react"
+// import { Eye, EyeOff } from "lucide-react"
 // import { UserContext } from "../state_management/UserContext"
 // import { useUserProfile } from "../state_management/ProfileContext"
 // import { useOperationsStore } from "../state_management/Operations"
@@ -281,7 +281,7 @@
 //                   placeholder="example@email.com"
 //                   value={email}
 //                   onChange={(e) => setEmail(e.target.value)}
-//                   className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all text-sm"
+//                   className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ff4b00]/30 focus:border-orange-500 transition-all text-sm"
 //                 />
 //               </div>
 //             </div>
@@ -296,7 +296,7 @@
 //                   placeholder="Password"
 //                   value={password}
 //                   onChange={(e) => setPassword(e.target.value)}
-//                   className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all text-sm"
+//                   className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ff4b00]/30 focus:border-orange-500 transition-all text-sm"
 //                 />
 //                 <button
 //                   type="button"
@@ -331,9 +331,9 @@
 //   )
 // }
 
-import React, { useState, useContext, useEffect, type FormEvent } from "react"
+import { useState, useContext, useEffect, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
-import { Eye, EyeOff, Mail, Lock, CheckCircle, TrendingUp, Users, Award, Clock, ArrowRight } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 import { UserContext } from "../state_management/UserContext"
 import { useUserProfile } from "../state_management/ProfileContext"
 import { useOperationsStore } from "../state_management/Operations"
@@ -380,33 +380,6 @@ const googleLoginErrorMessage = (data: LoginResponse | null): string => {
   }
 }
 
-const statsData = [
-  {
-    value: "95%",
-    label: "Success Rate",
-    icon: <TrendingUp className="w-5 h-5" />,
-    color: "text-emerald-600",
-  },
-  {
-    value: "300K+",
-    label: "Applications Sent",
-    icon: <Users className="w-5 h-5" />,
-    color: "text-blue-600",
-  },
-  {
-    value: "97%",
-    label: "ATS Score",
-    icon: <Award className="w-5 h-5" />,
-    color: "text-orange-600",
-  },
-  {
-    value: "24/7",
-    label: "AI Working",
-    icon: <Clock className="w-5 h-5" />,
-    color: "text-purple-600",
-  },
-]
-
 const normalizeEmail = (value: string) => value.trim().toLowerCase()
 
 export default function Login() {
@@ -423,12 +396,6 @@ export default function Login() {
   const [sendingOtp, setSendingOtp] = useState<boolean>(false)
   const [useSessionKey, setUseSessionKey] = useState<boolean>(false)
   const [rememberFor30Days, setRememberFor30Days] = useState<boolean>(true)
-
-  // Ops accounts must never be captured by Google Password Manager (the shared
-  // Google profile handed to clients would expose them). Hidden by default so
-  // the browser never classifies this as a login form until the typed domain
-  // is clearly a client's, not flashfirehq.
-  const hidePasswordFromManager = shouldHidePasswordFromManager(email)
 
   const navigate = useNavigate()
   const { setName, setEmailOperations, setRole, setManagedUsers, setOperatorNamesMap, reset: resetOperationsStore } = useOperationsStore()
@@ -677,378 +644,216 @@ export default function Login() {
     }
   }
 
+  // Ops accounts must never be captured by Google Password Manager (the shared
+  // Google profile handed to clients would expose them). Hidden by default so
+  // the browser never classifies this as a login form until the typed domain
+  // is clearly a client's, not flashfirehq.
+  const hidePasswordFromManager = shouldHidePasswordFromManager(email)
+
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-gradient-to-br from-orange-50 via-white to-red-50">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       {/* LEFT PANEL */}
-      <div className="flex-1 flex flex-col justify-center px-6 md:px-12 lg:px-16 py-12 lg:py-16 relative border-b lg:border-b-0 lg:border-r border-gray-200">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 -left-20 w-96 h-96 bg-orange-200/30 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-red-200/30 rounded-full blur-3xl"></div>
+      <div className="flex flex-col justify-between px-6 sm:px-10 lg:px-16 py-8 lg:py-10 bg-white min-h-screen lg:min-h-0 lg:flex-1">
+        {/* Logo */}
+        <div className="flex items-center gap-0.5">
+          <img src="/logo2.png" alt="Flashfire Logo" className="w-8 h-8" />
+          <span className="text-[#ff4b00] font-extrabold text-base tracking-widest uppercase">Flashfire</span>
         </div>
 
-        <div className="relative z-10 max-w-xl mx-auto lg:mx-0">
-          <div className="flex items-center gap-3 mb-2">
-            <img src="/Logo.png" alt="Flashfire Logo" className="w-10 h-10 md:w-12 md:h-12" />
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent">
-                FLASHFIRE
-              </h1>
-              <p className="text-xs text-gray-600">AI-Powered Resume Optimization</p>
+        {/* Main content */}
+        <div className="max-w-lg py-8 lg:py-12">
+          <p className="text-[#ff4b00] text-xs font-semibold tracking-widest uppercase mb-4 lg:mb-6">
+            Career Intelligence Platform
+          </p>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 leading-tight mb-4 lg:mb-5">
+            Your next job<br />starts with a<br />
+            <span className="text-[#ff4b00]">better resume.</span>
+          </h2>
+          <p className="text-gray-500 text-sm lg:text-base leading-relaxed mb-6 lg:mb-10">
+            Our experts and AI tailor your resume and apply to hundreds
+            of jobs for you — so you land more interviews, faster.
+          </p>
+
+          {/* Stats - 3 column */}
+          <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+            <div className="flex-1 p-3 lg:p-5 text-center border-r border-gray-200">
+              <div className="text-xl lg:text-2xl font-bold text-gray-700">95<span className="text-[#ff4b00]">%</span></div>
+              <div className="text-xs text-gray-500 mt-1">Success Rate</div>
+            </div>
+            <div className="flex-1 p-3 lg:p-5 text-center border-r border-gray-200">
+              <div className="text-xl lg:text-2xl font-bold text-gray-700">
+                300<span className="text-[#ff4b00]">k+</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">Applications Sent</div>
+            </div>
+            <div className="flex-1 p-3 lg:p-5 text-center">
+              <div className="text-xl lg:text-2xl font-bold text-gray-700">97<span className="text-[#ff4b00]">%</span></div>
+              <div className="text-xs text-gray-500 mt-1">Avg ATS Score</div>
             </div>
           </div>
-
-          <div className="mb-4">
-            <p className="text-sm font-medium text-orange-600 mb-1 tracking-wide uppercase">Welcome Back</p>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-3">
-              Transform Your{" "}
-              <span className="bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                Career Journey
-              </span>
-            </h2>
-            <p className="text-lg text-gray-700 leading-relaxed">
-              Join professionals who landed dream jobs with AI-optimized resumes that beat ATS.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            {statsData.map((stat, i) => (
-              <div
-                key={i}
-                className="group bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-5 hover:bg-white hover:border-orange-300 hover:shadow-lg transition-all duration-300 cursor-default"
-              >
-                <div className="flex items-center gap-3 mb-1">
-                  <div className={`${stat.color} transition-transform group-hover:scale-110`}>{stat.icon}</div>
-                  <span className="text-2xl font-bold text-gray-900">{stat.value}</span>
-                </div>
-                <p className="text-sm text-gray-600">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <CheckCircle className="w-4 h-4 text-emerald-600" />
-            <span>Secure & Private</span>
-          </div>
         </div>
+
+        {/* Bottom text */}
+        <p className="text-gray-400 text-xs lg:text-sm">End-to-end encrypted • Your data is never sold</p>
       </div>
 
-      {/* RIGHT PANEL - WHITE CARD */}
-      <div className="w-full lg:w-[480px] xl:w-[560px] flex flex-col justify-center px-6 md:px-12 py-12 bg-gray-50">
-        <div className="max-w-md mx-auto w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:p-6">
-          {/* Header */}
-          <div className="mb-4">
+      {/* RIGHT PANEL */}
+      <div className="w-full lg:w-[480px] xl:w-[520px] flex flex-col justify-center px-6 sm:px-10 lg:px-16 py-10 bg-gray-100 min-h-screen lg:min-h-0">
+        <h3 className="text-3xl font-bold text-gray-900 mb-1">Welcome back</h3>
+        <p className="text-gray-500 text-sm mb-8">Login to your Flashfire account</p>
+
+        {/* Google Login Button */}
+        <div className="group relative w-full h-11 mb-6" id="google-button-wrapper">
+          <style>{`
+            #google-button-wrapper > div:first-child {
+              width: 100% !important;
+            }
+            #google-button-wrapper > div:first-child > div,
+            #google-button-wrapper > div:first-child iframe {
+              width: 100% !important;
+            }
+          `}</style>
+
+          {/* Decorative custom button (visual only, sits underneath so clicks pass through to the real Google button on top) */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-sm transition-colors group-hover:border-gray-400 group-hover:bg-gray-50">
+            <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            <span>Continue with Google</span>
           </div>
 
-          {/* Tabs */}
-          <div className="flex justify-center mb-6 border-b border-gray-200">
-            <button className="px-4 py-2 text-orange-600 font-semibold border-b-2 border-orange-600 -mb-[2px] text-sm">
-              Login
-            </button>
+          {/* Real Google button, rendered transparent and stretched to fill the container so clicks land on it */}
+          <div className="absolute inset-0 overflow-hidden opacity-0">
+          <GoogleLogin
+            key={`google-login-button-${googleButtonKey}`}
+            theme="outline"
+            size="large"
+            shape="rectangular"
+            text="continue_with"
+            width="400"
+            useOneTap={false}
+            auto_select={false}
+            cancel_on_tap_outside={true}
+            ux_mode="popup"
+            onSuccess={async (credentialResponse) => {
+              const loadingToast = toastUtils.loading(toastMessages.loggingIn)
+              try {
+                const { ok, data } = await postJsonWithRetry<LoginResponse>(
+                  `${import.meta.env.VITE_API_BASE_URL}/google-oauth`,
+                  { token: credentialResponse.credential },
+                )
+
+                // Only a 2xx with a token is a login. Anything else used to fall
+                // through to the success branch and write an empty session.
+                if (!ok || !data?.token) {
+                  toastUtils.dismissToast(loadingToast)
+                  toastUtils.error(googleLoginErrorMessage(data))
+                  return
+                }
+
+                // The backend attaches `user` only on the operations branch, so
+                // its presence - not the email domain - distinguishes the two.
+                if (data?.user) {
+                  setName(data.user.name)
+                  setEmailOperations(data.user.email)
+                  setRole(data.user.role)
+                  setManagedUsers(data.user.managedUsers)
+                  toastUtils.dismissToast(loadingToast)
+                  toastUtils.success("Welcome to Operations Dashboard!")
+                  navigate("/manage")
+                } else {
+                  resetOperationsStore()
+                  localStorage.removeItem("role")
+                  setData?.({
+                    userDetails: data?.userDetails,
+                    token: data?.token || "",
+                  })
+                  setProfileFromApi(data?.userProfile)
+                  sessionStorage.setItem('hasProfile', data?.hasProfile ? 'true' : 'false')
+                  localStorage.setItem(
+                    "userAuth",
+                    JSON.stringify({
+                      token: data?.token,
+                      userDetails: data?.userDetails,
+                      userProfile: data?.userProfile,
+                    }),
+                  )
+                  toastUtils.dismissToast(loadingToast)
+                  toastUtils.success(toastMessages.loginSuccess)
+                  navigate("/")
+                }
+              } catch (err) {
+                console.error(err)
+                toastUtils.dismissToast(loadingToast)
+                toastUtils.error(toastMessages.networkError)
+              }
+            }}
+            onError={() => {
+              toastUtils.error("Google login failed. Please try again.")
+            }}
+          />
           </div>
-
-         {/* Google Login Button */}
-<div className="w-full my-6">
-  <div 
-    className="relative w-full google-button-container overflow-hidden rounded-lg"
-    id="google-button-wrapper"
-  >
-    <style>{`
-      /* Reset and force consistent styling */
-      #google-button-wrapper {
-        display: flex !important;
-        justify-content: center !important;
-        width: 100% !important;
-        height: 42px !important;
-        border-radius: 8px !important;
-        overflow: hidden !important;
-        background: transparent !important;
-        border: none !important;
-      }
-      
-      /* Remove all background elements and lines */
-      #google-button-wrapper > div,
-      #google-button-wrapper > div > div,
-      #google-button-wrapper iframe {
-        background: transparent !important;
-        border: none !important;
-        outline: none !important;
-        box-shadow: none !important;
-      }
-      
-      /* Force full width container */
-      #google-button-wrapper > div {
-        width: 100% !important;
-        display: block !important;
-        background: transparent !important;
-      }
-      
-      /* Target the iframe container */
-      #google-button-wrapper > div > div {
-        width: 100% !important;
-        display: block !important;
-        background: transparent !important;
-        border: none !important;
-      }
-      
-      /* Target the actual button with role="button" - both states */
-      #google-button-wrapper div[role="button"],
-      #google-button-wrapper iframe {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 100% !important;
-        display: block !important;
-        background: transparent !important;
-        border: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-      
-      /* Main button styling - match email input exactly */
-      #google-button-wrapper div[role="button"] {
-        border: 1px solid #d1d5db !important; /* Orange border for main state */
-        border-radius: 8px !important;
-        background: #f9fafb !important; /* Light orange background */
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-        transition: all 0.2s ease !important;
-        padding: 0 !important;
-        min-height: 42px !important;
-        height: 42px !important;
-        font-family: inherit !important;
-        box-sizing: border-box !important;
-        display: flex !important;
-        align-items: flex-start !important;
-        justify-content: center !important;
-      }
-      
-      /* Hover state */
-      #google-button-wrapper div[role="button"]:hover {
-        border-color: #ea580c !important;
-        background: #ffffff !important;
-        box-shadow: 0 1px 3px 0 rgba(234, 88, 12, 0.1), 0 1px 2px 0 rgba(234, 88, 12, 0.06) !important;
-      }
-      
-      /* Active state */
-      #google-button-wrapper div[role="button"]:active {
-        transform: translateY(0px) !important;
-        box-shadow: 0 1px 2px 0 rgba(234, 88, 12, 0.05) !important;
-      }
-      
-      /* Inner content wrapper - left-aligned for standard look */
-      #google-button-wrapper div[role="button"] > div {
-        width: 100% !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important; /* Changed to flex-start for left alignment */
-        gap: 5px !important;
-        margin: 0 !important;
-        padding: 0 20px !important; /* Add horizontal padding for better spacing */
-      }
-      
-      /* Text styling - orange tint */
-      #google-button-wrapper div[role="button"] div[style*="color"],
-      #google-button-wrapper div[role="button"] span {
-        color: #374151 !important; /* Darker orange for text */
-        font-weight: 500 !important;
-        font-size: 14px !important;
-        letter-spacing: 0.025em !important;
-        white-space: wrap !important;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-      }
-      
-      /* Hover text color */
-      #google-button-wrapper div[role="button"]:hover div[style*="color"],
-      #google-button-wrapper div[role="button"]:hover span {
-        color: #ea580c !important;
-      }
-      
-      /* Google icon styling */
-      #google-button-wrapper div[role="button"] svg {
-        width: 18px !important;
-        height: 18px !important;
-        flex-shrink: 0 !important;
-      }
-      
-      /* User profile image (after authentication) - fixed size */
-      #google-button-wrapper div[role="button"] img {
-        width: 20px !important;
-        height: 20px !important;
-        min-width: 20px !important;
-        min-height: 20px !important;
-        max-width: 20px !important;
-        max-height: 20px !important;
-        border-radius: 50% !important;
-        flex-shrink: 0 !important;
-        object-fit: cover !important;
-      }
-      
-      /* Ensure iframe has consistent width and no borders */
-      #google-button-wrapper iframe {
-        height: 42px !important;
-        border-radius: 8px !important;
-        border: none !important;
-        background: transparent !important;
-      }
-      
-      /* Hide any shadow DOM elements that might cause lines */
-      #google-button-wrapper ::before,
-      #google-button-wrapper ::after,
-      #google-button-wrapper *::before,
-      #google-button-wrapper *::after {
-        display: none !important;
-        content: none !important;
-      }
-      
-      /* Nuclear option: hide any element that might be causing the line */
-      #google-button-wrapper div[style*="border"],
-      #google-button-wrapper div[style*="background"],
-      #google-button-wrapper div[style*="line"] {
-        border: none !important;
-        background: transparent !important;
-        display: none !important;
-      }
-        .nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-BPrWId{
-        flex-grow : inherit !important;
-        }
-    `}</style>
-    <GoogleLogin
-      key={`google-login-button-${googleButtonKey}`}
-      theme="outline"
-      size="large"
-      shape="rectangular"
-      text="continue_with"
-      width="400"
-      useOneTap={false}
-      auto_select={false}
-      cancel_on_tap_outside={true}
-      ux_mode="popup"
-      onSuccess={async (credentialResponse) => {
-        const loadingToast = toastUtils.loading(toastMessages.loggingIn)
-        try {
-          const { ok, data } = await postJsonWithRetry<LoginResponse>(
-            `${import.meta.env.VITE_API_BASE_URL}/google-oauth`,
-            { token: credentialResponse.credential },
-          )
-
-          // Only a 2xx with a token is a login. Anything else used to fall
-          // through to the success branch and write an empty session.
-          if (!ok || !data?.token) {
-            toastUtils.dismissToast(loadingToast)
-            toastUtils.error(googleLoginErrorMessage(data))
-            return
-          }
-
-          // The backend attaches `user` only on the operations branch, so its
-          // presence - not the email domain - is what distinguishes the two.
-          if (data?.user) {
-            setName(data.user.name)
-            setEmailOperations(data.user.email)
-            setRole(data.user.role)
-            setManagedUsers(data.user.managedUsers)
-            toastUtils.dismissToast(loadingToast)
-            toastUtils.success("Welcome to Operations Dashboard!")
-            navigate("/manage")
-          } else {
-            resetOperationsStore()
-            localStorage.removeItem("role")
-            setData?.({
-              userDetails: data?.userDetails,
-              token: data?.token || "",
-            })
-            setProfileFromApi(data?.userProfile)
-            
-            sessionStorage.setItem('hasProfile', data?.hasProfile ? 'true' : 'false')
-            
-            localStorage.setItem(
-              "userAuth",
-              JSON.stringify({
-                token: data?.token,
-                userDetails: data?.userDetails,
-                userProfile: data?.userProfile,
-              }),
-            )
-            toastUtils.dismissToast(loadingToast)
-            toastUtils.success(toastMessages.loginSuccess)
-            navigate("/")
-          }
-        } catch (err) {
-          console.error(err)
-          reportNetworkError("Google OAuth", "", err, `${import.meta.env.VITE_API_BASE_URL}/google-oauth`)
-          toastUtils.dismissToast(loadingToast)
-          toastUtils.error(toastMessages.networkError)
-        }
-      }}
-      onError={() => {
-        toastUtils.error("Google login failed. Please try again.")
-      }}
-    />
-  </div>
-</div>
-
-          {/* Divider */}
-          <div className="flex items-center justify-center mb-6">
-            <hr className="flex-1 border-gray-300" />
-            <span className="mx-3 text-gray-500 text-xs font-medium">OR</span>
-            <hr className="flex-1 border-gray-300" />
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleLogin} className="space-y-4">
-            {/* Email */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-900 mb-1">Email *</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="email"
-                  placeholder="example@email.com"
-                  value={email}
-                  autoComplete={hidePasswordFromManager ? "off" : "email"}
-                  onChange={(e) => setEmail(normalizeEmail(e.target.value))}
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all text-sm"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-900 mb-1">Password *</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  {...guardedPasswordInputProps(hidePasswordFromManager, showPassword)}
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Sign In Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full mt-5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:shadow-orange-500/30 disabled:opacity-50 disabled:cursor-not-allowed group text-sm"
-            >
-              {isLoading ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  <span className="text-sm">Sign In</span>
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                </>
-              )}
-            </button>
-          </form>
-
         </div>
+
+        {/* Divider */}
+        <div className="flex items-center mb-6">
+          <hr className="flex-1 border-gray-300" />
+          <span className="mx-4 text-gray-400 text-xs font-medium">OR</span>
+          <hr className="flex-1 border-gray-300" />
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleLogin} className="space-y-4">
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input
+              type="email"
+              autoComplete={hidePasswordFromManager ? "off" : "email"}
+              placeholder="eg. johnfrans@gmail.com"
+              value={email}
+              onChange={(e) => setEmail(normalizeEmail(e.target.value))}
+              className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ff4b00]/30 focus:border-[#ff4b00] transition-all text-base sm:text-sm"
+            />
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <div className="relative">
+              <input
+                {...guardedPasswordInputProps(hidePasswordFromManager, showPassword)}
+                placeholder="Enter Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 pr-10 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ff4b00]/30 focus:border-[#ff4b00] transition-all text-base sm:text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Sign In Button */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-[#ff4b00] hover:bg-[#cc3d00] text-white font-semibold py-3 rounded-lg flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm mt-2"
+          >
+            {isLoading ? (
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              "Sign In"
+            )}
+          </button>
+        </form>
       </div>
       <SessionKeyModal 
         visible={requireSessionKey}

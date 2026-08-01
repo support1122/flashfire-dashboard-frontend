@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useContext, Suspense, lazy, useRef } from "react";
-import { Search, Plus, MessageSquare, Loader2, Clock } from "lucide-react";
+import { Search, Plus, MessageSquare, Loader2, Clock, Filter } from "lucide-react";
 import { Job, JobStatus } from "../types/index.ts";
 const JobForm = lazy(() => import("./JobForm.tsx"));
 const JobCard = lazy(() => import("./JobCard.tsx"));
@@ -50,6 +51,8 @@ const JobTracker = () => {
     const [notifyCooldown, setNotifyCooldown] = useState(0);
     const [showNotifyPasswordModal, setShowNotifyPasswordModal] = useState(false);
     const [notifyPasswordError, setNotifyPasswordError] = useState('');
+    const [showFilter, setShowFilter] = useState(false);
+    const [hiddenStatuses, setHiddenStatuses] = useState<JobStatus[]>([]);
 
     // Handle URL parameters for opening job modal with specific section
     useEffect(() => {
@@ -323,6 +326,7 @@ const JobTracker = () => {
     }, [showJobModal]);
 
     console.log("Role in job tracker is ", role);
+
 
     // const handleDragStart = (e: React.DragEvent, job: Job) => {
     //   e.dataTransfer.setData('jobId', job.jobID);
@@ -894,14 +898,19 @@ const JobTracker = () => {
     };
 
     return (
-        <div className="px-4 sm:px-6 lg:px-8 py-6  min-h-screen">
+        <div className="min-h-screen">
+            {/* Deliberately not width-capped like the other pages: the board
+                below is a horizontally scrolling kanban, so narrowing it to a
+                centred column would waste a wide monitor and force scrolling
+                that is otherwise unnecessary. Gutter matches PAGE_CONTAINER. */}
+            <div className="px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
                 <div className="flex flex-col justify-around items-start w-full">
-                    <h2 className="text-4xl md:text-4xl font-extrabold text-zinc-900 mb-2 tracking-tight leading-[1.1]">Job Tracker</h2>
-                    <p className="text-gray-600 text-3x1 ">Track your job applications and manage your career pipeline</p>
+                    <h2 className="text-2xl sm:text-4xl font-semibold text-zinc-900 mb-2 tracking-tight leading-[1.1]">Job Tracker</h2>
+                    <p className="text-gray-400 text-sm sm:text-base">Track your job applications and manage your career pipeline</p>
                 </div>
-                <div className="mt-4 sm:mt-0 flex items-center justify-end gap-4 w-full">
+                <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 sm:gap-4 w-full">
                     {role === "operations" && userDetails?.email && (
                         <button
                             onClick={() => {
@@ -909,7 +918,7 @@ const JobTracker = () => {
                                 setShowNotifyPasswordModal(true);
                             }}
                             disabled={notifyCooldown > 0 || notifyLoading}
-                            className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm flex items-center gap-2 ${
+                            className={`w-full sm:w-auto justify-center whitespace-nowrap px-4 py-2 font-medium transition-all duration-200 shadow-sm flex items-center gap-2 ${
                                 notifyCooldown > 0
                                     ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                                     : notifyLoading
@@ -937,17 +946,17 @@ const JobTracker = () => {
                             )}
                         </button>
                     )}
-                    <div className="relative">
+                    <div className="relative w-full sm:w-auto">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="text"
                             placeholder="Search jobs..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 pr-4 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white shadow-sm"
+                            className="w-full sm:w-auto pl-10 pr-6 py-3 border border-orange-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white shadow-sm"
                         />
                         {filteredJobs.length > 0 && (
-                            <div className="absolute top-full mt-2 w-full bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                            <div className="absolute top-full mt-2 w-full bg-white border border-gray-300 shadow-lg z-50 max-h-60 overflow-y-auto">
                                 {filteredJobs.map((job) => (
                                     <div
                                         key={job.jobID}
@@ -966,27 +975,70 @@ const JobTracker = () => {
                             </div>
                         )}
                     </div>
-                    <button
-                        onClick={() => setShowJobForm(true)}
-                        className="whitespace-nowrap bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
-                    >
-                        Add Jobs
-                    </button>
-                    {(role === "operations" || role === "operator") && (
+                    <div className="flex gap-3 w-full sm:w-auto">
                         <button
-                            onClick={handleQueueAutoOptimizeSavedJobs}
-                            disabled={autoOptimizeLoading}
-                            className={`whitespace-nowrap px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 shadow-sm ${
-                                autoOptimizeLoading
-                                    ? "bg-purple-300 text-white cursor-wait"
-                                    : "bg-gradient-to-br from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white hover:shadow-md"
-                            }`}
-                            title="Optimize saved jobs only (5-minute spacing)"
+                            onClick={() => setShowJobForm(true)}
+                            className="flex-1 sm:flex-none justify-center whitespace-nowrap bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-6 py-3 font-medium transition-all duration-200 shadow-sm hover:shadow-md flex items-center"
                         >
-                            {autoOptimizeLoading ? "Queueing..." : "Auto Optimize"}
+                            Add Jobs
                         </button>
-                    )}
+                        {(role === "operations" || role === "operator") && (
+                            <button
+                                onClick={handleQueueAutoOptimizeSavedJobs}
+                                disabled={autoOptimizeLoading}
+                                className={`flex-1 sm:flex-none justify-center whitespace-nowrap px-3 py-1.5 text-sm font-medium transition-all duration-200 shadow-sm flex items-center ${
+                                    autoOptimizeLoading
+                                        ? "bg-purple-300 text-white cursor-wait"
+                                        : "bg-gradient-to-br from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white hover:shadow-md"
+                                }`}
+                                title="Optimize saved jobs only (5-minute spacing)"
+                            >
+                                {autoOptimizeLoading ? "Queueing..." : "Auto Optimize"}
+                            </button>
+                        )}
+                    </div>
                 </div>
+            </div>
+
+            {/* Filter */}
+            <div className="mb-4 relative inline-block">
+                <button
+                    onClick={() => setShowFilter((v) => !v)}
+                    className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-300 text-gray-400 text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm"
+                >
+                    <Filter className="w-4 h-4" />
+                    Filter
+                    {hiddenStatuses.length > 0 && (
+                        <span className="ml-1 bg-[#ff4b00] text-white text-xs w-4 h-4 flex items-center justify-center leading-none">
+                            {hiddenStatuses.length}
+                        </span>
+                    )}
+                </button>
+                {showFilter && (
+                    <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowFilter(false)} />
+                        <div className="absolute top-full mt-2 left-0 bg-white border border-gray-200 shadow-lg z-50 p-3 min-w-[180px]">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Show Columns</p>
+                            {statusColumns.map(({ status, label }) => (
+                                <label key={status} className="flex items-center gap-2 py-1.5 cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={!hiddenStatuses.includes(status)}
+                                        onChange={() => {
+                                            setHiddenStatuses((prev) =>
+                                                prev.includes(status)
+                                                    ? prev.filter((s) => s !== status)
+                                                    : [...prev, status]
+                                            );
+                                        }}
+                                        className="accent-[#ff4b00] w-4 h-4"
+                                    />
+                                    <span className="text-sm text-gray-700">{label}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Board */}
@@ -995,7 +1047,7 @@ const JobTracker = () => {
                 className="flex gap-6 overflow-x-auto pb-6"
                 onDragOver={handleDragOverBoard}
             >
-                {statusColumns.map(({ status, label, color }) => {
+                {statusColumns.filter(({ status }) => !hiddenStatuses.includes(status)).map(({ status, label }) => {
                     const filteredAndSortedJobs =
                         (userJobs && Array.isArray(userJobs))
                             ? userJobs
@@ -1043,50 +1095,24 @@ const JobTracker = () => {
                     return (
                         <div
                             key={status}
-                            className={`${color} rounded-xl p-4 min-w-[280px] w-80 flex flex-col shadow-sm border border-gray-200 transition-all duration-200`}
+                            className="bg-white p-4 min-w-[280px] w-80 flex flex-col shadow-sm border border-gray-200 transition-all duration-200"
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
                             onDrop={(e) => handleDrop(e, status)}
                         >
                             {/* Column Header */}
-                            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
-                                <div className="flex items-center gap-2">
-                                    <div
-                                        className={`w-3 h-3 rounded-full ${status === "saved"
-                                                ? "bg-gray-400"
-                                                : status === "applied"
-                                                    ? "bg-blue-500"
-                                                    : status === "interviewing"
-                                                        ? "bg-amber-500"
-                                                        : status === "offer"
-                                                            ? "bg-green-500"
-                                                            : status === "rejected"
-                                                                ? "bg-red-500"
-                                                                : status === "deleted"
-                                                                    ? "bg-gray-700"
-                                                                    : "bg-gray-300"
-                                            }`}
-                                    ></div>
-                                    <h3 className="font-semibold text-gray-900 text-sm uppercase tracking-wide">{label}</h3>
-                                </div>
-                                <span
-                                    className={`px-2 py-1 rounded-full text-xs font-medium ${status === "saved"
-                                            ? "bg-gray-100 text-gray-700"
-                                            : status === "applied"
-                                                ? "bg-blue-100 text-blue-700"
-                                                : status === "interviewing"
-                                                    ? "bg-amber-100 text-amber-700"
-                                                    : status === "offer"
-                                                        ? "bg-green-100 text-green-700"
-                                                        : status === "rejected"
-                                                            ? "bg-red-100 text-red-700"
-                                                            : status === "deleted"
-                                                                ? "bg-gray-200 text-gray-700"
-                                                                : ""
-                                        }`}
-                                >
-                                    {userJobs?.filter((item) => item.currentStatus?.startsWith(status)).length}
-                                </span>
+                            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
+                                <div
+                                    className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                                        status === "saved" ? "bg-gray-400"
+                                        : status === "applied" ? "bg-blue-500"
+                                        : status === "interviewing" ? "bg-amber-500"
+                                        : status === "offer" ? "bg-green-500"
+                                        : status === "rejected" ? "bg-red-500"
+                                        : "bg-gray-700"
+                                    }`}
+                                />
+                                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-widest">{label}</h3>
                             </div>
 
                             {/* Job Cards */}
@@ -1115,7 +1141,7 @@ const JobTracker = () => {
                                 {filteredAndSortedJobs &&
                                     filteredAndSortedJobs.length === 0 && (
                                         <div className="text-center py-12 text-gray-400">
-                                            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
+                                            <div className="w-12 h-12 mx-auto mb-3 bg-gray-100 flex items-center justify-center">
                                                 <Plus className="w-5 h-5" />
                                             </div>
                                             <p className="text-sm font-medium">No jobs yet</p>
@@ -1136,14 +1162,14 @@ const JobTracker = () => {
                                                 )
                                             }
                                             disabled={currentPage === 1}
-                                            className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-200 ${currentPage === 1
+                                            className={`px-3 py-1 text-xs font-semibold transition-all duration-200 ${currentPage === 1
                                                     ? "text-gray-400 cursor-not-allowed"
-                                                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
+                                                    : "text-gray-700 hover:text-gray-900 hover:bg-white/50"
                                                 }`}
                                         >
                                             ← Prev
                                         </button>
-                                        <span className="text-xs text-gray-600 font-medium bg-white/50 px-2 py-1 rounded">
+                                        <span className="text-xs text-gray-700 font-semibold bg-white/50 px-2 py-1">
                                             {currentPage} of {totalPages}
                                         </span>
                                         <button
@@ -1156,9 +1182,9 @@ const JobTracker = () => {
                                             disabled={
                                                 currentPage === totalPages
                                             }
-                                            className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-200 ${currentPage === totalPages
+                                            className={`px-3 py-1 text-xs font-medium transition-all duration-200 ${currentPage === totalPages
                                                     ? "text-gray-400 cursor-not-allowed"
-                                                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
+                                                    : "text-gray-700 hover:text-gray-900 hover:bg-white/50"
                                                 }`}
                                         >
                                             Next →
@@ -1272,7 +1298,7 @@ const JobTracker = () => {
             )}
             {(showJobForm || editingJob) && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         <Suspense fallback={<LoadingScreen />}>
                             <JobForm
                                 setUserJobs={setUserJobs}
@@ -1401,6 +1427,7 @@ const JobTracker = () => {
             >
                 Test Removal Limit Modal
             </button> */}
+            </div>
         </div>
     );
 };

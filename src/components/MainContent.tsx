@@ -108,17 +108,26 @@ const ResumeOptimizer = lazy(()=>import('./ResumeOptimizer1'))
 const ResumeOptimizerDashboard = lazy(()=>import('./ResumeOptimizerDashboard'))
 const OperationsManagement = lazy(()=>import('./OperationsManagement'))
 const Inbox = lazy(()=>import('./Inbox'))
+const ReferAndEarn = lazy(()=>import('./ReferAndEarn'))
 import { UserContext } from '../state_management/UserContext';
 import LoadingScreen from './LoadingScreen';
 import { useOperationsStore } from "../state_management/Operations";
+import { useContentOffsetClass } from "../state_management/useContentOffset";
+import type { DocumentCategoryId } from "../types/navigation";
 
 
+
+// Single definition lives in types/navigation.ts so both navs and this file
+// cannot drift apart. Re-exported here for existing import paths.
+export type { DocumentCategoryId } from "../types/navigation";
 
 export default function MainContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [documentCategory, setDocumentCategory] = useState<DocumentCategoryId | null>(null);
   const context = useContext(UserContext);
   const navigate = useNavigate();
   const { role } = useOperationsStore();
+  const contentOffset = useContentOffsetClass();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
   
   const userDetails = context?.userDetails;
@@ -128,8 +137,15 @@ export default function MainContent() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
-    if (tabParam === 'jobtracker' || tabParam === 'jobs') {
+    const docParam = urlParams.get('doc') as DocumentCategoryId | null;
+    const validTabs = ['dashboard', 'jobs', 'optimizer', 'mail', 'operations', 'refer'];
+    if (tabParam === 'jobtracker') {
       setActiveTab('jobs');
+    } else if (tabParam && validTabs.includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+    if (docParam) {
+      setDocumentCategory(docParam);
     }
   }, []);
 
@@ -152,14 +168,25 @@ useEffect(() => {
 
       const data = await response.json();
 
+      // A payload with no email is not a user record. Older backends answered
+      // 200 with an empty body when the lookup missed (operators live in a
+      // different collection), and replacing userDetails with it wiped the
+      // stored email - leaving the app half-authenticated until the user
+      // cleared site data. Keep whatever we already have instead.
+      if (!data?.email) {
+        console.warn("get-updated-user returned no email; keeping the existing session");
+        return;
+      }
+
       // 1️⃣ Read current userAuth from localStorage
       const storedAuth = localStorage.getItem("userAuth");
       const parsed = storedAuth ? JSON.parse(storedAuth) : {};
 
-      // 2️⃣ Merge new userDetails into existing object
+      // 2️⃣ Merge onto the existing details rather than replacing them, so a
+      //    response that omits a field can never drop it from the session.
       const updatedAuth = {
         ...parsed,
-        userDetails: data,  // only replace this key
+        userDetails: { ...(parsed.userDetails || {}), ...data },
       };
 
       // 3️⃣ Save it back to localStorage
@@ -188,22 +215,27 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-       <Suspense fallback={<LoadingScreen />}>
-        <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
-        </Suspense> 
-        <main>
+      <Suspense fallback={<LoadingScreen />}>
+        <Navigation
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          documentCategory={documentCategory}
+          onDocumentCategoryChange={setDocumentCategory}
+        />
+      </Suspense>
+      <main className={contentOffset}>
           {/* Dashboard now manages its own profile modal */}
           {activeTab === 'dashboard' && <Suspense fallback={<LoadingScreen />}><Dashboard /></Suspense>}
           
           {activeTab === 'jobs' && (
-          <Suspense fallback={<LoadingScreen />}>  
+          <Suspense fallback={<LoadingScreen />}>
             <JobTracker />
           </Suspense>
           )}
 
           {activeTab === 'optimizer' && (
             <Suspense fallback={<LoadingScreen />}>
-            <ResumeOptimizer />
+            <ResumeOptimizer documentCategory={documentCategory} onDocumentCategoryChange={setDocumentCategory} />
             </Suspense>
           )}
 
@@ -222,6 +254,12 @@ useEffect(() => {
           {activeTab === 'operations' && (
             <Suspense fallback={<LoadingScreen />}>
             <OperationsManagement />
+            </Suspense>
+          )}
+
+          {activeTab === 'refer' && (
+            <Suspense fallback={<LoadingScreen />}>
+            <ReferAndEarn />
             </Suspense>
           )}
         </main>
