@@ -705,12 +705,24 @@ export default function Login() {
         {/* Google Login Button */}
         <div className="group relative w-full h-11 mb-6" id="google-button-wrapper">
           <style>{`
-            #google-button-wrapper > div:first-child {
+            /* Stretch Google's button to the full width of the visual one.
+               Google hard-caps its widget at 400px, so every wrapper it
+               renders - and the button itself - has to be overridden, or the
+               clickable area is narrower than what the user sees and a click
+               on the centre label hits nothing. Targeted by id and by
+               role="button" rather than Google's generated class names, which
+               change without notice. */
+            #google-gsi-host,
+            #google-gsi-host > div,
+            #google-gsi-host > div > div,
+            #google-gsi-host > div > div > div,
+            #google-gsi-host iframe {
               width: 100% !important;
+              max-width: 100% !important;
             }
-            #google-button-wrapper > div:first-child > div,
-            #google-button-wrapper > div:first-child iframe {
+            #google-gsi-host [role="button"] {
               width: 100% !important;
+              max-width: 100% !important;
             }
           `}</style>
 
@@ -726,7 +738,7 @@ export default function Login() {
           </div>
 
           {/* Real Google button, rendered transparent and stretched to fill the container so clicks land on it */}
-          <div className="absolute inset-0 overflow-hidden opacity-0">
+          <div id="google-gsi-host" className="absolute inset-0 overflow-hidden opacity-0">
           <GoogleLogin
             key={`google-login-button-${googleButtonKey}`}
             theme="outline"
