@@ -725,6 +725,19 @@ export default function Login() {
               max-width: 100% !important;
             }
 
+            /* Pin Google's subtree to the wrapper box and clip it. While GSI
+               initialises, its container is ~88px tall (a 40px button plus a
+               48px iframe stacked beneath), which spilled 44px past our 44px
+               skin - so for roughly half a second on every load a second,
+               fully rendered Google button appeared underneath. Clipping here
+               rather than on the wrapper keeps the skin's shadow and focus
+               ring from being cut off too. */
+            #google-button-wrapper > div:not(.gsi-skin) {
+              position: absolute;
+              inset: 0;
+              overflow: hidden;
+            }
+
             /* Google paints a 2px blue focus ring on its own button, which
                shows around the edges of our skin on click. Suppress it there
                and redraw the indicator on the skin, so keyboard users still
