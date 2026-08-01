@@ -14,28 +14,41 @@ type UserContextType = {
 
 export const UserContext = createContext<UserContextType | null>(null);
 
-export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [userDetails, setUserDetails] = useState(() => {
-    try {
-      const stored = localStorage.getItem("userAuth");
-      const parsed = stored ? JSON.parse(stored) : null;
-      return parsed?.userDetails || {};
-    } catch (err) {
-      console.error("Error parsing userDetails:", err);
-      return {};
-    }
-  });
+// A stored client session is only usable if it has both a token and an email.
+// A token with no email is the signature of a session that got clobbered (see
+// the /get-updated-user note in MainContent): the app stays "logged in" enough
+// to render, but every call needing the email fails, and because it is
+// persisted, reloading does not help. Dropping it here makes an already-stuck
+// browser recover on its own instead of needing site data cleared by hand.
+// Operator sessions never write userAuth - they live in the operations store -
+// so nothing below can log an operator out.
+const readStoredAuth = (): { userDetails: any; token: string | null } => {
+  try {
+    const stored = localStorage.getItem("userAuth");
+    const parsed = stored ? JSON.parse(stored) : null;
+    const details = parsed?.userDetails || {};
+    const storedToken = parsed?.token || null;
 
-  const [token, setToken] = useState(() => {
-    try {
-      const stored = localStorage.getItem("userAuth");
-      const parsed = stored ? JSON.parse(stored) : null;
-      return parsed?.token || null;
-    } catch (err) {
-      console.error("Error parsing token:", err);
-      return null;
+    if (storedToken && !details?.email) {
+      console.warn("Stored session has a token but no email; clearing it and requiring a fresh login.");
+      localStorage.removeItem("userAuth");
+      return { userDetails: {}, token: null };
     }
-  });
+
+    return { userDetails: details, token: storedToken };
+  } catch (err) {
+    console.error("Error parsing stored session:", err);
+    localStorage.removeItem("userAuth");
+    return { userDetails: {}, token: null };
+  }
+};
+
+export function UserProvider({ children }: { children: React.ReactNode }) {
+  // Read once: the corrupt-session branch mutates localStorage, so two reads
+  // would have the second one observing the cleanup rather than the session.
+  const [initialAuth] = useState(readStoredAuth);
+  const [userDetails, setUserDetails] = useState(initialAuth.userDetails);
+  const [token, setToken] = useState<string | null>(initialAuth.token);
 
 const setData = useCallback(({ userDetails: newDetails, token: newToken }: { userDetails: any; token: string }) => {
   // update React state
