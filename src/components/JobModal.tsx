@@ -14,6 +14,7 @@ import {
     Loader2,
     Mail,
     GitCommit,
+    Building2,
 } from "lucide-react";
 import { useRef, useState, Suspense, lazy, useContext, useEffect } from "react";
 import LoadingScreen from "./LoadingScreen.tsx";
@@ -1194,19 +1195,19 @@ export default function JobModal({
             id: "details",
             label: "Job Details",
             icon: FileText,
-            color: "bg-blue-50 text-blue-700 border-blue-200",
+            color: "bg-orange-50 text-orange-700 border-orange-200",
         },
         {
             id: "link",
             label: "Job Link",
             icon: Link,
-            color: "bg-green-50 text-green-700 border-green-200",
+            color: "bg-orange-50 text-orange-700 border-orange-200",
         },
         {
             id: "description",
             label: "Job Description",
             icon: Briefcase,
-            color: "bg-purple-50 text-purple-700 border-purple-200",
+            color: "bg-orange-50 text-orange-700 border-orange-200",
         },
         {
             id: "attachments",
@@ -1218,19 +1219,19 @@ export default function JobModal({
             id: "resume",
             label: "Resume",
             icon: FileText,
-            color: "bg-blue-50 text-blue-700 border-blue-200",
+            color: "bg-orange-50 text-orange-700 border-orange-200",
         },
         {
             id: "changes",
             label: "Changes Made",
             icon: GitCommit,
-            color: "bg-brown-800 text-orange-700 border-orange-200",
+            color: "bg-orange-50 text-orange-700 border-orange-200",
         },
         {
             id: "timeline",
             label: "Application Timeline",
             icon: TimerIcon,
-            color: "bg-brown-800 text-orange-700 border-orange-200",
+            color: "bg-orange-50 text-orange-700 border-orange-200",
         },
     ] as const;
     const visibleSections = sections.filter((section) => {
@@ -1270,29 +1271,36 @@ export default function JobModal({
                 return (
                     <div className="space-y-4">
                         {/* Card 1: Company + Upload/Uploaded */}
-                        <div className="bg-white rounded-lg border border-gray-200 p-4">
-                            <div className="text-sm font-medium text-gray-600 mb-2">
-                                Company Name
+                        <div className="bg-white rounded-lg border border-orange-100 p-4 shadow-sm">
+                            <div className="flex items-center mb-2">
+                                <Building2 className="w-4 h-4 text-orange-500 mr-2" />
+                                <span className="text-sm font-medium text-gray-600">
+                                    Company Name
+                                </span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <img
-                                    src={`https://www.google.com/s2/favicons?domain=${sanitizeCompanyDomain(jobDetails.companyName)}&sz=64`}
-                                    alt="Company Logo"
-                                    className="w-[35px] h-[35px] m-2"
-                                    style={{ display: 'none' }} // Start hidden until load check
-                                    onError={(e) => {
-                                        e.currentTarget.style.display = "none"; // Hide broken image
-                                    }}
-                                    onLoad={(e) => {
-                                        const img = e.currentTarget;
-                                        // Default globe is always 16x16; custom ones resize to 64x64
-                                        if (img.naturalHeight === 16 && img.naturalWidth === 16) {
-                                            img.style.display = "none"; // Hide default
-                                        } else {
-                                            img.style.display = "block"; // Show custom
-                                        }
-                                    }}
-                                />
+                                <div className="w-10 h-10 shrink-0 rounded-md bg-orange-600 p-[1.5px]">
+                                    <div className="w-full h-full rounded-[5px] bg-white flex items-center justify-center overflow-hidden">
+                                        <img
+                                            src={`https://www.google.com/s2/favicons?domain=${sanitizeCompanyDomain(jobDetails.companyName)}&sz=64`}
+                                            alt="Company Logo"
+                                            className="w-6 h-6 object-contain"
+                                            style={{ display: 'none' }} // Start hidden until load check
+                                            onError={(e) => {
+                                                e.currentTarget.style.display = "none"; // Hide broken image
+                                            }}
+                                            onLoad={(e) => {
+                                                const img = e.currentTarget;
+                                                // Default globe is always 16x16; custom ones resize to 64x64
+                                                if (img.naturalHeight === 16 && img.naturalWidth === 16) {
+                                                    img.style.display = "none"; // Hide default
+                                                } else {
+                                                    img.style.display = "block"; // Show custom
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                </div>
                                 <p className="text-lg font-semibold text-gray-900">
                                     {jobDetails.companyName}
                                 </p>
@@ -1428,7 +1436,10 @@ export default function JobModal({
                     <div className="space-y-4">
                         <div className="bg-white rounded-lg border border-gray-200 p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-lg font-semibold text-gray-900">Job Application Link</h4>
+                                <h4 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                                    <Link className="w-5 h-5 text-orange-600" />
+                                    Job Application Link
+                                </h4>
                                 <div className="flex space-x-2">
                                     <button
                                         onClick={() => copyToClipboard(jobDetails.joblink)}
@@ -1441,7 +1452,7 @@ export default function JobModal({
                                         href={jobDetails.joblink}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex items-center px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                        className="flex items-center px-3 py-2 text-sm bg-orange-600 hover:opacity-90 text-white rounded-lg transition-opacity"
                                     >
                                         <ExternalLink className="w-4 h-4 mr-1" />
                                         Open
@@ -1496,7 +1507,10 @@ export default function JobModal({
                     <div className="space-y-4">
                         <div className="bg-white rounded-lg border border-gray-200 p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-lg font-semibold text-gray-900">Job Description</h4>
+                                <h4 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                                    <Briefcase className="w-5 h-5 text-orange-600" />
+                                    Job Description
+                                </h4>
                                 <button
                                     onClick={() => {
                                         // Try to read from the rendered HTML first
@@ -1514,7 +1528,7 @@ export default function JobModal({
                                             navigator.clipboard.writeText(text);
                                         }
                                     }}
-                                    className="text-sm px-3 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                                    className="text-sm px-3 py-1 rounded-md bg-orange-600 text-white hover:opacity-90"
                                     title="Copy job description (Ctrl + Shift + C)"
                                 >
                                     Copy
@@ -1540,7 +1554,7 @@ export default function JobModal({
                                     if (isLoading) {
                                         return (
                                             <div className="flex items-center justify-center py-8">
-                                                <Loader2 className="w-6 h-6 animate-spin text-blue-500 mr-2" />
+                                                <Loader2 className="w-6 h-6 animate-spin text-orange-500 mr-2" />
                                                 <span className="text-gray-600">Loading job description...</span>
                                             </div>
                                         );
@@ -1586,7 +1600,8 @@ export default function JobModal({
                     <div className="space-y-4">
                         <div className="bg-white rounded-lg border border-gray-200 p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-lg font-semibold text-gray-900">
+                                <h4 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                                    <User className="w-5 h-5 text-orange-600" />
                                     Attachments
                                 </h4>
                             </div>
@@ -1726,14 +1741,15 @@ export default function JobModal({
                     <div className="space-y-4">
                         <div className="bg-white rounded-lg border border-gray-200 p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-lg font-semibold text-gray-900">
+                                <h4 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                                    <FileText className="w-5 h-5 text-orange-600" />
                                     Resume
                                 </h4>
                             </div>
 
                             {resumeLoading && (
                                 <div className="flex items-center justify-center py-8">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
                                     <span className="ml-2 text-gray-600">Loading resume...</span>
                                 </div>
                             )}
@@ -1800,7 +1816,7 @@ export default function JobModal({
                                                 onClick={() => {
                                                     setResumeData(jobDetails.optimizedResume);
                                                 }}
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                                className="px-4 py-2 bg-orange-600 text-white rounded-md hover:opacity-90 transition-opacity"
                                             >
                                                 Load Resume from Job
                                             </button>
@@ -1839,10 +1855,10 @@ export default function JobModal({
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="bg-white rounded-lg border border-blue-200 p-4">
+                                        <div className="bg-white rounded-lg border border-orange-200 p-4">
                                             <div className="flex items-center mb-3">
-                                                <UploadIcon className="w-4 h-4 text-blue-600 mr-2" />
-                                                <h4 className="text-sm font-semibold text-blue-700">
+                                                <UploadIcon className="w-4 h-4 text-orange-600 mr-2" />
+                                                <h4 className="text-sm font-semibold text-orange-700">
                                                     Add Optimized Resume (PDF/DOC/DOCX)
                                                 </h4>
                                             </div>
@@ -1858,7 +1874,7 @@ export default function JobModal({
                                             <button
                                                 onClick={handleChooseDoc}
                                                 disabled={isUploadingDoc}
-                                                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-50"
+                                                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-600 text-white disabled:opacity-50"
                                             >
                                                 {isUploadingDoc ? (
                                                     <Loader2 className="animate-spin w-4 h-4" />
@@ -1891,8 +1907,9 @@ export default function JobModal({
                 return (
                     <div className="space-y-4">
                         <div className="bg-white rounded-lg border border-gray-200 p-6">
-                            <h4 className="text-lg font-semibold text-gray-900 mb-4">
-                                📈 Application Timeline
+                            <h4 className="flex items-center gap-2 text-lg font-semibold text-gray-900 mb-4">
+                                <TimerIcon className="w-5 h-5 text-orange-600" />
+                                Application Timeline
                             </h4>
                             {(jobDetails?.timeline?.length > 0 || (isOperatorViewer && removalReasonData)) ? (
                                 <ol className="relative border-s border-gray-200">
@@ -1939,9 +1956,9 @@ export default function JobModal({
                                                     key={idx}
                                                     className="mb-10 ms-6"
                                                 >
-                                                    <span className="absolute flex items-center justify-center w-6 h-6 bg-purple-100 rounded-full -start-3 ring-8 ring-white">
+                                                    <span className="absolute flex items-center justify-center w-6 h-6 bg-orange-100 rounded-full -start-3 ring-8 ring-white">
                                                         <svg
-                                                            className="w-3 h-3 text-purple-600"
+                                                            className="w-3 h-3 text-orange-600"
                                                             fill="currentColor"
                                                             viewBox="0 0 20 20"
                                                         >
@@ -1952,7 +1969,7 @@ export default function JobModal({
                                                             />
                                                         </svg>
                                                     </span>
-                                                    <h3 className="flex items-center mb-1 text-md font-semibold text-purple-800">
+                                                    <h3 className="flex items-center mb-1 text-md font-semibold text-orange-800">
                                                         {displayEvent}
                                                     </h3>
                                                     <p className="text-sm text-gray-500">
@@ -1990,7 +2007,7 @@ export default function JobModal({
                                                     ? 'bg-green-100'
                                                     : jobDetails.secondJudge.status === 'failed'
                                                         ? 'bg-red-100'
-                                                        : 'bg-blue-100'
+                                                        : 'bg-orange-100'
                                             }`}>
                                                 <span className="text-sm">🛡️</span>
                                             </span>
@@ -1999,7 +2016,7 @@ export default function JobModal({
                                                     ? 'text-green-800'
                                                     : jobDetails.secondJudge.status === 'failed'
                                                         ? 'text-red-800'
-                                                        : 'text-blue-800'
+                                                        : 'text-orange-800'
                                             }`}>
                                                 Second-stage screening
                                             </h3>
@@ -2064,7 +2081,8 @@ export default function JobModal({
                 return (
                     <div className="space-y-4">
                         <div className="bg-white rounded-lg border border-gray-200 p-6">
-                            <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                            <h4 className="flex items-center gap-2 text-lg font-semibold text-gray-900 mb-4">
+                                <GitCommit className="w-5 h-5 text-orange-600" />
                                 Changes Made
                             </h4>
                             {jobDetails?.changesMade ? (
@@ -2480,18 +2498,20 @@ export default function JobModal({
                 style={{ overscrollBehavior: "contain" }}
             >
                 {/* Header */}
-                <div className="z-10 w-full bg-gradient-to-r from-orange-600 to-red-500 p-3 text-white sm:p-4">
+                <div className="z-10 w-full bg-gray-50 p-4 text-gray-900 border-b border-gray-200 shadow-sm sm:p-5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex min-w-0 items-center">
-                            <FileText className="mr-2 h-5 w-5 flex-shrink-0 sm:mr-3 sm:h-6 sm:w-6" />
+                            <div className="mr-3 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-orange-200 bg-white shadow-sm sm:h-11 sm:w-11">
+                                <FileText className="h-4 w-4 text-orange-600 sm:h-5 sm:w-5" />
+                            </div>
                             <div className="min-w-0">
-                                <h1 className="text-base font-bold sm:text-xl">
-                                    📄 FlashFire Jobs
+                                <h1 className="truncate text-base font-bold leading-tight tracking-tight text-gray-900 sm:text-xl">
+                                    FlashFire Jobs
                                 </h1>
-                                <p className="truncate text-xs text-orange-100 sm:text-sm">
+                                <p className="truncate text-sm font-medium text-gray-500">
                                     {jobDetails.jobTitle}
                                     <span style={{
-                                        color: (role === 'operator' || role === 'operations') && !jobDetails.downloaded ? '#d1d5db' : 'inherit',
+                                        color: (role === 'operator' || role === 'operations') && !jobDetails.downloaded ? '#9ca3af' : '#f97316',
                                         fontWeight: (role === 'operator' || role === 'operations') && !jobDetails.downloaded ? 'bold' : 'normal'
                                     }}> at </span>
                                     {jobDetails.companyName}
@@ -2537,7 +2557,7 @@ export default function JobModal({
                                                 toastUtils.error("Failed to copy URL to clipboard");
                                             }
                                         }}
-                                        className="rounded-lg bg-orange-700 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-orange-900 hover:bg-opacity-20 sm:px-4 sm:text-sm"
+                                        className="rounded-lg bg-gray-800 px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-gray-900 sm:px-4 sm:text-sm"
                                     >
                                         Copy Optimize URL
                                     </button>
@@ -2593,7 +2613,7 @@ export default function JobModal({
                                                 toastUtils.error("Failed to load resume. Please try again.");
                                             }
                                         }}
-                                        className="rounded-lg bg-orange-700 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-orange-900 hover:bg-opacity-20 sm:px-4 sm:text-sm"
+                                        className="rounded-lg bg-gray-800 px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-gray-900 sm:px-4 sm:text-sm"
                                     >
                                         Optimize
                                     </button>
@@ -2605,11 +2625,10 @@ export default function JobModal({
                                     setShowJobModal(false)
                                 }}
                                 disabled={isOptimizing}
-                                className={`rounded-full p-2 transition-colors ${isOptimizing ? 'cursor-not-allowed opacity-50 bg-gray-400' : 'hover:bg-white hover:bg-opacity-20'}`}
+                                className={`rounded-full border border-gray-200 bg-white p-2 text-gray-500 shadow-sm transition-colors ${isOptimizing ? 'cursor-not-allowed opacity-50' : 'hover:bg-gray-100 hover:text-gray-700'}`}
                                 style={{
-                                    backgroundColor: showOpsDownloadIndicator ? 'rgba(255,255,255,0.12)' : undefined,
-                                    border: showOpsDownloadIndicator ? '1px solid rgba(255,255,255,0.18)' : undefined,
-                                    boxShadow: showOpsDownloadIndicator ? '0 0 0 1px rgba(0,0,0,0.08)' : undefined,
+                                    backgroundColor: showOpsDownloadIndicator ? 'rgba(0,0,0,0.06)' : undefined,
+                                    border: showOpsDownloadIndicator ? '1px solid rgba(0,0,0,0.1)' : undefined,
                                 }}
                             >
                                 <X className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -2956,22 +2975,22 @@ export default function JobModal({
                                 <p className="text-lg text-gray-700 text-center mb-4">
                                     Do you want to optimize the resume for:
                                 </p>
-                                <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-lg border-2 border-purple-200">
+                                <div className="bg-orange-50 p-6 rounded-lg border-2 border-orange-200">
                                     <div className="text-center">
-                                        <span className="text-3xl font-bold text-purple-700 block mb-3">
+                                        <span className="text-3xl font-bold text-orange-700 block mb-3">
                                             {resumeNameForModal || "Unknown"}
                                         </span>
                                         <p className="text-xl text-gray-700 mb-2">at</p>
                                         <div className="flex flex-wrap justify-center items-center gap-6">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-xl text-gray-700">Role:</span>
-                                                <span className="text-2xl font-bold text-blue-700">
+                                                <span className="text-2xl font-bold text-red-700">
                                                     {jobDetails?.jobTitle || "Role not specified"}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-xl text-gray-700">Company:</span>
-                                                <span className="text-2xl font-bold text-blue-700">
+                                                <span className="text-2xl font-bold text-red-700">
                                                     {jobDetails?.companyName || "Company not specified"}
                                                 </span>
                                             </div>
@@ -2998,7 +3017,7 @@ export default function JobModal({
                                         setShowOptimizeConfirmation(false);
                                         handleOptimizeResume();
                                     }}
-                                    className="flex-1 bg-purple-600 text-white py-3 px-6 rounded-lg hover:bg-purple-700 transition-colors font-semibold text-lg"
+                                    className="flex-1 bg-orange-600 text-white py-3 px-6 rounded-lg hover:opacity-90 transition-opacity font-semibold text-lg"
                                 >
                                     Confirm
                                 </button>

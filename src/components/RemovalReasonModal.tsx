@@ -1,14 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Trash2, Sparkles } from 'lucide-react';
 
-const companyBadgeColor = (name: string): string => {
-  const colors = [
-    'bg-blue-900', 'bg-orange-600', 'bg-emerald-700',
-    'bg-purple-700', 'bg-rose-700', 'bg-slate-700',
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length];
+const companyInitials = (name: string): string => {
+  const words = name?.trim().split(/\s+/).filter(Boolean) ?? [];
+  if (words.length === 0) return '?';
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+};
+
+const sanitizeCompanyDomain = (name: string): string => {
+  if (!name) return "example.com";
+  let domain = name
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/[^a-z0-9.-]/g, "");
+  if (!domain.includes(".")) domain += ".com";
+  return domain;
 };
 
 // Quick-pick reasons. Wording matters: each maps to a durable preference
@@ -46,6 +53,7 @@ export default function RemovalReasonModal({
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [details, setDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [logoLoaded, setLogoLoaded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const composedReason = [selectedReasons.join('; '), details.trim()]
@@ -57,6 +65,7 @@ export default function RemovalReasonModal({
       setSelectedReasons([]);
       setDetails('');
       setIsSubmitting(false);
+      setLogoLoaded(false);
       setTimeout(() => {
         textareaRef.current?.focus();
       }, 100);
@@ -125,45 +134,59 @@ export default function RemovalReasonModal({
       aria-describedby="removal-reason-description"
     >
       <div className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-white rounded-3xl shadow-xl overflow-hidden">
-        {/* Close button */}
-        <button
-          onClick={handleCancel}
-          disabled={isSubmitting}
-          className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white border border-gray-300 text-gray-500 hover:text-gray-700 hover:border-gray-400 shadow-sm flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          aria-label="Close modal"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
         {/* Header */}
-        <div className="flex-shrink-0 px-7 pt-7 pb-4 pr-20 border-b border-gray-100">
+        <div className="flex-shrink-0 px-7 pt-6 pb-5 pr-16 border-b border-gray-100">
+          <button
+            onClick={handleCancel}
+            disabled={isSubmitting}
+            className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Close modal"
+          >
+            <X className="w-5 h-5" />
+          </button>
           <h2
             id="removal-reason-title"
-            className="flex items-center gap-2 text-[26px] leading-tight font-semibold text-gray-600"
+            className="flex items-center gap-2.5 text-[22px] leading-tight font-bold text-gray-900"
           >
+            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-orange-50">
+              <Trash2 className="w-4 h-4 text-orange-600" />
+            </span>
             Remove Job Card
-            <Trash2 className="w-5 h-5 text-gray-500" />
           </h2>
-          <p className="text-base text-gray-800 mt-1">
+          <p className="text-sm text-gray-500 mt-1.5">
             Tell us what didn't fit, and we'll stop sending jobs like it.
           </p>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-7 pt-7 pb-5">
-          <div className="border border-gray-300 rounded-2xl p-5 mb-7">
-            <p className="text-xl font-bold text-gray-900 mb-6">{jobTitle}</p>
-            <div className="flex items-center gap-4">
-              <div className={`w-14 h-14 rounded-lg ${companyBadgeColor(companyName)} text-white flex items-center justify-center text-[10px] font-semibold flex-shrink-0 px-1.5 text-center leading-tight break-words`}>
-                {companyLabel}
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-6">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-2">Removing</p>
+            <div className="flex items-center gap-3">
+              <div className="relative w-11 h-11 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden">
+                <span className={logoLoaded ? 'invisible' : ''}>{companyInitials(companyLabel)}</span>
+                <img
+                  src={`https://www.google.com/s2/favicons?domain=${sanitizeCompanyDomain(companyLabel)}&sz=64`}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-contain p-2 bg-white"
+                  style={{ display: logoLoaded ? 'block' : 'none' }}
+                  onError={() => setLogoLoaded(false)}
+                  onLoad={(e) => {
+                    const img = e.currentTarget;
+                    setLogoLoaded(!(img.naturalHeight === 16 && img.naturalWidth === 16));
+                  }}
+                />
               </div>
-              <span className="text-lg text-gray-600 font-medium">{companyName}</span>
+              <div className="min-w-0">
+                <p className="text-base font-bold text-gray-900 truncate">{jobTitle}</p>
+                <p className="text-sm text-gray-500 truncate">{companyName}</p>
+              </div>
             </div>
           </div>
 
           {/* Quick reasons */}
-          <p className="block text-lg font-medium text-gray-600 mb-3">
-            What didn't work? <span className="text-base font-normal text-gray-500">(pick any that apply)</span>
+          <p className="block text-sm font-semibold text-gray-700 mb-2.5">
+            What didn't work? <span className="font-normal text-gray-400">(pick any that apply)</span>
           </p>
           <div className="flex flex-wrap gap-2 mb-6" role="group" aria-label="Common removal reasons">
             {QUICK_REASONS.map((quickReason) => {
@@ -175,7 +198,7 @@ export default function RemovalReasonModal({
                   onClick={() => toggleReason(quickReason)}
                   disabled={isSubmitting}
                   aria-pressed={selected}
-                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-300 ${
+                  className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-300 ${
                     selected
                       ? 'bg-orange-500 border-orange-500 text-white'
                       : 'bg-white border-gray-300 text-gray-700 hover:border-orange-400 hover:text-orange-600'
@@ -189,7 +212,7 @@ export default function RemovalReasonModal({
 
           <label
             htmlFor="removal-reason-textarea"
-            className="block text-lg font-medium text-gray-600 mb-3"
+            className="block text-sm font-semibold text-gray-700 mb-2.5"
           >
             Anything else we should know?
             {selectedReasons.length === 0 && <span className="text-red-500"> *</span>}
@@ -203,7 +226,7 @@ export default function RemovalReasonModal({
             rows={4}
             maxLength={REASON_MAX_LENGTH}
             disabled={isSubmitting}
-            className="w-full px-5 py-4 bg-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 disabled:cursor-not-allowed resize-none transition-all placeholder:text-gray-500"
+            className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:cursor-not-allowed resize-none transition-all placeholder:text-gray-400"
             aria-required={selectedReasons.length === 0}
             aria-describedby="removal-reason-description"
           />
@@ -212,10 +235,10 @@ export default function RemovalReasonModal({
           </p>
           <div
             id="removal-reason-description"
-            className="mt-5 flex items-start gap-2 bg-violet-50 border border-violet-200 rounded-xl px-4 py-3"
+            className="mt-5 flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3"
           >
-            <Sparkles className="w-4 h-4 text-violet-600 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-violet-800">
+            <Sparkles className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-orange-900">
               Your feedback updates your AI matching profile right away, so future
               job picks avoid this pattern. It's also shared with your ops team.
             </p>
@@ -223,18 +246,18 @@ export default function RemovalReasonModal({
         </div>
 
         {/* Action Buttons — pinned so they stay reachable while the body scrolls */}
-        <div className="flex-shrink-0 flex gap-4 px-7 py-5 border-t border-gray-100 bg-white">
+        <div className="flex-shrink-0 flex gap-3 px-7 py-5 border-t border-gray-100">
           <button
             onClick={handleCancel}
             disabled={isSubmitting}
-            className="flex-1 bg-gray-200 text-gray-500 px-4 py-4 rounded-2xl font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-300"
+            className="flex-1 bg-white text-gray-700 border border-gray-300 px-4 py-3.5 rounded-2xl font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-300"
           >
             Keep this job
           </button>
           <button
             onClick={handleSubmit}
             disabled={!composedReason || isSubmitting}
-            className="flex-1 bg-orange-600 text-white px-4 py-4 rounded-2xl font-semibold hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-300"
+            className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-3.5 rounded-2xl font-semibold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-300"
           >
             {isSubmitting ? 'Removing...' : 'Remove job'}
           </button>
