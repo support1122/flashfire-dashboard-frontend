@@ -155,13 +155,21 @@ export default function MainContent() {
       navigate("/login");
   }
   },[])
-useEffect(() => { 
+useEffect(() => {
+  // Guarded and keyed on the email. With an empty dep array this fired on the
+  // very first render, before the context had hydrated, and POSTed
+  // {"email": undefined} - which the backend now correctly rejects with 400.
+  // Waiting for the email means the call happens once, with something to look
+  // up.
+  const email = userDetails?.email;
+  if (!email) return;
+
   const updateUserDetails = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/get-updated-user`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userDetails?.email }),
+        body: JSON.stringify({ email }),
       });
 
       if (!response.ok) throw new Error("Failed to fetch updated user data");
@@ -207,7 +215,7 @@ useEffect(() => {
   };
 
   updateUserDetails();
-}, []);
+}, [userDetails?.email]);
 
 
 
