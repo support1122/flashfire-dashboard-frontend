@@ -1,5 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Trash2, Sparkles } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
+
+// Quick-pick reasons. Wording matters: each maps to a durable preference
+// pattern the AI summary builder can route (role/seniority/location/salary/
+// visa/company), so keep these aligned with the backend's removal-feedback
+// routing rules if you edit them.
+const QUICK_REASONS = [
+  'Not my target role',
+  'Wrong seniority level',
+  'Location doesn\'t work for me',
+  'Salary is below my range',
+  'No visa sponsorship',
+  'Company isn\'t a fit',
+  'Already applied on my own',
+  'Duplicate job',
+];
 
 const companyInitials = (name: string): string => {
   const words = name?.trim().split(/\s+/).filter(Boolean) ?? [];
@@ -17,21 +32,6 @@ const sanitizeCompanyDomain = (name: string): string => {
   if (!domain.includes(".")) domain += ".com";
   return domain;
 };
-
-// Quick-pick reasons. Wording matters: each maps to a durable preference
-// pattern the AI summary builder can route (role/seniority/location/salary/
-// visa/company), so keep these aligned with the backend's removal-feedback
-// routing rules if you edit them.
-const QUICK_REASONS = [
-  'Not my target role',
-  'Wrong seniority level',
-  'Location doesn\'t work for me',
-  'Salary is below my range',
-  'No visa sponsorship',
-  'Company isn\'t a fit',
-  'Already applied on my own',
-  'Duplicate job',
-];
 
 const REASON_MAX_LENGTH = 500;
 
@@ -133,35 +133,32 @@ export default function RemovalReasonModal({
       aria-labelledby="removal-reason-title"
       aria-describedby="removal-reason-description"
     >
-      <div className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-white rounded-3xl shadow-xl overflow-hidden">
+      <div className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden">
+        <button
+          onClick={handleCancel}
+          disabled={isSubmitting}
+          className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full border border-gray-300 text-gray-500 hover:bg-gray-100 hover:text-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Close modal"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
         {/* Header */}
-        <div className="flex-shrink-0 px-7 pt-6 pb-5 pr-16 border-b border-gray-100">
-          <button
-            onClick={handleCancel}
-            disabled={isSubmitting}
-            className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Close modal"
-          >
-            <X className="w-5 h-5" />
-          </button>
+        <div className="flex-shrink-0 px-6 pt-6 pb-4 pr-16 border-b border-gray-100">
           <h2
             id="removal-reason-title"
-            className="flex items-center gap-2.5 text-[22px] leading-tight font-bold text-gray-900"
+            className="flex items-center gap-2 text-2xl font-bold text-gray-900"
           >
-            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-orange-50">
-              <Trash2 className="w-4 h-4 text-orange-600" />
-            </span>
             Remove Job Card
+            <Trash2 className="w-5 h-5 text-gray-500" />
           </h2>
-          <p className="text-sm text-gray-500 mt-1.5">
-            Tell us what didn't fit, and we'll stop sending jobs like it.
-          </p>
+          <p className="text-sm text-gray-500 mt-1">Please provide a reason</p>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-7 pt-7 pb-5">
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-6">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-2">Removing</p>
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="border border-gray-200 rounded-2xl p-5 mb-6">
+            <p className="text-lg font-bold text-gray-900 mb-4">{jobTitle}</p>
             <div className="flex items-center gap-3">
               <div className="relative w-11 h-11 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden">
                 <span className={logoLoaded ? 'invisible' : ''}>{companyInitials(companyLabel)}</span>
@@ -177,18 +174,14 @@ export default function RemovalReasonModal({
                   }}
                 />
               </div>
-              <div className="min-w-0">
-                <p className="text-base font-bold text-gray-900 truncate">{jobTitle}</p>
-                <p className="text-sm text-gray-500 truncate">{companyName}</p>
-              </div>
+              <span className="text-base text-gray-700 font-medium truncate">{companyName}</span>
             </div>
           </div>
 
-          {/* Quick reasons */}
-          <p className="block text-sm font-semibold text-gray-700 mb-2.5">
+          <p className="block text-base font-semibold text-gray-800 mb-3">
             What didn't work? <span className="font-normal text-gray-400">(pick any that apply)</span>
           </p>
-          <div className="flex flex-wrap gap-2 mb-6" role="group" aria-label="Common removal reasons">
+          <div className="grid grid-cols-2 gap-3 mb-6" role="group" aria-label="Common removal reasons">
             {QUICK_REASONS.map((quickReason) => {
               const selected = selectedReasons.includes(quickReason);
               return (
@@ -198,13 +191,22 @@ export default function RemovalReasonModal({
                   onClick={() => toggleReason(quickReason)}
                   disabled={isSubmitting}
                   aria-pressed={selected}
-                  className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-300 ${
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-left border transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-300 ${
                     selected
-                      ? 'bg-orange-500 border-orange-500 text-white'
-                      : 'bg-white border-gray-300 text-gray-700 hover:border-orange-400 hover:text-orange-600'
+                      ? 'bg-orange-50 border-orange-400 text-orange-800 font-medium'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  {quickReason}
+                  <span className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
+                    selected ? 'bg-orange-500 border-orange-500' : 'border-gray-300'
+                  }`}>
+                    {selected && (
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="truncate">{quickReason}</span>
                 </button>
               );
             })}
@@ -212,54 +214,52 @@ export default function RemovalReasonModal({
 
           <label
             htmlFor="removal-reason-textarea"
-            className="block text-sm font-semibold text-gray-700 mb-2.5"
+            className="block text-base font-medium text-gray-600 mb-2.5"
           >
-            Anything else we should know?
-            {selectedReasons.length === 0 && <span className="text-red-500"> *</span>}
+            Reason for Removal
           </label>
           <textarea
             id="removal-reason-textarea"
             ref={textareaRef}
             value={details}
             onChange={(e) => setDetails(e.target.value)}
-            placeholder="e.g. This is a QA role and I'm only looking for data engineering positions"
+            placeholder="Enter the reason for moving this job card to removed."
             rows={4}
             maxLength={REASON_MAX_LENGTH}
             disabled={isSubmitting}
-            className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:cursor-not-allowed resize-none transition-all placeholder:text-gray-400"
-            aria-required={selectedReasons.length === 0}
+            className="w-full px-5 py-4 bg-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 disabled:cursor-not-allowed resize-none transition-all placeholder:text-gray-500"
+            aria-required="true"
             aria-describedby="removal-reason-description"
           />
           <p className="mt-1 text-right text-xs text-gray-400">
             {details.length}/{REASON_MAX_LENGTH}
           </p>
+
           <div
             id="removal-reason-description"
-            className="mt-5 flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3"
+            className="mt-5 flex items-center justify-center bg-white border border-orange-200 rounded-xl px-4 py-3"
           >
-            <Sparkles className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-orange-900">
-              Your feedback updates your AI matching profile right away, so future
-              job picks avoid this pattern. It's also shared with your ops team.
+            <p className="text-sm text-gray-500 text-center">
+              This information will be sent to the operations teams.
             </p>
           </div>
         </div>
 
         {/* Action Buttons — pinned so they stay reachable while the body scrolls */}
-        <div className="flex-shrink-0 flex gap-3 px-7 py-5 border-t border-gray-100">
+        <div className="flex-shrink-0 flex gap-4 px-6 py-5 border-t border-gray-100 bg-white">
           <button
             onClick={handleCancel}
             disabled={isSubmitting}
-            className="flex-1 bg-white text-gray-700 border border-gray-300 px-4 py-3.5 rounded-2xl font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-300"
+            className="flex-1 bg-gray-200 text-gray-600 px-4 py-4 rounded-2xl font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-300"
           >
-            Keep this job
+            Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={!composedReason || isSubmitting}
-            className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-3.5 rounded-2xl font-semibold shadow-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-300"
+            className="flex-1 bg-orange-600 text-white px-4 py-4 rounded-2xl font-semibold hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-300"
           >
-            {isSubmitting ? 'Removing...' : 'Remove job'}
+            {isSubmitting ? 'Removing...' : 'Remove'}
           </button>
         </div>
       </div>
