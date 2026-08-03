@@ -138,12 +138,14 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
               Currently on <span className="font-semibold text-gray-700">{PLAN_LABELS[currentPlan]}</span> · {PLAN_APPS[currentPlan]} Applications
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {!inline && (
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
