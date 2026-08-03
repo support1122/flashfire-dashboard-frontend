@@ -88,10 +88,10 @@ function normalizePlan(raw: string | undefined): PlanKey {
   return "prime";
 }
 
-// Detect currency from the amountPaid string stored in user profile (e.g. "CAD199", "$199", "₹199")
-function detectCurrency(amountPaid: string | undefined): Currency {
-  if (!amountPaid) return "USD";
-  if (amountPaid.toUpperCase().startsWith("CAD")) return "CAD";
+// Read currency directly from user profile (set by client tracking backend at registration)
+function detectCurrency(currency: string | undefined): Currency {
+  if (!currency) return "USD";
+  if (currency.toUpperCase() === "CAD") return "CAD";
   return "USD";
 }
 
@@ -108,7 +108,7 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
   const context = useContext(UserContext);
   const userDetails = context?.userDetails;
   const currentPlan = normalizePlan(userDetails?.planType);
-  const currency = detectCurrency(userDetails?.amountPaid);
+  const currency = detectCurrency(userDetails?.currency);
   const email = userDetails?.email;
   const sym = CURRENCY_SYMBOL[currency];
 
