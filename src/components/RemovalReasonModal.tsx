@@ -137,10 +137,10 @@ export default function RemovalReasonModal({
         <button
           onClick={handleCancel}
           disabled={isSubmitting}
-          className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full border border-gray-300 text-gray-500 hover:bg-gray-100 hover:text-gray-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full border-[3px] border-gray-500 text-gray-800 hover:bg-gray-100 hover:text-gray-900 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Close modal"
         >
-          <X className="w-5 h-5" />
+          <X className="w-5 h-5" strokeWidth={3} />
         </button>
 
         {/* Header */}
@@ -152,12 +152,12 @@ export default function RemovalReasonModal({
             Remove Job Card
             <Trash2 className="w-5 h-5 text-gray-500" />
           </h2>
-          <p className="text-sm text-gray-500 mt-1">Please provide a reason</p>
+          <p className="text-base text-gray-700 mt-0.5">Please provide a reason</p>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          <div className="border border-gray-200 rounded-2xl p-5 mb-6">
+          <div className="border border-gray-400 rounded-2xl p-5 mb-6">
             <p className="text-lg font-bold text-gray-900 mb-4">{jobTitle}</p>
             <div className="flex items-center gap-3">
               <div className="relative w-11 h-11 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden">
@@ -250,7 +250,7 @@ export default function RemovalReasonModal({
           <button
             onClick={handleCancel}
             disabled={isSubmitting}
-            className="flex-1 bg-gray-200 text-gray-600 px-4 py-4 rounded-2xl font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-300"
+            className="flex-1 bg-gray-200 text-gray-600 px-4 py-4 rounded-2xl font-semibold border-2 border-gray-400 hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-300"
           >
             Cancel
           </button>
