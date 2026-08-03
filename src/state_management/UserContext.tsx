@@ -104,6 +104,8 @@ useEffect(() => {
   if (!token || !userDetails?.email) return;
 
   const checkAndRefreshToken = async () => {
+    // Dev bypass: skip token validation for non-JWT tokens
+    if (token === 'dev-bypass-token') return;
     if (TokenManager.isTokenExpired(token)) {
       console.log("Token expired, attempting refresh...");
       const success = await refreshToken();
