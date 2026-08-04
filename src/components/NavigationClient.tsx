@@ -412,7 +412,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
               className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold border-2 border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white transition-colors"
             >
               <Zap className="w-4 h-4 flex-shrink-0" />
-              Choose a Plan
+              Upgrade
             </button>
           )}
           {user && (
