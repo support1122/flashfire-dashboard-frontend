@@ -171,7 +171,7 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
                   <div key={to} className={`relative overflow-hidden border border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${isPopular ? "" : "bg-white"}`}>
                     {isPopular && (
                       <div className="bg-orange-500 px-4 py-1 flex items-center justify-between">
-                        <span className="text-white text-[11px] font-bold uppercase tracking-widest">⚡ Most Popular</span>
+                        <span className="text-white text-[11px] font-bold uppercase tracking-widest">Most Popular</span>
                         <span className="text-orange-100 text-[11px]">Best value</span>
                       </div>
                     )}
