@@ -137,7 +137,7 @@ export default function RemovalReasonModal({
         <button
           onClick={handleCancel}
           disabled={isSubmitting}
-          className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full border-[3px] border-gray-500 text-gray-800 hover:bg-gray-100 hover:text-gray-900 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="absolute top-4 right-4 z-10 w-9 h-9 rounded-lg border-[3px] border-gray-500 text-gray-800 hover:bg-gray-100 hover:text-gray-900 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Close modal"
         >
           <X className="w-5 h-5" strokeWidth={3} />
@@ -231,9 +231,6 @@ export default function RemovalReasonModal({
             aria-required="true"
             aria-describedby="removal-reason-description"
           />
-          <p className="mt-1 text-right text-xs text-gray-400">
-            {details.length}/{REASON_MAX_LENGTH}
-          </p>
 
           <div
             id="removal-reason-description"
@@ -250,14 +247,14 @@ export default function RemovalReasonModal({
           <button
             onClick={handleCancel}
             disabled={isSubmitting}
-            className="flex-1 bg-gray-200 text-gray-600 px-4 py-4 rounded-2xl font-semibold border-2 border-gray-400 hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-300"
+            className="flex-1 bg-gray-200 text-gray-600 px-4 py-4 rounded-lg font-semibold border border-gray-300 hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-300"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={!composedReason || isSubmitting}
-            className="flex-1 bg-orange-600 text-white px-4 py-4 rounded-2xl font-semibold hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-300"
+            className="flex-1 bg-orange-500 text-white px-4 py-4 rounded-lg font-semibold hover:bg-orange-600 transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-300"
           >
             {isSubmitting ? 'Removing...' : 'Remove'}
           </button>
