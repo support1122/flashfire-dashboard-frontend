@@ -901,10 +901,15 @@ export default function JobModal({
         if (!pastedImages.length) return;
 
         const jobID = jobDetails?.jobID;
-        const userEmail = currentUser?.email;
+        // Fall back to the job's own owner email. A session that lost its
+        // email would otherwise block this outright; the modal already
+        // falls back to userID when displaying the account.
+        const userEmail = currentUser?.email || jobDetails?.userID;
         if (!jobID || !userEmail) {
             setPasteError(
-                "Missing jobID or user email; cannot save attachments."
+                !jobID
+                    ? "This job has no ID yet. Close and reopen it from the tracker, then try again."
+                    : "Your session is missing an email address. Please sign out and sign back in."
             );
             return;
         }
@@ -985,9 +990,16 @@ export default function JobModal({
         if (!imgFile) return;
 
         const jobID = jobDetails?.jobID;
-        const userEmail = currentUser?.email;
+        // Fall back to the job's own owner email. A session that lost its
+        // email would otherwise block this outright; the modal already
+        // falls back to userID when displaying the account.
+        const userEmail = currentUser?.email || jobDetails?.userID;
         if (!jobID || !userEmail) {
-            setImgError("Missing jobID or user email; cannot save attachment.");
+            setImgError(
+                !jobID
+                    ? "This job has no ID yet. Close and reopen it from the tracker, then try again."
+                    : "Your session is missing an email address. Please sign out and sign back in."
+            );
             console.error("[handleImgUpload] Missing identifiers", {
                 jobID,
                 userEmail,
@@ -1075,10 +1087,15 @@ export default function JobModal({
         if (!file) return;
 
         const jobID = jobDetails?.jobID;
-        const userEmail = currentUser?.email;
+        // Fall back to the job's own owner email. A session that lost its
+        // email would otherwise block this outright; the modal already
+        // falls back to userID when displaying the account.
+        const userEmail = currentUser?.email || jobDetails?.userID;
         if (!jobID || !userEmail) {
             setDocError(
-                "Missing jobID or user email; cannot add optimized resume."
+                !jobID
+                    ? "This job has no ID yet. Close and reopen it from the tracker, then try again."
+                    : "Your session is missing an email address. Please sign out and sign back in."
             );
             console.error("[handleDocFileChange] Missing identifiers", {
                 jobID,
@@ -2113,7 +2130,10 @@ export default function JobModal({
 
         try {
             // Get user email - for operations, get from currentUser (the client whose job this is)
-            const userEmail = currentUser?.email;
+            // Fall back to the job's own owner email. A session that lost its
+            // email would otherwise block this outright; the modal already
+            // falls back to userID when displaying the account.
+            const userEmail = currentUser?.email || jobDetails?.userID;
 
             if (!userEmail) {
                 // toastUtils.error("User email not found. Cannot optimize resume.");
@@ -2565,7 +2585,10 @@ export default function JobModal({
                                         onClick={async () => {
                                             try {
                                                 // Get user email - for operations, get from currentUser (the client whose job this is)
-                                                const userEmail = currentUser?.email;
+                                                // Fall back to the job's own owner email. A session that lost its
+                                                // email would otherwise block this outright; the modal already
+                                                // falls back to userID when displaying the account.
+                                                const userEmail = currentUser?.email || jobDetails?.userID;
 
                                                 if (!userEmail) {
                                                     toastUtils.error("User email not found. Cannot optimize resume.");

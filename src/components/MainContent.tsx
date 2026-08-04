@@ -114,6 +114,8 @@ import LoadingScreen from './LoadingScreen';
 import { useOperationsStore } from "../state_management/Operations";
 import { useContentOffsetClass } from "../state_management/useContentOffset";
 import type { DocumentCategoryId } from "../types/navigation";
+import ChoosePlan from './ChoosePlan';
+import { usePlanPanelStore } from '../state_management/PlanPanelStore';
 
 
 
@@ -149,12 +151,12 @@ export default function MainContent() {
     }
   }, []);
 
-  useEffect(()=>{
-  if ((!token || token.length == 0) && role != "operations") {
-      console.log("navigating to login");
-      navigate("/login");
-  }
-  },[])
+  // useEffect(()=>{
+  // if ((!token || token.length == 0) && role != "operations") {
+  //     console.log("navigating to login");
+  //     navigate("/login");
+  // }
+  // },[])
 useEffect(() => {
   // Guarded and keyed on the email. With an empty dep array this fired on the
   // very first render, before the context had hydrated, and POSTed
@@ -219,7 +221,7 @@ useEffect(() => {
 
 
 
-  // Dashboard now manages its own profile modal
+  const { isOpen: showPlanPanel, close: closePlanPanel } = usePlanPanelStore();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -231,47 +233,53 @@ useEffect(() => {
           onDocumentCategoryChange={setDocumentCategory}
         />
       </Suspense>
-      <main className={contentOffset}>
-          {/* Dashboard now manages its own profile modal */}
+
+      {showPlanPanel ? (
+        <div className={contentOffset}>
+          <ChoosePlan open={showPlanPanel} onClose={closePlanPanel} inline />
+        </div>
+      ) : (
+        <main className={contentOffset}>
           {activeTab === 'dashboard' && <Suspense fallback={<LoadingScreen />}><Dashboard /></Suspense>}
-          
+
           {activeTab === 'jobs' && (
-          <Suspense fallback={<LoadingScreen />}>
-            <JobTracker />
-          </Suspense>
+            <Suspense fallback={<LoadingScreen />}>
+              <JobTracker />
+            </Suspense>
           )}
 
           {activeTab === 'optimizer' && (
             <Suspense fallback={<LoadingScreen />}>
-            <ResumeOptimizer documentCategory={documentCategory} onDocumentCategoryChange={setDocumentCategory} />
+              <ResumeOptimizer documentCategory={documentCategory} onDocumentCategoryChange={setDocumentCategory} />
             </Suspense>
           )}
 
           {activeTab === 'mail' && (
             <Suspense fallback={<LoadingScreen />}>
-            <Inbox />
+              <Inbox />
             </Suspense>
           )}
 
           {activeTab === 'resume-optimizer' && (
             <Suspense fallback={<LoadingScreen />}>
-            <ResumeOptimizerDashboard />
+              <ResumeOptimizerDashboard />
             </Suspense>
           )}
 
           {activeTab === 'operations' && (
             <Suspense fallback={<LoadingScreen />}>
-            <OperationsManagement />
+              <OperationsManagement />
             </Suspense>
           )}
 
           {activeTab === 'refer' && (
             <Suspense fallback={<LoadingScreen />}>
-            <ReferAndEarn />
+              <ReferAndEarn />
             </Suspense>
           )}
         </main>
-      </div>
+      )}
+    </div>
   )
 }
 
