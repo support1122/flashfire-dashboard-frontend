@@ -141,6 +141,7 @@ export default function ResumeOptimizerDashboard() {
         lockAllSections,
         checkAdminAndUnlock,
         setResumeId,
+        resume_id,
     } = useResumeUnlockStore();
 
     const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -437,6 +438,10 @@ export default function ResumeOptimizerDashboard() {
                 : "user";
             const filename = `${safeName}_resume.pdf`;
             const saveData = {
+                // Identifies the resume being edited. Without it the backend has
+                // to guess from the name-derived filename, which forks the resume
+                // into a second document as soon as the name is edited.
+                resume_id: resume_id || null,
                 filename,
                 data: resumeData,
                 checkboxStates: {
