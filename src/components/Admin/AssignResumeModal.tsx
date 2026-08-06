@@ -2,6 +2,13 @@ import { useState, useEffect } from "react";
 import { X, AlertCircle } from "lucide-react";
 import { createPortal } from "react-dom";
 
+/** Name as shown in the dropdown, before any disambiguation. */
+const baseLabel = (resume: { firstName?: string; lastName?: string; name?: string }) =>
+    `${resume.firstName || ""} ${resume.lastName || ""}`.trim() || resume.name || "Unnamed";
+
+const versionSuffix = (version: number) =>
+    version === 2 ? " (Medical)" : version === 1 ? " (V1)" : "";
+
 interface AssignResumeModalProps {
     open: boolean;
     onClose: () => void;
@@ -60,56 +67,62 @@ export default function AssignResumeModal({ open, onClose, onAssignSuccess, defa
                 fetch(`${apiUrl}/api/resumes/v2`).catch(() => null),
             ]);
 
-            const allResumes: any[] = [];
-            const seenIds = new Set<string>();  
+            const collected: any[] = [];
+            const seenIds = new Set<string>();
 
-            if (resAll && resAll.ok) {
-                const data = await resAll.json();
-                if (Array.isArray(data)) {
-                    data.forEach((r: any) => {
-                        const resumeId = r._id?.toString();
-                        if (resumeId && !seenIds.has(resumeId)) {
-                            seenIds.add(resumeId);
-                            allResumes.push({ ...r, V: r.V || 0 });
-                        }
-                    });
-                }
-            }
+            const collect = (data: unknown, forcedVersion?: number) => {
+                if (!Array.isArray(data)) return;
+                data.forEach((r: any) => {
+                    const resumeId = r._id?.toString();
+                    if (!resumeId || seenIds.has(resumeId)) return;
+                    seenIds.add(resumeId);
+                    collected.push({ ...r, V: forcedVersion ?? r.V ?? 0 });
+                });
+            };
 
-            if (resV1 && resV1.ok) {
-                const data = await resV1.json();
-                if (Array.isArray(data)) {
-                    data.forEach((r: any) => {
-                        const resumeId = r._id?.toString();
-                        if (resumeId && !seenIds.has(resumeId)) {
-                            seenIds.add(resumeId);
-                            allResumes.push({ ...r, V: 1 });
-                        }
-                    });
-                }
-            }
+            if (resAll && resAll.ok) collect(await resAll.json());
+            if (resV1 && resV1.ok) collect(await resV1.json(), 1);
+            if (resV2 && resV2.ok) collect(await resV2.json(), 2);
 
-            if (resV2 && resV2.ok) {
-                const data = await resV2.json();
-                if (Array.isArray(data)) {
-                    data.forEach((r: any) => {
-                        const resumeId = r._id?.toString();
-                        if (resumeId && !seenIds.has(resumeId)) {
-                            seenIds.add(resumeId);
-                            allResumes.push({ ...r, V: 2 });
-                        }
-                    });
+            // Deduplicating by _id alone is not enough: several index rows can
+            // describe the same underlying resume (they share a filename), which
+            // is what put the same client's name in this list twice. Group by the
+            // storage key + version and keep one row per real resume, preferring
+            // the one that already carries the client assignment, then the newest.
+            const byResume = new Map<string, any>();
+            collected.forEach((r) => {
+                const key = `${r.filename || r._id}::${r.V ?? 0}`;
+                const current = byResume.get(key);
+                if (!current) {
+                    byResume.set(key, r);
+                    return;
                 }
-            }
-            
-            // Sort resumes alphabetically
-            const sortedResumes = allResumes.sort((a, b) => {
-                const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase() || a.name?.toLowerCase() || '';
-                const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase() || b.name?.toLowerCase() || '';
-                return nameA.localeCompare(nameB);
+                const better =
+                    (!!r.userEmail && !current.userEmail) ||
+                    (!!r.userEmail === !!current.userEmail &&
+                        new Date(r.createdAt || 0).getTime() >
+                            new Date(current.createdAt || 0).getTime());
+                if (better) byResume.set(key, r);
             });
 
-            console.log(`[AssignResumeModal] Fetched ${sortedResumes.length} unique resumes (deduplicated by _id)`);
+            const unique = [...byResume.values()];
+
+            // Two different clients can legitimately share a name. When that
+            // happens, show who the resume belongs to so they are tellable apart
+            // instead of rendering two identical options.
+            const labelCounts = new Map<string, number>();
+            unique.forEach((r) => {
+                const label = baseLabel(r);
+                labelCounts.set(label, (labelCounts.get(label) || 0) + 1);
+            });
+
+            const sortedResumes = unique
+                .map((r) => ({ ...r, ambiguous: (labelCounts.get(baseLabel(r)) || 0) > 1 }))
+                .sort((a, b) => baseLabel(a).localeCompare(baseLabel(b)));
+
+            console.log(
+                `[AssignResumeModal] ${collected.length} index rows -> ${sortedResumes.length} distinct resumes`
+            );
             setResumes(sortedResumes);
         } catch (err) {
             console.error("Error fetching resumes:", err);
@@ -129,7 +142,7 @@ export default function AssignResumeModal({ open, onClose, onAssignSuccess, defa
                 if (data.resumeId) {
                     const resume = resumes.find((r) => r._id === data.resumeId);
                     if (resume) {
-                        setExistingResume(`${resume.firstName} ${resume.lastName}`);
+                        setExistingResume(baseLabel(resume) + versionSuffix(resume.V ?? 0));
                         return true;
                     }
                 }
@@ -271,8 +284,11 @@ export default function AssignResumeModal({ open, onClose, onAssignSuccess, defa
                                 <option value="">-- Select a resume --</option>
                                 {resumes.map((resume) => (
                                     <option key={resume._id} value={resume._id}>
-                                        {resume.firstName} {resume.lastName}
-                                        {resume.V === 2 ? " (Medical)" : resume.V === 1 ? " (V1)" : ""}
+                                        {baseLabel(resume)}
+                                        {versionSuffix(resume.V ?? 0)}
+                                        {resume.ambiguous
+                                            ? ` — ${resume.userEmail || "unassigned"}`
+                                            : ""}
                                     </option>
                                 ))}
                             </select>
