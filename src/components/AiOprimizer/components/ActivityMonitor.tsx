@@ -30,6 +30,7 @@ interface ActivityEntry {
   diff: DiffEntry[] | { before?: unknown; after?: unknown } | null;
   context: Record<string, unknown> | null;
   ip: string;
+  location: string;
   userAgent: string;
   severity: 'info' | 'warning' | 'critical';
   createdAt: string;
@@ -100,10 +101,11 @@ function relativeTime(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function fullTime(iso: string) {
+function fullTime(iso: string, tz?: string) {
   return new Date(iso).toLocaleString(undefined, {
     year: 'numeric', month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
+    ...(tz ? { timeZone: tz } : {}),
   });
 }
 
@@ -119,7 +121,7 @@ function actorDisplay(actor: Actor) {
   return actor.name || actor.email || 'System';
 }
 
-function ActivityRow({ entry }: { entry: ActivityEntry }) {
+function ActivityRow({ entry, tz }: { entry: ActivityEntry; tz?: string }) {
   const [open, setOpen] = useState(false);
   const { icon: Icon, bg, fg } = iconFor(entry.action, entry.category);
   const sev = severityChip(entry.severity);
@@ -170,7 +172,21 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
           </span>
 
           <span className="text-gray-300">·</span>
-          <time title={fullTime(entry.createdAt)}>{relativeTime(entry.createdAt)}</time>
+          <time title={relativeTime(entry.createdAt)}>{fullTime(entry.createdAt, tz)}</time>
+
+          {entry.location && (
+            <>
+              <span className="text-gray-300">·</span>
+              <span className="inline-flex items-center gap-1" title="Location (from IP)">📍 {entry.location}</span>
+            </>
+          )}
+
+          {entry.ip && (
+            <>
+              <span className="text-gray-300">·</span>
+              <span className="font-mono text-gray-500" title="IP address">{entry.ip}</span>
+            </>
+          )}
 
           {entry.targetLabel && (
             <>
@@ -253,19 +269,31 @@ const ActivityMonitor: React.FC<Props> = ({ apiBase, token }) => {
   const [action, setAction] = useState('');
   const [severity, setSeverity] = useState('');
   const [actorEmail, setActorEmail] = useState('');
+  const [ip, setIp] = useState('');
+  const [debouncedIp, setDebouncedIp] = useState('');
+  // Display timezone for the Date/Time column. Defaults to the viewer's zone.
+  const [tz, setTz] = useState(() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; }
+  });
 
   // Abort prior fetches to avoid race conditions on filter changes.
   const abortRef = useRef<AbortController | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   // Track key dependencies for fetchPage without re-creating the callback.
-  const filtersRef = useRef({ debouncedSearch, category, action, severity, actorEmail });
-  filtersRef.current = { debouncedSearch, category, action, severity, actorEmail };
+  const filtersRef = useRef({ debouncedSearch, category, action, severity, actorEmail, debouncedIp });
+  filtersRef.current = { debouncedSearch, category, action, severity, actorEmail, debouncedIp };
 
   // Debounce text search (250ms).
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 250);
     return () => clearTimeout(t);
   }, [search]);
+
+  // Debounce IP filter (250ms).
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedIp(ip.trim()), 250);
+    return () => clearTimeout(t);
+  }, [ip]);
 
   const buildUrl = useCallback(
     (afterCursor: string | null) => {
@@ -278,6 +306,7 @@ const ActivityMonitor: React.FC<Props> = ({ apiBase, token }) => {
       if (f.action) params.set('action', f.action);
       if (f.severity) params.set('severity', f.severity);
       if (f.actorEmail) params.set('actorEmail', f.actorEmail);
+      if (f.debouncedIp) params.set('ip', f.debouncedIp);
       return `${apiBase}/admin/activity?${params.toString()}`;
     },
     [apiBase]
@@ -332,7 +361,7 @@ const ActivityMonitor: React.FC<Props> = ({ apiBase, token }) => {
     setInitialLoading(true);
     fetchPage(true, null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, category, action, severity, actorEmail]);
+  }, [debouncedSearch, category, action, severity, actorEmail, debouncedIp]);
 
   // Load facets once.
   useEffect(() => {
@@ -385,7 +414,14 @@ const ActivityMonitor: React.FC<Props> = ({ apiBase, token }) => {
     (category ? 1 : 0) +
     (action ? 1 : 0) +
     (severity ? 1 : 0) +
-    (actorEmail ? 1 : 0);
+    (actorEmail ? 1 : 0) +
+    (debouncedIp ? 1 : 0);
+
+  // A short, common set of timezones for the display selector.
+  const TZ_OPTIONS = [
+    'Asia/Kolkata', 'UTC', 'America/New_York', 'America/Chicago', 'America/Los_Angeles',
+    'Europe/London', 'Europe/Berlin', 'Asia/Dubai', 'Asia/Singapore', 'Australia/Sydney',
+  ];
 
   return (
     <div className="space-y-6">
@@ -481,19 +517,36 @@ const ActivityMonitor: React.FC<Props> = ({ apiBase, token }) => {
               value={actorEmail}
               onChange={(e) => setActorEmail(e.target.value)}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              title="Filter by client / actor"
             >
-              <option value="">All actors</option>
+              <option value="">All clients</option>
               {(facets?.actors || []).map((a) => (
                 <option key={a.email} value={a.email}>
                   {a.name ? `${a.name} — ${a.email}` : a.email}
                 </option>
               ))}
             </select>
+            <input
+              type="text"
+              value={ip}
+              onChange={(e) => setIp(e.target.value)}
+              placeholder="Filter by IP (e.g. 49.36)"
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 font-mono"
+            />
+            <select
+              value={tz}
+              onChange={(e) => setTz(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              title="Display timezone for Date/Time"
+            >
+              {!TZ_OPTIONS.includes(tz) && tz && <option value={tz}>{tz} (local)</option>}
+              {TZ_OPTIONS.map((z) => (<option key={z} value={z}>{z}</option>))}
+            </select>
             {activeFilterCount > 0 && (
               <div className="md:col-span-4 flex justify-end">
                 <button
                   type="button"
-                  onClick={() => { setSearch(''); setCategory(''); setAction(''); setSeverity(''); setActorEmail(''); }}
+                  onClick={() => { setSearch(''); setCategory(''); setAction(''); setSeverity(''); setActorEmail(''); setIp(''); }}
                   className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                 >
                   Clear all filters
@@ -530,7 +583,7 @@ const ActivityMonitor: React.FC<Props> = ({ apiBase, token }) => {
                   {g.label}
                 </div>
                 <ul className="divide-y divide-gray-100">
-                  {g.items.map((e) => (<ActivityRow key={e._id} entry={e} />))}
+                  {g.items.map((e) => (<ActivityRow key={e._id} entry={e} tz={tz} />))}
                 </ul>
               </section>
             ))}
