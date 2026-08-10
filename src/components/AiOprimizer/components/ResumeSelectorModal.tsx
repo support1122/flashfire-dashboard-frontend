@@ -48,29 +48,54 @@ export default function ResumeSelectorModal({
     }, []);
 
     // Helper function to deduplicate resumes by name+version
+    /**
+     * Collapses index rows that describe the same underlying resume.
+     *
+     * This used to key on name + version, which silently hid one of two
+     * different clients who happened to share a name — an operator could open,
+     * edit and save the wrong person's resume with no indication the other
+     * existed. It also disagreed with the Attach Resume list, which deduped by
+     * _id, so the same client appeared once here and twice there.
+     *
+     * The key is now the storage key + version, which is what actually
+     * identifies one resume. Rows that genuinely are distinct all stay in the
+     * list, and same-named ones are labelled with the client they belong to.
+     */
     const deduplicateResumes = (resumes: any[]): any[] => {
-        const seen = new Set<string>();
-        const deduplicated: any[] = [];
+        const byResume = new Map<string, any>();
 
         for (const resume of resumes) {
-            const firstName = (resume.firstName || '').trim();
-            const lastName = (resume.lastName || '').trim();
-            const name = `${firstName} ${lastName}`.trim().toLowerCase();
-            const version = resume.V !== undefined ? resume.V : 0;
-            const key = `${name}_v${version}`;
-
-            if (!seen.has(key)) {
-                seen.add(key);
-                deduplicated.push(resume);
+            const key = `${resume.filename || resume._id}_v${resume.V ?? 0}`;
+            const current = byResume.get(key);
+            if (!current) {
+                byResume.set(key, resume);
+                continue;
             }
+            // Keep the row carrying the client assignment, then the newest.
+            const better =
+                (!!resume.userEmail && !current.userEmail) ||
+                (!!resume.userEmail === !!current.userEmail &&
+                    new Date(resume.createdAt || 0).getTime() >
+                        new Date(current.createdAt || 0).getTime());
+            if (better) byResume.set(key, resume);
         }
 
-        // Sort alphabetically by name
-        return deduplicated.sort((a, b) => {
-            const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase() || a.name?.toLowerCase() || '';
-            const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase() || b.name?.toLowerCase() || '';
-            return nameA.localeCompare(nameB);
+        const unique = [...byResume.values()];
+
+        const displayName = (r: any) =>
+            `${r.firstName || ''} ${r.lastName || ''}`.trim().toLowerCase() ||
+            r.name?.toLowerCase() ||
+            '';
+
+        const nameCounts = new Map<string, number>();
+        unique.forEach((r) => {
+            const n = displayName(r);
+            nameCounts.set(n, (nameCounts.get(n) || 0) + 1);
         });
+
+        return unique
+            .map((r) => ({ ...r, ambiguous: (nameCounts.get(displayName(r)) || 0) > 1 }))
+            .sort((a, b) => displayName(a).localeCompare(displayName(b)));
     };
 
     // Reset state + fetch resumes
@@ -377,6 +402,13 @@ export default function ResumeSelectorModal({
                                     >
                                         <span className="flex-1">
                                             {r.firstName} {r.lastName}
+                                            {r.ambiguous && (
+                                                // Two clients share this name; show which is which
+                                                // rather than hiding one of them.
+                                                <span className="text-gray-500 text-sm ml-2">
+                                                    {r.userEmail || "unassigned"}
+                                                </span>
+                                            )}
                                             {r.hidden && (
                                                 <span className="text-red-600 font-medium ml-2">(Hidden)</span>
                                             )}

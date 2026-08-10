@@ -1,6 +1,7 @@
 import { useContext, useEffect } from "react";
 import { X, ArrowUpRight, Plus, CheckCircle2 } from "lucide-react";
 import { UserContext } from "../state_management/UserContext";
+import { PAGE_CONTAINER, PAGE_MAIN } from "../styles/layout";
 
 type PlanKey = "prime" | "ignite" | "professional" | "executive";
 type Currency = "USD" | "CAD";
@@ -128,8 +129,8 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
     <div className={inline ? "w-full bg-gray-50 min-h-screen" : "fixed right-0 top-0 h-full w-full max-w-xl bg-gray-50 z-50 shadow-2xl flex flex-col overflow-hidden"}>
 
       {/* ── Header ── */}
-      <div className="bg-white border-b border-gray-200 border-t-4 border-t-orange-500">
-        <div className={`flex items-center justify-between gap-4 py-5 ${inline ? "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" : "px-6"}`}>
+      <div className="bg-white border-b border-gray-200">
+        <div className={`flex items-center justify-between gap-4 py-5 ${inline ? PAGE_CONTAINER : "px-6"}`}>
           <div>
             <h1 className="text-lg font-bold text-gray-900 leading-tight">
               {currentPlan === "executive" ? "Boost Your Plan" : "Choose a Plan"}
@@ -141,7 +142,7 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
           {!inline && (
             <button
               onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+              className="p-1.5 hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
@@ -150,13 +151,14 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
       </div>
 
       {/* ── Content ── */}
-      <div className={`${inline ? "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full" : "flex-1 overflow-y-auto px-6 py-6"} space-y-6`}>
+      <div className={inline ? `${PAGE_MAIN} w-full` : "flex-1 overflow-y-auto px-6 py-6"}>
+      <main className={inline ? "bg-white border border-gray-300 p-3 sm:p-4 md:p-6 space-y-6" : "space-y-6"}>
 
         {/* UPGRADE */}
         {upgradesRaw.length > 0 && (
           <section>
             <div className="flex items-center gap-1.5 mb-1">
-              <ArrowUpRight className="w-3.5 h-3.5 text-orange-500" />
+              <ArrowUpRight className="w-3.5 h-3.5 text-gray-900" />
               <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Upgrade Plan</h2>
             </div>
             <p className="text-xs text-gray-400 mb-3">Unlock more applications and premium features</p>
@@ -169,21 +171,21 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
                   <div key={to} className={`relative overflow-hidden border border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${isPopular ? "" : "bg-white"}`}>
                     {isPopular && (
                       <div className="bg-orange-500 px-4 py-1 flex items-center justify-between">
-                        <span className="text-white text-[11px] font-bold uppercase tracking-widest">⚡ Most Popular</span>
-                        <span className="text-orange-200 text-[11px]">Best value</span>
+                        <span className="text-white text-[11px] font-bold uppercase tracking-widest">Most Popular</span>
+                        <span className="text-orange-100 text-[11px]">Best value</span>
                       </div>
                     )}
-                    <div className={`p-4 ${isPopular ? "bg-orange-50" : "bg-white"}`}>
+                    <div className={`p-4 ${isPopular ? "bg-gray-50" : "bg-white"}`}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-base font-extrabold text-gray-900">{PLAN_LABELS[to]}</span>
-                            <span className="text-[11px] font-semibold text-white bg-gray-800 px-2 py-0.5 rounded-full">{PLAN_APPS[to].toLocaleString()} apps</span>
+                            <span className="text-[11px] font-semibold text-white bg-gray-800 px-2 py-0.5">{PLAN_APPS[to].toLocaleString()} apps</span>
                           </div>
                           <ul className="space-y-1">
                             {PLAN_FEATURES[to].map((f) => (
                               <li key={f} className="flex items-center gap-1.5 text-xs text-gray-600">
-                                <CheckCircle2 className="w-3 h-3 text-orange-500 flex-shrink-0" />
+                                <CheckCircle2 className="w-3 h-3 text-gray-900 flex-shrink-0" />
                                 {f}
                               </li>
                             ))}
@@ -195,7 +197,7 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
                             <div className="text-[10px] text-gray-400">upgrade price</div>
                           </div>
                           <a href={url} target="_blank" rel="noopener noreferrer"
-                            className={`flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-lg transition-colors whitespace-nowrap ${isPopular ? "bg-orange-500 hover:bg-orange-600 text-white" : "bg-gray-900 hover:bg-gray-800 text-white"}`}>
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold transition-colors whitespace-nowrap bg-gray-900 hover:bg-gray-800 text-white">
                             Upgrade <ArrowUpRight className="w-3 h-3" />
                           </a>
                         </div>
@@ -211,7 +213,7 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
         {/* BOOSTER */}
         <section>
           <div className="flex items-center gap-1.5 mb-1">
-            <Plus className="w-3.5 h-3.5 text-orange-500" />
+            <Plus className="w-3.5 h-3.5 text-gray-900" />
             <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Booster Add-On</h2>
           </div>
           <p className="text-xs text-gray-400 mb-3">Add more applications to your {PLAN_LABELS[currentPlan]} plan — no tier change</p>
@@ -222,18 +224,18 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
               const url = withEmail(currency === "CAD" ? urlCAD : urlUSD, email);
               return (
                 <a key={apps} href={url} target="_blank" rel="noopener noreferrer"
-                  className={`group relative flex flex-col items-center border border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] pt-5 pb-4 px-3 transition-all text-center ${isBest ? "bg-orange-50" : "bg-white"}`}>
+                  className={`group relative flex flex-col items-center border border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] pt-5 pb-4 px-3 transition-all text-center ${isBest ? "bg-gray-50" : "bg-white"}`}>
                   {isBest && (
-                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap">
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-[9px] font-bold px-2.5 py-0.5 uppercase tracking-wider whitespace-nowrap">
                       Best Value
                     </span>
                   )}
-                  <span className={`text-2xl font-extrabold ${isBest ? "text-orange-500" : "text-gray-900 group-hover:text-orange-500"} transition-colors`}>+{apps}</span>
+                  <span className={`text-2xl font-extrabold text-gray-900 transition-colors`}>+{apps}</span>
                   <span className="text-[10px] text-gray-400 mt-0.5">Applications</span>
                   <div className="w-full border-t border-gray-100 mt-3 pt-3">
                     <span className="text-lg font-extrabold text-gray-900">{sym}{price}</span>
                   </div>
-                  <span className={`mt-2 text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition-colors ${isBest ? "bg-orange-500 text-white border-orange-500" : "bg-white text-orange-500 border-orange-300 group-hover:bg-orange-500 group-hover:text-white"}`}>
+                  <span className={`mt-2 text-[11px] font-bold px-2.5 py-0.5 border transition-colors ${isBest ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-900 border-gray-300 group-hover:bg-gray-900 group-hover:text-white"}`}>
                     Add On
                   </span>
                 </a>
@@ -246,6 +248,7 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
         <p className="text-xs text-gray-400 text-center pb-2">
           All plans include <span className="font-semibold text-gray-600">no time constraint</span> — applications run until completed.
         </p>
+      </main>
       </div>
     </div>
   );
