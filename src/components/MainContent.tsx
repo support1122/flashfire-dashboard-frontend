@@ -115,7 +115,6 @@ import { useOperationsStore } from "../state_management/Operations";
 import { useContentOffsetClass } from "../state_management/useContentOffset";
 import type { DocumentCategoryId } from "../types/navigation";
 import ChoosePlan from './ChoosePlan';
-import { usePlanPanelStore } from '../state_management/PlanPanelStore';
 
 
 
@@ -140,7 +139,7 @@ export default function MainContent() {
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');
     const docParam = urlParams.get('doc') as DocumentCategoryId | null;
-    const validTabs = ['dashboard', 'jobs', 'optimizer', 'mail', 'operations', 'refer'];
+    const validTabs = ['dashboard', 'jobs', 'optimizer', 'mail', 'operations', 'refer', 'upgrade'];
     if (tabParam === 'jobtracker') {
       setActiveTab('jobs');
     } else if (tabParam && validTabs.includes(tabParam)) {
@@ -221,7 +220,6 @@ useEffect(() => {
 
 
 
-  const { isOpen: showPlanPanel, close: closePlanPanel } = usePlanPanelStore();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -234,9 +232,20 @@ useEffect(() => {
         />
       </Suspense>
 
-      {showPlanPanel ? (
+      {activeTab === 'upgrade' ? (
         <div className={contentOffset}>
-          <ChoosePlan open={showPlanPanel} onClose={closePlanPanel} inline />
+          {/* Rendered as a tab rather than a floating panel, so it owns a URL
+              (?tab=upgrade). Closing navigates as well as setting the tab, or
+              the address bar would keep claiming ?tab=upgrade after the panel
+              had gone - and a refresh would reopen it. */}
+          <ChoosePlan
+            open
+            inline
+            onClose={() => {
+              setActiveTab('dashboard');
+              navigate('/?tab=dashboard', { replace: true });
+            }}
+          />
         </div>
       ) : (
         <main className={contentOffset}>
