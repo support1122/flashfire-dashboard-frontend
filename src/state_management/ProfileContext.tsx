@@ -308,6 +308,17 @@ export interface UserProfile {
     | "H1B"
     | "Green Card"
     | "U.S. Citizen"
+    | "Canadian Citizen"
+    | "Permanent Resident (PR)"
+    | "Post-Graduation Work Permit (PGWP)"
+    | "Open Work Permit (OWP)"
+    | "Employer-Specific (Closed) Work Permit"
+    | "Study Permit"
+    | "Student Visa"
+    | "Short-term Study Visa"
+    | "Graduate Visa"
+    | "Skilled Worker Visa"
+    | "Global Talent Visa"
     | "Other";
 
   // Address
