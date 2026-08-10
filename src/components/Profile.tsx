@@ -1,8 +1,7 @@
-import React, { useMemo, useState, useContext, useEffect } from "react";
-import { Pencil, Save, X, ArrowLeft, Copy, Check } from "lucide-react";
+import React, { useState, useContext, useEffect } from "react";
+import { Pencil, Save, X, Copy, Check } from "lucide-react";
 import { useUserProfile, UserProfile } from "../state_management/ProfileContext";
 import { UserContext } from "../state_management/UserContext";
-import { Link } from "react-router-dom";
 import { toastUtils, toastMessages } from "../utils/toast";
 import SecretKeyModal from "./SecretKeyModal";
 import { useOperationsStore } from "../state_management/Operations";
@@ -654,12 +653,6 @@ export default function ProfilePage() {
         setValidationErrors({});
     };
 
-    const fullName = useMemo(() => {
-        const fn = data.firstName?.trim() || "";
-        const ln = data.lastName?.trim() || "";
-        return [fn, ln].filter(Boolean).join(" ") || "Your Name";
-    }, [data.firstName, data.lastName]);
-
     if (!userProfile && !ctx?.userDetails) {
         return (
             <div className="min-h-[calc(100vh-64px)] bg-gray-50 flex items-center justify-center px-4">
@@ -680,26 +673,22 @@ export default function ProfilePage() {
                 button and title line up with the cards instead of hugging the
                 viewport edge. */}
             <div className="bg-white border-b border-gray-200 border-t-4 border-t-orange-500">
-                <div className="mx-auto max-w-5xl px-3 sm:px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            to="/"
-                            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-300 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 transition-colors"
-                        >
-                            <ArrowLeft size={16} />
-                            Back to Dashboard
-                        </Link>
-                        <div>
-                            <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">
-                                Professional Profile
-                            </p>
-                            <h1 className="text-lg font-bold text-gray-900 leading-tight">
-                                <span className="text-orange-500">{fullName}</span>
-                            </h1>
-                        </div>
-                    </div>
+                <div className="mx-auto max-w-5xl px-3 sm:px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                        <p className="text-sm text-gray-500">
+                            {ctx?.userDetails?.email}
+                            {ctx?.userDetails?.planType && (
+                                <>
+                                    {" "}
+                                    <span className="text-gray-300">|</span>{" "}
+                                    <span className="font-medium text-orange-500">
+                                        {ctx.userDetails.planType}
+                                    </span>
+                                </>
+                            )}
+                        </p>
 
-                    {gmailConnected !== null && role === 'operations' && (
+                        {gmailConnected !== null && role === 'operations' && (
                         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                             {gmailConnected ? (
                                 <button
@@ -726,7 +715,8 @@ export default function ProfilePage() {
                                 </button>
                             )}
                         </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
 
