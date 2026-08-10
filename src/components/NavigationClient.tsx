@@ -23,7 +23,6 @@ import { useUserProfile } from "../state_management/ProfileContext.tsx";
 import { useOperationsStore } from "../state_management/Operations.ts";
 import { useDownloadHighlightStore } from "../state_management/DownloadHighlightStore.ts";
 import { useSidebarStore } from "../state_management/SidebarStore.ts";
-import { usePlanPanelStore } from "../state_management/PlanPanelStore.ts";
 import { toastUtils, toastMessages } from "../utils/toast.ts";
 import type { DocumentCategoryId, NavigationProps } from "../types/navigation.ts";
 
@@ -65,7 +64,6 @@ const NavigationClient: React.FC<NavigationProps> = ({
   const { role, reset: resetOperationsStore } = useOperationsStore();
   const { triggerHighlight } = useDownloadHighlightStore();
   const { isOpen: sidebarOpen, toggle: toggleSidebar } = useSidebarStore();
-  const { open: openPlanPanel, close: closePlanPanel } = usePlanPanelStore();
   const isOpsRole = role === "operations" || role === "operator";
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTargetRef = useRef<string | null>(null);
@@ -328,7 +326,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
                 <div key={id}>
                   <Link
                     to={tabHref("optimizer")}
-                    onClick={() => { closePlanPanel(); selectDocumentCategory(null); }}
+                    onClick={() => { selectDocumentCategory(null); }}
                     className={`flex items-center gap-3 py-2.5 text-sm font-medium transition-colors ${
                       docActive && !isProfileRoute
                         ? "border-2 border-orange-500 bg-orange-50 text-orange-600 px-3"
@@ -364,7 +362,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
               <Link
                 key={id}
                 to={tabHref(id)}
-                onClick={() => { closePlanPanel(); onTabChange(id); }}
+                onClick={() => { onTabChange(id); }}
                 onMouseDown={() => handleLongPressStart(id)}
                 onMouseUp={handleLongPressEnd}
                 onMouseLeave={handleLongPressEnd}
@@ -383,7 +381,6 @@ const NavigationClient: React.FC<NavigationProps> = ({
           })}
           <Link
             to="/profile"
-            onClick={closePlanPanel}
             className={`flex items-center gap-3 py-2.5 text-sm font-medium transition-colors ${
               isProfileRoute
                 ? "border-2 border-orange-500 bg-orange-50 text-orange-600 px-3"
@@ -407,18 +404,23 @@ const NavigationClient: React.FC<NavigationProps> = ({
         {/* Bottom actions */}
         <div className="px-3 pb-5 space-y-1">
           {user && (
-            <button
-              onClick={openPlanPanel}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold border-2 border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white transition-colors"
+            <Link
+              to={tabHref("upgrade")}
+              onClick={() => onTabChange("upgrade")}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold border-2 border-orange-500 transition-colors ${
+                activeTab === "upgrade" && !isProfileRoute
+                  ? "bg-orange-500 text-white"
+                  : "text-orange-500 hover:bg-orange-500 hover:text-white"
+              }`}
             >
               <Zap className="w-4 h-4 flex-shrink-0" />
               Upgrade
-            </button>
+            </Link>
           )}
           {user && (
             <Link
               to={tabHref("refer")}
-              onClick={() => { closePlanPanel(); onTabChange("refer"); }}
+              onClick={() => { onTabChange("refer"); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold border transition-colors ${
                 activeTab === "refer" && !isProfileRoute
                   ? "bg-orange-600 border-orange-600 text-white"
@@ -480,8 +482,18 @@ const NavigationClient: React.FC<NavigationProps> = ({
           <div className="flex items-center gap-2">
             {user && (
               <Link
+                to={tabHref("upgrade")}
+                onClick={() => { onTabChange("upgrade"); setMenuOpen(false); }}
+                className="p-2 border-2 border-orange-500 text-orange-500"
+                title="Upgrade"
+              >
+                <Zap className="w-4 h-4" />
+              </Link>
+            )}
+            {user && (
+              <Link
                 to={tabHref("refer")}
-                onClick={() => { closePlanPanel(); onTabChange("refer"); setMenuOpen(false); }}
+                onClick={() => { onTabChange("refer"); setMenuOpen(false); }}
                 className="p-2 bg-orange-500 text-white"
                 title="Refer & Earn"
               >
@@ -543,7 +555,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
                 <Link
                   key={id}
                   to={tabHref(id)}
-                  onClick={() => { closePlanPanel(); onTabChange(id); setMenuOpen(false); }}
+                  onClick={() => { onTabChange(id); setMenuOpen(false); }}
                   onMouseDown={() => handleLongPressStart(id)}
                   onMouseUp={handleLongPressEnd}
                   onTouchStart={() => handleLongPressStart(id)}
