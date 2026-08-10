@@ -34,6 +34,7 @@ interface ActivityEntry {
   userAgent: string;
   severity: 'info' | 'warning' | 'critical';
   createdAt: string;
+  paymentEmail?: string;
 }
 
 interface ApiResponse {
@@ -169,6 +170,14 @@ function ActivityRow({ entry, tz }: { entry: ActivityEntry; tz?: string }) {
                 {entry.actor.source}
               </span>
             )}
+            {entry.paymentEmail && (
+              <span
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-medium border border-emerald-100"
+                title="Client payment email"
+              >
+                💳 {entry.paymentEmail}
+              </span>
+            )}
           </span>
 
           <span className="text-gray-300">·</span>
@@ -300,6 +309,7 @@ const ActivityMonitor: React.FC<Props> = ({ apiBase, token }) => {
       const f = filtersRef.current;
       const params = new URLSearchParams();
       params.set('limit', String(PAGE_SIZE));
+      params.set('audience', 'clients'); // clients only — exclude the operations team
       if (afterCursor) params.set('cursor', afterCursor);
       if (f.debouncedSearch) params.set('q', f.debouncedSearch);
       if (f.category) params.set('category', f.category);
@@ -431,7 +441,7 @@ const ActivityMonitor: React.FC<Props> = ({ apiBase, token }) => {
             <Activity className="h-6 w-6 text-blue-600" />
             Activity Monitor
           </h3>
-          <p className="text-sm text-gray-500 mt-1">Every change made by admins, operators and clients — live audit trail.</p>
+          <p className="text-sm text-gray-500 mt-1">Client login activity — with location, IP and payment email.</p>
         </div>
         <button
           type="button"
@@ -520,11 +530,13 @@ const ActivityMonitor: React.FC<Props> = ({ apiBase, token }) => {
               title="Filter by client / actor"
             >
               <option value="">All clients</option>
-              {(facets?.actors || []).map((a) => (
-                <option key={a.email} value={a.email}>
-                  {a.name ? `${a.name} — ${a.email}` : a.email}
-                </option>
-              ))}
+              {(facets?.actors || [])
+                .filter((a) => !/@flashfirehq\.com$/i.test(a.email) && !['operations', 'operator', 'admin', 'manager', 'ops'].includes((a.role || '').toLowerCase()))
+                .map((a) => (
+                  <option key={a.email} value={a.email}>
+                    {a.name ? `${a.name} — ${a.email}` : a.email}
+                  </option>
+                ))}
             </select>
             <input
               type="text"
