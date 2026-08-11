@@ -4,19 +4,20 @@ import { createPortal } from "react-dom";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
-  Briefcase,
+  ListChecks,
   FileStack,
   CircleUserRound,
-  LogOut,
+  DoorOpen,
+  Users,
   Menu,
   X,
   Settings,
-  Gift,
+  Handshake,
   Mail,
   PanelLeftClose,
   PanelLeftOpen,
   Edit2,
-  Zap,
+  Rocket,
 } from "lucide-react";
 import { UserContext } from "../state_management/UserContext.tsx";
 import { useUserProfile } from "../state_management/ProfileContext.tsx";
@@ -151,7 +152,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
 
   const tabs: TabItem[] = [
     { id: "dashboard", label: "Overview", icon: LayoutDashboard },
-    { id: "jobs", label: "Job Tracker", icon: Briefcase },
+    { id: "jobs", label: "Job Tracker", icon: ListChecks },
     { id: "optimizer", label: "Document", icon: FileStack },
     ...(isOpsRole ? [{ id: "mail", label: "Mail", icon: Mail }] : []),
     ...(isOpsRole ? [{ id: "operations", label: "Operations", icon: Settings }] : []),
@@ -413,7 +414,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
                   : "text-orange-500 hover:bg-orange-500 hover:text-white"
               }`}
             >
-              <Zap className="w-4 h-4 flex-shrink-0" />
+              <Rocket className="w-4 h-4 flex-shrink-0" />
               Upgrade
             </Link>
           )}
@@ -427,7 +428,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
                   : "bg-orange-500 hover:bg-orange-600 text-white border-orange-500 hover:border-orange-400"
               }`}
             >
-              <Gift className="w-4 h-4 flex-shrink-0" />
+              <Handshake className="w-4 h-4 flex-shrink-0" />
               Refer n Earn
             </Link>
           )}
@@ -437,7 +438,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
                 onClick={handleSwitchUser}
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 transition-colors"
               >
-                <LogOut className="w-4 h-4 flex-shrink-0" />
+                <Users className="w-4 h-4 flex-shrink-0" />
                 Switch Client
               </button>
             ) : (
@@ -445,7 +446,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
                 onClick={handleLogout}
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 transition-colors"
               >
-                <LogOut className="w-4 h-4 flex-shrink-0" />
+                <DoorOpen className="w-4 h-4 flex-shrink-0" />
                 Logout
               </button>
             )
@@ -487,7 +488,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
                 className="p-2 border-2 border-orange-500 text-orange-500"
                 title="Upgrade"
               >
-                <Zap className="w-4 h-4" />
+                <Rocket className="w-4 h-4" />
               </Link>
             )}
             {user && (
@@ -497,7 +498,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
                 className="p-2 bg-orange-500 text-white"
                 title="Refer & Earn"
               >
-                <Gift className="w-4 h-4" />
+                <Handshake className="w-4 h-4" />
               </Link>
             )}
             <button
@@ -597,7 +598,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
                 onClick={() => { handleLogout(); setMenuOpen(false); }}
                 className="w-full flex items-center gap-3 px-5 py-3 text-sm font-medium text-gray-600 border-t border-gray-100 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 transition-colors"
               >
-                <LogOut className="w-4 h-4" />
+                <DoorOpen className="w-4 h-4" />
                 Logout
               </button>
             )}
