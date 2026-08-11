@@ -3,10 +3,10 @@ import { useEffect, useRef, useContext, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
-  Home,
+  LayoutDashboard,
   Briefcase,
-  FileText,
-  User,
+  FileStack,
+  CircleUserRound,
   LogOut,
   Menu,
   X,
@@ -150,9 +150,9 @@ const NavigationClient: React.FC<NavigationProps> = ({
   }, []);
 
   const tabs: TabItem[] = [
-    { id: "dashboard", label: "Overview", icon: Home },
+    { id: "dashboard", label: "Overview", icon: LayoutDashboard },
     { id: "jobs", label: "Job Tracker", icon: Briefcase },
-    { id: "optimizer", label: "Document", icon: FileText },
+    { id: "optimizer", label: "Document", icon: FileStack },
     ...(isOpsRole ? [{ id: "mail", label: "Mail", icon: Mail }] : []),
     ...(isOpsRole ? [{ id: "operations", label: "Operations", icon: Settings }] : []),
   ];
@@ -387,7 +387,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
                 : "px-3 text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
             }`}
           >
-            <User className="w-4 h-4 flex-shrink-0" />
+            <CircleUserRound className="w-4 h-4 flex-shrink-0" />
             Profile
           </Link>
           {user && !hasProfile && (
@@ -454,7 +454,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
               onClick={handleLogin}
               className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 transition-colors"
             >
-              <User className="w-4 h-4 flex-shrink-0" />
+              <CircleUserRound className="w-4 h-4 flex-shrink-0" />
               Sign In
             </button>
           )}
@@ -580,7 +580,7 @@ const NavigationClient: React.FC<NavigationProps> = ({
                   : "text-gray-600 border border-transparent hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
               }`}
             >
-              <User className="w-4 h-4" />
+              <CircleUserRound className="w-4 h-4" />
               Profile
             </Link>
             {user && !hasProfile && (
