@@ -1800,7 +1800,7 @@ const DocsTable = ({
 
     return (
       <div
-        className={`flex items-center justify-between gap-3 px-4 py-3 ${
+        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 px-4 py-3 ${
           isActive
             ? "border border-orange-300 bg-orange-50"
             : "border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
@@ -1819,18 +1819,18 @@ const DocsTable = ({
           >
             <RowIcon className="w-5 h-5" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-gray-900">{title}</p>
-            <p className="truncate text-xs text-gray-500">
-              {uploaded ? `Uploaded ${uploaded}` : "—"}
+            <p className="flex flex-wrap items-center gap-x-1 text-xs text-gray-500">
+              <span className="truncate">{uploaded ? `Uploaded ${uploaded}` : "—"}</span>
               {it.jobLink && category === "Resume" && (
                 <>
-                  {" • "}
+                  <span className="hidden sm:inline">•</span>
                   <a
                     href={it.jobLink.startsWith("http") ? it.jobLink : `https://${it.jobLink}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-orange-600 hover:underline"
+                    className="whitespace-nowrap text-orange-600 hover:underline"
                     onClick={(e) => e.stopPropagation()}
                   >
                     Job link
@@ -1841,7 +1841,7 @@ const DocsTable = ({
           </div>
         </button>
 
-        <div className="flex flex-shrink-0 items-center gap-3">
+        <div className="flex flex-shrink-0 items-center gap-3 self-end sm:self-auto">
           {groupActive && !isActive && (
             <span className="px-2 py-1 text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200">
               Set as Active
