@@ -398,6 +398,16 @@ export default function Login() {
   const [rememberFor30Days, setRememberFor30Days] = useState<boolean>(true)
 
   const navigate = useNavigate()
+  // After a client login, return to the screen they originally wanted (e.g.
+  // /?tab=upgrade). Only same-origin internal paths are honoured to avoid an
+  // open-redirect; anything else falls back to the dashboard root.
+  const clientRedirectTarget = () => {
+    try {
+      const r = new URLSearchParams(window.location.search).get('redirect')
+      if (r && r.startsWith('/') && !r.startsWith('//')) return r
+    } catch { /* ignore */ }
+    return '/'
+  }
   const { setName, setEmailOperations, setRole, setManagedUsers, setOperatorNamesMap, reset: resetOperationsStore } = useOperationsStore()
   const userContext = useContext(UserContext)
   const setData = userContext?.setData
@@ -622,7 +632,7 @@ export default function Login() {
           )
           toastUtils.dismissToast(loadingToast)
           toastUtils.success(toastMessages.loginSuccess)
-          navigate("/")
+          navigate(clientRedirectTarget())
         } else {
           resetOperationsStore()
           localStorage.removeItem("role")
@@ -808,7 +818,7 @@ export default function Login() {
                   )
                   toastUtils.dismissToast(loadingToast)
                   toastUtils.success(toastMessages.loginSuccess)
-                  navigate("/")
+                  navigate(clientRedirectTarget())
                 }
               } catch (err) {
                 console.error(err)

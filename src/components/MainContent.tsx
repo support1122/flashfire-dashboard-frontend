@@ -150,12 +150,24 @@ export default function MainContent() {
     }
   }, []);
 
-  // useEffect(()=>{
-  // if ((!token || token.length == 0) && role != "operations") {
-  //     console.log("navigating to login");
-  //     navigate("/login");
-  // }
-  // },[])
+  // Auth gate: the dashboard (including ?tab=upgrade) requires login. A logged-out
+  // visitor is bounced to /login. We check BOTH the context token and the stored
+  // auth so a hard refresh — where the context hasn't hydrated yet — never bounces
+  // an already-logged-in user. The intended tab is preserved via ?redirect= so the
+  // user lands back on the screen they wanted after signing in. Operators are
+  // exempt (their session lives in the operations store).
+  useEffect(() => {
+    let storedToken = '';
+    try {
+      const raw = localStorage.getItem('userAuth');
+      if (raw) storedToken = JSON.parse(raw)?.token || '';
+    } catch { /* ignore malformed storage */ }
+    const hasToken = (!!token && token.length > 0) || storedToken.length > 0;
+    if (!hasToken && role !== 'operations') {
+      const next = window.location.pathname + window.location.search; // keep ?tab=upgrade etc.
+      navigate(`/login?redirect=${encodeURIComponent(next)}`, { replace: true });
+    }
+  }, [token, role, navigate]);
 useEffect(() => {
   // Guarded and keyed on the email. With an empty dep array this fired on the
   // very first render, before the context had hydrated, and POSTed
@@ -218,8 +230,18 @@ useEffect(() => {
   updateUserDetails();
 }, [userDetails?.email]);
 
-
-
+  // Don't render the dashboard for a logged-out visitor — the effect above is
+  // navigating them to /login. Returning null avoids a flash of the full UI
+  // (which is the whole point: no one unauthenticated should see this screen).
+  let hasStoredToken = false;
+  try {
+    const raw = localStorage.getItem('userAuth');
+    if (raw) hasStoredToken = Boolean(JSON.parse(raw)?.token);
+  } catch { /* ignore */ }
+  const isAuthed = (!!token && token.length > 0) || hasStoredToken;
+  if (!isAuthed && role !== 'operations') {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
