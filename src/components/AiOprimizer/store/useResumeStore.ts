@@ -18,6 +18,7 @@ interface ResumeStore {
      showChanges: boolean;
      changedFields: Set<string>;
      showPublications: boolean;
+     showCertifications: boolean;
      // Medical resume "Therapeutic Areas" section. Optional include toggle;
      // the section content is never AI-optimized regardless of this flag.
      showTherapeuticAreas: boolean;
@@ -45,6 +46,7 @@ interface ResumeStore {
      setShowProjects: (value: boolean) => void;
      setShowSummary: (value: boolean) => void;
      setShowPublications: (value: boolean) => void;
+     setShowCertifications: (value: boolean) => void;
      setShowTherapeuticAreas: (value: boolean) => void;
      setIsSaved: (value: boolean) => void;
      setJobDescription: (value: string) => void;
@@ -94,6 +96,7 @@ export const useResumeStore = create<ResumeStore>()(
                     showChanges: false,
                     changedFields: new Set(),
                     showPublications: false,
+                    showCertifications: false,
                     showTherapeuticAreas: false,
 
                     // Section ordering for drag and drop
@@ -115,6 +118,7 @@ export const useResumeStore = create<ResumeStore>()(
                     lastSelectedResumeId: null,
 
                     setShowPublications: (value) => set({ showPublications: value }),
+                    setShowCertifications: (value) => set({ showCertifications: value }),
                     setShowTherapeuticAreas: (value) => set({ showTherapeuticAreas: value }),
                     setResumeData: (data) => set({ resumeData: data }),
                     setBaseResume: (data) => set({ baseResume: data }),
@@ -169,6 +173,7 @@ export const useResumeStore = create<ResumeStore>()(
                               showSummary: false, // Will be set based on database check
                               isSaved: false,
                               showPublications: false,
+                              showCertifications: false,
                               showTherapeuticAreas: false,
                               jobDescription: "",
                               isOptimizing: false,
@@ -246,6 +251,7 @@ export const useResumeStore = create<ResumeStore>()(
                                                   showChanges: false,
                                                   changedFields: [],
                                                   showPublications: false,
+                                                  showCertifications: false,
                                                   lastSelectedResume: data,
                                                   lastSelectedResumeId: resumeId
                                              },
@@ -364,6 +370,7 @@ export const useResumeStore = create<ResumeStore>()(
                          showChanges: state.showChanges,
                          changedFields: Array.from(state.changedFields),
                          showPublications: state.showPublications,
+                         showCertifications: state.showCertifications,
                          showTherapeuticAreas: state.showTherapeuticAreas,
                          sectionOrder: state.sectionOrder,
                          // sectionTitles intentionally NOT persisted. It's a
@@ -409,6 +416,9 @@ export const useResumeStore = create<ResumeStore>()(
                          // Ensure boolean values are properly set (fix undefined issues)
                          if (typeof state.showPublications !== 'boolean') {
                               state.showPublications = false;
+                         }
+                         if (typeof state.showCertifications !== 'boolean') {
+                              state.showCertifications = false;
                          }
                          if (typeof state.showLeadership !== 'boolean') {
                               state.showLeadership = false;

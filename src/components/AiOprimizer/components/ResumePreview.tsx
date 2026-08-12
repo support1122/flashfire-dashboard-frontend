@@ -112,6 +112,12 @@ interface ResumeData {
         id: string;
         details: string;
     }>;
+    certifications?: Array<{
+        id: string;
+        title: string;
+        issuer: string;
+        date: string;
+    }>;
     // Operator-defined free-form sections. Ordered via sectionOrder entries
     // of the form `custom:<id>`. Never AI-optimized.
     customSections?: Array<{
@@ -128,6 +134,7 @@ interface ResumePreviewProps {
     showProjects?: boolean;
     showSummary?: boolean;
     showPublications?: boolean; // Added for Publications section
+    showCertifications?: boolean; // Added for Certifications section
     showChanges?: boolean;
     changedFields?: Set<string>;
     onDownloadClick?: () => void; // Add this prop to handle download clicks
@@ -146,12 +153,13 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     showProjects = false,
     showSummary = true,
     showPublications = false,
+    showCertifications = false,
     showChanges = false,
     changedFields = new Set(),
     onDownloadClick,
     showPrintButtons = true,
     showDirectPdfButton = true,
-    sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education", "publications"],
+    sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education", "publications", "certifications"],
     sectionTitles = {},
 }) => {
     // Resolve a heading: render the operator override uppercased, else the
@@ -481,6 +489,12 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             if (!showPublications && finalSectionOrder.includes("publications")) {
                 finalSectionOrder = finalSectionOrder.filter(id => id !== "publications");
             }
+            if (showCertifications && !finalSectionOrder.includes("certifications")) {
+                finalSectionOrder.push("certifications");
+            }
+            if (!showCertifications && finalSectionOrder.includes("certifications")) {
+                finalSectionOrder = finalSectionOrder.filter(id => id !== "certifications");
+            }
 
             const pdfPayload = {
                 personalInfo: data.personalInfo,
@@ -491,12 +505,14 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 skills: data.skills || [],
                 education: data.education || [],
                 publications: data.publications || [],
+                certifications: data.certifications || [],
                 customSections: data.customSections || [],
                 checkboxStates: {
                     showSummary: showSummary,
                     showProjects: showProjects,
                     showLeadership: showLeadership,
                     showPublications: showPublications,
+                    showCertifications: showCertifications,
                 },
                 sectionTitles: sectionTitles || {},
                 sectionOrder: finalSectionOrder,
@@ -631,12 +647,14 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 skills: data.skills || [],
                 education: data.education || [],
                 publications: data.publications || [],
+                certifications: data.certifications || [],
                 customSections: data.customSections || [],
                 checkboxStates: {
                     showSummary: showSummary,
                     showProjects: showProjects,
                     showLeadership: showLeadership,
                     showPublications: showPublications,
+                    showCertifications: showCertifications,
                 },
                 sectionTitles: sectionTitles || {},
                 sectionOrder: sectionOrder,
@@ -863,6 +881,12 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
             if (!showPublications && finalSectionOrder.includes("publications")) {
                 finalSectionOrder = finalSectionOrder.filter(id => id !== "publications");
             }
+            if (showCertifications && !finalSectionOrder.includes("certifications")) {
+                finalSectionOrder.push("certifications");
+            }
+            if (!showCertifications && finalSectionOrder.includes("certifications")) {
+                finalSectionOrder = finalSectionOrder.filter(id => id !== "certifications");
+            }
 
             // Format data for PDF server
             const pdfPayload = {
@@ -874,12 +898,14 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 skills: data.skills || [],
                 education: data.education || [],
                 publications: data.publications || [],
+                certifications: data.certifications || [],
                 customSections: data.customSections || [],
                 checkboxStates: {
                     showSummary: showSummary,
                     showProjects: showProjects,
                     showLeadership: showLeadership,
                     showPublications: showPublications,
+                    showCertifications: showCertifications,
                 },
                 sectionTitles: sectionTitles || {},
                 sectionOrder: finalSectionOrder,
@@ -1960,6 +1986,85 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                     </div>
                 );
 
+            case "certifications": {
+                if (!showCertifications) return null;
+                const certs = (data.certifications || []).filter(
+                    (c) => (c.title && c.title.trim()) || (c.issuer && c.issuer.trim())
+                );
+                if (certs.length === 0) return null;
+                return (
+                    <div style={{ marginBottom: styles.sectionMargin, ...getHighlightStyle("certifications") }}>
+                        <div
+                            style={{
+                                fontSize: styles.fontSize,
+                                borderBottom: "1px solid #000",
+                                paddingBottom: "2px",
+                                marginBottom: styles.itemMargin,
+                                fontWeight: "bold",
+                                letterSpacing: "-0.025em",
+                            }}
+                        >
+                            CERTIFICATIONS
+                        </div>
+                        {certs.map((cert, index) => (
+                            <div
+                                key={cert.id}
+                                style={{ marginBottom: index === certs.length - 1 ? "0px" : styles.itemMargin }}
+                            >
+                                {/* Title (bold, left) + date (bold, right) */}
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "flex-start",
+                                        marginBottom: styles.bulletSpacing,
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            fontSize: styles.fontSize,
+                                            fontWeight: "bold",
+                                            letterSpacing: "-0.025em",
+                                            lineHeight: styles.lineHeight,
+                                            flex: "1",
+                                        }}
+                                    >
+                                        {cert.title}
+                                    </div>
+                                    {cert.date && (
+                                        <div
+                                            style={{
+                                                fontSize: styles.fontSize,
+                                                fontWeight: "bold",
+                                                textAlign: "right",
+                                                marginLeft: "20px",
+                                                letterSpacing: "-0.025em",
+                                                lineHeight: styles.lineHeight,
+                                                whiteSpace: "nowrap",
+                                            }}
+                                        >
+                                            {cert.date}
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Issuer (normal, below) */}
+                                {cert.issuer && (
+                                    <div
+                                        style={{
+                                            fontSize: styles.fontSize,
+                                            letterSpacing: "-0.025em",
+                                            lineHeight: styles.lineHeight,
+                                        }}
+                                    >
+                                        {cert.issuer}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+
             default:
                 return null;
         }
@@ -2189,12 +2294,14 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                 skills: data.skills || [],
                 education: data.education || [],
                 publications: data.publications || [],
+                certifications: data.certifications || [],
                 customSections: data.customSections || [],
                 checkboxStates: {
                     showSummary: showSummary,
                     showProjects: showProjects,
                     showLeadership: showLeadership,
                     showPublications: showPublications,
+                    showCertifications: showCertifications,
                 },
                 sectionTitles: sectionTitles || {},
                 sectionOrder: finalSectionOrderForDownload,
