@@ -2025,7 +2025,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                     <div
                                         style={{
                                             fontSize: styles.fontSize,
-                                            fontWeight: "bold",
+                                            fontWeight: "normal",
                                             letterSpacing: "-0.025em",
                                             lineHeight: styles.lineHeight,
                                             flex: "1",
