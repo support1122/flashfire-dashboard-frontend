@@ -888,38 +888,35 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 );
                 if (certs.length === 0) return null;
                 return (
-                    <div style={{ marginBottom: styles.sectionMargin }}>
+                    <div style={{ marginBottom: "12px" }}>
                         <div
                             style={{
-                                fontSize: styles.fontSize,
+                                fontSize: "9pt",
                                 borderBottom: "1px solid #000",
-                                paddingBottom: "2px",
-                                marginBottom: styles.itemMargin,
+                                paddingBottom: "8px",
+                                marginBottom: "6px",
                                 fontWeight: "bold",
-                                letterSpacing: "-0.025em",
                             }}
                         >
-                            CERTIFICATIONS
+                            {headingFor("certifications", "Certifications")}
                         </div>
-                        {certs.map((cert, index) => (
+                        {certs.map((cert) => (
                             <div
                                 key={cert.id}
-                                style={{ marginBottom: index === certs.length - 1 ? "0px" : styles.itemMargin }}
+                                style={{ marginBottom: "6px" }}
                             >
                                 <div
                                     style={{
                                         display: "flex",
                                         justifyContent: "space-between",
                                         alignItems: "flex-start",
-                                        marginBottom: styles.bulletSpacing,
                                     }}
                                 >
                                     <div
                                         style={{
-                                            fontSize: styles.fontSize,
+                                            fontSize: "9pt",
                                             fontWeight: "bold",
-                                            letterSpacing: "-0.025em",
-                                            lineHeight: styles.lineHeight,
+                                            lineHeight: "1.3",
                                             flex: "1",
                                         }}
                                     >
@@ -928,12 +925,11 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                     {cert.date && (
                                         <div
                                             style={{
-                                                fontSize: styles.fontSize,
+                                                fontSize: "9pt",
                                                 fontWeight: "bold",
                                                 textAlign: "right",
                                                 marginLeft: "20px",
-                                                letterSpacing: "-0.025em",
-                                                lineHeight: styles.lineHeight,
+                                                lineHeight: "1.3",
                                                 whiteSpace: "nowrap",
                                             }}
                                         >
@@ -944,9 +940,8 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                 {cert.issuer && (
                                     <div
                                         style={{
-                                            fontSize: styles.fontSize,
-                                            letterSpacing: "-0.025em",
-                                            lineHeight: styles.lineHeight,
+                                            fontSize: "9pt",
+                                            lineHeight: "1.3",
                                         }}
                                     >
                                         {cert.issuer}
