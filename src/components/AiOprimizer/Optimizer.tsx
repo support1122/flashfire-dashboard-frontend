@@ -2803,6 +2803,14 @@ function App() {
                                             })),
                                         ];
                                         const order = sectionOrder.filter((id) => id !== "personalInfo");
+                                        // A resume saved before certifications existed has no
+                                        // "certifications" in its stored order, so the toggle card
+                                        // would never render. Surface it next to publications.
+                                        if (!order.includes("certifications")) {
+                                            const pubIdx = order.indexOf("publications");
+                                            if (pubIdx >= 0) order.splice(pubIdx + 1, 0, "certifications");
+                                            else order.push("certifications");
+                                        }
                                         const ordered = order
                                             .map((id) => definitions.find((d) => d.id === id))
                                             .filter(Boolean) as any[];
