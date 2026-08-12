@@ -1049,6 +1049,8 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                 sections.push("leadership");
             if (showPublications && data.publications?.length > 0)
                 sections.push("publications");
+            if (showCertifications && data.certifications?.length > 0)
+                sections.push("certifications");
             totalLines += sections.length * 2;
 
             // Summary (with wrap estimation)
@@ -1126,7 +1128,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
 
         const newScaling = calculateContentDensity();
         setScalingFactor(newScaling);
-    }, [data, showLeadership, showProjects, showSummary, showPublications]);
+    }, [data, showLeadership, showProjects, showSummary, showPublications, showCertifications]);
 
     // Dynamic styles based on scaling factor
     const getScaledStyles = () => {
@@ -2235,6 +2237,19 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                 if (!showPublications && order.includes("publications")) {
                     order.splice(order.indexOf("publications"), 1);
                 }
+                // Certifications is a newer section, so resumes saved before it
+                // existed have no "certifications" in their stored order. Without
+                // this it never reaches renderSection and the section stays
+                // invisible in the preview even with the toggle on. Place it right
+                // after publications to match the editor.
+                if (showCertifications && !order.includes("certifications")) {
+                    const pubIdx = order.indexOf("publications");
+                    if (pubIdx >= 0) order.splice(pubIdx + 1, 0, "certifications");
+                    else order.push("certifications");
+                }
+                if (!showCertifications && order.includes("certifications")) {
+                    order.splice(order.indexOf("certifications"), 1);
+                }
                 // Wrap every rendered section in a div with a small marginTop
                 // so the section heading gets breathing room from the previous
                 // section's last line (skip the first to avoid pushing it down
@@ -2283,6 +2298,18 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
             }
             if (!showPublications && finalSectionOrderForDownload.includes("publications")) {
                 finalSectionOrderForDownload = finalSectionOrderForDownload.filter(id => id !== "publications");
+            }
+            // Keep the downloaded PDF in sync with the on-screen preview: a resume
+            // saved before certifications existed has no "certifications" in its
+            // stored order, so without this the section would be missing from the
+            // PDF even when enabled.
+            if (showCertifications && !finalSectionOrderForDownload.includes("certifications")) {
+                const pubIdx = finalSectionOrderForDownload.indexOf("publications");
+                if (pubIdx >= 0) finalSectionOrderForDownload.splice(pubIdx + 1, 0, "certifications");
+                else finalSectionOrderForDownload.push("certifications");
+            }
+            if (!showCertifications && finalSectionOrderForDownload.includes("certifications")) {
+                finalSectionOrderForDownload = finalSectionOrderForDownload.filter(id => id !== "certifications");
             }
 
             const pdfPayload = {
