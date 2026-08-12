@@ -1192,6 +1192,9 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
             if (!finalSectionOrder.includes("publications")) {
                 finalSectionOrder.push("publications");
             }
+            if (!finalSectionOrder.includes("certifications")) {
+                finalSectionOrder.push("certifications");
+            }
             if (!finalSectionOrder.includes("therapeuticAreas")) {
                 finalSectionOrder.push("therapeuticAreas");
             }
@@ -1432,9 +1435,19 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
             </div>
 
             {/* Render sections based on section order */}
-            {sectionOrder
-                .filter(sectionId => sectionId !== "personalInfo") // Skip personal info as it's always first
-                .map(sectionId => renderSection(sectionId))}
+            {(() => {
+                const order = sectionOrder.filter(sectionId => sectionId !== "personalInfo"); // Skip personal info as it's always first
+                // Certifications is a newer section, so resumes saved before it
+                // existed have no "certifications" in their stored order. Inject
+                // it (after publications) when enabled so it reaches renderSection
+                // and actually appears in the medical preview.
+                if (showCertifications && !order.includes("certifications")) {
+                    const pubIdx = order.indexOf("publications");
+                    if (pubIdx >= 0) order.splice(pubIdx + 1, 0, "certifications");
+                    else order.push("certifications");
+                }
+                return order.map(sectionId => renderSection(sectionId));
+            })()}
         </>
     );
 

@@ -1107,7 +1107,14 @@ function App() {
 
     // Handle jobId from URL
     useEffect(() => {
-        if (jobId && jobId !== resume_id) {
+        // The admin "AI Optimizer" button opens a hardcoded /optimize/1, whose
+        // "1" is not a resume id. Adopt jobId as the save key only when it is a
+        // real Mongo ObjectId (e.g. the JobModal deep-link /optimize/<id>);
+        // otherwise the real id is set once a resume actually loads (below).
+        // Sending "1" as resume_id makes the backend reject every save with
+        // 400 "Invalid resume_id".
+        const isObjectId = /^[a-f\d]{24}$/i.test(jobId || "");
+        if (jobId && jobId !== resume_id && isObjectId) {
             console.log("Setting resume ID from URL:", jobId);
             setResumeId(jobId);
         }
@@ -1121,7 +1128,17 @@ function App() {
             debugLocalStorage();
             // Try to load the last selected resume first
             const resumeLoaded = loadLastSelectedResume();
-            if (!resumeLoaded) {
+            if (resumeLoaded) {
+                // loadLastSelectedResume restores the resume data but not the
+                // save key (resume_id lives in a different store). When the URL
+                // carried a non-ObjectId like "1", resume_id is still that junk
+                // value; adopt the loaded resume's real id so saves target the
+                // right document instead of being rejected as "Invalid resume_id".
+                const resumeIdIsValid = /^[a-f\d]{24}$/i.test(resume_id || "");
+                if (lastSelectedResumeId && !resumeIdIsValid) {
+                    setResumeId(lastSelectedResumeId);
+                }
+            } else {
                 console.log(
                     "No last selected resume found, will use initial data"
                 );
@@ -1133,6 +1150,9 @@ function App() {
         storeHydrated,
         loadLastSelectedResume,
         debugLocalStorage,
+        lastSelectedResumeId,
+        resume_id,
+        setResumeId,
     ]);
 
     // Load assigned resume when email is present in URL or when user is authenticated
