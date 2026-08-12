@@ -3,18 +3,19 @@ import { useEffect, useRef, useContext, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  Home,
-  Briefcase,
-  FileText,
+  LayoutDashboard,
+  ListChecks,
+  FileStack,
   User,
-  LogOut,
+  Users,
+  DoorOpen,
   ChevronDown,
   Edit2Icon,
   Mail,
   Menu,
   X,
   Settings,
-  Gift,
+  Handshake,
 } from "lucide-react";
 import { UserContext } from "../state_management/UserContext.tsx";
 import { useUserProfile } from "../state_management/ProfileContext.tsx";
@@ -187,9 +188,9 @@ const NavigationOps: React.FC<NavigationProps> = ({
   }, []);
 
   const tabs: TabItem[] = [
-    { id: "dashboard", label: "Dashboard", icon: Home },
-    { id: "jobs", label: "Job Tracker", icon: Briefcase },
-    { id: "optimizer", label: "Documents", icon: FileText },
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "jobs", label: "Job Tracker", icon: ListChecks },
+    { id: "optimizer", label: "Documents", icon: FileStack },
     ...(isOpsRole
       ? [{ id: "mail", label: "Mail", icon: Mail }]
       : []),
@@ -438,7 +439,7 @@ const NavigationOps: React.FC<NavigationProps> = ({
                 className="hidden md:flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
                 title="Refer and Earn"
               >
-                <Gift className="w-4 h-4" />
+                <Handshake className="w-4 h-4" />
                 <span className="hidden lg:inline">Refer & Earn</span>
               </button>
             )}
@@ -456,7 +457,7 @@ const NavigationOps: React.FC<NavigationProps> = ({
                   className="p-2 rounded-md bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition-all duration-200"
                   title="Refer and Earn"
                 >
-                  <Gift className="w-5 h-5" />
+                  <Handshake className="w-5 h-5" />
                 </button>
               )}
 
@@ -581,7 +582,7 @@ const NavigationOps: React.FC<NavigationProps> = ({
                           onClick={handleSwitchUser}
                           className="flex items-center space-x-3 w-full px-4 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                         >
-                          <LogOut className="w-4 h-4" />
+                          <Users className="w-4 h-4" />
                           <span>Switch Client</span>
                         </button>
                       </div>
@@ -591,7 +592,7 @@ const NavigationOps: React.FC<NavigationProps> = ({
                           onClick={handleLogout}
                           className="flex items-center space-x-3 w-full px-4 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                         >
-                          <LogOut className="w-4 h-4" />
+                          <DoorOpen className="w-4 h-4" />
                           <span>Sign Out</span>
                         </button>
                       </div>
@@ -648,7 +649,7 @@ const NavigationOps: React.FC<NavigationProps> = ({
               }}
               className="w-full flex items-center gap-3 px-5 py-3 text-sm font-medium text-left transition-all text-gray-600 hover:bg-gray-50 border-t border-gray-200"
             >
-              <Gift className="w-4 h-4" />
+              <Handshake className="w-4 h-4" />
               Refer & Earn
             </button>
           )}
@@ -739,7 +740,7 @@ const NavigationOps: React.FC<NavigationProps> = ({
                           onClick={handleSwitchUser}
                           className="flex items-center space-x-3 w-full px-4 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                         >
-                          <LogOut className="w-4 h-4" />
+                          <Users className="w-4 h-4" />
                           <span>Switch Client</span>
                         </button>
                       </div>
@@ -749,7 +750,7 @@ const NavigationOps: React.FC<NavigationProps> = ({
                           onClick={handleLogout}
                           className="flex items-center space-x-3 w-full px-4 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                         >
-                          <LogOut className="w-4 h-4" />
+                          <DoorOpen className="w-4 h-4" />
                           <span>Sign Out</span>
                         </button>
                       </div>
