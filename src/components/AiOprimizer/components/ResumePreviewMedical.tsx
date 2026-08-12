@@ -915,7 +915,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                     <div
                                         style={{
                                             fontSize: "9pt",
-                                            fontWeight: "bold",
+                                            fontWeight: "normal",
                                             lineHeight: "1.3",
                                             flex: "1",
                                         }}
