@@ -2031,7 +2031,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                             flex: "1",
                                         }}
                                     >
-                                        {cert.title}
+                                        {renderMarkedText(cert.title)}
                                     </div>
                                     {cert.date && (
                                         <div
@@ -2045,7 +2045,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                                 whiteSpace: "nowrap",
                                             }}
                                         >
-                                            {cert.date}
+                                            {renderMarkedText(cert.date)}
                                         </div>
                                     )}
                                 </div>
@@ -2058,7 +2058,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                             lineHeight: styles.lineHeight,
                                         }}
                                     >
-                                        {cert.issuer}
+                                        {renderMarkedText(cert.issuer)}
                                     </div>
                                 )}
                             </div>

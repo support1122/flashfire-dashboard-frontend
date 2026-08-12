@@ -920,7 +920,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             flex: "1",
                                         }}
                                     >
-                                        {cert.title}
+                                        {renderMarkedText(cert.title)}
                                     </div>
                                     {cert.date && (
                                         <div
@@ -933,7 +933,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                 whiteSpace: "nowrap",
                                             }}
                                         >
-                                            {cert.date}
+                                            {renderMarkedText(cert.date)}
                                         </div>
                                     )}
                                 </div>
@@ -944,7 +944,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             lineHeight: "1.3",
                                         }}
                                     >
-                                        {cert.issuer}
+                                        {renderMarkedText(cert.issuer)}
                                     </div>
                                 )}
                             </div>
