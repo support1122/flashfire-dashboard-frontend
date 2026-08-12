@@ -1177,11 +1177,15 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
             const pdfServerUrl = import.meta.env.VITE_PDF_SERVER_URL || "http://localhost:8000";
 
             // Auto-enable showPublications if publications exist in data
-            const hasPublications = data.publications && 
-                data.publications.length > 0 && 
+            const hasPublications = data.publications &&
+                data.publications.length > 0 &&
                 data.publications.some(pub => pub.details && pub.details.trim() !== "");
             const finalShowPublications = hasPublications || showPublications;
-            
+            const hasCertifications = (data.certifications || []).some(
+                (c) => (c.title && c.title.trim()) || (c.issuer && c.issuer.trim())
+            );
+            const finalShowCertifications = hasCertifications || showCertifications;
+
             // Ensure publications is in sectionOrder
             const finalSectionOrder = [...sectionOrder];
             if (!finalSectionOrder.includes("publications")) {
