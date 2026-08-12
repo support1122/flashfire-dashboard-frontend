@@ -249,6 +249,16 @@ const statusBadgeClass = (status: string): string => {
   return "bg-white text-gray-600 border border-gray-300";
 };
 
+// Client-facing status text. The backend stores removals with extra context the
+// client should never see - "removed by ai", "deleted by <operator>" - so any
+// variant that the backend's own /^(deleted|removed)/i test counts as removed
+// is collapsed to a plain "removed". Everything else shows as-is.
+const clientStatusLabel = (status: string | undefined): string => {
+  const s = (status || "saved").toLowerCase();
+  if (/^(deleted|removed)/.test(s)) return "removed";
+  return s;
+};
+
 const RecentActivity = React.memo(({ recentJobs }: { recentJobs: any[] }) => (
   <div className="bg-white border border-gray-300 p-6">
     {/* Header */}
@@ -287,7 +297,7 @@ const RecentActivity = React.memo(({ recentJobs }: { recentJobs: any[] }) => (
               <td className="py-3.5 pr-4 text-sm text-gray-500">{job.companyName}</td>
               <td className="py-3.5">
                 <span className={`inline-flex items-center px-2.5 py-1 text-xs ${statusBadgeClass(job.currentStatus || "saved")}`}>
-                  {(job.currentStatus || "saved").toLowerCase()}
+                  {clientStatusLabel(job.currentStatus)}
                 </span>
               </td>
             </tr>
