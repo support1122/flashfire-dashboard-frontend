@@ -66,6 +66,12 @@ interface ResumeData {
         id: string;
         details: string;
     }>;
+    certifications?: Array<{
+        id: string;
+        title: string;
+        issuer: string;
+        date: string;
+    }>;
     // Plain text section (e.g. "Oncology • Neuroscience • ..."). Optional —
     // resumes saved before this field existed don't have it.
     therapeuticAreas?: string;
@@ -85,6 +91,7 @@ interface ResumePreviewProps {
     showProjects?: boolean;
     showSummary?: boolean;
     showPublications?: boolean;
+    showCertifications?: boolean;
     showTherapeuticAreas?: boolean;
     showPrintButtons?: boolean;
     showDirectPdfButton?: boolean;
@@ -98,11 +105,12 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     showLeadership = true,
     showProjects = false,
     showPublications = false,
+    showCertifications = false,
     showTherapeuticAreas = false,
     showSummary = true,
     showPrintButtons = true,
     showDirectPdfButton = true,
-    sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education", "publications"],
+    sectionOrder = ["personalInfo", "summary", "workExperience", "projects", "leadership", "skills", "education", "publications", "certifications"],
     sectionTitles = {},
     onDownloadClick,
 }) => {
@@ -873,6 +881,83 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 );
             }
 
+            case "certifications": {
+                if (!showCertifications) return null;
+                const certs = (data.certifications || []).filter(
+                    (c) => (c.title && c.title.trim()) || (c.issuer && c.issuer.trim())
+                );
+                if (certs.length === 0) return null;
+                return (
+                    <div style={{ marginBottom: styles.sectionMargin }}>
+                        <div
+                            style={{
+                                fontSize: styles.fontSize,
+                                borderBottom: "1px solid #000",
+                                paddingBottom: "2px",
+                                marginBottom: styles.itemMargin,
+                                fontWeight: "bold",
+                                letterSpacing: "-0.025em",
+                            }}
+                        >
+                            CERTIFICATIONS
+                        </div>
+                        {certs.map((cert, index) => (
+                            <div
+                                key={cert.id}
+                                style={{ marginBottom: index === certs.length - 1 ? "0px" : styles.itemMargin }}
+                            >
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "flex-start",
+                                        marginBottom: styles.bulletSpacing,
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            fontSize: styles.fontSize,
+                                            fontWeight: "bold",
+                                            letterSpacing: "-0.025em",
+                                            lineHeight: styles.lineHeight,
+                                            flex: "1",
+                                        }}
+                                    >
+                                        {cert.title}
+                                    </div>
+                                    {cert.date && (
+                                        <div
+                                            style={{
+                                                fontSize: styles.fontSize,
+                                                fontWeight: "bold",
+                                                textAlign: "right",
+                                                marginLeft: "20px",
+                                                letterSpacing: "-0.025em",
+                                                lineHeight: styles.lineHeight,
+                                                whiteSpace: "nowrap",
+                                            }}
+                                        >
+                                            {cert.date}
+                                        </div>
+                                    )}
+                                </div>
+                                {cert.issuer && (
+                                    <div
+                                        style={{
+                                            fontSize: styles.fontSize,
+                                            letterSpacing: "-0.025em",
+                                            lineHeight: styles.lineHeight,
+                                        }}
+                                    >
+                                        {cert.issuer}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+
             default:
                 return null;
         }
@@ -998,11 +1083,18 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 data.publications.length > 0 &&
                 data.publications.some(pub => pub.details && pub.details.trim() !== "");
             const finalShowPublications = hasPublications || showPublications;
+            const hasCertifications = (data.certifications || []).some(
+                (c) => (c.title && c.title.trim()) || (c.issuer && c.issuer.trim())
+            );
+            const finalShowCertifications = hasCertifications || showCertifications;
 
             // Ensure publications is in sectionOrder
             const finalSectionOrder = [...sectionOrder];
             if (!finalSectionOrder.includes("publications")) {
                 finalSectionOrder.push("publications");
+            }
+            if (!finalSectionOrder.includes("certifications")) {
+                finalSectionOrder.push("certifications");
             }
             if (!finalSectionOrder.includes("therapeuticAreas")) {
                 finalSectionOrder.push("therapeuticAreas");
@@ -1017,6 +1109,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 skills: data.skills || [],
                 education: data.education || [],
                 publications: data.publications || [],
+                certifications: data.certifications || [],
                 therapeuticAreas: data.therapeuticAreas || "",
                 customSections: data.customSections || [],
                 checkboxStates: {
@@ -1024,6 +1117,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                     showProjects: showProjects,
                     showLeadership: showLeadership,
                     showPublications: finalShowPublications,
+                    showCertifications: finalShowCertifications,
                     showTherapeuticAreas: showTherapeuticAreas,
                 },
                 sectionTitles: sectionTitles || {},
@@ -1111,6 +1205,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                 skills: data.skills || [],
                 education: data.education || [],
                 publications: data.publications || [],
+                certifications: data.certifications || [],
                 therapeuticAreas: data.therapeuticAreas || "",
                 customSections: data.customSections || [],
                 checkboxStates: {
@@ -1118,6 +1213,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                     showProjects: showProjects,
                     showLeadership: showLeadership,
                     showPublications: finalShowPublications,
+                    showCertifications: finalShowCertifications,
                     showTherapeuticAreas: showTherapeuticAreas,
                 },
                 sectionTitles: sectionTitles || {},
@@ -1367,11 +1463,18 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                 data.publications.length > 0 &&
                 data.publications.some(pub => pub.details && pub.details.trim() !== "");
             const finalShowPublications = hasPublications || showPublications;
+            const hasCertifications = (data.certifications || []).some(
+                (c) => (c.title && c.title.trim()) || (c.issuer && c.issuer.trim())
+            );
+            const finalShowCertifications = hasCertifications || showCertifications;
 
             // Ensure publications is in sectionOrder
             const finalSectionOrder = [...sectionOrder];
             if (!finalSectionOrder.includes("publications")) {
                 finalSectionOrder.push("publications");
+            }
+            if (!finalSectionOrder.includes("certifications")) {
+                finalSectionOrder.push("certifications");
             }
             if (!finalSectionOrder.includes("therapeuticAreas")) {
                 finalSectionOrder.push("therapeuticAreas");
@@ -1386,6 +1489,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                 skills: data.skills || [],
                 education: data.education || [],
                 publications: data.publications || [],
+                certifications: data.certifications || [],
                 therapeuticAreas: data.therapeuticAreas || "",
                 customSections: data.customSections || [],
                 checkboxStates: {
@@ -1393,6 +1497,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                     showProjects: showProjects,
                     showLeadership: showLeadership,
                     showPublications: finalShowPublications,
+                    showCertifications: finalShowCertifications,
                     showTherapeuticAreas: showTherapeuticAreas,
                 },
                 sectionTitles: sectionTitles || {},

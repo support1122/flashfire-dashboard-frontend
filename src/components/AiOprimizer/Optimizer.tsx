@@ -22,6 +22,7 @@ import AdminDashboard from "./components/AdminDashboard";
 // import { ResumePreview1 } from "./components/ResumePreview1";
 import { PreviewStore } from "./store/PreviewStore";
 import { Publications } from "./components/Publications";
+import Certifications, { CertificationItem } from "./components/Certifications";
 import { TherapeuticAreas } from "./components/TherapeuticAreas";
 import { CustomSectionEditor } from "./components/CustomSectionEditor";
 import { CustomSectionItem } from "./types/ResumeTypes";
@@ -530,6 +531,8 @@ function App() {
         // setUserId,
         showPublications,
         setShowPublications,
+        showCertifications,
+        setShowCertifications,
         showTherapeuticAreas,
         setShowTherapeuticAreas,
         sectionOrder,
@@ -1312,6 +1315,22 @@ function App() {
             );
         }
     };
+    const updateCertifications = (data: CertificationItem[]) => {
+        setResumeData({ ...resumeData, certifications: data } as typeof resumeData);
+        trackChanges("certifications");
+    };
+    const updateOptimizedCertifications = (data: CertificationItem[]) => {
+        if (optimizedData) {
+            setOptimizedData((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        certifications: data,
+                    }
+                    : null
+            );
+        }
+    };
 
     const handleLogin = async (
         loginToken: string,
@@ -1620,6 +1639,9 @@ function App() {
             if (!finalSectionOrder.includes("publications")) {
                 finalSectionOrder.push("publications");
             }
+            if (!finalSectionOrder.includes("certifications")) {
+                finalSectionOrder.push("certifications");
+            }
             if (!finalSectionOrder.includes("therapeuticAreas")) {
                 finalSectionOrder.push("therapeuticAreas");
             }
@@ -1628,6 +1650,13 @@ function App() {
                 resumeData.publications.length > 0 &&
                 resumeData.publications.some(pub => pub.details && pub.details.trim() !== "");
             const finalShowPublications = versionV === 2 ? (hasPublications || showPublications) : showPublications;
+            // Certifications carry no "details" field — a row counts as real once
+            // it has a title or an issuer. Date stays optional and is never used
+            // to decide whether the section shows.
+            const certList = ((resumeData as any).certifications || []) as CertificationItem[];
+            const hasCertifications = certList.length > 0 &&
+                certList.some(c => (c.title && c.title.trim() !== "") || (c.issuer && c.issuer.trim() !== ""));
+            const finalShowCertifications = hasCertifications || showCertifications;
 
             const saveData = {
                 // Identifies the resume being edited. Without it the backend has
@@ -1641,6 +1670,7 @@ function App() {
                     showProjects,
                     showLeadership,
                     showPublications: finalShowPublications,
+                    showCertifications: finalShowCertifications,
                     showTherapeuticAreas,
                 },
                 sectionOrder: finalSectionOrder,
@@ -2212,6 +2242,7 @@ function App() {
                         showProjects: showProjects,
                         showLeadership: showLeadership,
                         showPublications: showPublications,
+                        showCertifications: showCertifications,
                         showTherapeuticAreas: showTherapeuticAreas,
                         version: versionV,
                         sectionOrder: sectionOrder
@@ -2268,6 +2299,9 @@ function App() {
             // enabled or not, the text stays exactly as the operator wrote it.
             delete (filteredResumeForOptimization as any).therapeuticAreas;
             delete (filteredResumeForOptimization as any).customSections;
+            // Certifications are operator-entered facts (title/issuer/optional date),
+            // never rewritten by the AI — keep them out of the optimization payload.
+            delete (filteredResumeForOptimization as any).certifications;
             const t = convertDoubleHyphenToHyphen(filteredResumeForOptimization.summary);
             // console.log("filteredResumeForOptimization", t);
             const t2 = convertDoubleDashToHyphen(filteredResumeForOptimization.projects.map((project: any) => project.company).join(", "));
@@ -2332,6 +2366,8 @@ function App() {
                     // Always the untouched originals — never taken from the AI response.
                     therapeuticAreas: (resumeData as any).therapeuticAreas || "",
                     customSections: (resumeData as any).customSections || [],
+                    // Untouched originals — certifications are never AI-generated.
+                    certifications: (resumeData as any).certifications || [],
                 } as typeof resumeData;
 
                 setOptimizedData(newOptimizedData);
@@ -2722,6 +2758,19 @@ function App() {
                                                 onToggle: (enabled: boolean) => setShowPublications(enabled),
                                                 showToggle: true,
                                             },
+                                            {
+                                                id: "certifications",
+                                                title: "Certifications",
+                                                component: showCertifications ? (
+                                                    <Certifications
+                                                        data={(resumeData as any).certifications || []}
+                                                        onChange={updateCertifications}
+                                                    />
+                                                ) : <div className="text-gray-500 italic">Enable Certifications above to edit</div>,
+                                                isEnabled: showCertifications,
+                                                onToggle: (enabled: boolean) => setShowCertifications(enabled),
+                                                showToggle: true,
+                                            },
                                             // Medical template only — plain text, never AI-optimized
                                             ...(versionV === 2 ? [{
                                                 id: "therapeuticAreas",
@@ -2965,6 +3014,7 @@ function App() {
                                             showProjects={showProjects}
                                             showSummary={showSummary}
                                             showPublications={showPublications}
+                                            showCertifications={showCertifications}
                                             showChanges={userRole !== "admin"}
                                             changedFields={
                                                 userRole === "admin"
@@ -2984,6 +3034,7 @@ function App() {
                                             showProjects={showProjects}
                                             showSummary={showSummary}
                                             showPublications={showPublications}
+                                            showCertifications={showCertifications}
                                             showChanges={userRole !== "admin"}
                                             changedFields={
                                                 userRole === "admin"
@@ -3003,6 +3054,7 @@ function App() {
                                             showProjects={showProjects}
                                             showSummary={showSummary}
                                             showPublications={showPublications}
+                                            showCertifications={showCertifications}
                                             showTherapeuticAreas={showTherapeuticAreas}
                                             showChanges={userRole !== "admin"}
                                             changedFields={
@@ -3156,6 +3208,19 @@ function App() {
                                                                 ) : <div className="text-gray-500 italic">Enable Publications above to edit</div>,
                                                                 isEnabled: showPublications,
                                                                 onToggle: (enabled: boolean) => setShowPublications(enabled),
+                                                                showToggle: true,
+                                                            },
+                                                            {
+                                                                id: "certifications",
+                                                                title: "Certifications",
+                                                                component: showCertifications ? (
+                                                                    <Certifications
+                                                                        data={(optimizedData as any).certifications || []}
+                                                                        onChange={updateOptimizedCertifications}
+                                                                    />
+                                                                ) : <div className="text-gray-500 italic">Enable Certifications above to edit</div>,
+                                                                isEnabled: showCertifications,
+                                                                onToggle: (enabled: boolean) => setShowCertifications(enabled),
                                                                 showToggle: true,
                                                             },
                                                             // Medical template only — plain text, never AI-optimized
@@ -3357,6 +3422,7 @@ function App() {
                                             showProjects={showProjects}
                                             showSummary={showSummary}
                                             showPublications={showPublications}
+                                            showCertifications={showCertifications}
                                             showChanges={false}
                                             changedFields={new Set()}
                                         /> */}
@@ -3367,6 +3433,7 @@ function App() {
                                                 showProjects={showProjects}
                                                 showSummary={showSummary}
                                                 showPublications={showPublications}
+                                            showCertifications={showCertifications}
                                                 showChanges={false}
                                                 changedFields={new Set()}
                                                 sectionOrder={sectionOrder}
@@ -3380,6 +3447,7 @@ function App() {
                                                 showProjects={showProjects}
                                                 showSummary={showSummary}
                                                 showPublications={showPublications}
+                                            showCertifications={showCertifications}
                                                 showChanges={false}
                                                 changedFields={new Set()}
                                                 sectionOrder={sectionOrder}
@@ -3412,6 +3480,7 @@ function App() {
                                                 showProjects={showProjects}
                                                 showSummary={showSummary}
                                                 showPublications={showPublications}
+                                            showCertifications={showCertifications}
                                                 showChanges={true}
                                                 changedFields={changedFields}
                                                 sectionOrder={sectionOrder}
@@ -3425,6 +3494,7 @@ function App() {
                                                 showProjects={showProjects}
                                                 showSummary={showSummary}
                                                 showPublications={showPublications}
+                                            showCertifications={showCertifications}
                                                 showChanges={false}
                                                 changedFields={changedFields}
                                                 sectionOrder={sectionOrder}
@@ -3482,6 +3552,7 @@ function App() {
                                     showProjects={showProjects}
                                     showSummary={showSummary}
                                     showPublications={showPublications}
+                                            showCertifications={showCertifications}
                                     showChanges={false}
                                     changedFields={new Set()}
                                     sectionOrder={sectionOrder}
@@ -3496,6 +3567,7 @@ function App() {
                                     showProjects={showProjects}
                                     showSummary={showSummary}
                                     showPublications={showPublications}
+                                            showCertifications={showCertifications}
                                     showChanges={false}
                                     changedFields={new Set()}
                                     sectionOrder={sectionOrder}
@@ -3510,6 +3582,7 @@ function App() {
                                     showProjects={showProjects}
                                     showSummary={showSummary}
                                     showPublications={showPublications}
+                                            showCertifications={showCertifications}
                                     showTherapeuticAreas={showTherapeuticAreas}
                                     showChanges={false}
                                     changedFields={new Set()}
@@ -3527,6 +3600,7 @@ function App() {
                                     showProjects={showProjects}
                                     showSummary={showSummary}
                                     showPublications={showPublications}
+                                            showCertifications={showCertifications}
                                     showChanges={false}
                                     changedFields={new Set()}
                                     sectionOrder={sectionOrder}
@@ -3541,6 +3615,7 @@ function App() {
                                     showProjects={showProjects}
                                     showSummary={showSummary}
                                     showPublications={showPublications}
+                                            showCertifications={showCertifications}
                                     showChanges={false}
                                     changedFields={new Set()}
                                     sectionOrder={sectionOrder}
@@ -3555,6 +3630,7 @@ function App() {
                                     showProjects={showProjects}
                                     showSummary={showSummary}
                                     showPublications={showPublications}
+                                            showCertifications={showCertifications}
                                     showTherapeuticAreas={showTherapeuticAreas}
                                     showPrintButtons={!isOptimizeRoute}
                                     sectionOrder={sectionOrder}
