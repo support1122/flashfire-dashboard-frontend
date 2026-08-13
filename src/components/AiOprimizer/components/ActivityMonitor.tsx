@@ -18,6 +18,22 @@ interface DiffEntry {
   after: unknown;
 }
 
+// Structured IP geolocation written by the backend alongside the `location`
+// display string. Absent on rows logged before the consensus resolver landed,
+// and on rows whose IP could not be resolved by any provider.
+interface Geo {
+  city?: string; // blank when the providers disagreed on the city
+  region?: string;
+  country?: string;
+  countryCode?: string;
+  lat?: number | null;
+  lon?: number | null;
+  timezone?: string;
+  label?: string; // set when the network is pinned by an override
+  source?: string; // "consensus" | "override" | "single"
+  confidence?: string; // "high" | "medium" | "low"
+}
+
 interface ActivityEntry {
   _id: string;
   actor: Actor;
@@ -31,6 +47,7 @@ interface ActivityEntry {
   context: Record<string, unknown> | null;
   ip: string;
   location: string;
+  geo?: Geo | null;
   userAgent: string;
   severity: 'info' | 'warning' | 'critical';
   createdAt: string;
@@ -122,6 +139,41 @@ function actorDisplay(actor: Actor) {
   return actor.name || actor.email || 'System';
 }
 
+// ISO 3166-1 alpha-2 → regional indicator pair, e.g. "IN" → 🇮🇳.
+function countryFlag(code?: string) {
+  const c = (code || '').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(c)) return '';
+  return String.fromCodePoint(...[...c].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
+}
+
+const CONFIDENCE_NOTE: Record<string, string> = {
+  high: 'High — independent providers agreed on the city',
+  medium: 'Medium — providers agreed on the region but not the city, so the city is omitted',
+  low: 'Low — only one provider answered; treat as a guess',
+};
+
+const GEO_SOURCE_LABEL: Record<string, string> = {
+  consensus: 'agreement between independent IP databases',
+  override: 'pinned by hand in ip-location-overrides.json',
+  single: 'a single IP database',
+};
+
+// City-level IP geolocation is an estimate, not an address. Spell out how the
+// answer was reached and how far to trust it, so an operator can tell a solid
+// fix from a guess instead of reading every row as ground truth.
+function locationTooltip(entry: ActivityEntry) {
+  const lines = [`Location estimated from IP ${entry.ip || 'unknown'}`];
+  const geo = entry.geo;
+  if (!geo?.source) {
+    lines.push('Source: legacy record — run the location backfill to refresh');
+    return lines.join('\n');
+  }
+  lines.push(`Source: ${GEO_SOURCE_LABEL[geo.source] || geo.source}`);
+  if (geo.confidence) lines.push(`Confidence: ${CONFIDENCE_NOTE[geo.confidence] || geo.confidence}`);
+  if (geo.timezone) lines.push(`Timezone: ${geo.timezone}`);
+  return lines.join('\n');
+}
+
 function ActivityRow({ entry, tz }: { entry: ActivityEntry; tz?: string }) {
   const [open, setOpen] = useState(false);
   const { icon: Icon, bg, fg } = iconFor(entry.action, entry.category);
@@ -186,7 +238,18 @@ function ActivityRow({ entry, tz }: { entry: ActivityEntry; tz?: string }) {
           {entry.location && (
             <>
               <span className="text-gray-300">·</span>
-              <span className="inline-flex items-center gap-1" title="Location (from IP)">📍 {entry.location}</span>
+              <span
+                className={`inline-flex items-center gap-1 ${
+                  entry.geo?.confidence === 'low' ? 'text-gray-400 italic' : ''
+                }`}
+                title={locationTooltip(entry)}
+              >
+                {countryFlag(entry.geo?.countryCode) || '📍'}{' '}
+                {/* A leading ~ says "region only, the databases disagreed on the
+                    city" at a glance, so nobody reads it as a precise address. */}
+                {entry.geo?.confidence === 'medium' && !entry.geo?.city ? '~' : ''}
+                {entry.location}
+              </span>
             </>
           )}
 
