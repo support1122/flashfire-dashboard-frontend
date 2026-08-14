@@ -132,6 +132,21 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Plan usage, read from the same guard /addjob enforces. null while loading or
+  // when the client is uncapped — the form only blocks on an explicit refusal, so
+  // a failed lookup can never lock someone out of adding jobs.
+  const [planUsage, setPlanUsage] = useState<{
+    cap: number | null;
+    used: number | null;
+    remaining: number | null;
+    allowed: boolean;
+    planType: string | null;
+    baseCap: number | null;
+    referralBonus: number;
+    referralCount: number;
+    addonBonus: number;
+    message: string | null;
+  } | null>(null);
   const context = useContext(UserContext);
   const userDetails = context?.userDetails;
   const token = context?.token;
@@ -142,6 +157,42 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
   const role = useOperationsStore((state) => state.role);
   const operationsName = useOperationsStore((state) => state.name);
   const operationsEmail = useOperationsStore((state) => state.email);
+
+  // Fetch the client's plan usage so the limit is visible BEFORE the form is filled
+  // in. Only relevant when creating: editing an existing job does not add an
+  // application, so it must never be blocked.
+  useEffect(() => {
+    const email = userDetails?.email;
+    if (!email || job) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/plan-usage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!cancelled && body?.success) {
+          setPlanUsage({
+            cap: body.cap ?? null,
+            used: body.used ?? null,
+            remaining: body.remaining ?? null,
+            allowed: body.allowed !== false,
+            planType: body.planType ?? null,
+            baseCap: body.baseCap ?? null,
+            referralBonus: Number(body.referralBonus) || 0,
+            referralCount: Number(body.referralCount) || 0,
+            addonBonus: Number(body.addonBonus) || 0,
+            message: body.message ?? null,
+          });
+        }
+      } catch {
+        // Non-fatal: the server-side gate still refuses at submit.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userDetails?.email, job]);
 
   // preload form if editing
   useEffect(() => {
@@ -212,8 +263,20 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
     return urls;
   };
 
+  const limitReached = !isEditMode && planUsage != null && planUsage.allowed === false;
+
   const handleAddJob = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Stop here rather than letting the request go out and come back 403 — the
+    // server still enforces it, this just avoids wasting the operator's time.
+    if (limitReached) {
+      const msg = planUsage?.message
+        || `Application limit reached (${planUsage?.used}/${planUsage?.cap}). No more jobs can be added for this client.`;
+      setError(msg);
+      toastUtils.error(msg);
+      return;
+    }
 
     if (!isEditMode && (!formData.jobTitle.trim() || !formData.companyName.trim())) {
       setError("Job Title and Company Name are required.");
@@ -325,7 +388,9 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
                 (body?.error === "BLOCKED_COMPANY"
                   ? "This company is blocked for this client."
                   : "This location is blocked for this client.")
-              : body?.message || "Client is in lock period";
+              : body?.error === "PLAN_LIMIT_REACHED"
+                ? body?.message || "Application limit reached for this client."
+                : body?.message || "Client is in lock period";
           toastUtils.error(errorMsg);
           setIsSubmitting(false);
           setError(errorMsg);
@@ -491,6 +556,41 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
             </div>
           )}
 
+          {/* Plan usage. Shown only when the client actually has a cap, and only
+              while creating — the numbers exclude removed jobs and already include
+              referral/addon bonuses, because they come from the same guard that
+              refuses the push server-side. */}
+          {!isEditMode && planUsage?.cap != null && (
+            <div
+              className={`mb-5 flex items-start gap-2 px-4 py-3 border text-sm ${
+                limitReached
+                  ? "bg-red-50 border-red-200 text-red-700"
+                  : (planUsage.remaining ?? 0) <= 10
+                    ? "bg-amber-50 border-amber-200 text-amber-800"
+                    : "bg-gray-50 border-gray-200 text-gray-600"
+              }`}
+            >
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>
+                {limitReached ? (
+                  <>
+                    <span className="font-semibold">Application limit reached</span> — {planUsage.used}/{planUsage.cap} used
+                    {planUsage.planType ? ` on ${planUsage.planType}` : ""}. No more jobs can be added for this client.
+                    {planUsage.referralBonus > 0 && ` (includes +${planUsage.referralBonus} from ${planUsage.referralCount} referral${planUsage.referralCount === 1 ? "" : "s"})`}
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold">{planUsage.remaining}</span> of {planUsage.cap} applications left
+                    {planUsage.planType ? ` on ${planUsage.planType}` : ""}
+                    {planUsage.referralBonus > 0 && ` — includes +${planUsage.referralBonus} from ${planUsage.referralCount} referral${planUsage.referralCount === 1 ? "" : "s"}`}
+                    {planUsage.addonBonus > 0 && `, +${planUsage.addonBonus} from addons`}
+                    . Removed jobs do not count.
+                  </>
+                )}
+              </span>
+            </div>
+          )}
+
           <form onSubmit={handleAddJob} className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
@@ -627,10 +727,11 @@ const JobForm: React.FC<JobFormProps> = ({ job, onCancel, onSuccess, setUserJobs
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || limitReached}
+                title={limitReached ? (planUsage?.message ?? "Application limit reached for this client.") : undefined}
                 className="px-5 py-2.5 text-sm font-medium bg-gradient-to-br from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? "Saving..." : isEditMode ? "Update Job" : "Add Job"}
+                {isSubmitting ? "Saving..." : limitReached ? "Limit reached" : isEditMode ? "Update Job" : "Add Job"}
               </button>
             </div>
           </form>
