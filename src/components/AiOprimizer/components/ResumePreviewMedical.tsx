@@ -418,7 +418,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                 textAlign: "right",
                                             }}
                                         >
-                                            {exp.duration}
+                                            {renderMarkedText(exp.duration)}
                                         </div>
                                     </div>
                                     {exp.responsibilities.map(
@@ -549,7 +549,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             textAlign: "right",
                                         }}
                                     >
-                                        {project.duration}
+                                        {renderMarkedText(project.duration)}
                                     </div>
                                 </div>
                                 {project.responsibilities.map(
@@ -759,7 +759,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                 lineHeight: "1.3",
                                             }}
                                         >
-                                            {edu.duration}
+                                            {renderMarkedText(edu.duration)}
                                         </div>
                                     </div>
                                     {edu.additionalInfo && (

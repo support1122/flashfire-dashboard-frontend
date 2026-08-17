@@ -1413,7 +1413,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                                     lineHeight: styles.lineHeight,
                                                 }}
                                             >
-                                                {exp.duration}
+                                                {renderMarkedText(exp.duration)}
                                             </div>
                                         </div>
                                     </div>
@@ -1583,7 +1583,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                                 lineHeight: styles.lineHeight,
                                             }}
                                         >
-                                            {project.duration}
+                                            {renderMarkedText(project.duration)}
                                         </div>
                                     </div>
                                 </div>
@@ -1877,7 +1877,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                                         lineHeight: styles.lineHeight,
                                                     }}
                                                 >
-                                                    {edu.duration}
+                                                    {renderMarkedText(edu.duration)}
                                                 </div>
                                             </div>
                                         </div>
