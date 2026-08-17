@@ -756,6 +756,20 @@ function App() {
             setShowPublications(finalHasPublications || (resumeData.checkboxStates.showPublications ?? false));
             setShowTherapeuticAreas(resumeData.checkboxStates.showTherapeuticAreas ?? false);
 
+            // Certifications — mirror publications: restore from the saved toggle,
+            // and also turn on if real certification content exists. Without this
+            // the saved checkboxStates.showCertifications was silently discarded,
+            // so the section collapsed (and looked empty) after a client switch.
+            const hasValidCertifications =
+                (resumeData as any).certifications &&
+                (resumeData as any).certifications.length > 0 &&
+                (resumeData as any).certifications.some(
+                    (item: any) =>
+                        (item?.title && item.title.trim() !== "") ||
+                        (item?.issuer && item.issuer.trim() !== "")
+                );
+            setShowCertifications(hasValidCertifications || (resumeData.checkboxStates.showCertifications ?? false));
+
             console.log(
                 "Checkboxes set from saved states - Summary:",
                 resumeData.checkboxStates.showSummary,
@@ -929,6 +943,15 @@ function App() {
         setShowProjects(finalHasProjects);
         setShowLeadership(finalHasLeadership);
         setShowPublications(finalHasPublications);
+        const hasValidCertificationsContent =
+            (resumeData as any).certifications &&
+            (resumeData as any).certifications.length > 0 &&
+            (resumeData as any).certifications.some(
+                (item: any) =>
+                    (item?.title && item.title.trim() !== "") ||
+                    (item?.issuer && item.issuer.trim() !== "")
+            );
+        setShowCertifications(Boolean(hasValidCertificationsContent));
         setShowTherapeuticAreas(
             Boolean(resumeData.therapeuticAreas && resumeData.therapeuticAreas.trim() !== "")
         );
