@@ -387,7 +387,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                 flex: "1",
                                             }}
                                         >
-                                            {exp.company}
+                                            {renderMarkedText(exp.company)}
                                         </div>
                                         <div
                                             style={{
@@ -395,7 +395,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                 textAlign: "right",
                                             }}
                                         >
-                                            {exp.location}
+                                            {renderMarkedText(exp.location)}
                                         </div>
                                     </div>
                                     <div
@@ -501,7 +501,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             flex: "1",
                                         }}
                                     >
-                                        {project.company}
+                                        {renderMarkedText(project.company)}
                                     </div>
                                     <div
                                         style={{
@@ -509,7 +509,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                             textAlign: "right",
                                         }}
                                     >
-                                        {project.location}
+                                        {renderMarkedText(project.location)}
                                     </div>
                                 </div>
                                 <div
@@ -522,7 +522,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                 >
                                     <div style={{ fontSize: "9pt" }}>
 
-                                        <span style={{ fontWeight: "bold" }}>{project.position}</span>
+                                        <span style={{ fontWeight: "bold" }}>{renderMarkedText(project.position)}</span>
                                         {project.roleType &&
                                             project.roleType !== "None" &&
                                             ` – ${project.roleType}`}
@@ -659,7 +659,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                 fontWeight: "bold",
                                             }}
                                         >
-                                            {category.category}
+                                            {renderMarkedText(category.category)}
                                         </span>
                                         <span
                                             style={{
@@ -736,9 +736,12 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                     lineHeight: "1.3",
                                                 }}
                                             >
-                                                {edu.institution}
-                                                {edu.location &&
-                                                    `, ${edu.location}`}
+                                                {renderMarkedText(
+                                                    edu.institution +
+                                                        (edu.location
+                                                            ? `, ${edu.location}`
+                                                            : "")
+                                                )}
                                             </div>
                                             <div
                                                 style={{
@@ -746,8 +749,12 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                     lineHeight: "1.3",
                                                 }}
                                             >
-                                                {edu.degree}
-                                                {edu.field && `, ${edu.field}`}
+                                                {renderMarkedText(
+                                                    edu.degree +
+                                                        (edu.field
+                                                            ? `, ${edu.field}`
+                                                            : "")
+                                                )}
                                             </div>
                                         </div>
                                         <div

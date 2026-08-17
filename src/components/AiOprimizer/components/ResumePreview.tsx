@@ -1373,7 +1373,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                                         lineHeight: styles.lineHeight,
                                                     }}
                                                 >
-                                                    {exp.company}
+                                                    {renderMarkedText(exp.company)}
                                                 </div>
                                             )}
                                             <div
@@ -1404,7 +1404,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                                     lineHeight: styles.lineHeight,
                                                 }}
                                             >
-                                                {exp.location}
+                                                {renderMarkedText(exp.location)}
                                             </div>
                                             <div
                                                 style={{
@@ -1522,7 +1522,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                                     lineHeight: styles.lineHeight,
                                                 }}
                                             >
-                                                {project.company}
+                                                {renderMarkedText(project.company)}
                                             </div>
                                         )}
                                         <div
@@ -1535,7 +1535,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                                 fontStyle: "normal",
                                             }}
                                         >
-                                            <strong>{project.position}</strong>
+                                            <strong>{renderMarkedText(project.position)}</strong>
                                             {project.roleType &&
                                                 project.roleType !== "None" &&
                                                 ` – ${project.roleType}`}
@@ -1574,7 +1574,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                                 lineHeight: styles.lineHeight,
                                             }}
                                         >
-                                            {project.location}
+                                            {renderMarkedText(project.location)}
                                         </div>
                                         <div
                                             style={{
@@ -1756,7 +1756,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                             letterSpacing: "-0.025em",
                                         }}
                                     >
-                                        {category.category}
+                                        {renderMarkedText(category.category)}
                                     </span>
                                     <span
                                         style={{
@@ -1847,9 +1847,12 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                                         lineHeight: styles.lineHeight,
                                                     }}
                                                 >
-                                                    {edu.institution}
-                                                    {edu.location &&
-                                                        `, ${edu.location}`}
+                                                    {renderMarkedText(
+                                                        edu.institution +
+                                                            (edu.location
+                                                                ? `, ${edu.location}`
+                                                                : "")
+                                                    )}
                                                 </div>
                                                 <div
                                                     style={{
@@ -1858,8 +1861,12 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                                         lineHeight: styles.lineHeight,
                                                     }}
                                                 >
-                                                    {edu.degree}
-                                                    {edu.field && `, ${edu.field}`}
+                                                    {renderMarkedText(
+                                                        edu.degree +
+                                                            (edu.field
+                                                                ? `, ${edu.field}`
+                                                                : "")
+                                                    )}
                                                 </div>
                                             </div>
 
