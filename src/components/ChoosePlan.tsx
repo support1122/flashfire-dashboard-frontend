@@ -4,7 +4,7 @@ import { UserContext } from "../state_management/UserContext";
 import { PAGE_CONTAINER, PAGE_MAIN } from "../styles/layout";
 
 type PlanKey = "prime" | "ignite" | "professional" | "executive";
-type Currency = "USD" | "CAD";
+type Currency = "USD" | "CAD" | "GBP";
 
 const PLAN_LABELS: Record<PlanKey, string> = {
   prime: "Prime", ignite: "Ignite", professional: "Professional", executive: "Executive",
@@ -19,20 +19,22 @@ const PLAN_FEATURES: Record<PlanKey, string[]> = {
   executive: ["Cover Letter Included", "Emailing Recruiters", "Portfolio Website"],
 };
 
-const CURRENCY_SYMBOL: Record<Currency, string> = { USD: "$", CAD: "CA$" };
+const CURRENCY_SYMBOL: Record<Currency, string> = { USD: "$", CAD: "CA$", GBP: "£" };
 
-// Upgrade links: { to, priceUSD, priceCAD, urlUSD, urlCAD }
-const UPGRADES_DATA: Record<string, { to: PlanKey; priceUSD: number; priceCAD: number; urlUSD: string; urlCAD: string }[]> = {
+// Upgrade links: { to, priceUSD, priceCAD, priceGBP, urlUSD, urlCAD, urlGBP }
+const UPGRADES_DATA: Record<string, { to: PlanKey; priceUSD: number; priceCAD: number; priceGBP: number; urlUSD: string; urlCAD: string; urlGBP: string }[]> = {
   prime: [
     {
       to: "professional",
       priceUSD: 240, urlUSD: "https://buy.stripe.com/7sY7sN2128uS1DWdcz3AY08",
       priceCAD: 240, urlCAD: "https://buy.stripe.com/bJe28t9tu26u96o5K73AY0q",
+      priceGBP: 220, urlGBP: "https://buy.stripe.com/5kQbJ36hi5iG96o3BZ3AY0Q",
     },
     {
       to: "executive",
       priceUSD: 490, urlUSD: "https://buy.stripe.com/fZu3cx6hi9yW82k0pN3AY09",
       priceCAD: 490, urlCAD: "https://buy.stripe.com/6oU8wRcFG4eC5Uc1tR3AY0r",
+      priceGBP: 420, urlGBP: "https://buy.stripe.com/9B6aEZbBCeTg82k0pN3AY0R",
     },
   ],
   ignite: [
@@ -40,11 +42,13 @@ const UPGRADES_DATA: Record<string, { to: PlanKey; priceUSD: number; priceCAD: n
       to: "professional",
       priceUSD: 170, urlUSD: "https://buy.stripe.com/28E6oJ9tu7qOfuM3BZ3AY0d",
       priceCAD: 170, urlCAD: "https://buy.stripe.com/00w9AV212eTg6YgfkH3AY0n",
+      priceGBP: 150, urlGBP: "https://buy.stripe.com/6oU14pdJK26udmE7Sf3AY0V",
     },
     {
       to: "executive",
       priceUSD: 420, urlUSD: "https://buy.stripe.com/5kQcN7eNO7qO2I06Ob3AY0e",
       priceCAD: 420, urlCAD: "https://buy.stripe.com/fZu5kF9tueTg82kc8v3AY0v",
+      priceGBP: 350, urlGBP: "https://buy.stripe.com/bJe8wRaxy8uS5Uc0pN3AY0W",
     },
   ],
   professional: [
@@ -52,32 +56,33 @@ const UPGRADES_DATA: Record<string, { to: PlanKey; priceUSD: number; priceCAD: n
       to: "executive",
       priceUSD: 285, urlUSD: "https://buy.stripe.com/00w7sNgVW4eCbew1tR3AY0f",
       priceCAD: 285, urlCAD: "https://buy.stripe.com/5kQ5kF212aD0eqIfkH3AY0x",
+      priceGBP: 200, urlGBP: "https://buy.stripe.com/14A28t8pq26u0zSdcz3AY11",
     },
   ],
   executive: [],
 };
 
 // Booster links per plan per currency
-const BOOSTERS_DATA: Record<PlanKey, { apps: number; priceUSD: number; priceCAD: number; urlUSD: string; urlCAD: string }[]> = {
+const BOOSTERS_DATA: Record<PlanKey, { apps: number; priceUSD: number; priceCAD: number; priceGBP: number; urlUSD: string; urlCAD: string; urlGBP: string }[]> = {
   prime: [
-    { apps: 250, priceUSD: 120, priceCAD: 170, urlUSD: "https://buy.stripe.com/dRmeVf7lm8uSaas6Ob3AY05", urlCAD: "https://buy.stripe.com/00w9AV212eTg6YgfkH3AY0n" },
-    { apps: 500, priceUSD: 200, priceCAD: 280, urlUSD: "https://buy.stripe.com/28E5kF3567qObewegD3AY06", urlCAD: "https://buy.stripe.com/00w7sN2124eCdmE0pN3AY0o" },
-    { apps: 1000, priceUSD: 350, priceCAD: 490, urlUSD: "https://buy.stripe.com/00w28t35626udmE2xV3AY07", urlCAD: "https://buy.stripe.com/00w14pcFGfXk96o7Sf3AY0p" },
+    { apps: 250, priceUSD: 120, priceCAD: 170, priceGBP: 95, urlUSD: "https://buy.stripe.com/dRmeVf7lm8uSaas6Ob3AY05", urlCAD: "https://buy.stripe.com/00w9AV212eTg6YgfkH3AY0n", urlGBP: "https://buy.stripe.com/eVq6oJdJK26u6Yg7Sf3AY0M" },
+    { apps: 500, priceUSD: 200, priceCAD: 280, priceGBP: 160, urlUSD: "https://buy.stripe.com/28E5kF3567qObewegD3AY06", urlCAD: "https://buy.stripe.com/00w7sN2124eCdmE0pN3AY0o", urlGBP: "https://buy.stripe.com/00w9AVcFGdPcciA6Ob3AY0N" },
+    { apps: 1000, priceUSD: 350, priceCAD: 490, priceGBP: 275, urlUSD: "https://buy.stripe.com/00w28t35626udmE2xV3AY07", urlCAD: "https://buy.stripe.com/00w14pcFGfXk96o7Sf3AY0p", urlGBP: "https://buy.stripe.com/eVqbJ38pq5iGeqI2xV3AY0O" },
   ],
   ignite: [
-    { apps: 250, priceUSD: 130, priceCAD: 180, urlUSD: "https://buy.stripe.com/28E7sN9tufXk6Yga0n3AY0a", urlCAD: "https://buy.stripe.com/cNi3cx49ah1odmEc8v3AY0s" },
-    { apps: 500, priceUSD: 220, priceCAD: 305, urlUSD: "https://buy.stripe.com/eVqaEZ5debH4fuM7Sf3AY0b", urlCAD: "https://buy.stripe.com/9B65kF9tu12qfuM0pN3AY0t" },
-    { apps: 1000, priceUSD: 380, priceCAD: 530, urlUSD: "https://buy.stripe.com/9B69AVfRS6mKdmEgoL3AY0c", urlCAD: "https://buy.stripe.com/9B69AV7lmbH46Yg8Wj3AY0u" },
+    { apps: 250, priceUSD: 130, priceCAD: 180, priceGBP: 105, urlUSD: "https://buy.stripe.com/28E7sN9tufXk6Yga0n3AY0a", urlCAD: "https://buy.stripe.com/cNi3cx49ah1odmEc8v3AY0s", urlGBP: "https://buy.stripe.com/8x2bJ3bBC12q2I0dcz3AY0S" },
+    { apps: 500, priceUSD: 220, priceCAD: 305, priceGBP: 175, urlUSD: "https://buy.stripe.com/eVqaEZ5debH4fuM7Sf3AY0b", urlCAD: "https://buy.stripe.com/9B65kF9tu12qfuM0pN3AY0t", urlGBP: "https://buy.stripe.com/aFa5kF8pqdPcgyQb4r3AY0T" },
+    { apps: 1000, priceUSD: 380, priceCAD: 530, priceGBP: 300, urlUSD: "https://buy.stripe.com/9B69AVfRS6mKdmEgoL3AY0c", urlCAD: "https://buy.stripe.com/9B69AV7lmbH46Yg8Wj3AY0u", urlGBP: "https://buy.stripe.com/6oU7sN212fXk3M48Wj3AY0U" },
   ],
   professional: [
-    { apps: 250, priceUSD: 120, priceCAD: 170, urlUSD: "https://buy.stripe.com/dRmeVf7lm8uSaas6Ob3AY05", urlCAD: "https://buy.stripe.com/00w9AV212eTg6YgfkH3AY0n" },
-    { apps: 500, priceUSD: 200, priceCAD: 280, urlUSD: "https://buy.stripe.com/28E5kF3567qObewegD3AY06", urlCAD: "https://buy.stripe.com/7sYcN7eNObH41DW8Wj3AY0w" },
-    { apps: 1000, priceUSD: 350, priceCAD: 490, urlUSD: "https://buy.stripe.com/00w28t35626udmE2xV3AY07", urlCAD: "https://buy.stripe.com/00w14pcFGfXk96o7Sf3AY0p" },
+    { apps: 250, priceUSD: 120, priceCAD: 170, priceGBP: 95, urlUSD: "https://buy.stripe.com/dRmeVf7lm8uSaas6Ob3AY05", urlCAD: "https://buy.stripe.com/00w9AV212eTg6YgfkH3AY0n", urlGBP: "https://buy.stripe.com/9B6bJ3bBC3ay4Q86Ob3AY0Y" },
+    { apps: 500, priceUSD: 200, priceCAD: 280, priceGBP: 160, urlUSD: "https://buy.stripe.com/28E5kF3567qObewegD3AY06", urlCAD: "https://buy.stripe.com/7sYcN7eNObH41DW8Wj3AY0w", urlGBP: "https://buy.stripe.com/00w7sN8pqaD096ogoL3AY0Z" },
+    { apps: 1000, priceUSD: 350, priceCAD: 490, priceGBP: 275, urlUSD: "https://buy.stripe.com/00w28t35626udmE2xV3AY07", urlCAD: "https://buy.stripe.com/00w14pcFGfXk96o7Sf3AY0p", urlGBP: "https://buy.stripe.com/fZucN7gVW12q1DWgoL3AY10" },
   ],
   executive: [
-    { apps: 250, priceUSD: 110, priceCAD: 155, urlUSD: "https://buy.stripe.com/28EfZj9tu9yW2I0goL3AY0g", urlCAD: "https://buy.stripe.com/14A8wRfRS9yWdmEb4r3AY0y" },
-    { apps: 500, priceUSD: 190, priceCAD: 265, urlUSD: "https://buy.stripe.com/fZu6oJdJK7qObew1tR3AY0h", urlCAD: "https://buy.stripe.com/5kQ6oJ356fXk1DWc8v3AY0z" },
-    { apps: 1000, priceUSD: 330, priceCAD: 460, urlUSD: "https://buy.stripe.com/4gM5kF9tu6mK1DW3BZ3AY0i", urlCAD: "https://buy.stripe.com/eVqaEZ3565iG3M4dcz3AY0A" },
+    { apps: 250, priceUSD: 110, priceCAD: 155, priceGBP: 88, urlUSD: "https://buy.stripe.com/28EfZj9tu9yW2I0goL3AY0g", urlCAD: "https://buy.stripe.com/14A8wRfRS9yWdmEb4r3AY0y", urlGBP: "https://buy.stripe.com/dRm9AV2123ayfuM3BZ3AY13" },
+    { apps: 500, priceUSD: 190, priceCAD: 265, priceGBP: 150, urlUSD: "https://buy.stripe.com/fZu6oJdJK7qObew1tR3AY0h", urlCAD: "https://buy.stripe.com/5kQ6oJ356fXk1DWc8v3AY0z", urlGBP: "https://buy.stripe.com/fZufZj6hi9yW6Yg2xV3AY14" },
+    { apps: 1000, priceUSD: 330, priceCAD: 460, priceGBP: 260, urlUSD: "https://buy.stripe.com/4gM5kF9tu6mK1DW3BZ3AY0i", urlCAD: "https://buy.stripe.com/eVqaEZ3565iG3M4dcz3AY0A", urlGBP: "https://buy.stripe.com/28EeVfcFG6mKaas6Ob3AY15" },
   ],
 };
 
@@ -89,10 +94,11 @@ function normalizePlan(raw: string | undefined): PlanKey {
   return "prime";
 }
 
-// Read currency directly from user profile (set by client tracking backend at registration)
 function detectCurrency(currency: string | undefined): Currency {
   if (!currency) return "USD";
-  if (currency.toUpperCase() === "CAD") return "CAD";
+  const c = currency.toUpperCase();
+  if (c === "CAD") return "CAD";
+  if (c === "GBP") return "GBP";
   return "USD";
 }
 
@@ -163,10 +169,10 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
             </div>
             <p className="text-xs text-gray-400 mb-3">Unlock more applications and premium features</p>
             <div className={`grid gap-3 ${inline ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
-              {upgradesRaw.map(({ to, priceUSD, priceCAD, urlUSD, urlCAD }) => {
+              {upgradesRaw.map(({ to, priceUSD, priceCAD, priceGBP, urlUSD, urlCAD, urlGBP }) => {
                 const isPopular = to === "executive";
-                const price = currency === "CAD" ? priceCAD : priceUSD;
-                const url = withEmail(currency === "CAD" ? urlCAD : urlUSD, email);
+                const price = currency === "CAD" ? priceCAD : currency === "GBP" ? priceGBP : priceUSD;
+                const url = withEmail(currency === "CAD" ? urlCAD : currency === "GBP" ? urlGBP : urlUSD, email);
                 return (
                   <div key={to} className={`relative overflow-hidden border border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${isPopular ? "" : "bg-white"}`}>
                     {isPopular && (
@@ -218,10 +224,10 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
           </div>
           <p className="text-xs text-gray-400 mb-3">Add more applications to your {PLAN_LABELS[currentPlan]} plan — no tier change</p>
           <div className="grid grid-cols-3 gap-3">
-            {boostersRaw.map(({ apps, priceUSD, priceCAD, urlUSD, urlCAD }, i) => {
+            {boostersRaw.map(({ apps, priceUSD, priceCAD, priceGBP, urlUSD, urlCAD, urlGBP }, i) => {
               const isBest = i === 2;
-              const price = currency === "CAD" ? priceCAD : priceUSD;
-              const url = withEmail(currency === "CAD" ? urlCAD : urlUSD, email);
+              const price = currency === "CAD" ? priceCAD : currency === "GBP" ? priceGBP : priceUSD;
+              const url = withEmail(currency === "CAD" ? urlCAD : currency === "GBP" ? urlGBP : urlUSD, email);
               return (
                 <a key={apps} href={url} target="_blank" rel="noopener noreferrer"
                   className={`group relative flex flex-col items-center border border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] pt-5 pb-4 px-3 transition-all text-center ${isBest ? "bg-gray-50" : "bg-white"}`}>
