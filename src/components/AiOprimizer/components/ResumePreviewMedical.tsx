@@ -1799,7 +1799,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                         <strong style={{ color: "#334155" }}>Adjust scale to control final PDF length.</strong>
                                         <br />
                                         <span style={{ color: "#64748b", marginTop: "0.5rem", display: "block" }}>
-                                            Keep preview at 2 pages for best medical resume format.
+                                            Keep preview at 2 pages for best resume format.
                                         </span>
                                     </div>
                                 </div>
