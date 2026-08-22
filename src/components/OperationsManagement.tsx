@@ -1,8 +1,9 @@
 import { useState, useEffect, useContext, useCallback, useRef } from 'react';
-import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, X, ChevronDown, ChevronUp, Edit2, Mail, Paperclip, Send, MessageSquare, Link2, Loader2, ChevronLeft, ChevronRight, Puzzle, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, X, ChevronDown, ChevronUp, Edit2, Mail, Paperclip, Send, MessageSquare, Link2, Loader2, ChevronLeft, ChevronRight, Puzzle, Check, AlertCircle, RefreshCw, BellRing } from 'lucide-react';
 import { ExclusionListEditor } from './Operations/ExclusionListEditor.tsx';
+import ClientReminders from './Operations/ClientReminders.tsx';
 import { UserContext } from '../state_management/UserContext.tsx';
-import { toastUtils, toastMessages } from '../utils/toast.ts';
+import { toastUtils } from '../utils/toast.ts';
 import { useOperationsStore } from '../state_management/Operations.ts';
 import SecretKeyModal from './SecretKeyModal.tsx';
 
@@ -24,6 +25,24 @@ interface LockPeriod {
   createdAt?: string;
 }
 
+interface WhatsAppGroup {
+  id: string;
+  name: string;
+}
+
+interface UserGroupMapping {
+  groupId: string;
+  groupName?: string;
+  linkedAt?: string;
+  linkedBy?: string;
+}
+
+interface EmailGroup {
+  id: string;
+  name: string;
+  category: string;
+}
+
 interface ExclusionAuditEntry {
   text: string;
   kind: string;
@@ -31,19 +50,11 @@ interface ExclusionAuditEntry {
   removedAt: string;
 }
 
-interface ClientOperationsData {
-  todos: Todo[];
-  lockPeriods: LockPeriod[];
-  excludedCompanies?: string[];
-  excludedLocations?: string[];
-  exclusionSanitizeAudit?: ExclusionAuditEntry[];
-}
-
 const OPERATIONS_SESSION_STORAGE_KEY = "flashfire_ops_session_v1";
 const OPERATIONS_SECRET_KEY = "flashfire@2025";
 
 const OperationsManagement = () => {
-  const { userDetails, token } = useContext(UserContext) || {};
+  const { userDetails } = useContext(UserContext) || {};
   const { role, name: operatorName } = useOperationsStore();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [lockPeriods, setLockPeriods] = useState<LockPeriod[]>([]);
@@ -61,7 +72,7 @@ const OperationsManagement = () => {
   });
   const [showAddLockPeriod, setShowAddLockPeriod] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [activeSection, setActiveSection] = useState<"operations" | "email" | "whatsapp">("operations");
+  const [activeSection, setActiveSection] = useState<"operations" | "email" | "whatsapp" | "reminders">("operations");
   const [excludedCompanies, setExcludedCompanies] = useState<string[]>([]);
   const [excludedLocations, setExcludedLocations] = useState<string[]>([]);
   const [extensionsSubTab, setExtensionsSubTab] = useState<"companies" | "locations">("companies");
@@ -87,14 +98,20 @@ const OperationsManagement = () => {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [availableAccounts, setAvailableAccounts] = useState<string[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
-  const [whatsappGroups, setWhatsappGroups] = useState<any[]>([]);
+  const [whatsappGroups, setWhatsappGroups] = useState<WhatsAppGroup[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [linkingUser, setLinkingUser] = useState(false);
-  const [userGroupMapping, setUserGroupMapping] = useState<any>(null);
+  const [userGroupMapping, setUserGroupMapping] = useState<UserGroupMapping | null>(null);
   const [whatsappUnlocked, setWhatsappUnlocked] = useState(false);
   const [showWhatsappSecretModal, setShowWhatsappSecretModal] = useState(false);
   const [whatsappSecretError, setWhatsappSecretError] = useState('');
+  const [remindersUnlocked, setRemindersUnlocked] = useState(false);
+  const [showRemindersSecretModal, setShowRemindersSecretModal] = useState(false);
+  const [remindersSecretError, setRemindersSecretError] = useState('');
+  // The reminders API is gated on x-ops-key server-side, so the key the operator
+  // typed to unlock the tab is kept in memory and replayed on every request.
+  const [remindersOpsKey, setRemindersOpsKey] = useState('');
   const [emailGroups, setEmailGroups] = useState<{ id: string; name: string; category: string }[]>([]);
   const [emailTemplates, setEmailTemplates] = useState<{ id: string; name: string; subject: string }[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -128,19 +145,7 @@ const OperationsManagement = () => {
     }
   }, [operationsSessionUnlocked]);
 
-  useEffect(() => {
-    if (!operationsSessionUnlocked || !userDetails?.email) return;
-    fetchClientOperations();
-    fetchUserGroupMapping();
-  }, [userDetails?.email, operationsSessionUnlocked]);
-
-  useEffect(() => {
-    if (activeSection === "whatsapp" && whatsappGroups.length === 0) {
-      fetchWhatsAppGroups();
-    }
-  }, [activeSection]);
-
-  const fetchClientOperations = async () => {
+  const fetchClientOperations = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE_URL}/operations/client-operations`, {
@@ -169,7 +174,7 @@ const OperationsManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_BASE_URL, userDetails?.email]);
 
   const runReconcileExclusionJobs = useCallback(async () => {
     if (!userDetails?.email) return;
@@ -253,10 +258,10 @@ const OperationsManagement = () => {
         if (groupsRes.ok) {
           const data = await groupsRes.json();
           const list = Array.isArray(data.groups) ? data.groups : [];
-          const normalizedGroups = list.map((g: any) => ({ id: g.id, name: g.name, category: g.category }));
+          const normalizedGroups: EmailGroup[] = list.map((g: EmailGroup) => ({ id: g.id, name: g.name, category: g.category }));
           setEmailGroups(normalizedGroups);
           if (!automationGroupId) {
-            const techGroup = normalizedGroups.find((g: any) => {
+            const techGroup = normalizedGroups.find((g: EmailGroup) => {
               const name = String(g.name || "").trim().toLowerCase();
               const category = String(g.category || "").trim().toLowerCase();
               return name === "technical" || name === "tech" || category === "tech";
@@ -406,10 +411,6 @@ const OperationsManagement = () => {
     setEditingTodoNotes(null);
   };
 
-  const deleteTodo = (todoId: string) => {
-    setTodos(todos.filter(todo => todo.id !== todoId));
-  };
-
   const addLockPeriod = () => {
     if (!newLockPeriod.startDate || !newLockPeriod.endDate) {
       toastUtils.error('Please select both start and end dates');
@@ -470,7 +471,7 @@ const OperationsManagement = () => {
       }));
       setTemplateName(data.name || "");
       setSelectedTemplateIdForEdit(id);
-    } catch (error) {
+    } catch {
       toastUtils.error("Failed to load template");
     } finally {
       setLoadingTemplateForEdit(false);
@@ -530,7 +531,7 @@ const OperationsManagement = () => {
         setSelectedTemplateId(created.id);
         toastUtils.success("Template saved");
       }
-    } catch (error) {
+    } catch {
       toastUtils.error(selectedTemplateIdForEdit ? "Failed to update template" : "Failed to save template");
     } finally {
       setSavingTemplate(false);
@@ -590,7 +591,7 @@ const OperationsManagement = () => {
       } else {
         toastUtils.success("AI template generated and linked");
       }
-    } catch (error) {
+    } catch {
       toastUtils.error("AI generation failed");
     } finally {
       setAiGenerating(false);
@@ -637,7 +638,7 @@ const OperationsManagement = () => {
       }
       setHasExistingAutomationConfig(true);
       toastUtils.success("Automation settings saved");
-    } catch (error) {
+    } catch {
       toastUtils.error("Failed to save automation");
     } finally {
       setSavingAutomation(false);
@@ -667,8 +668,8 @@ const OperationsManagement = () => {
         toastUtils.error(data.error || "Failed to update status");
         return;
       }
-      toastUtils.success(nextEnabled ? "Automation turned on" : "Automation paused — no emails will be sent");
-    } catch (error) {
+      toastUtils.success(nextEnabled ? "Automation turned on" : "Automation paused - no emails will be sent");
+    } catch {
       setAutomationEnabled(!nextEnabled);
       toastUtils.error("Failed to update automation status");
     } finally {
@@ -699,10 +700,10 @@ const OperationsManagement = () => {
       }
       toastUtils.success(
         nextSkip
-          ? "200-application limit skipped for this user — emails will send regardless"
+          ? "200-application limit skipped for this user - emails will send regardless"
           : "200-application limit re-enabled for this user"
       );
-    } catch (error) {
+    } catch {
       setSkipThreshold(!nextSkip);
       toastUtils.error("Failed to update 200-limit skip");
     } finally {
@@ -736,7 +737,7 @@ const OperationsManagement = () => {
       } else {
         toastUtils.error(data.error || data.message || "Could not send today's emails.");
       }
-    } catch (error) {
+    } catch {
       toastUtils.error("Failed to send today's emails");
     } finally {
       setSendingNow(false);
@@ -812,7 +813,7 @@ const OperationsManagement = () => {
     });
   };
 
-  const fetchWhatsAppGroups = async () => {
+  const fetchWhatsAppGroups = useCallback(async () => {
     try {
       setLoadingGroups(true);
       const response = await fetch(`${API_BASE_URL}/api/whatsapp/groups`, {
@@ -848,9 +849,9 @@ const OperationsManagement = () => {
     } finally {
       setLoadingGroups(false);
     }
-  };
+  }, [API_BASE_URL, userGroupMapping]);
 
-  const fetchUserGroupMapping = async () => {
+  const fetchUserGroupMapping = useCallback(async () => {
     try {
       if (!userDetails?.email) return;
       const response = await fetch(`${API_BASE_URL}/api/whatsapp/user-mapping`, {
@@ -871,7 +872,19 @@ const OperationsManagement = () => {
     } catch (error) {
       console.error('Error fetching user group mapping:', error);
     }
-  };
+  }, [API_BASE_URL, userDetails?.email]);
+
+  useEffect(() => {
+    if (!operationsSessionUnlocked || !userDetails?.email) return;
+    fetchClientOperations();
+    fetchUserGroupMapping();
+  }, [userDetails?.email, operationsSessionUnlocked, fetchClientOperations, fetchUserGroupMapping]);
+
+  useEffect(() => {
+    if (activeSection === "whatsapp" && whatsappGroups.length === 0) {
+      fetchWhatsAppGroups();
+    }
+  }, [activeSection, whatsappGroups.length, fetchWhatsAppGroups]);
 
   const handleLinkUserToGroup = async () => {
     if (!selectedGroup) {
@@ -978,14 +991,6 @@ const OperationsManagement = () => {
     } finally {
       setSending(false);
     }
-  };
-
-  const isDateInLockPeriod = (date: Date) => {
-    return lockPeriods.some(period => {
-      const start = new Date(period.startDate);
-      const end = new Date(period.endDate);
-      return date >= start && date <= end;
-    });
   };
 
   const getActiveLockPeriod = () => {
@@ -1138,6 +1143,26 @@ const OperationsManagement = () => {
             <MessageSquare className="w-4 h-4" />
             <span>WhatsApp Notifications</span>
             {!whatsappUnlocked && (
+              <Lock className="w-3 h-3 text-gray-500" />
+            )}
+          </button>
+          <button
+            onClick={() => {
+              if (!remindersUnlocked) {
+                setShowRemindersSecretModal(true);
+              } else {
+                setActiveSection("reminders");
+              }
+            }}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              activeSection === "reminders"
+                ? "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md"
+                : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+            }`}
+          >
+            <BellRing className="w-4 h-4" />
+            <span>Client Reminders</span>
+            {!remindersUnlocked && (
               <Lock className="w-3 h-3 text-gray-500" />
             )}
           </button>
@@ -1429,7 +1454,6 @@ const OperationsManagement = () => {
                 <p className="text-gray-500 text-center py-8">No lock periods set. Add one to restrict job card movement.</p>
               ) : (
                 lockPeriods.map((period) => {
-                  const isActive = isDateInLockPeriod(new Date());
                   const startDate = new Date(period.startDate);
                   const endDate = new Date(period.endDate);
                   const isActivePeriod = new Date() >= startDate && new Date() <= endDate;
@@ -1562,7 +1586,7 @@ const OperationsManagement = () => {
                         <li key={`${a.removedAt}-${a.text}-${i}`}>
                           <span className="font-sans font-medium">[{a.kind}]</span>{" "}
                           {(a.text || "").length > 100 ? `${(a.text || "").slice(0, 100)}…` : a.text}{" "}
-                          <span className="text-amber-800">— {a.reason}</span>
+                          <span className="text-amber-800">- {a.reason}</span>
                         </li>
                       ))}
                   </ul>
@@ -1788,7 +1812,7 @@ const OperationsManagement = () => {
                             : "bg-gray-100 text-gray-600"
                         }`}
                       >
-                        {automationEnabled ? "On — sends at 11 PM IST" : "Off — no emails sent"}
+                        {automationEnabled ? "On - sends at 11 PM IST" : "Off - no emails sent"}
                       </span>
                       <button
                         type="button"
@@ -1861,7 +1885,7 @@ const OperationsManagement = () => {
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-gray-900">Send today's emails now</p>
                       <p className="text-xs text-gray-500">
-                        Sends this user's batch immediately. Runs once per day — repeat clicks won't send again.
+                        Sends this user's batch immediately. Runs once per day - repeat clicks won't send again.
                       </p>
                     </div>
                     <button
@@ -1932,7 +1956,7 @@ const OperationsManagement = () => {
                               <>✨ Generate with AI</>
                             )}
                           </button>
-                          {/* Automation Template — loads the template the */}
+                          {/* Automation Template - loads the template the */}
                           {/* automation worker is ACTUALLY sending into the */}
                           {/* editor so ops can verify / tweak the live copy. */}
                           {/* Disabled when no template linked to automation. */}
@@ -1946,7 +1970,7 @@ const OperationsManagement = () => {
                               loadTemplateForEdit(selectedTemplateId);
                             }}
                             disabled={loadingTemplateForEdit || !selectedTemplateId}
-                            title="Load the template the automation worker is currently sending — useful when AI-generated output looks fine but the actual sends look wrong."
+                            title="Load the template the automation worker is currently sending - useful when AI-generated output looks fine but the actual sends look wrong."
                             className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap ${
                               loadingTemplateForEdit || !selectedTemplateId
                                 ? "bg-gray-200 text-gray-500 cursor-not-allowed"
@@ -1978,7 +2002,7 @@ const OperationsManagement = () => {
                           max={5}
                           value={automationDailyLimit}
                           onChange={(e) => {
-                            // Clamp 1..5 on every keystroke — UI must never
+                            // Clamp 1..5 on every keystroke - UI must never
                             // hint a value above the backend hard cap.
                             const raw = Math.floor(Number(e.target.value) || 0);
                             if (e.target.value === "") {
@@ -2080,7 +2104,7 @@ const OperationsManagement = () => {
                         <span>{t.name}</span>
                         {t.subject && (
                           <span className="text-xs text-gray-500 truncate max-w-[120px]" title={t.subject}>
-                            — {t.subject}
+                            - {t.subject}
                           </span>
                         )}
                       </button>
@@ -2150,7 +2174,7 @@ const OperationsManagement = () => {
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-sm text-red-600 max-w-[200px] truncate" title={log.errorMessage || ""}>
-                                {log.errorMessage || "—"}
+                                {log.errorMessage || "-"}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-right">
                                 {log.status === "failed" ? (
@@ -2165,7 +2189,7 @@ const OperationsManagement = () => {
                                     {resendingLogId === log.id ? "Sending…" : "Send again"}
                                   </button>
                                 ) : (
-                                  <span className="text-xs text-gray-400">—</span>
+                                  <span className="text-xs text-gray-400">-</span>
                                 )}
                               </td>
                             </tr>
@@ -2349,6 +2373,39 @@ const OperationsManagement = () => {
           </div>
         )}
 
+        {activeSection === "reminders" && remindersUnlocked && (
+          <ClientReminders
+            apiBaseUrl={API_BASE_URL}
+            clientEmail={userDetails?.email || ""}
+            clientName={userDetails?.name || ""}
+            opsKey={remindersOpsKey}
+            updatedBy={operatorName || role || "operations"}
+          />
+        )}
+
+        {activeSection === "reminders" && !remindersUnlocked && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12">
+            <div className="text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-violet-100 to-indigo-100 mb-6">
+                <Lock className="h-8 w-8 text-violet-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Client Reminders Locked
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Please enter the secret key to configure recurring client reports
+              </p>
+              <button
+                onClick={() => setShowRemindersSecretModal(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-all shadow-md"
+              >
+                <Lock className="w-4 h-4" />
+                <span>Unlock Client Reminders</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Auto-save indicator */}
         {saving && (
           <div className="mt-6 flex justify-end">
@@ -2377,6 +2434,26 @@ const OperationsManagement = () => {
           setActiveSection("whatsapp");
         }}
         error={whatsappSecretError}
+      />
+
+      <SecretKeyModal
+        isOpen={showRemindersSecretModal}
+        onClose={() => {
+          setShowRemindersSecretModal(false);
+          setRemindersSecretError('');
+        }}
+        onConfirm={(secretKey) => {
+          if (secretKey !== OPERATIONS_SECRET_KEY) {
+            setRemindersSecretError("Incorrect secret key. Please try again.");
+            return;
+          }
+          setRemindersOpsKey(secretKey);
+          setRemindersUnlocked(true);
+          setShowRemindersSecretModal(false);
+          setRemindersSecretError('');
+          setActiveSection("reminders");
+        }}
+        error={remindersSecretError}
       />
     </div>
   );
