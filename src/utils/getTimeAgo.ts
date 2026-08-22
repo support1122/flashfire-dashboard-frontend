@@ -6,7 +6,8 @@ export function getTimeAgo(dateString: string): string {
 
 /**
  * Parse a stored "added at" date string into a Date.
- * Handles ISO, en-IN locale (DD/MM/YYYY, h:mm:ss am/pm), and native-parseable formats.
+ * Handles ISO, en-IN (D/M/YYYY, lowercase meridiem), en-US (M/D/YYYY, uppercase
+ * meridiem) and native-parseable formats.
  * Returns null if unparseable. Single source of truth for getTimeAgo + sort ordering.
  */
 export function parseAddedDate(dateString: string | null | undefined): Date | null {
@@ -69,7 +70,8 @@ function to24HourParts(input: string): { h: number; m: number; s: number } | nul
   return null;
 }
 
-// Parse strings saved as IST locale (DD/MM/YYYY, h:mm[:ss] AM/PM) and convert to the actual instant (UTC)
+// Parse a stored IST locale string (either D/M/YYYY or M/D/YYYY, see below)
+// and convert it to the actual instant in UTC.
 function parseIstLocaleString(input: string): Date | null {
   const parts = String(input).trim().split(",");
   if (parts.length !== 2) return null;
@@ -77,12 +79,39 @@ function parseIstLocaleString(input: string): Date | null {
   const datePart = parts[0].trim();
   const timePart = parts[1].trim();
 
-  const [ddStr, mmStr, yyStr] = datePart.split("/").map((p) => p.trim());
-  const dd = Number(ddStr);
-  const mm = Number(mmStr);
-  let yyyy = Number(yyStr);
+  // The collection holds THREE formats, because the writer locale changed
+  // around Oct 2025: en-IN "1/5/2026, 3:59:09 pm" is D/M with a LOWERCASE
+  // meridiem, en-US "5/1/2026, 3:59:09 PM" is M/D with an UPPERCASE one.
+  // This function used to hardcode D/M, so every en-US row was read as the
+  // wrong date - and when the month landed above 12 ("7/27/2026") Date.UTC
+  // rolled it into the following year, which is how a card added last July
+  // could claim it was added in a future month.
+  //
+  // Disambiguate the same way Utils/jobActivityTime.js does on the backend:
+  // an out-of-range number settles it outright, otherwise the meridiem case.
+  const nums = datePart.split("/").map((p) => Number(p.trim()));
+  if (nums.length !== 3 || nums.some((n) => !Number.isFinite(n))) return null;
+  const rawMeridiem = (timePart.match(/\b(am|pm|AM|PM)\b/) || [])[1] || "";
+  let dd: number;
+  let mm: number;
+  let yyyy = nums[2];
+  if (nums[0] > 12) {
+    dd = nums[0];
+    mm = nums[1];
+  } else if (nums[1] > 12) {
+    mm = nums[0];
+    dd = nums[1];
+  } else if (rawMeridiem && rawMeridiem === rawMeridiem.toLowerCase()) {
+    dd = nums[0];
+    mm = nums[1];
+  } else {
+    mm = nums[0];
+    dd = nums[1];
+  }
   if (!dd || !mm || !yyyy) return null;
   if (yyyy < 100) yyyy += 2000;
+  // Reject a rolled-over month outright rather than letting Date.UTC absorb it.
+  if (dd > 31 || mm > 12) return null;
 
   const t = to24HourParts(timePart);
   if (!t) return null;

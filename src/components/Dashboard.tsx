@@ -17,35 +17,70 @@ import ReferralBenefitsDisplay from "./ReferralBenefitsDisplay.tsx";
 
 const JobForm = lazy(() => import("./JobForm.tsx"));
 
+/**
+ * Epoch ms for ordering a job card, most trustworthy source first.
+ *
+ * The backend now sends `activityAt` (see Utils/jobActivityTime.js): creation
+ * time read straight out of the ObjectId, merged with the latest update or
+ * applied time. Use it whenever it is there.
+ *
+ * The string parsing below is only a fallback for a cached payload from before
+ * that shipped. It exists because the stored dates are locale strings in three
+ * different formats, and the previous version of this function assumed MM/DD
+ * whenever the first number was <= 12 - which misread 98 of one client's 265
+ * cards and is why April cards outranked May ones in Recent Activities.
+ */
+interface JobTimeFields {
+  activityAt?: number | string | null;
+  updatedAt?: string | null;
+  dateAdded?: string | null;
+  createdAt?: string | null;
+}
+
+const jobActivityMs = (job: JobTimeFields | null | undefined): number => {
+  const direct = Number(job?.activityAt);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  return Math.max(
+    parseCustomDate(job?.updatedAt || "").getTime(),
+    parseCustomDate(job?.dateAdded || job?.createdAt || "").getTime()
+  );
+};
+
 const parseCustomDate = (dateString: string): Date => {
   if (!dateString) return new Date(0);
   try {
-    if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dateString)) {
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dateString)) {
       const iso = new Date(dateString);
       if (!isNaN(iso.getTime())) return iso;
     }
     const parts = dateString.trim().split(",");
     if (parts.length === 2) {
-      const datePart = parts[0].trim();
-      const timePart = parts[1].trim();
-      const dateNumbers = datePart.split("/").map((p) => parseInt(p.trim()));
-      if (dateNumbers.length === 3) {
-        let dd, mm, yyyy;
-        if (dateNumbers[0] > 12) { dd = dateNumbers[0]; mm = dateNumbers[1]; yyyy = dateNumbers[2]; }
-        else { mm = dateNumbers[0]; dd = dateNumbers[1]; yyyy = dateNumbers[2]; }
-        if (dd && mm && yyyy) {
-          if (yyyy < 100) yyyy += 2000;
+      const nums = parts[0].trim().split("/").map((p) => parseInt(p.trim(), 10));
+      const timeMatch = parts[1].trim().match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm|AM|PM)?/);
+      if (nums.length === 3 && !nums.some((n) => isNaN(n)) && timeMatch) {
+        const rawMeridiem = timeMatch[4] || "";
+        let dd: number;
+        let mm: number;
+        let yyyy = nums[2];
+        if (nums[0] > 12) {
+          dd = nums[0]; mm = nums[1];            // only DD/MM is legal
+        } else if (nums[1] > 12) {
+          mm = nums[0]; dd = nums[1];            // only MM/DD is legal
+        } else if (rawMeridiem && rawMeridiem === rawMeridiem.toLowerCase()) {
+          dd = nums[0]; mm = nums[1];            // lowercase meridiem = en-IN = D/M
+        } else {
+          mm = nums[0]; dd = nums[1];            // uppercase or absent = en-US = M/D
+        }
+        if (yyyy < 100) yyyy += 2000;
+        if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12) {
+          let hours = parseInt(timeMatch[1], 10);
+          const minutes = parseInt(timeMatch[2], 10);
+          const seconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+          const meridiem = rawMeridiem.toLowerCase();
+          if (meridiem === "pm" && hours !== 12) hours += 12;
+          if (meridiem === "am" && hours === 12) hours = 0;
           const date = new Date(yyyy, mm - 1, dd);
-          const timeMatch = timePart.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)/i);
-          if (timeMatch) {
-            let hours = parseInt(timeMatch[1]);
-            const minutes = parseInt(timeMatch[2]);
-            const seconds = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
-            const period = timeMatch[4]?.toLowerCase();
-            if (period === "pm" && hours !== 12) hours += 12;
-            if (period === "am" && hours === 12) hours = 0;
-            date.setHours(hours, minutes, seconds);
-          }
+          date.setHours(hours, minutes, seconds);
           return date;
         }
       }
@@ -96,7 +131,9 @@ const Dashboard: React.FC = () => {
     if (!userJobs) return [];
     const seen = new Set<string>();
     return userJobs.filter((job) => {
-      if (!job || !job.updatedAt || !job.jobID) return false;
+      // Previously also required updatedAt, which silently hid any card that
+      // had never been moved. jobID is the only field actually needed to dedupe.
+      if (!job || !job.jobID) return false;
       if (seen.has(job.jobID)) return false;
       seen.add(job.jobID);
       return true;
@@ -104,13 +141,18 @@ const Dashboard: React.FC = () => {
   }, [userJobs]);
 
   const recentJobs = useMemo(() => {
-    return [...uniqueJobs]
-      .sort((a, b) => {
-        const dateA = parseCustomDate(a?.dateAdded || a?.createdAt || "");
-        const dateB = parseCustomDate(b?.dateAdded || b?.createdAt || "");
-        return dateB.getTime() - dateA.getTime();
-      })
-      .slice(0, 6);
+    return uniqueJobs
+      // A card the client removed, or that the AI screened out, is not
+      // "recent activity" - it is the opposite. These used to sit at the top of
+      // the panel showing a bare "removed" badge with no explanation.
+      .filter((job) => !/^(deleted|removed)/i.test(String(job?.currentStatus || "")))
+      // Rank by the LATEST thing that happened to the card, not by when it was
+      // added. A card added nine days ago that reached Interviewing this morning
+      // is more recent activity than one added today and never touched.
+      .map((job) => ({ job, at: jobActivityMs(job) }))
+      .sort((a, b) => b.at - a.at)
+      .slice(0, 6)
+      .map((entry) => entry.job);
   }, [uniqueJobs]);
 
   const successRate = stats.total > 0 ? Math.round((stats.offer / stats.total) * 100) : 0;
@@ -249,14 +291,19 @@ const statusBadgeClass = (status: string): string => {
   return "bg-white text-gray-600 border border-gray-300";
 };
 
-// Client-facing status text. The backend stores removals with extra context the
-// client should never see - "removed by ai", "deleted by <operator>" - so any
-// variant that the backend's own /^(deleted|removed)/i test counts as removed
-// is collapsed to a plain "removed". Everything else shows as-is.
+// Client-facing status text.
+//
+// currentStatus carries an operator attribution suffix - UpdateChanges.js turns
+// "applied" into "applied by Shubhangi" so operations can see who moved a card.
+// That is internal. This panel rendered it verbatim, so clients were reading the
+// name of the staff member working their account. Strip it here, and collapse
+// every removal variant ("removed by ai", "deleted by <operator>") to a plain
+// "removed" the way the backend's own /^(deleted|removed)/i test does.
 const clientStatusLabel = (status: string | undefined): string => {
-  const s = (status || "saved").toLowerCase();
+  const s = String(status || "saved").trim().toLowerCase();
   if (/^(deleted|removed)/.test(s)) return "removed";
-  return s;
+  const stripped = s.replace(/\s+by\s+.*$/i, "").trim();
+  return stripped || "saved";
 };
 
 const RecentActivity = React.memo(({ recentJobs }: { recentJobs: any[] }) => (
@@ -264,7 +311,7 @@ const RecentActivity = React.memo(({ recentJobs }: { recentJobs: any[] }) => (
     {/* Header */}
     <div className="flex items-start justify-between mb-1">
       <div>
-        <h2 className="text-lg font-bold text-gray-900">Recent Activites</h2>
+        <h2 className="text-lg font-bold text-gray-900">Recent Activities</h2>
         <p className="text-sm text-gray-400 mt-0.5">Track your recent application activities</p>
       </div>
       <button
