@@ -1777,19 +1777,65 @@ function App() {
             console.log("Saving to V2 resume with ID:", lastSelectedResumeId);
             const apiUrl =
                 import.meta.env.VITE_API_URL || "https://resume-maker-backend-lf5z.onrender.com";
-            await fetch(`${apiUrl}/api/save-v2-resume`, {
+            const res = await fetch(`${apiUrl}/api/save-v2-resume`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({ id: lastSelectedResumeId, version: 2 }),
             });
+            // The server answers 200 with noop:true when the resume is already
+            // at that version. Reporting success there would be a lie, and the
+            // operator would go looking for a copy that was never made.
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(body?.message || "Error saving to medical resume. Please try again.");
+                return;
+            }
             alert(
-                "Medical resume saved go to Medical resume session  to see it."
+                body?.noop
+                    ? "This resume is already a Medical resume, so nothing was copied."
+                    : "Medical resume saved go to Medical resume session  to see it."
             );
         } catch (error) {
             alert("Error saving to medical resume. Please try again.");
             console.error("Error saving to medical resume:", error);
+        }
+    };
+
+    /**
+     * Convert the open resume back to the NORMAL template (V = 0).
+     *
+     * Counterpart to handleV2Resume. Creates a COPY: the medical original is
+     * untouched, so anything already pointing at it keeps working. The new copy
+     * is a plain V0 resume, which every surface already handles as the default
+     * — editor, preview, PDF export and the extension all need no changes.
+     */
+    const handleV0Resume = async () => {
+        try {
+            console.log("Converting to normal resume with ID:", lastSelectedResumeId);
+            const apiUrl =
+                import.meta.env.VITE_API_URL || "https://resume-maker-backend-lf5z.onrender.com";
+            const res = await fetch(`${apiUrl}/api/save-v0-resume`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ id: lastSelectedResumeId, version: 0 }),
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(body?.message || "Error converting to normal resume. Please try again.");
+                return;
+            }
+            alert(
+                body?.noop
+                    ? "This resume is already a Normal resume, so nothing was copied."
+                    : "Normal resume created. Open the Normal resume list to see it. The medical original is unchanged."
+            );
+        } catch (error) {
+            alert("Error converting to normal resume. Please try again.");
+            console.error("Error converting to normal resume:", error);
         }
     };
 
@@ -2913,7 +2959,13 @@ function App() {
                                         This will clear all your data and start
                                         fresh
                                     </p>
-                                    <div className="flex gap-4">
+                                    {/* Template conversions. Each button is
+                                        disabled when the open resume is ALREADY
+                                        that template, so the greyed-out one tells
+                                        you at a glance which template you are on
+                                        — and the server's no-op reply can never
+                                        be reached by clicking. */}
+                                    <div className="flex flex-col gap-2 mt-2">
                                         {/* <button
                                             onClick={handleV1Resume}
                                             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium mt-2"
@@ -2923,16 +2975,51 @@ function App() {
                                         </button> */}
                                         <button
                                             onClick={handleV2Resume}
-                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium mt-2"
+                                            disabled={versionV === 2}
+                                            title={
+                                                versionV === 2
+                                                    ? "This resume is already a Medical resume"
+                                                    : "Create a Medical (V2) copy of this resume"
+                                            }
+                                            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-colors font-medium ${
+                                                versionV === 2
+                                                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                                    : "bg-green-600 text-white hover:bg-green-700"
+                                            }`}
                                         >
                                             <LucideSaveAll size={18} />
                                             Save to Medical Resume
+                                            {versionV === 2 && (
+                                                <span className="text-xs font-normal">(current)</span>
+                                            )}
+                                        </button>
+
+                                        <button
+                                            onClick={handleV0Resume}
+                                            disabled={versionV === 0}
+                                            title={
+                                                versionV === 0
+                                                    ? "This resume is already a Normal resume"
+                                                    : "Create a Normal (V0) copy of this resume. The original is left unchanged."
+                                            }
+                                            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-colors font-medium ${
+                                                versionV === 0
+                                                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                                    : "bg-blue-600 text-white hover:bg-blue-700"
+                                            }`}
+                                        >
+                                            <LucideSaveAll size={18} />
+                                            Convert to Normal Resume
+                                            {versionV === 0 && (
+                                                <span className="text-xs font-normal">(current)</span>
+                                            )}
                                         </button>
                                     </div>
 
-                                    <p>
-                                        saves a new resume of this resume to V1
-                                        resume template
+                                    <p className="text-xs text-gray-500 mt-2 text-center">
+                                        Each button saves a COPY at that template.
+                                        The resume you are on is greyed out, and the
+                                        original is never modified.
                                     </p>
                                 </LockedSection>
 
