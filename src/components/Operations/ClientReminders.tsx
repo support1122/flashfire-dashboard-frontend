@@ -53,6 +53,8 @@ interface CatalogueItem {
   description: string;
   cadence: Cadence;
   activityGated: boolean;
+  /** Internal items deliver to the FlashFire team, never to the client. */
+  internal?: boolean;
   scheduleFields: string[];
   defaults?: CatalogueDefaults;
 }
@@ -1161,15 +1163,21 @@ export default function ClientReminders({
                     </div>
 
                     <div className="lg:flex lg:items-start lg:justify-center lg:pt-1">
+                      {/* Internal items mail the FlashFire team inbox, so the
+                          client's payment email neither gates nor labels them.
+                          The backend enforces the routing either way; this is
+                          the operator-facing truth of where the mail goes. */}
                       <ChannelCheckbox
                         checked={item.channels.email}
-                        disabled={rowDisabled || !hasPaymentEmail}
+                        disabled={rowDisabled || (!meta.internal && !hasPaymentEmail)}
                         onChange={(next) => patchChannel(item.key, "email", next)}
-                        label="Payment email"
+                        label={meta.internal ? "Team email" : "Payment email"}
                         hint={
-                          hasPaymentEmail
-                            ? "Deliver this report to the client's payment email"
-                            : "No payment email resolved for this client yet"
+                          meta.internal
+                            ? "Internal alert - emails the FlashFire team inbox, never the client"
+                            : hasPaymentEmail
+                              ? "Deliver this report to the client's payment email"
+                              : "No payment email resolved for this client yet"
                         }
                       />
                     </div>
