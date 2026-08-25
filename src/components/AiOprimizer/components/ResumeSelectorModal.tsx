@@ -80,7 +80,36 @@ export default function ResumeSelectorModal({
             if (better) byResume.set(key, resume);
         }
 
-        const unique = [...byResume.values()];
+        let unique = [...byResume.values()];
+
+        // Drop template copies that nobody has touched yet.
+        //
+        // "Save to Medical Resume" / "Convert to Normal Resume" mint a new row
+        // carrying the same name and no email, so the picker showed the same
+        // person twice with nothing to choose between them — and linking the
+        // wrong one attaches the copy instead of the client's real resume.
+        //
+        // A copy is only hidden when ALL THREE hold:
+        //   • its source row is present in this same list, so nothing vanishes
+        //   • it still has no client assigned, so no real link is concealed
+        //   • it still carries the source's name, so a renamed copy (a genuinely
+        //     different person built from someone else's resume) survives
+        // Anything an operator has actually invested in therefore stays visible.
+        const idOf = (r: any) => String(r?._id ?? '');
+        const byId = new Map(unique.map((r) => [idOf(r), r]));
+        const sameName = (a: any, b: any) =>
+            `${a?.firstName || ''} ${a?.lastName || ''}`.trim().toLowerCase() ===
+            `${b?.firstName || ''} ${b?.lastName || ''}`.trim().toLowerCase();
+
+        unique = unique.filter((r) => {
+            const sourceId = String(r?.copiedFromId ?? '');
+            if (!sourceId) return true;
+            const source = byId.get(sourceId);
+            if (!source) return true;          // source filtered out elsewhere — keep the copy
+            if (r.userEmail) return true;      // somebody linked it; it is real now
+            if (!sameName(r, source)) return true; // renamed into a different person
+            return false;
+        });
 
         const displayName = (r: any) =>
             `${r.firstName || ''} ${r.lastName || ''}`.trim().toLowerCase() ||
@@ -94,7 +123,14 @@ export default function ResumeSelectorModal({
         });
 
         return unique
-            .map((r) => ({ ...r, ambiguous: (nameCounts.get(displayName(r)) || 0) > 1 }))
+            .map((r) => ({
+                ...r,
+                ambiguous: (nameCounts.get(displayName(r)) || 0) > 1,
+                // A copy that survived the filter above is one an operator linked
+                // or renamed. Say so, so two same-named rows are distinguishable
+                // by something other than guesswork.
+                isCopy: !!r.copiedFromId,
+            }))
             .sort((a, b) => displayName(a).localeCompare(displayName(b)));
     };
 
@@ -407,6 +443,14 @@ export default function ResumeSelectorModal({
                                                 // rather than hiding one of them.
                                                 <span className="text-gray-500 text-sm ml-2">
                                                     {r.userEmail || "unassigned"}
+                                                </span>
+                                            )}
+                                            {r.isCopy && (
+                                                <span
+                                                    className="text-indigo-700 bg-indigo-50 border border-indigo-200 text-xs px-1.5 py-0.5 rounded ml-2"
+                                                    title="Created by converting another resume to a different template"
+                                                >
+                                                    copy
                                                 </span>
                                             )}
                                             {r.hidden && (
