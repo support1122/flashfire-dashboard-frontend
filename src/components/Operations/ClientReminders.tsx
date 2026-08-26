@@ -45,6 +45,9 @@ interface CatalogueDefaults {
   dayOfWeek?: number;
   dayOfMonth?: number;
   inactivityDays?: number;
+  autoOnThreshold?: boolean;
+  autoThresholdCount?: number;
+  autoDelayMinutes?: number;
 }
 
 interface CatalogueItem {
@@ -67,6 +70,9 @@ interface ItemConfig {
   dayOfWeek: number;
   dayOfMonth: number;
   inactivityDays: number;
+  autoOnThreshold: boolean;
+  autoThresholdCount: number;
+  autoDelayMinutes: number;
   lastPeriodKey: string;
   lastSentAt: string | null;
   lastStatus: string;
@@ -87,6 +93,8 @@ interface HistoryRow {
 interface ReminderConfig {
   clientEmail: string;
   clientName?: string;
+  /** Forward inbox milestones to the client. Opt-in, off by default. */
+  inboxAlertsEnabled?: boolean;
   paymentEmailOverride?: string;
   mattermostWebhookUrl?: string;
   items?: ItemConfig[];
@@ -225,6 +233,9 @@ function normalizeItems(catalogue: CatalogueItem[], raw: ItemConfig[] | undefine
       dayOfWeek: pickInt(saved?.dayOfWeek, defaults.dayOfWeek, 1),
       dayOfMonth: pickInt(saved?.dayOfMonth, defaults.dayOfMonth, 1),
       inactivityDays: pickInt(saved?.inactivityDays, defaults.inactivityDays, 3),
+      autoOnThreshold: pickBool(saved?.autoOnThreshold, defaults.autoOnThreshold),
+      autoThresholdCount: pickInt(saved?.autoThresholdCount, defaults.autoThresholdCount, 5),
+      autoDelayMinutes: pickInt(saved?.autoDelayMinutes, defaults.autoDelayMinutes, 60),
       lastPeriodKey: saved?.lastPeriodKey || "",
       lastSentAt: saved?.lastSentAt || null,
       lastStatus: saved?.lastStatus || "",
@@ -245,7 +256,10 @@ function fingerprint(items: ItemConfig[], webhook: string): string {
       i.sendAtIST,
       i.dayOfWeek,
       i.dayOfMonth,
-      i.inactivityDays
+      i.inactivityDays,
+      i.autoOnThreshold,
+      i.autoThresholdCount,
+      i.autoDelayMinutes
     ])
   });
 }
@@ -517,6 +531,7 @@ export default function ClientReminders({
   const [savingPaymentEmail, setSavingPaymentEmail] = useState(false);
 
   const [saving, setSaving] = useState(false);
+  const [savingInboxAlerts, setSavingInboxAlerts] = useState(false);
   const [testingWebhook, setTestingWebhook] = useState(false);
   const [webhookTestResult, setWebhookTestResult] = useState<{ ok: boolean; message: string } | null>(
     null
@@ -593,6 +608,7 @@ export default function ClientReminders({
   }, [load]);
 
   const catalogue = useMemo(() => bundle?.catalogue || [], [bundle]);
+  const inboxAlertsEnabled = bundle?.config?.inboxAlertsEnabled === true;
   const savedWebhook = (bundle?.config?.mattermostWebhookUrl || "").trim();
   const hasWebhook = savedWebhook.length > 0;
   const hasPaymentEmail = Boolean((bundle?.resolvedPaymentEmail || "").trim());
@@ -619,6 +635,40 @@ export default function ClientReminders({
     );
   }, []);
 
+  /**
+   * Inbox milestone forwarding. Saves on click rather than waiting for "Save
+   * settings", because this switch controls whether a classifier's reading of
+   * the client's private mailbox reaches them - turning it OFF has to take
+   * effect immediately, not when somebody remembers to press save.
+   *
+   * It posts ONLY this field, so it cannot commit half-edited report rows.
+   */
+  const handleToggleInboxAlerts = async (next: boolean) => {
+    if (savingInboxAlerts) return;
+    setSavingInboxAlerts(true);
+    try {
+      const data = await call<SaveResponse>("PUT", "", {
+        clientEmail,
+        inboxAlertsEnabled: next,
+        updatedBy
+      });
+      const savedConfig = data.data?.config;
+      if (!data.success || !savedConfig) {
+        throw new Error(data.message || data.error || "Could not change inbox alerts");
+      }
+      setBundle((prev) => (prev ? { ...prev, config: savedConfig } : prev));
+      toastUtils.success(
+        next
+          ? "Inbox milestone alerts are ON for this client"
+          : "Inbox milestone alerts are OFF for this client"
+      );
+    } catch (err) {
+      toastUtils.error(err instanceof Error ? err.message : "Could not change inbox alerts");
+    } finally {
+      setSavingInboxAlerts(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!dirty || saving) return;
     setSaving(true);
@@ -633,7 +683,10 @@ export default function ClientReminders({
           sendAtIST: item.sendAtIST,
           dayOfWeek: item.dayOfWeek,
           dayOfMonth: item.dayOfMonth,
-          inactivityDays: item.inactivityDays
+          inactivityDays: item.inactivityDays,
+          autoOnThreshold: item.autoOnThreshold,
+          autoThresholdCount: item.autoThresholdCount,
+          autoDelayMinutes: item.autoDelayMinutes
         })),
         updatedBy
       });
@@ -882,6 +935,73 @@ export default function ClientReminders({
           </div>
         )}
 
+        {/* Inbox milestone forwarding. Sits above the scheduled reports because
+            it is a different kind of thing: event-driven off the client's real
+            mailbox rather than a report on our own job data. */}
+        {!loading && !loadError && bundle && (
+          <div className="border-b border-gray-100 bg-white px-5 py-4">
+            <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-gradient-to-br from-amber-50/60 to-white p-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                  <Mail className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="text-sm font-bold text-gray-900">Important inbox mail</h4>
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-600">
+                      As it happens
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-gray-600">
+                    When the hourly inbox scan finds an interview, assignment or offer in this client's
+                    connected mailbox, forward it to them straight away over the channels below. Each mail
+                    is sent once per channel and never twice.
+                  </p>
+                  {inboxAlertsEnabled && (
+                    <p className="mt-1.5 text-xs font-medium text-amber-800">
+                      This is driven by a classifier reading the client's real inbox. A wrong call reaches
+                      them as news, so leave it off unless you want that risk for this client.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2.5 sm:pt-1">
+                <span
+                  className={`text-xs font-bold ${inboxAlertsEnabled ? "text-emerald-700" : "text-gray-500"}`}
+                >
+                  {inboxAlertsEnabled ? "On" : "Off"}
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={inboxAlertsEnabled}
+                  aria-label={
+                    inboxAlertsEnabled
+                      ? "Inbox milestone alerts are on for this client. Click to turn them off."
+                      : "Inbox milestone alerts are off for this client. Click to turn them on."
+                  }
+                  onClick={() => void handleToggleInboxAlerts(!inboxAlertsEnabled)}
+                  disabled={savingInboxAlerts}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    inboxAlertsEnabled ? "bg-emerald-500" : "bg-gray-300"
+                  }`}
+                >
+                  {savingInboxAlerts ? (
+                    <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin text-white" />
+                  ) : (
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                        inboxAlertsEnabled ? "translate-x-[22px]" : "translate-x-0.5"
+                      }`}
+                    />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="divide-y divide-gray-100">
             <RowSkeleton />
@@ -1073,6 +1193,94 @@ export default function ClientReminders({
                               )}
                             </div>
                           )}
+
+                          {meta.scheduleFields.includes("autoOnThreshold") && (
+                            <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50/80 p-3">
+                              <label className="flex cursor-pointer items-start gap-2.5">
+                                <input
+                                  type="checkbox"
+                                  checked={item.autoOnThreshold}
+                                  disabled={rowDisabled}
+                                  onChange={(e) =>
+                                    patchItem(item.key, { autoOnThreshold: e.target.checked })
+                                  }
+                                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 text-violet-600 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed"
+                                />
+                                <span className="min-w-0">
+                                  <span className="block text-xs font-semibold text-gray-800">
+                                    Send early once enough roles are added
+                                  </span>
+                                  <span className="mt-0.5 block text-[11px] leading-relaxed text-gray-600">
+                                    Instead of waiting for the time above, send the summary a set delay
+                                    after the client passes a role count for the day. Whichever comes
+                                    first wins, and the client still gets exactly one summary a day.
+                                  </span>
+                                </span>
+                              </label>
+
+                              {item.autoOnThreshold && (
+                                <div className="mt-2.5 flex flex-wrap items-end gap-3 pl-6.5">
+                                  <div>
+                                    <label
+                                      htmlFor={`${item.key}-auto-count`}
+                                      className="mb-1 block text-[11px] font-medium text-gray-500"
+                                    >
+                                      Roles added
+                                    </label>
+                                    <input
+                                      id={`${item.key}-auto-count`}
+                                      type="number"
+                                      min={2}
+                                      max={200}
+                                      value={item.autoThresholdCount}
+                                      disabled={rowDisabled}
+                                      onChange={(e) =>
+                                        patchItem(item.key, {
+                                          autoThresholdCount: Math.min(
+                                            200,
+                                            Math.max(2, Number(e.target.value) || 2)
+                                          )
+                                        })
+                                      }
+                                      className="w-20 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-800 outline-none transition-shadow focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label
+                                      htmlFor={`${item.key}-auto-delay`}
+                                      className="mb-1 block text-[11px] font-medium text-gray-500"
+                                    >
+                                      Wait (minutes)
+                                    </label>
+                                    <input
+                                      id={`${item.key}-auto-delay`}
+                                      type="number"
+                                      min={0}
+                                      max={720}
+                                      step={15}
+                                      value={item.autoDelayMinutes}
+                                      disabled={rowDisabled}
+                                      onChange={(e) =>
+                                        patchItem(item.key, {
+                                          autoDelayMinutes: Math.min(
+                                            720,
+                                            Math.max(0, Number(e.target.value) || 0)
+                                          )
+                                        })
+                                      }
+                                      className="w-24 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-800 outline-none transition-shadow focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+                                    />
+                                  </div>
+                                  <p className="pb-1.5 text-[11px] text-gray-500">
+                                    Sends {item.autoDelayMinutes} min after the{" "}
+                                    {item.autoThresholdCount}
+                                    <sup>{item.autoThresholdCount === 1 ? "st" : "th"}</sup> role of the day.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
 
                           <div className="mt-3 flex flex-wrap items-center gap-2">
                             <button
