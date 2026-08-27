@@ -82,34 +82,19 @@ export default function ResumeSelectorModal({
 
         let unique = [...byResume.values()];
 
-        // Drop template copies that nobody has touched yet.
+        // NOTE: an earlier version of this dropped "untouched" conversion copies
+        // here — a row with copiedFromId, no client and the source's name. That
+        // was wrong, and it hid the copy the operator had just deliberately
+        // created: copyResumeAtVersion REFUSES to copy a resume to the version it
+        // already is, so every copy differs from its source in V, and a fresh one
+        // always has the source's name and no email. The rule therefore matched
+        // 100% of conversions, and "Convert to Normal Resume" appeared to do
+        // nothing because the new V0 row never reached the list.
         //
-        // "Save to Medical Resume" / "Convert to Normal Resume" mint a new row
-        // carrying the same name and no email, so the picker showed the same
-        // person twice with nothing to choose between them — and linking the
-        // wrong one attaches the copy instead of the client's real resume.
-        //
-        // A copy is only hidden when ALL THREE hold:
-        //   • its source row is present in this same list, so nothing vanishes
-        //   • it still has no client assigned, so no real link is concealed
-        //   • it still carries the source's name, so a renamed copy (a genuinely
-        //     different person built from someone else's resume) survives
-        // Anything an operator has actually invested in therefore stays visible.
-        const idOf = (r: any) => String(r?._id ?? '');
-        const byId = new Map(unique.map((r) => [idOf(r), r]));
-        const sameName = (a: any, b: any) =>
-            `${a?.firstName || ''} ${a?.lastName || ''}`.trim().toLowerCase() ===
-            `${b?.firstName || ''} ${b?.lastName || ''}`.trim().toLowerCase();
-
-        unique = unique.filter((r) => {
-            const sourceId = String(r?.copiedFromId ?? '');
-            if (!sourceId) return true;
-            const source = byId.get(sourceId);
-            if (!source) return true;          // source filtered out elsewhere — keep the copy
-            if (r.userEmail) return true;      // somebody linked it; it is real now
-            if (!sameName(r, source)) return true; // renamed into a different person
-            return false;
-        });
+        // The duplication it was aimed at was never a copy at all. It was index
+        // rows sharing one filename from the pre-2026-08-06 name-derived storage
+        // key, and those are filtered server-side now (utils/resumeGhosts.js),
+        // where the content document is available to prove a row is stale.
 
         const displayName = (r: any) =>
             `${r.firstName || ''} ${r.lastName || ''}`.trim().toLowerCase() ||
