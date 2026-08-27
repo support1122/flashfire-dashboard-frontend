@@ -1772,6 +1772,29 @@ function App() {
             console.error("Error saving to V1 resume:", error);
         }
     };
+    /**
+     * Versions that already have a copy of the resume currently open.
+     *
+     * Converting creates a COPY, so the resume you are looking at stays medical
+     * and versionV never changes — which left "Convert to Normal Resume" fully
+     * enabled after a successful conversion, inviting a second click that the
+     * server can only answer with "already copied". Tracked against the resume
+     * id so switching resumes clears it rather than carrying a stale state over.
+     */
+    const [copiedVersions, setCopiedVersions] = useState<{ id: string | null; versions: number[] }>({
+        id: null,
+        versions: [],
+    });
+    const markCopied = (v: number) =>
+        setCopiedVersions((prev) => {
+            const id = lastSelectedResumeId ? String(lastSelectedResumeId) : null;
+            const versions = prev.id === id ? prev.versions : [];
+            return { id, versions: versions.includes(v) ? versions : [...versions, v] };
+        });
+    const hasCopyAt = (v: number) =>
+        copiedVersions.id === (lastSelectedResumeId ? String(lastSelectedResumeId) : null) &&
+        copiedVersions.versions.includes(v);
+
     const handleV2Resume = async () => {
         try {
             console.log("Saving to V2 resume with ID:", lastSelectedResumeId);
@@ -1792,10 +1815,13 @@ function App() {
                 alert(body?.message || "Error saving to medical resume. Please try again.");
                 return;
             }
+            markCopied(2);
             alert(
-                body?.noop
-                    ? "This resume is already a Medical resume, so nothing was copied."
-                    : "Medical resume saved go to Medical resume session  to see it."
+                body?.alreadyCopied
+                    ? "A Medical copy of this resume already exists. Open the Medical resume list to see it."
+                    : body?.noop
+                        ? "This resume is already a Medical resume, so nothing was copied."
+                        : "Medical resume saved go to Medical resume session  to see it."
             );
         } catch (error) {
             alert("Error saving to medical resume. Please try again.");
@@ -1828,10 +1854,13 @@ function App() {
                 alert(body?.message || "Error converting to normal resume. Please try again.");
                 return;
             }
+            markCopied(0);
             alert(
-                body?.noop
-                    ? "This resume is already a Normal resume, so nothing was copied."
-                    : "Normal resume created. Open the Normal resume list to see it. The medical original is unchanged."
+                body?.alreadyCopied
+                    ? "A Normal copy of this resume already exists. Open the Normal resume list to see it."
+                    : body?.noop
+                        ? "This resume is already a Normal resume, so nothing was copied."
+                        : "Normal resume created. Open the Normal resume list to see it. The medical original is unchanged."
             );
         } catch (error) {
             alert("Error converting to normal resume. Please try again.");
@@ -2975,44 +3004,52 @@ function App() {
                                         </button> */}
                                         <button
                                             onClick={handleV2Resume}
-                                            disabled={versionV === 2}
+                                            disabled={versionV === 2 || hasCopyAt(2)}
                                             title={
                                                 versionV === 2
                                                     ? "This resume is already a Medical resume"
-                                                    : "Create a Medical (V2) copy of this resume"
+                                                    : hasCopyAt(2)
+                                                        ? "A Medical copy of this resume has already been created"
+                                                        : "Create a Medical (V2) copy of this resume"
                                             }
                                             className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-colors font-medium ${
-                                                versionV === 2
+                                                versionV === 2 || hasCopyAt(2)
                                                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                                                     : "bg-green-600 text-white hover:bg-green-700"
                                             }`}
                                         >
                                             <LucideSaveAll size={18} />
                                             Save to Medical Resume
-                                            {versionV === 2 && (
+                                            {versionV === 2 ? (
                                                 <span className="text-xs font-normal">(current)</span>
-                                            )}
+                                            ) : hasCopyAt(2) ? (
+                                                <span className="text-xs font-normal">(created)</span>
+                                            ) : null}
                                         </button>
 
                                         <button
                                             onClick={handleV0Resume}
-                                            disabled={versionV === 0}
+                                            disabled={versionV === 0 || hasCopyAt(0)}
                                             title={
                                                 versionV === 0
                                                     ? "This resume is already a Normal resume"
-                                                    : "Create a Normal (V0) copy of this resume. The original is left unchanged."
+                                                    : hasCopyAt(0)
+                                                        ? "A Normal copy of this resume has already been created"
+                                                        : "Create a Normal (V0) copy of this resume. The original is left unchanged."
                                             }
                                             className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-colors font-medium ${
-                                                versionV === 0
+                                                versionV === 0 || hasCopyAt(0)
                                                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                                                     : "bg-blue-600 text-white hover:bg-blue-700"
                                             }`}
                                         >
                                             <LucideSaveAll size={18} />
                                             Convert to Normal Resume
-                                            {versionV === 0 && (
+                                            {versionV === 0 ? (
                                                 <span className="text-xs font-normal">(current)</span>
-                                            )}
+                                            ) : hasCopyAt(0) ? (
+                                                <span className="text-xs font-normal">(created)</span>
+                                            ) : null}
                                         </button>
                                     </div>
 
