@@ -3080,7 +3080,7 @@ const handleSubmit = () => {
         </div>
 
         {/* Right pane — active step content */}
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {/* Mobile header (rail is hidden below md) */}
           <div className="bg-gradient-to-r from-orange-500 to-rose-600 px-6 py-5 text-white md:hidden">
             <div className="mb-3 flex items-center justify-between">
@@ -3119,7 +3119,7 @@ const handleSubmit = () => {
           {/* Form Fields */}
           <div
             ref={scrollContainerRef}
-            className="box-border w-full flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-6 py-6 md:px-8"
+            className="box-border w-full min-h-0 flex-1 space-y-6 overflow-y-auto overflow-x-hidden px-6 py-6 md:px-8"
           >
             {page}
           </div>
