@@ -560,6 +560,7 @@ function App() {
     } = useResumeUnlockStore();
 
     const [showParseModal, setShowParseModal] = useState(false);
+    const [loadedName, setLoadedName] = useState<string | null>(null);
     const [storeHydrated, setStoreHydrated] = useState(false);
     const [isInitializing, setIsInitializing] = useState(true);
 
@@ -1207,6 +1208,7 @@ function App() {
                             setBaseResume(resumeData);
                             checkLoadedResumeData(resumeData);
                             setResumeId(resumeData.resumeId);
+                            setLoadedName(resumeData.personalInfo?.name?.trim() ?? null);
                             setLastSelectedResume(resumeData, resumeData.resumeId);
                             // Store the assigned resume ID to track it
                             setAssignedResumeId(resumeData.resumeId);
@@ -1701,11 +1703,11 @@ function App() {
                 certList.some(c => (c.title && c.title.trim() !== "") || (c.issuer && c.issuer.trim() !== ""));
             const finalShowCertifications = hasCertifications || showCertifications;
 
+            const nameChanged = loadedName !== null && name.trim() !== loadedName.trim();
+            const effectiveResumeId = nameChanged ? null : (resume_id || null);
+
             const saveData = {
-                // Identifies the resume being edited. Without it the backend has
-                // to guess from the name-derived filename, which forks the resume
-                // into a second document as soon as the name is edited.
-                resume_id: resume_id || null,
+                resume_id: effectiveResumeId,
                 filename,
                 data: resumeData,
                 checkboxStates: {
@@ -1742,8 +1744,10 @@ function App() {
                 "Resume ID:",
                 result.resume_id
             );
-            // Optionally store resume_id in state or context for later use
-            // setResumeId(result.resume_id);
+            if (result.resume_id) {
+                setResumeId(result.resume_id);
+            }
+            setLoadedName(name.trim());
 
             setTimeout(() => {
                 setIsSaved(false);
@@ -2716,6 +2720,7 @@ function App() {
                                                 setResumeId(resumeIdToUse);
                                                 setLastSelectedResume(resume, resumeIdToUse);
                                             }
+                                            setLoadedName(resume.personalInfo?.name?.trim() ?? null);
 
                                             setCurrentResumeView("editor");
                                             
