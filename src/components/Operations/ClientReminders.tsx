@@ -1548,6 +1548,11 @@ export default function ClientReminders({
                 Incoming webhook from the client's Mattermost server, in the form
                 https://your-server/hooks/....
               </p>
+              <p className="mt-1 text-[11px] text-gray-500">
+                Once saved, every client email is mirrored here as well: the daily activity
+                summary, application milestones (resume ready, 150 / 300 / plan complete),
+                the onboarding sequence (base résumé, cover letter, LinkedIn) and inbox alerts.
+              </p>
               {webhookTestResult && (
                 <p
                   className={`mt-1.5 flex items-start gap-1.5 text-[11px] ${
