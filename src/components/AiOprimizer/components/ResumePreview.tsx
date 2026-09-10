@@ -280,11 +280,18 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
     // True only when the preview is a clean, well-filled single page.
     const isPageCountValid = pdfPageCount !== null && pdfPageCount === 1 && !isUnderfilled;
     // Single source of truth for whether the Download button is disabled.
+    //
+    // The page-count rule is a QUALITY GATE for operators, who produce these as
+    // client deliverables and can edit the content until it fits. It is gated to
+    // them for the same reason isUnderfilled above is: a client cannot rewrite
+    // their own resume to lose a page, so enforcing it on them turns the download
+    // button into one that never works. Clients still get the slider, the live
+    // preview and the page count, so they can choose to scale down first.
     const isDownloadBlocked =
         isGeneratingPDF ||
         isGeneratingPreview ||
         !previewPdfBlob ||
-        (pdfPageCount !== null && pdfPageCount > 1) ||
+        (isOperator && pdfPageCount !== null && pdfPageCount > 1) ||
         isUnderfilled;
 
     const loadingMessages = [
@@ -2997,7 +3004,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                     >
                                         {isGeneratingPDF
                                             ? "Generating..."
-                                            : (pdfPageCount !== null && pdfPageCount > 1)
+                                            : (isOperator && pdfPageCount !== null && pdfPageCount > 1)
                                                 ? `Showing ${pdfPageCount} pages - reduce scale`
                                                 : isUnderfilled
                                                     ? "Fill the page to download"
