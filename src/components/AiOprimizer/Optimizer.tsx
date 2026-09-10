@@ -1947,6 +1947,18 @@ function App() {
         }
     };
 
+    const [showNewResumeModal, setShowNewResumeModal] = useState(false);
+
+    const handleNewResume = (type: "normal" | "medical") => {
+        setShowNewResumeModal(false);
+        localStorage.clear();
+        resetStore();
+        setLoadedName(null);
+        setResumeId("");
+        loadedEmailRef.current = null;
+        setVersion(type === "medical" ? 2 : 0);
+    };
+
     const getOptimizationChanges = (
         original: typeof initialData,
         optimized: typeof initialData
@@ -2983,91 +2995,52 @@ function App() {
                                         </p>
                                     )}
 
-                                    {/* Admin-only Unlock Key Editor (moved below Save, above Start Over) */}
+                                    {/* Admin-only Unlock Key Editor */}
                                     <AccessKeyEditor />
 
-                                    {/* Start Over Button */}
+                                    {/* New Resume Button */}
                                     <button
-                                        onClick={handleStartOver}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors font-medium mt-2"
+                                        onClick={() => setShowNewResumeModal(true)}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors font-medium mt-2"
                                     >
-                                        <RotateCcw size={18} />
-                                        Start Over
+                                        <Plus size={18} />
+                                        New Resume
                                     </button>
-                                    <p className="text-xs text-gray-500 mt-2 text-center">
-                                        This will clear all your data and start
-                                        fresh
-                                    </p>
-                                    {/* Template conversions. Each button is
-                                        disabled when the open resume is ALREADY
-                                        that template, so the greyed-out one tells
-                                        you at a glance which template you are on
-                                        — and the server's no-op reply can never
-                                        be reached by clicking. */}
+
+                                    {/* Template conversions */}
                                     <div className="flex flex-col gap-2 mt-2">
-                                        {/* <button
-                                            onClick={handleV1Resume}
-                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium mt-2"
-                                        >
-                                            <LucideSaveAll size={18} />
-                                            Save to V1 Resume
-                                        </button> */}
-                                        <button
-                                            onClick={handleV2Resume}
-                                            disabled={versionV === 2 || hasCopyAt(2)}
-                                            title={
-                                                versionV === 2
-                                                    ? "This resume is already a Medical resume"
-                                                    : hasCopyAt(2)
-                                                        ? "A Medical copy of this resume has already been created"
-                                                        : "Create a Medical (V2) copy of this resume"
-                                            }
-                                            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-colors font-medium ${
-                                                versionV === 2 || hasCopyAt(2)
-                                                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                                                    : "bg-green-600 text-white hover:bg-green-700"
-                                            }`}
-                                        >
-                                            <LucideSaveAll size={18} />
-                                            Save to Medical Resume
-                                            {versionV === 2 ? (
-                                                <span className="text-xs font-normal">(current)</span>
-                                            ) : hasCopyAt(2) ? (
-                                                <span className="text-xs font-normal">(created)</span>
-                                            ) : null}
-                                        </button>
-
-                                        <button
-                                            onClick={handleV0Resume}
-                                            disabled={versionV === 0 || hasCopyAt(0)}
-                                            title={
-                                                versionV === 0
-                                                    ? "This resume is already a Normal resume"
-                                                    : hasCopyAt(0)
-                                                        ? "A Normal copy of this resume has already been created"
-                                                        : "Create a Normal (V0) copy of this resume. The original is left unchanged."
-                                            }
-                                            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-colors font-medium ${
-                                                versionV === 0 || hasCopyAt(0)
-                                                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                                                    : "bg-blue-600 text-white hover:bg-blue-700"
-                                            }`}
-                                        >
-                                            <LucideSaveAll size={18} />
-                                            Convert to Normal Resume
-                                            {versionV === 0 ? (
-                                                <span className="text-xs font-normal">(current)</span>
-                                            ) : hasCopyAt(0) ? (
-                                                <span className="text-xs font-normal">(created)</span>
-                                            ) : null}
-                                        </button>
+                                        {versionV === 0 && (
+                                            <button
+                                                onClick={handleV2Resume}
+                                                disabled={hasCopyAt(2)}
+                                                title={hasCopyAt(2) ? "A Medical copy has already been created" : "Create a Medical copy of this resume"}
+                                                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-colors font-medium ${
+                                                    hasCopyAt(2) ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
+                                                }`}
+                                            >
+                                                <LucideSaveAll size={18} />
+                                                Convert to Medical Resume
+                                                {hasCopyAt(2) && <span className="text-xs font-normal">(created)</span>}
+                                            </button>
+                                        )}
+                                        {versionV === 2 && (
+                                            <button
+                                                onClick={handleV0Resume}
+                                                disabled={hasCopyAt(0)}
+                                                title={hasCopyAt(0) ? "A Normal copy has already been created" : "Create a Normal copy of this resume"}
+                                                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md transition-colors font-medium ${
+                                                    hasCopyAt(0) ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"
+                                                }`}
+                                            >
+                                                <LucideSaveAll size={18} />
+                                                Convert to Normal Resume
+                                                {hasCopyAt(0) && <span className="text-xs font-normal">(created)</span>}
+                                            </button>
+                                        )}
+                                        <p className="text-xs text-gray-500 text-center">
+                                            Creates a copy at the other template. Original is unchanged.
+                                        </p>
                                     </div>
-
-                                    <p className="text-xs text-gray-500 mt-2 text-center">
-                                        Each button saves a COPY at that template.
-                                        The resume you are on is greyed out, and the
-                                        original is never modified.
-                                    </p>
                                 </LockedSection>
 
                                 {/* Job Description Input - This stays UNLOCKED */}
@@ -3896,6 +3869,36 @@ function App() {
                             <button
                                 onClick={() => setShowOptimizeConfirmation(false)}
                                 className="flex-1 bg-gray-300 text-gray-800 py-3 px-6 rounded-lg hover:bg-gray-400 transition-colors font-semibold text-lg"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* New Resume Modal */}
+            {showNewResumeModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 z-[999] flex items-center justify-center" onClick={() => setShowNewResumeModal(false)}>
+                    <div className="bg-white rounded-lg shadow-xl p-8 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">Create New Resume</h3>
+                        <p className="text-sm text-gray-500 text-center mb-6">All current fields will be cleared. Choose a resume type:</p>
+                        <div className="flex flex-col gap-3">
+                            <button
+                                onClick={() => handleNewResume("normal")}
+                                className="w-full px-4 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg"
+                            >
+                                Normal Resume
+                            </button>
+                            <button
+                                onClick={() => handleNewResume("medical")}
+                                className="w-full px-4 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-lg"
+                            >
+                                Medical Resume
+                            </button>
+                            <button
+                                onClick={() => setShowNewResumeModal(false)}
+                                className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
                             >
                                 Cancel
                             </button>
