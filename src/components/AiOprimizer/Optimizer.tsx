@@ -1939,7 +1939,7 @@ function App() {
                 "Are you sure you want to start over? This will reset all your data."
             )
         ) {
-            localStorage.clear();
+            localStorage.removeItem("resume-storage");
             resetStore();
             setLoadedName(null);
             setResumeId("");
@@ -1951,7 +1951,7 @@ function App() {
 
     const handleNewResume = (type: "normal" | "medical") => {
         setShowNewResumeModal(false);
-        localStorage.clear();
+        localStorage.removeItem("resume-storage");
         resetStore();
         setLoadedName(null);
         setResumeId("");
@@ -2689,13 +2689,21 @@ function App() {
                                     {/* All Resumes Button */}
                                     <button
                                         onClick={() => {
-                                            // Set modal version to 0 for all resumes, but don't change current version
                                             setModalVersion(0);
                                             setShowModal(true);
                                         }}
                                         className="px-4 py-2 rounded-md text-sm font-medium transition-colors bg-orange-600 text-white hover:bg-orange-700"
                                     >
                                         All resumes
+                                    </button>
+
+                                    {/* New Resume Button in nav */}
+                                    <button
+                                        onClick={() => setShowNewResumeModal(true)}
+                                        className="px-4 py-2 rounded-md text-sm font-medium transition-colors bg-indigo-600 text-white hover:bg-indigo-700 flex items-center gap-1"
+                                    >
+                                        <Plus size={15} />
+                                        New Resume
                                     </button>
                                     <ResumeSelectorModal
                                         open={showModal}
