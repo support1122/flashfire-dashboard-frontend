@@ -1955,7 +1955,6 @@ function App() {
         resetStore();
         setLoadedName(null);
         setResumeId("");
-        loadedEmailRef.current = null;
         setVersion(type === "medical" ? 2 : 0);
     };
 
