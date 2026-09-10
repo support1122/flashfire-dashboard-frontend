@@ -1952,7 +1952,9 @@ function App() {
     const handleNewResume = (type: "normal" | "medical") => {
         setShowNewResumeModal(false);
         localStorage.removeItem("resume-storage");
+        localStorage.removeItem("version-storage");
         resetStore();
+        clearLastSelectedResume();
         setLoadedName(null);
         setResumeId("");
         setVersion(type === "medical" ? 2 : 0);
