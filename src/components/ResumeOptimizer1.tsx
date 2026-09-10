@@ -1788,8 +1788,15 @@ const DocsTable = ({
 }) => {
   const RowIcon = category === "Cover Letter" ? Mail : FileText;
 
-  const canDownload = (it: Entry) =>
-    !it.isJobBased && !it.isAttached && !(category === "Base" && role !== "operations");
+  // Direct download of a STORED file. Job-based entries are excluded because
+  // they have no stored file at all — their url is a "#jobID" placeholder and the
+  // PDF is generated on demand from resumeData, which is what the Select PDF
+  // Scale modal in the preview does.
+  //
+  // The old rule also blocked `category === "Base" && role !== "operations"`,
+  // so a client could see their own base resume but never download it. A client
+  // downloading their own uploaded document needs no operator involvement.
+  const canDownload = (it: Entry) => !it.isJobBased && !it.isAttached;
 
   const Row = ({ it, isActive }: { it: Entry; isActive?: boolean }) => {
     const title =
@@ -2091,8 +2098,14 @@ const DocsTable = ({
                 </div>
               ) : resumeData && resumeData.resumeData ? (
                 // Structured preview — same components used for optimized resumes.
-                // version 2 = medical template, otherwise normal. Download/print
-                // buttons are gated to operators (normal users get view only).
+                // version 2 = medical template, otherwise normal.
+                //
+                // showPrintButtons is TRUE for everyone, clients included. The one
+                // live control it reveals is "Download Resume", which opens the
+                // Select PDF Scale modal — the same scale-and-confirm flow
+                // operators use, so a client cannot download a 3-page resume by
+                // accident. It was gated to operators, which left clients able to
+                // view their own resume but not take it away.
                 <div className="resume-preview-container">
                   {resumeData.version === 2 ? (
                     <ResumePreviewMedical
@@ -2101,7 +2114,7 @@ const DocsTable = ({
                       showProjects={resumeData.showProjects}
                       showSummary={resumeData.showSummary}
                       showPublications={resumeData.showPublications}
-                      showPrintButtons={role === "operations"}
+                      showPrintButtons={true}
                       sectionOrder={resumeData.sectionOrder}
                     />
                   ) : (
@@ -2113,7 +2126,7 @@ const DocsTable = ({
                       showPublications={resumeData.showPublications}
                       showChanges={false}
                       changedFields={new Set()}
-                      showPrintButtons={role === "operations"}
+                      showPrintButtons={true}
                       sectionOrder={resumeData.sectionOrder}
                     />
                   )}
@@ -2337,7 +2350,7 @@ const DocsTable = ({
                             showPublications={resumeData.showPublications}
                             showChanges={false}
                             changedFields={new Set()}
-                            showPrintButtons={role === "operations"}
+                            showPrintButtons={true}
                             sectionOrder={resumeData.sectionOrder}
                           />
                         )}
@@ -2349,7 +2362,7 @@ const DocsTable = ({
                             showSummary={resumeData.showSummary}
                             showChanges={false}
                             changedFields={new Set()}
-                            showPrintButtons={role === "operations"}
+                            showPrintButtons={true}
                             sectionOrder={resumeData.sectionOrder}
                           />
                         )}
@@ -2360,7 +2373,7 @@ const DocsTable = ({
                             showProjects={resumeData.showProjects}
                             showSummary={resumeData.showSummary}
                             showPublications={resumeData.showPublications}
-                            showPrintButtons={role === "operations"}
+                            showPrintButtons={true}
                             sectionOrder={resumeData.sectionOrder}
                           />
                         )}

@@ -118,6 +118,19 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     // route. Hide it in the portal (everywhere else).
     const isOptimizeRoute =
         typeof window !== "undefined" && window.location.pathname.startsWith("/optimize");
+
+    // Mirrors the flag in ResumePreview.tsx. The exact-page-count rule below is a
+    // QUALITY GATE for operators, who produce these as client deliverables and can
+    // edit the content until it fits. A client cannot rewrite their own resume to
+    // hit an exact page count, so enforcing it on them would leave the Download
+    // button permanently disabled. They still get the slider, the live preview and
+    // the page badge, so they can scale it down themselves if they want to.
+    const isOperator = (() => {
+        const raw = typeof window !== "undefined" ? localStorage.getItem("role") : null;
+        const n = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+        return n === "operations" || n === "operator";
+    })();
+
     const headingFor = (id: string, def: string): string => {
         const raw = (sectionTitles?.[id] || "").trim();
         return (raw || def).toUpperCase();
@@ -1933,10 +1946,10 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                     </button>
                                     <button
                                         onClick={handleDownloadResume}
-                                        disabled={isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES)}
+                                        disabled={isPrinting || isGeneratingPreview || !previewPdfBlob || (isOperator && pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES)}
                                         style={{
                                             flex: 1,
-                                            background: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES))
+                                            background: (isPrinting || isGeneratingPreview || !previewPdfBlob || (isOperator && pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES))
                                                 ? "#9ca3af"
                                                 : "linear-gradient(90deg, #10b981 0%, #059669 100%)",
                                             color: "white",
@@ -1945,14 +1958,14 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                             borderRadius: "8px",
                                             fontSize: "1rem",
                                             fontWeight: "600",
-                                            cursor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES)) ? "not-allowed" : "pointer",
-                                            boxShadow: (isPrinting || isGeneratingPreview || !previewPdfBlob || (pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES))
+                                            cursor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (isOperator && pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES)) ? "not-allowed" : "pointer",
+                                            boxShadow: (isPrinting || isGeneratingPreview || !previewPdfBlob || (isOperator && pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES))
                                                 ? "none"
                                                 : "0 6px 18px rgba(16, 185, 129, 0.35)",
                                             transition: "all 0.2s",
                                         }}
                                     >
-                                        {isPrinting ? "Generating..." : (pdfPageCount !== null && pdfPageCount < REQUIRED_MEDICAL_PDF_PAGES) ? `Showing ${pdfPageCount} page${pdfPageCount === 1 ? "" : "s"} - increase scale` : (pdfPageCount !== null && pdfPageCount > REQUIRED_MEDICAL_PDF_PAGES) ? `Showing ${pdfPageCount} pages - reduce scale` : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
+                                        {isPrinting ? "Generating..." : (isOperator && pdfPageCount !== null && pdfPageCount < REQUIRED_MEDICAL_PDF_PAGES) ? `Showing ${pdfPageCount} page${pdfPageCount === 1 ? "" : "s"} - increase scale` : (isOperator && pdfPageCount !== null && pdfPageCount > REQUIRED_MEDICAL_PDF_PAGES) ? `Showing ${pdfPageCount} pages - reduce scale` : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
                                     </button>
                                 </div>
                             </div>
