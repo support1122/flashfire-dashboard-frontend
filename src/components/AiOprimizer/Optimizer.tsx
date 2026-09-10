@@ -1809,7 +1809,7 @@ function App() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ id: lastSelectedResumeId, version: 2 }),
+                body: JSON.stringify({ id: resume_id || lastSelectedResumeId, version: 2 }),
             });
             // The server answers 200 with noop:true when the resume is already
             // at that version. Reporting success there would be a lie, and the
@@ -1851,7 +1851,7 @@ function App() {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ id: lastSelectedResumeId, version: 0 }),
+                body: JSON.stringify({ id: resume_id || lastSelectedResumeId, version: 0 }),
             });
             const body = await res.json().catch(() => ({}));
             if (!res.ok) {
@@ -1941,6 +1941,9 @@ function App() {
         ) {
             localStorage.clear();
             resetStore();
+            setLoadedName(null);
+            setResumeId("");
+            loadedEmailRef.current = null;
         }
     };
 
@@ -2719,6 +2722,8 @@ function App() {
                                             if (resumeIdToUse) {
                                                 setResumeId(resumeIdToUse);
                                                 setLastSelectedResume(resume, resumeIdToUse);
+                                            } else {
+                                                setResumeId("");
                                             }
                                             setLoadedName(resume.personalInfo?.name?.trim() ?? null);
 
