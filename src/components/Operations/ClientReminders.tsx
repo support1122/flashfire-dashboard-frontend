@@ -285,6 +285,7 @@ function formatIstStamp(value: string | null | undefined): string {
 function humanReason(reason: string): string {
   const map: Record<string, string> = {
     no_activity: "no activity in the period",
+    nothing_added: "no new roles added today - this report is never sent empty",
     client_is_active: "client is active",
     no_channel: "no channel enabled",
     no_destination: "no destination address",
@@ -788,6 +789,12 @@ export default function ClientReminders({
         // so the operator gets an explicit "Send anyway" escape hatch instead.
         setNoActivityKeys((prev) => (prev.includes(itemKey) ? prev : [...prev, itemKey]));
         toastUtils.custom(`${label}: nothing to report for this period`, "info");
+      } else if (data.status === "skipped" && data.reason === "nothing_added") {
+        // Deliberately NO "Send anyway" here. A daily summary reading "0 new
+        // roles added" is the mail we never send, so the server refuses a
+        // forced send too and offering the button would just fail.
+        setNoActivityKeys((prev) => prev.filter((k) => k !== itemKey));
+        toastUtils.custom(`${label}: no new roles added today, so nothing was sent`, "info");
       } else if (data.status === "skipped") {
         setNoActivityKeys((prev) => prev.filter((k) => k !== itemKey));
         toastUtils.custom(`${label} skipped: ${humanReason(data.reason || "skipped")}`, "info");
