@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useOperationsStore } from "../../state_management/Operations";
 import { useUserProfile } from "../../state_management/ProfileContext";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +17,31 @@ export default function ManagedUsers() {
   const managedUsers = useOperationsStore((state) => state.managedUsers);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [savedJobCounts, setSavedJobCounts] = useState<Record<string, number>>({});
+
+  const LOW_SAVED_THRESHOLD = 5;
+
+  useEffect(() => {
+    const emails = managedUsers.map((user) => user.email).filter(Boolean);
+    if (emails.length === 0) return;
+
+    const fetchSavedJobCounts = async () => {
+      try {
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+        const res = await fetch(`${API_BASE_URL}/operations/saved-job-counts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ emails }),
+        });
+        const data = await res.json();
+        setSavedJobCounts(data?.counts || {});
+      } catch (error) {
+        console.error("Error fetching saved job counts:", error);
+      }
+    };
+
+    fetchSavedJobCounts();
+  }, [managedUsers]);
 
   // FIX: Handle cases where user.name might be undefined by defaulting to an empty string.
   const filteredUsers = managedUsers.filter((user) =>
@@ -116,22 +141,32 @@ export default function ManagedUsers() {
       {/* Users Grid */}
       {filteredUsers.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {filteredUsers.map((user) => (
-            <div
-              key={user._id}
-              className={`p-6 bg-white rounded-2xl shadow-md hover:shadow-xl transition-all border border-gray-100 ${
-                loading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-              }`}
-              onClick={() => !loading && handleOnClick(user)}
-            >
-              {/* BONUS: Display email as a fallback if name is missing */}
-              <h3 className="text-lg font-semibold text-gray-900">{user.name || user.email}</h3>
-              <p className="text-sm text-gray-600">{user.email}</p>
-              {loading && (
-                <div className="mt-2 text-sm text-blue-600">Loading...</div>
-              )}
-            </div>
-          ))}
+          {filteredUsers.map((user) => {
+            const savedCount = savedJobCounts[(user.email || '').toLowerCase()] ?? 0;
+            const isLowSaved = savedCount < LOW_SAVED_THRESHOLD;
+
+            return (
+              <div
+                key={user._id}
+                className={`p-6 rounded-2xl shadow-md hover:shadow-xl transition-all border ${
+                  isLowSaved
+                    ? 'bg-red-100 border-red-300'
+                    : 'bg-white border-gray-100'
+                } ${loading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                onClick={() => !loading && handleOnClick(user)}
+              >
+                {/* BONUS: Display email as a fallback if name is missing */}
+                <h3 className="text-lg font-semibold text-gray-900">{user.name || user.email}</h3>
+                <p className="text-sm text-gray-600">{user.email}</p>
+                <p className={`mt-2 text-sm font-medium ${isLowSaved ? 'text-red-700' : 'text-gray-700'}`}>
+                  Saved jobs: {savedCount}
+                </p>
+                {loading && (
+                  <div className="mt-2 text-sm text-blue-600">Loading...</div>
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <p className="text-gray-500">No users found.</p>
