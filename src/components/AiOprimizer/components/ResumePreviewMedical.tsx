@@ -634,12 +634,18 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                 }}
                             >
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                    {renderMarkedText(item.title)}
-                                    {item.organization && (
-                                        <>
-                                            {", "}
-                                            {renderMarkedText(item.organization)}
-                                        </>
+                                    <div>
+                                        {renderMarkedText(item.title)}
+                                        {item.organization && (
+                                            <>
+                                                {", "}
+                                                {renderMarkedText(item.organization)}
+                                            </>
+                                        )}
+                                    </div>
+                                    {/* Second line, opposite the dates. */}
+                                    {item.subtitle?.trim() && (
+                                        <div>{renderMarkedText(item.subtitle)}</div>
                                     )}
                                 </div>
                                 {(item.location?.trim() || item.duration?.trim()) && (

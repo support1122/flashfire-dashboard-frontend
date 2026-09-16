@@ -5,6 +5,8 @@ interface LeadershipItem {
     id: string;
     title: string;
     organization: string;
+    /** Second line on the left, opposite the dates. Free text. */
+    subtitle?: string;
     /** Right-hand column, same shape as work experience. Optional so entries
      *  saved before these fields existed keep working; both render only when
      *  filled in. */
@@ -53,6 +55,7 @@ export const Leadership: React.FC<LeadershipProps> = ({ data, onChange }) => {
             id: Date.now().toString(),
             title: "",
             organization: "",
+            subtitle: "",
             location: "",
             duration: "",
         };
@@ -238,6 +241,31 @@ export const Leadership: React.FC<LeadershipProps> = ({ data, onChange }) => {
                                     </button>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Second line on the LEFT, sitting opposite the dates.
+                            Fills the gap a two-line date column used to leave
+                            beside a single-line title. Blank renders nothing. */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Subtitle
+                                <span className="ml-1 font-normal text-gray-400">
+                                    (optional second line, e.g. a role or team)
+                                </span>
+                            </label>
+                            <input
+                                type="text"
+                                value={leadership.subtitle || ""}
+                                onChange={(e) =>
+                                    updateLeadership(
+                                        leadership.id,
+                                        "subtitle",
+                                        e.target.value
+                                    )
+                                }
+                                placeholder="Student Chapter - Michigan"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
                         </div>
 
                         {/* Right-hand column, mirroring work experience:

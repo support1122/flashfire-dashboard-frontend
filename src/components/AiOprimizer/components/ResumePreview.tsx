@@ -1680,17 +1680,31 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                         marginBottom: styles.bulletSpacing,
                                     }}
                                 >
-                                    <div
-                                        style={{
-                                            flex: "1",
-                                            minWidth: 0,
-                                            fontSize: styles.fontSize,
-                                            fontWeight: "bold",
-                                            letterSpacing: "-0.025em",
-                                            lineHeight: styles.lineHeight,
-                                        }}
-                                    >
-                                        {renderMarkedText(item.title)}
+                                    <div style={{ flex: "1", minWidth: 0 }}>
+                                        <div
+                                            style={{
+                                                fontSize: styles.fontSize,
+                                                fontWeight: "bold",
+                                                letterSpacing: "-0.025em",
+                                                lineHeight: styles.lineHeight,
+                                            }}
+                                        >
+                                            {renderMarkedText(item.title)}
+                                        </div>
+                                        {/* Second line, opposite the dates. Not
+                                            bold, matching the position line in
+                                            work experience. */}
+                                        {item.subtitle?.trim() && (
+                                            <div
+                                                style={{
+                                                    fontSize: styles.fontSize,
+                                                    letterSpacing: "-0.025em",
+                                                    lineHeight: styles.lineHeight,
+                                                }}
+                                            >
+                                                {renderMarkedText(item.subtitle)}
+                                            </div>
+                                        )}
                                     </div>
                                     {(item.location?.trim() || item.duration?.trim()) && (
                                         <div
