@@ -618,16 +618,50 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                             {headingFor("leadership", "Leadership & Achievements")}
                         </div>
                         {data.leadership.map((item) => (
+                            /* Title and organization stay inline as before; the
+                               location/dates column is pushed to the right edge.
+                               Dropped entirely when both are blank, so an entry
+                               without dates looks exactly as it did before. */
                             <div
                                 key={item.id}
-                                style={{ fontSize: "9pt", marginBottom: "3px" }}
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "flex-start",
+                                    gap: "1.5em",
+                                    fontSize: "9pt",
+                                    marginBottom: "3px",
+                                }}
                             >
-                                {renderMarkedText(item.title)}
-                                {item.organization && (
-                                    <>
-                                        {", "}
-                                        {renderMarkedText(item.organization)}
-                                    </>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div>
+                                        {renderMarkedText(item.title)}
+                                        {item.organization && (
+                                            <>
+                                                {", "}
+                                                {renderMarkedText(item.organization)}
+                                            </>
+                                        )}
+                                    </div>
+                                    {/* Second line, opposite the dates. */}
+                                    {item.subtitle?.trim() && (
+                                        <div>{renderMarkedText(item.subtitle)}</div>
+                                    )}
+                                </div>
+                                {(item.location?.trim() || item.duration?.trim()) && (
+                                    <div
+                                        style={{
+                                            textAlign: "right",
+                                            flexShrink: 0,
+                                            whiteSpace: "nowrap",
+                                        }}
+                                    >
+                                        {[item.location?.trim(), item.duration?.trim()]
+                                            .filter(Boolean)
+                                            .map((part, i) => (
+                                                <div key={i}>{renderMarkedText(part as string)}</div>
+                                            ))}
+                                    </div>
                                 )}
                             </div>
                         ))}
