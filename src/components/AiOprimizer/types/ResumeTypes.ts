@@ -26,6 +26,12 @@ export interface LeadershipItem {
     id: string;
     title: string;
     organization: string;
+    /** Right-hand column, mirroring work experience. Both optional so resumes
+     *  saved before these fields existed still typecheck, and both render only
+     *  when non-empty — a leadership entry with no dates shows nothing on the
+     *  right rather than an empty gap. */
+    location?: string;
+    duration?: string;
 }
 
 export interface EducationItem {

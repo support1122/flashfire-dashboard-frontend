@@ -1666,16 +1666,64 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                             : styles.itemMargin,
                                 }}
                             >
+                                {/* Title on the left, location/dates on the right,
+                                    laid out exactly like work experience. The right
+                                    column is omitted entirely when neither field is
+                                    filled in, so an entry without dates renders as a
+                                    plain bold title with no empty gap beside it. */}
                                 <div
                                     style={{
-                                        fontSize: styles.fontSize,
-                                        fontWeight: "bold",
-                                        letterSpacing: "-0.025em",
-                                        lineHeight: styles.lineHeight,
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "flex-start",
+                                        gap: "20px",
                                         marginBottom: styles.bulletSpacing,
                                     }}
                                 >
-                                    {renderMarkedText(item.title)}
+                                    <div
+                                        style={{
+                                            flex: "1",
+                                            minWidth: 0,
+                                            fontSize: styles.fontSize,
+                                            fontWeight: "bold",
+                                            letterSpacing: "-0.025em",
+                                            lineHeight: styles.lineHeight,
+                                        }}
+                                    >
+                                        {renderMarkedText(item.title)}
+                                    </div>
+                                    {(item.location?.trim() || item.duration?.trim()) && (
+                                        <div
+                                            style={{
+                                                textAlign: "right",
+                                                flexShrink: 0,
+                                                whiteSpace: "nowrap",
+                                            }}
+                                        >
+                                            {item.location?.trim() && (
+                                                <div
+                                                    style={{
+                                                        fontSize: styles.fontSize,
+                                                        letterSpacing: "-0.025em",
+                                                        lineHeight: styles.lineHeight,
+                                                    }}
+                                                >
+                                                    {renderMarkedText(item.location)}
+                                                </div>
+                                            )}
+                                            {item.duration?.trim() && (
+                                                <div
+                                                    style={{
+                                                        fontSize: styles.fontSize,
+                                                        letterSpacing: "-0.025em",
+                                                        lineHeight: styles.lineHeight,
+                                                    }}
+                                                >
+                                                    {renderMarkedText(item.duration)}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                                 {item.organization &&
                                     item.organization

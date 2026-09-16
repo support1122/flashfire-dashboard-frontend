@@ -5,6 +5,11 @@ interface LeadershipItem {
     id: string;
     title: string;
     organization: string;
+    /** Right-hand column, same shape as work experience. Optional so entries
+     *  saved before these fields existed keep working; both render only when
+     *  filled in. */
+    location?: string;
+    duration?: string;
 }
 
 interface LeadershipProps {
@@ -48,6 +53,8 @@ export const Leadership: React.FC<LeadershipProps> = ({ data, onChange }) => {
             id: Date.now().toString(),
             title: "",
             organization: "",
+            location: "",
+            duration: "",
         };
         onChange([...data, newLeadership]);
     };
@@ -231,6 +238,48 @@ export const Leadership: React.FC<LeadershipProps> = ({ data, onChange }) => {
                                     </button>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Right-hand column, mirroring work experience:
+                            location on the first line, dates on the second.
+                            Leave either blank and nothing is rendered there. */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Location
+                                </label>
+                                <input
+                                    type="text"
+                                    value={leadership.location || ""}
+                                    onChange={(e) =>
+                                        updateLeadership(
+                                            leadership.id,
+                                            "location",
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="Detroit, MI"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Dates
+                                </label>
+                                <input
+                                    type="text"
+                                    value={leadership.duration || ""}
+                                    onChange={(e) =>
+                                        updateLeadership(
+                                            leadership.id,
+                                            "duration",
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="Jun 2023 - Present"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
                         </div>
 
                         <div>
