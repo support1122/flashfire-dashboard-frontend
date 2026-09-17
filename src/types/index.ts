@@ -26,6 +26,20 @@ export interface Job {
   addedBy?: string;
   /** Dashboard creator: client vs operations (extension jobs may omit). */
   createdByRole?: "user" | "operations";
+  /**
+   * Why the extension's AI judge picked this job, stamped at push time.
+   * OPERATOR-ONLY - render it behind an isOps check, never on a client view.
+   */
+  aiDecision?: {
+    reason?: string | null;
+    /** The judge's own 0-100 score. */
+    score?: number | null;
+    matchedRole?: string | null;
+    /** JobRight's card score, for comparison against the judge's. */
+    jrScore?: number | null;
+    model?: string | null;
+    judgedAt?: string | null;
+  } | null;
   appliedDate?: string | null;
   optimizedResume?: { hasResume?: boolean; [key: string]: any };
   optimizedResumeSeen?: boolean;
