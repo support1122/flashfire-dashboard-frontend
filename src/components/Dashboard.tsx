@@ -97,17 +97,17 @@ const Dashboard: React.FC = () => {
   const { userProfile } = useUserProfile();
 
   if (!context) {
-    navigate("/login");
+    // navigate("/login");
     return null;
   }
 
   const { token, userDetails } = context;
   const { userJobs, setUserJobs, loading, refreshJobs } = useUserJobs();
-  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(true);
   const [showJobForm, setShowJobForm] = useState(false);
 
   useEffect(() => {
-    if (!token || !userDetails) { navigate("/login"); return; }
+    // if (!token || !userDetails) { navigate("/login"); return; }
     const hasProfileValue = sessionStorage.getItem('hasProfile');
     if (hasProfileValue === 'false') setShowProfileModal(true);
   }, []);

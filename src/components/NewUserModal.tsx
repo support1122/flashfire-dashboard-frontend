@@ -2628,23 +2628,33 @@ const handleSubmit = () => {
                   </div>
                   <div>
                     <FieldLabel>Expected Base Salary</FieldLabel>
-                    <Select 
-                      hasError={!!errors.expectedSalaryRange}
-                      value={data.expectedSalaryRange} 
-                      onChange={(e) => {
-                        set({ expectedSalaryRange: e.target.value });
-                        if (errors.expectedSalaryRange) {
-                          setErrors(prev => ({ ...prev, expectedSalaryRange: '' }));
-                        }
-                      }}
-                    >
-                      <option value="">Select salary range…</option>
-                      {SALARY_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </Select>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">
+                        {(() => {
+                          const amt = String(ctx?.userDetails?.amountPaid || '');
+                          const sym = amt.match(/^([^0-9]+)/)?.[1];
+                          if (sym) return sym;
+                          // fallback to currency field
+                          const c = (ctx?.userDetails?.currency || '').toUpperCase();
+                          if (c === 'CAD') return 'CA$';
+                          if (c === 'GBP') return '£';
+                          if (c === 'INR') return '₹';
+                          return '$';
+                        })()}
+                      </span>
+                      <TextInput
+                        hasError={!!errors.expectedSalaryRange}
+                        value={data.expectedSalaryRange}
+                        onChange={(e) => {
+                          set({ expectedSalaryRange: e.target.value });
+                          if (errors.expectedSalaryRange) {
+                            setErrors(prev => ({ ...prev, expectedSalaryRange: '' }));
+                          }
+                        }}
+                        placeholder="e.g. 80,000 or 80k"
+                        style={{ paddingLeft: '2rem' }}
+                      />
+                    </div>
                     <ErrorText>{errors.expectedSalaryRange}</ErrorText>
                   </div>
                 </div>

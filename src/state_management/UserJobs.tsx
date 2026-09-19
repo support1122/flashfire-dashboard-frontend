@@ -114,7 +114,7 @@ export const UserJobsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               return;
             }
           }
-          navigate("/login");
+          // navigate("/login");
           return;
         }
       }
