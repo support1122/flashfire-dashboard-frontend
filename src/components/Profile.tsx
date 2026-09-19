@@ -1263,7 +1263,7 @@ export default function ProfilePage() {
                             }
                             const salaryRange = data.expectedSalaryRange || "";
                             if (!salaryRange || salaryRange.toLowerCase().includes("other")) {
-                                return `I'm seeking a salary of $80,000 annually, depending on the overall compensation package, responsibilities, and growth opportunities within the role.`;
+                                return "";
                             }
                             return `I'm seeking a salary of ${salaryRange} annually, depending on the overall compensation package, responsibilities, and growth opportunities within the role.`;
                         })()}
