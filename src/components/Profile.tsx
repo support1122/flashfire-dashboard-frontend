@@ -1024,9 +1024,9 @@ export default function ProfilePage() {
                                 : (() => {
                                     const raw = data.expectedSalaryRange;
                                     if (!raw) return raw;
-                                    // Already has a symbol, or is an old dropdown range like "60k-100k"
-                                    if (/^[£$₹]|^CA\$/.test(raw)) return raw;
-                                    if (/k-|k$/i.test(raw) || raw.includes('-')) return raw;
+                                    // Only prefix symbol if value is purely numeric (new text input)
+                                    // Old dropdown values like "60k-100k", "100k-150k", "Other" are shown as-is
+                                    if (!/^[\d,. ]+$/.test(raw.trim())) return raw;
                                     const amt = String(ctx?.userDetails?.amountPaid || '');
                                     const sym = amt.match(/^([^0-9]+)/)?.[1];
                                     if (sym) return `${sym}${raw}`;
