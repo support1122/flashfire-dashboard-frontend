@@ -2224,6 +2224,14 @@ const submitForm = async () => {
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
     const { coverLetterFile, resumeFile, transcriptFile, ...payload } = data;
 
+    // Prefix currency symbol onto salary before saving so the DB value is self-contained
+    if (payload.expectedSalaryRange && !/^[£$₹]|^CA\$/.test(payload.expectedSalaryRange)) {
+      const amt = String(ctx?.userDetails?.amountPaid || '');
+      const sym = amt.match(/^([^0-9]+)/)?.[1];
+      if (sym === 'CAD') payload.expectedSalaryRange = `CA$${payload.expectedSalaryRange}`;
+      else if (sym) payload.expectedSalaryRange = `${sym}${payload.expectedSalaryRange}`;
+    }
+
     // Derive first/last name from full name if missing
     const trimmedName = (payload.name || "").trim();
     let firstName = (payload.firstName || "").trim();

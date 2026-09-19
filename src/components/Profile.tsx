@@ -1021,21 +1021,7 @@ export default function ProfilePage() {
                         value={
                             editingSection === "professional"
                                 ? editData.expectedSalaryRange
-                                : (() => {
-                                    const raw = data.expectedSalaryRange;
-                                    if (!raw) return raw;
-                                    // Only prefix symbol if value is purely numeric (new text input)
-                                    // Old dropdown values like "60k-100k", "100k-150k", "Other" are shown as-is
-                                    if (!/^[\d,. ]+$/.test(raw.trim())) return raw;
-                                    const amt = String(ctx?.userDetails?.amountPaid || '');
-                                    const sym = amt.match(/^([^0-9]+)/)?.[1];
-                                    if (sym) return `${sym}${raw}`;
-                                    const c = (ctx?.userDetails?.currency || '').toUpperCase();
-                                    if (c === 'CAD') return `CA$${raw}`;
-                                    if (c === 'GBP') return `£${raw}`;
-                                    if (c === 'INR') return `₹${raw}`;
-                                    return raw;
-                                })()
+                                : data.expectedSalaryRange
                         }
                         isEditing={editingSection === "professional"}
                         onValueChange={(v) =>
