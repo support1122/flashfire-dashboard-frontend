@@ -1024,8 +1024,9 @@ export default function ProfilePage() {
                                 : (() => {
                                     const raw = data.expectedSalaryRange;
                                     if (!raw) return raw;
-                                    // Skip prefixing if already has a symbol or is old dropdown format
+                                    // Already has a symbol, or is an old dropdown range like "60k-100k"
                                     if (/^[£$₹]|^CA\$/.test(raw)) return raw;
+                                    if (/k-|k$/i.test(raw) || raw.includes('-')) return raw;
                                     const amt = String(ctx?.userDetails?.amountPaid || '');
                                     const sym = amt.match(/^([^0-9]+)/)?.[1];
                                     if (sym) return `${sym}${raw}`;
@@ -1033,7 +1034,7 @@ export default function ProfilePage() {
                                     if (c === 'CAD') return `CA$${raw}`;
                                     if (c === 'GBP') return `£${raw}`;
                                     if (c === 'INR') return `₹${raw}`;
-                                    return /^\d/.test(raw) ? `$${raw}` : raw;
+                                    return raw;
                                 })()
                         }
                         isEditing={editingSection === "professional"}
