@@ -1261,16 +1261,23 @@ export default function ProfilePage() {
                             if (data.expectedSalaryNarrative?.trim()) {
                                 return data.expectedSalaryNarrative;
                             }
-                            const salaryRange = data.expectedSalaryRange;
-                            if (!salaryRange || salaryRange === "Other") {
-                                return "I'm seeking a salary in the range of $80,000 to $100,000 annually, depending on the overall compensation package, responsibilities, and growth opportunities within the role.";
+                            const salaryRange = data.expectedSalaryRange || "";
+                            // Extract symbol prefix from stored value (e.g. "£60k-100k" → "£", "CA$60k-100k" → "CA$")
+                            const symMatch = salaryRange.match(/^([^0-9]+)/);
+                            const sym = symMatch?.[1] || "$";
+                            const bare = salaryRange.replace(/^[^0-9]+/, "").trim(); // "60k-100k"
+                            if (!bare || bare === "Other" || bare === "") {
+                                return `I'm seeking a salary in the range of ${sym}80,000 to ${sym}100,000 annually, depending on the overall compensation package, responsibilities, and growth opportunities within the role.`;
                             }
                             const rangeMap: Record<string, string> = {
-                                "60k-100k": "$60,000 to $100,000",
-                                "100k-150k": "$100,000 to $150,000",
-                                "150k-200k": "$150,000 to $200,000",
+                                "60k-100k": `${sym}60,000 to ${sym}100,000`,
+                                "100k-150k": `${sym}100,000 to ${sym}150,000`,
+                                "150k-200k": `${sym}150,000 to ${sym}200,000`,
+                                "80k-110k": `${sym}80,000 to ${sym}110,000`,
+                                "130k-180k": `${sym}130,000 to ${sym}180,000`,
+                                "120k-150k": `${sym}120,000 to ${sym}150,000`,
                             };
-                            const range = rangeMap[salaryRange] || "$80,000 to $100,000";
+                            const range = rangeMap[bare] || `${sym}${bare}`;
                             return `I'm seeking a salary in the range of ${range} annually, depending on the overall compensation package, responsibilities, and growth opportunities within the role.`;
                         })()}
                         isEditing={editingSection === "additional"}
