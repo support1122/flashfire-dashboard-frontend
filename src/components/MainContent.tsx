@@ -156,18 +156,18 @@ export default function MainContent() {
   // an already-logged-in user. The intended tab is preserved via ?redirect= so the
   // user lands back on the screen they wanted after signing in. Operators are
   // exempt (their session lives in the operations store).
-  useEffect(() => {
-    let storedToken = '';
-    try {
-      const raw = localStorage.getItem('userAuth');
-      if (raw) storedToken = JSON.parse(raw)?.token || '';
-    } catch { /* ignore malformed storage */ }
-    const hasToken = (!!token && token.length > 0) || storedToken.length > 0;
-    if (!hasToken && role !== 'operations') {
-      const next = window.location.pathname + window.location.search; // keep ?tab=upgrade etc.
-      navigate(`/login?redirect=${encodeURIComponent(next)}`, { replace: true });
-    }
-  }, [token, role, navigate]);
+  // useEffect(() => {
+  //   let storedToken = '';
+  //   try {
+  //     const raw = localStorage.getItem('userAuth');
+  //     if (raw) storedToken = JSON.parse(raw)?.token || '';
+  //   } catch { /* ignore malformed storage */ }
+  //   const hasToken = (!!token && token.length > 0) || storedToken.length > 0;
+  //   if (!hasToken && role !== 'operations') {
+  //     const next = window.location.pathname + window.location.search;
+  //     navigate(`/login?redirect=${encodeURIComponent(next)}`, { replace: true });
+  //   }
+  // }, [token, role, navigate]);
 useEffect(() => {
   // Guarded and keyed on the email. With an empty dep array this fired on the
   // very first render, before the context had hydrated, and POSTed
@@ -239,9 +239,9 @@ useEffect(() => {
     if (raw) hasStoredToken = Boolean(JSON.parse(raw)?.token);
   } catch { /* ignore */ }
   const isAuthed = (!!token && token.length > 0) || hasStoredToken;
-  if (!isAuthed && role !== 'operations') {
-    return null;
-  }
+  // if (!isAuthed && role !== 'operations') {
+  //   return null;
+  // }
 
   return (
     <div className="min-h-screen bg-gray-50">
