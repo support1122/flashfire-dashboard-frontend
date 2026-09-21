@@ -336,6 +336,7 @@ export interface UserProfile {
     | "0-7 Years"
     | "Other";
   expectedSalaryRange: "60k-100k" | "100k-150k" | "150k-200k" | "Other";
+  currency?: "USD" | "GBP" | "CAD" | "INR";
   preferredLocations: string[];
   targetCompanies: string[];
   reasonForLeaving: string;
@@ -505,6 +506,7 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
       preferredRoles: toArray(payload.preferredRoles),
       experienceLevel: payload.experienceLevel || "Entry level",
       expectedSalaryRange: payload.expectedSalaryRange || "60k-100k",
+      currency: payload.currency || "USD",
       preferredLocations: toArray(payload.preferredLocations),
       targetCompanies: toArray(payload.targetCompanies),
       reasonForLeaving: payload.reasonForLeaving || "",
