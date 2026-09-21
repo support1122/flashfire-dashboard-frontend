@@ -1017,6 +1017,18 @@ export default function ProfilePage() {
                         }
                     />
                     <InfoRow
+                        title="Currency"
+                        value={
+                            editingSection === "professional"
+                                ? (editData as any).currency || "USD"
+                                : (data as any).currency || "USD"
+                        }
+                        isEditing={editingSection === "professional"}
+                        onValueChange={(v) =>
+                            setEditData({ ...editData, currency: v } as any)
+                        }
+                    />
+                    <InfoRow
                         title="Expected Base Salary"
                         value={
                             editingSection === "professional"
@@ -1024,12 +1036,9 @@ export default function ProfilePage() {
                                 : (() => {
                                     const raw = data.expectedSalaryRange;
                                     if (!raw) return raw;
-                                    // Skip prefixing if already has a symbol or is old dropdown format
+                                    // Skip prefixing if already has a symbol
                                     if (/^[£$₹]|^CA\$/.test(raw)) return raw;
-                                    const amt = String(ctx?.userDetails?.amountPaid || '');
-                                    const sym = amt.match(/^([^0-9]+)/)?.[1];
-                                    if (sym) return `${sym}${raw}`;
-                                    const c = (ctx?.userDetails?.currency || '').toUpperCase();
+                                    const c = ((data as any).currency || '').toUpperCase();
                                     if (c === 'CAD') return `CA$${raw}`;
                                     if (c === 'GBP') return `£${raw}`;
                                     if (c === 'INR') return `₹${raw}`;
