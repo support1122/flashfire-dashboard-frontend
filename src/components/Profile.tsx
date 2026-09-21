@@ -1016,18 +1016,31 @@ export default function ProfilePage() {
                             setEditData({ ...editData, yearsOfExperience: v } as any)
                         }
                     />
-                    <InfoRow
-                        title="Currency"
-                        value={
-                            editingSection === "professional"
-                                ? (editData as any).currency || "USD"
-                                : (data as any).currency || "USD"
-                        }
-                        isEditing={editingSection === "professional"}
-                        onValueChange={(v) =>
-                            setEditData({ ...editData, currency: v } as any)
-                        }
-                    />
+                    <div className="flex flex-col md:flex-row md:items-center py-3 border-b border-gray-100 last:border-b-0">
+                        <div className="w-full md:w-1/3 text-sm font-semibold text-gray-700 mb-1 md:mb-0">
+                            <RowTitle title="Currency" />
+                        </div>
+                        <div className="w-full md:w-2/3">
+                            {editingSection === "professional" ? (
+                                <select
+                                    value={(editData as any).currency || "USD"}
+                                    onChange={(e) =>
+                                        setEditData({ ...editData, currency: e.target.value } as any)
+                                    }
+                                    className="w-full text-sm border-b px-2 py-1 focus:outline-none border-gray-300 focus:border-orange-500"
+                                >
+                                    <option value="USD">USD $</option>
+                                    <option value="GBP">GBP £</option>
+                                    <option value="CAD">CAD CA$</option>
+                                    <option value="INR">INR ₹</option>
+                                </select>
+                            ) : (
+                                <span className="text-sm text-gray-900">
+                                    {(data as any).currency || "USD"}
+                                </span>
+                            )}
+                        </div>
+                    </div>
                     <InfoRow
                         title="Expected Base Salary"
                         value={
@@ -1038,10 +1051,11 @@ export default function ProfilePage() {
                                     if (!raw) return raw;
                                     // Skip prefixing if already has a symbol
                                     if (/^[£$₹]|^CA\$/.test(raw)) return raw;
-                                    const c = ((data as any).currency || '').toUpperCase();
-                                    if (c === 'CAD') return `CA$${raw}`;
-                                    if (c === 'GBP') return `£${raw}`;
-                                    if (c === 'INR') return `₹${raw}`;
+                                    const c = ((data as any).currency || '').toUpperCase().trim();
+                                    if (c === 'CAD' || c === 'CA$') return `CA$${raw}`;
+                                    if (c === 'GBP' || c === '£') return `£${raw}`;
+                                    if (c === 'INR' || c === '₹') return `₹${raw}`;
+                                    if (c === 'USD' || c === '$') return `$${raw}`;
                                     return /^\d/.test(raw) ? `$${raw}` : raw;
                                 })()
                         }
