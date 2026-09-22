@@ -597,6 +597,17 @@ export default function ProfilePage() {
 
             // Convert string fields to arrays before saving
             const dataToSave = { ...editData };
+
+            // Prefix currency symbol onto expectedSalaryRange if editing professional section
+            if (editingSection === "professional" && dataToSave.expectedSalaryRange) {
+                const raw = String(dataToSave.expectedSalaryRange).trim();
+                if (raw && !/^[£$₹]|^CA\$/.test(raw)) {
+                    const amt = String(ctx?.userDetails?.amountPaid || '');
+                    const sym = amt.match(/^([^0-9]+)/)?.[1];
+                    if (sym === 'CAD') dataToSave.expectedSalaryRange = `CA$${raw}`;
+                    else if (sym) dataToSave.expectedSalaryRange = `${sym}${raw}`;
+                }
+            }
             if (typeof dataToSave.preferredRoles === 'string') {
                 dataToSave.preferredRoles = dataToSave.preferredRoles.split(',').map(s => s.trim()).filter(s => s.length > 0) as any;
             }
@@ -1016,18 +1027,44 @@ export default function ProfilePage() {
                             setEditData({ ...editData, yearsOfExperience: v } as any)
                         }
                     />
-                    <InfoRow
-                        title="Expected Base Salary"
-                        value={
-                            editingSection === "professional"
-                                ? editData.expectedSalaryRange
-                                : data.expectedSalaryRange
-                        }
-                        isEditing={editingSection === "professional"}
-                        onValueChange={(v) =>
-                            setEditData({ ...editData, expectedSalaryRange: v })
-                        }
-                    />
+                    {editingSection === "professional" ? (
+                        <div className="flex flex-col md:flex-row md:items-center py-3 border-b border-gray-100">
+                            <div className="w-full md:w-1/3 text-sm font-semibold text-gray-700 mb-1 md:mb-0">
+                                Expected Base Salary
+                            </div>
+                            <div className="w-full md:w-2/3">
+                                <div className="relative flex items-center">
+                                    <span className="absolute left-2 text-gray-500 text-sm pointer-events-none select-none">
+                                        {(() => {
+                                            const amt = String(ctx?.userDetails?.amountPaid || '');
+                                            const sym = amt.match(/^([^0-9]+)/)?.[1];
+                                            if (sym === 'CAD') return 'CA$';
+                                            if (sym) return sym;
+                                            return '$';
+                                        })()}
+                                    </span>
+                                    <input
+                                        type="text"
+                                        value={(() => {
+                                            const v = editData.expectedSalaryRange || '';
+                                            return v.replace(/^[£$₹]|^CA\$/, '');
+                                        })()}
+                                        onChange={(e) =>
+                                            setEditData({ ...editData, expectedSalaryRange: e.target.value })
+                                        }
+                                        className="w-full text-sm border-b border-gray-300 focus:border-orange-500 focus:outline-none py-1 pr-2"
+                                        style={{ paddingLeft: '1.75rem' }}
+                                        placeholder="e.g. 60,000"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <InfoRow
+                            title="Expected Base Salary"
+                            value={data.expectedSalaryRange}
+                        />
+                    )}
                     <InfoRow
                         title="Preferred Locations"
                         value={
