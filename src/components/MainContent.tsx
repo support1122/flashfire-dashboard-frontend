@@ -111,6 +111,7 @@ const Inbox = lazy(()=>import('./Inbox'))
 const ReferAndEarn = lazy(()=>import('./ReferAndEarn'))
 import { UserContext } from '../state_management/UserContext';
 import LoadingScreen from './LoadingScreen';
+import JrCredsPrompt from './JrCredsPrompt';
 import { useOperationsStore } from "../state_management/Operations";
 import { useContentOffsetClass } from "../state_management/useContentOffset";
 import type { DocumentCategoryId } from "../types/navigation";
@@ -127,7 +128,7 @@ export default function MainContent() {
   const [documentCategory, setDocumentCategory] = useState<DocumentCategoryId | null>(null);
   const context = useContext(UserContext);
   const navigate = useNavigate();
-  const { role } = useOperationsStore();
+  const { role, email: operatorEmail } = useOperationsStore();
   const contentOffset = useContentOffsetClass();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
   
@@ -245,6 +246,14 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Operator-only, and enforced by the server rather than by `role`:
+          the component renders nothing until /operations/jr-creds-status
+          confirms the caller manages this client. See JrCredsPrompt.tsx. */}
+      <JrCredsPrompt
+        operatorEmail={operatorEmail}
+        clientEmail={userDetails?.email || ''}
+        role={role}
+      />
       <Suspense fallback={<LoadingScreen />}>
         <Navigation
           activeTab={activeTab}
