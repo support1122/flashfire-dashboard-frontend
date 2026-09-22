@@ -108,7 +108,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const hasProfileValue = sessionStorage.getItem('hasProfile');
-    setShowProfileModal(hasProfileValue === 'false');
+    if (hasProfileValue === 'false') setShowProfileModal(true);
   }, []);
 
   const stats = useMemo(() => {
