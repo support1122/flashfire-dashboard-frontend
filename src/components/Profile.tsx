@@ -1016,31 +1016,6 @@ export default function ProfilePage() {
                             setEditData({ ...editData, yearsOfExperience: v } as any)
                         }
                     />
-                    <div className="flex flex-col md:flex-row md:items-center py-3 border-b border-gray-100 last:border-b-0">
-                        <div className="w-full md:w-1/3 text-sm font-semibold text-gray-700 mb-1 md:mb-0">
-                            <RowTitle title="Currency" />
-                        </div>
-                        <div className="w-full md:w-2/3">
-                            {editingSection === "professional" ? (
-                                <select
-                                    value={(editData as any).currency || "USD"}
-                                    onChange={(e) =>
-                                        setEditData({ ...editData, currency: e.target.value } as any)
-                                    }
-                                    className="w-full text-sm border-b px-2 py-1 focus:outline-none border-gray-300 focus:border-orange-500"
-                                >
-                                    <option value="USD">USD $</option>
-                                    <option value="GBP">GBP £</option>
-                                    <option value="CAD">CAD CA$</option>
-                                    <option value="INR">INR ₹</option>
-                                </select>
-                            ) : (
-                                <span className="text-sm text-gray-900">
-                                    {(data as any).currency || "USD"}
-                                </span>
-                            )}
-                        </div>
-                    </div>
                     <InfoRow
                         title="Expected Base Salary"
                         value={
