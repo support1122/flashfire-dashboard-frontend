@@ -1501,6 +1501,7 @@ type FormData = {
   experienceLevel: string;
   yearsOfExperience: string; // YOE - total years of professional experience
   expectedSalaryRange: string;
+  currency: string;
   preferredLocations: string;
   targetCompanies: string;
   employmentTypes: ("Full-time" | "Part-time" | "Contract" | "Internship")[];
@@ -1549,6 +1550,7 @@ const initialData: FormData = {
   experienceLevel: "",
   yearsOfExperience: "",
   expectedSalaryRange: "",
+  currency: "USD",
   preferredLocations: "",
   targetCompanies: "",
   employmentTypes: ["Full-time"],
@@ -1891,6 +1893,7 @@ useEffect(() => {
     preferredRoles: arrToLine(p.preferredRoles),
     experienceLevel: p.experienceLevel ?? "",
     expectedSalaryRange: p.expectedSalaryRange ?? "",
+    currency: p.currency ?? "USD",
     preferredLocations: arrToLine(p.preferredLocations),
     targetCompanies: arrToLine(p.targetCompanies),
     employmentTypes:
@@ -2636,20 +2639,17 @@ const handleSubmit = () => {
                   </div>
                   <div>
                     <FieldLabel>Expected Base Salary</FieldLabel>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">
-                        {(() => {
-                          const amt = String(ctx?.userDetails?.amountPaid || '');
-                          const sym = amt.match(/^([^0-9]+)/)?.[1];
-                          if (sym) return sym;
-                          // fallback to currency field
-                          const c = (ctx?.userDetails?.currency || '').toUpperCase();
-                          if (c === 'CAD') return 'CA$';
-                          if (c === 'GBP') return '£';
-                          if (c === 'INR') return '₹';
-                          return '$';
-                        })()}
-                      </span>
+                    <div className="flex gap-2">
+                      <Select
+                        value={data.currency}
+                        onChange={(e) => set({ currency: e.target.value })}
+                        style={{ maxWidth: '5.5rem' }}
+                      >
+                        <option value="USD">USD $</option>
+                        <option value="GBP">GBP £</option>
+                        <option value="CAD">CAD CA$</option>
+                        <option value="INR">INR ₹</option>
+                      </Select>
                       <TextInput
                         hasError={!!errors.expectedSalaryRange}
                         value={data.expectedSalaryRange}
@@ -2660,7 +2660,6 @@ const handleSubmit = () => {
                           }
                         }}
                         placeholder="e.g. 80,000 or 80k"
-                        style={{ paddingLeft: '2rem' }}
                       />
                     </div>
                     <ErrorText>{errors.expectedSalaryRange}</ErrorText>
