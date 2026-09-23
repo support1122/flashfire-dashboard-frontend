@@ -964,10 +964,14 @@ export default function ClientReminders({
                     connected mailbox, forward it to them straight away over the channels below. Each mail
                     is sent once per channel and never twice.
                   </p>
-                  {inboxAlertsEnabled && (
+                  <p className="mt-1.5 text-xs leading-relaxed text-gray-500">
+                    On for every client. Switch it off only when this client asks, or when their inbox is
+                    noisy enough that the calls stop being useful. Clicking unsubscribe in one of our
+                    emails switches it off here too.
+                  </p>
+                  {!inboxAlertsEnabled && (
                     <p className="mt-1.5 text-xs font-medium text-amber-800">
-                      This is driven by a classifier reading the client's real inbox. A wrong call reaches
-                      them as news, so leave it off unless you want that risk for this client.
+                      This client is opted out, so no interview, assignment or offer mail reaches them.
                     </p>
                   )}
                 </div>
@@ -985,8 +989,8 @@ export default function ClientReminders({
                   aria-checked={inboxAlertsEnabled}
                   aria-label={
                     inboxAlertsEnabled
-                      ? "Inbox milestone alerts are on for this client. Click to turn them off."
-                      : "Inbox milestone alerts are off for this client. Click to turn them on."
+                      ? "Inbox milestone alerts are on for this client. Click to opt them out."
+                      : "This client is opted out of inbox milestone alerts. Click to turn them back on."
                   }
                   onClick={() => void handleToggleInboxAlerts(!inboxAlertsEnabled)}
                   disabled={savingInboxAlerts}
