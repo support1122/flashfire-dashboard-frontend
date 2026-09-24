@@ -2,12 +2,15 @@ import React, { useState, useEffect } from "react";
 import { toastUtils } from "../../../utils/toast";
 import * as pdfjsLib from 'pdfjs-dist';
 import { savePdf } from "../../../utils/savePdf.ts";
+import {
+    REQUIRED_MEDICAL_PDF_PAGES,
+    countPdfPages,
+    medicalDownloadGate,
+} from "../../../utils/medicalPdfPageRule";
 // import { ResumeScalingModal } from "./ResumeScalingModal";
 
 // Set up PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
-
-const REQUIRED_MEDICAL_PDF_PAGES = 2;
 
 interface ResumeData {
     personalInfo: {
@@ -119,12 +122,10 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     const isOptimizeRoute =
         typeof window !== "undefined" && window.location.pathname.startsWith("/optimize");
 
-    // Mirrors the flag in ResumePreview.tsx. The exact-page-count rule below is a
-    // QUALITY GATE for operators, who produce these as client deliverables and can
-    // edit the content until it fits. A client cannot rewrite their own resume to
-    // hit an exact page count, so enforcing it on them would leave the Download
-    // button permanently disabled. They still get the slider, the live preview and
-    // the page badge, so they can scale it down themselves if they want to.
+    // Mirrors the flag in ResumePreview.tsx. Only the MINIMUM page count is an
+    // operator-only rule: it is a quality gate on a client deliverable, and an
+    // operator can edit the content until it fills two pages where a client
+    // cannot. The maximum applies to everyone - see utils/medicalPdfPageRule.ts.
     const isOperator = (() => {
         const raw = typeof window !== "undefined" ? localStorage.getItem("role") : null;
         const n = typeof raw === "string" ? raw.trim().toLowerCase() : "";
@@ -210,12 +211,16 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
     const [originalFilename, setOriginalFilename] = useState("");
     const [showFilenameConfirmModal, setShowFilenameConfirmModal] = useState(false);
     const overrideAutoScale = true;
-    const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
     const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
     const [previewPdfBlob, setPreviewPdfBlob] = useState<Blob | null>(null);
     const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
     const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
     const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
+
+    // One decision, four consumers: the button's disabled flag, its colour, its
+    // label, and the warning panel. Deriving them separately is how the modal
+    // ended up warning "spans 3 pages" next to a live green Download button.
+    const downloadGate = medicalDownloadGate(pdfPageCount, { enforceMinimum: isOperator });
 
     const loadingMessages = [
         "Our PDF engine is optimizing the PDF view...",
@@ -383,7 +388,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                             WORK EXPERIENCE
                         </div>
                         {data.workExperience.length > 0 ? (
-                            data.workExperience.map((exp, index) => (
+                            data.workExperience.map((exp) => (
                                 <div key={exp.id} style={{ marginBottom: "8px" }}>
                                     <div
                                         style={{
@@ -497,7 +502,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                         >
                             PROJECTS
                         </div>
-                        {data.projects.map((project, index) => (
+                        {data.projects.map((project) => (
                             <div key={project.id} style={{ marginBottom: "8px" }}>
                                 <div
                                     style={{
@@ -1101,6 +1106,30 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
         }
     };
 
+    /**
+     * Last line of defence before a medical PDF is written to disk.
+     *
+     * A disabled button is UI state, and UI state goes stale: a cached preview
+     * blob outlives the count measured from it, and the "generate a fresh PDF"
+     * branches have never been measured at all. This counts the bytes that are
+     * about to be saved, so a medical resume longer than
+     * REQUIRED_MEDICAL_PDF_PAGES cannot leave the app down any path - modal,
+     * rename-confirm, or direct generate.
+     *
+     * Returns true when the save may proceed.
+     */
+    const allowMedicalSave = async (blob: Blob): Promise<boolean> => {
+        const pages = await countPdfPages(blob, pdfjsLib);
+        if (pages !== null) setPdfPageCount(pages);
+        const gate = medicalDownloadGate(pages, { enforceMinimum: isOperator });
+        if (gate.blocked) {
+            toastUtils.error(gate.message || "This resume cannot be downloaded at its current length.");
+            setShowScaleModal(true);
+            return false;
+        }
+        return true;
+    };
+
     // Handle direct PDF download - use the preview PDF if available
     const handleDownloadResume = async () => {
         try {
@@ -1116,6 +1145,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
 
             // If we have a preview PDF blob, use it directly
             if (previewPdfBlob) {
+                if (!(await allowMedicalSave(previewPdfBlob))) return;
                 await savePdf(previewPdfBlob, filename);
                 toastUtils.success("✅ PDF downloaded successfully!");
                 if (onDownloadClick) onDownloadClick();
@@ -1187,6 +1217,11 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
             }
 
             const pdfBlob = await response.blob();
+            if (!(await allowMedicalSave(pdfBlob))) {
+                toastUtils.dismissToast(loadingToast);
+                setIsPrinting(false);
+                return;
+            }
             await savePdf(pdfBlob, filename);
 
             toastUtils.dismissToast(loadingToast);
@@ -1513,6 +1548,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
 
             // If we have a preview PDF blob, use it directly
             if (previewPdfBlob) {
+                if (!(await allowMedicalSave(previewPdfBlob))) return;
                 await savePdf(previewPdfBlob, filename);
                 toastUtils.success("✅ PDF downloaded successfully!");
                 if (onDownloadClick) onDownloadClick();
@@ -1583,6 +1619,11 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
             }
 
             const pdfBlob = await response.blob();
+            if (!(await allowMedicalSave(pdfBlob))) {
+                toastUtils.dismissToast(loadingToast);
+                setIsPrinting(false);
+                return;
+            }
             await savePdf(pdfBlob, filename);
 
             toastUtils.dismissToast(loadingToast);
@@ -1894,11 +1935,11 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                         }}>
                                             <span style={{ fontSize: "1.25rem" }}>⚠️</span>
                                             <strong style={{ color: "#92400e", fontSize: "0.9rem" }}>
-                                                Resume currently spans {pdfPageCount} pages
+                                                Resume currently spans {pdfPageCount} pages - too long to download
                                             </strong>
                                         </div>
                                         <div style={{ fontSize: "0.85rem", color: "#78350f", lineHeight: "1.5" }}>
-                                            Reduce scale slightly so preview fits in {REQUIRED_MEDICAL_PDF_PAGES} pages before download.
+                                            Download is blocked until this fits in {REQUIRED_MEDICAL_PDF_PAGES} pages. Reduce the scale and the preview will update.
                                         </div>
                                     </div>
                                 )}
@@ -1980,10 +2021,10 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                     </button>
                                     <button
                                         onClick={handleDownloadResume}
-                                        disabled={isPrinting || isGeneratingPreview || !previewPdfBlob || (isOperator && pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES)}
+                                        disabled={isPrinting || isGeneratingPreview || !previewPdfBlob || downloadGate.blocked}
                                         style={{
                                             flex: 1,
-                                            background: (isPrinting || isGeneratingPreview || !previewPdfBlob || (isOperator && pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES))
+                                            background: (isPrinting || isGeneratingPreview || !previewPdfBlob || downloadGate.blocked)
                                                 ? "#9ca3af"
                                                 : "linear-gradient(90deg, #10b981 0%, #059669 100%)",
                                             color: "white",
@@ -1992,14 +2033,14 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                                             borderRadius: "8px",
                                             fontSize: "1rem",
                                             fontWeight: "600",
-                                            cursor: (isPrinting || isGeneratingPreview || !previewPdfBlob || (isOperator && pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES)) ? "not-allowed" : "pointer",
-                                            boxShadow: (isPrinting || isGeneratingPreview || !previewPdfBlob || (isOperator && pdfPageCount !== null && pdfPageCount !== REQUIRED_MEDICAL_PDF_PAGES))
+                                            cursor: (isPrinting || isGeneratingPreview || !previewPdfBlob || downloadGate.blocked) ? "not-allowed" : "pointer",
+                                            boxShadow: (isPrinting || isGeneratingPreview || !previewPdfBlob || downloadGate.blocked)
                                                 ? "none"
                                                 : "0 6px 18px rgba(16, 185, 129, 0.35)",
                                             transition: "all 0.2s",
                                         }}
                                     >
-                                        {isPrinting ? "Generating..." : (isOperator && pdfPageCount !== null && pdfPageCount < REQUIRED_MEDICAL_PDF_PAGES) ? `Showing ${pdfPageCount} page${pdfPageCount === 1 ? "" : "s"} - increase scale` : (isOperator && pdfPageCount !== null && pdfPageCount > REQUIRED_MEDICAL_PDF_PAGES) ? `Showing ${pdfPageCount} pages - reduce scale` : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
+                                        {isPrinting ? "Generating..." : downloadGate.label ? downloadGate.label : previewPdfBlob ? "Download PDF" : "Generate Preview First"}
                                     </button>
                                 </div>
                             </div>
