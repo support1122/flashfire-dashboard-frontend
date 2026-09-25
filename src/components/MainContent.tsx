@@ -116,6 +116,7 @@ import { useOperationsStore } from "../state_management/Operations";
 import { useContentOffsetClass } from "../state_management/useContentOffset";
 import type { DocumentCategoryId } from "../types/navigation";
 import ChoosePlan from './ChoosePlan';
+import { arePerksDisabled, PERKS_DISABLED_MESSAGE, PERKS_DISABLED_TITLE } from '../utils/clientPerks';
 
 
 
@@ -133,6 +134,11 @@ export default function MainContent() {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
   
   const userDetails = context?.userDetails;
+  // Upgrade and Refer n Earn are withdrawn permanently once a client goes
+  // inactive with no activity for 14 days. The nav greys the buttons out; this
+  // turns the two tabs away as well, so ?tab=upgrade typed into the address bar
+  // does not walk straight past them.
+  const perksOff = arePerksDisabled(userDetails);
   const token = context?.token;
   const setData = context?.setData;
   
@@ -150,6 +156,16 @@ export default function MainContent() {
       setDocumentCategory(docParam);
     }
   }, []);
+
+  // The session arrives asynchronously (login, then /get-updated-user), so the
+  // flag can turn true while one of these tabs is already open. Watching it
+  // rather than checking once on mount is what closes the tab in that case.
+  useEffect(() => {
+    if (!perksOff) return;
+    if (activeTab !== 'upgrade' && activeTab !== 'refer') return;
+    setActiveTab('dashboard');
+    navigate('/?tab=dashboard', { replace: true });
+  }, [perksOff, activeTab, navigate]);
 
   // Auth gate: the dashboard (including ?tab=upgrade) requires login. A logged-out
   // visitor is bounced to /login. We check BOTH the context token and the stored
@@ -263,7 +279,7 @@ useEffect(() => {
         />
       </Suspense>
 
-      {activeTab === 'upgrade' ? (
+      {activeTab === 'upgrade' && !perksOff ? (
         <div className={contentOffset}>
           {/* Rendered as a tab rather than a floating panel, so it owns a URL
               (?tab=upgrade). Closing navigates as well as setting the tab, or
@@ -312,10 +328,17 @@ useEffect(() => {
             </Suspense>
           )}
 
-          {activeTab === 'refer' && (
+          {activeTab === 'refer' && !perksOff && (
             <Suspense fallback={<LoadingScreen />}>
               <ReferAndEarn />
             </Suspense>
+          )}
+
+          {(activeTab === 'refer' || activeTab === 'upgrade') && perksOff && (
+            <div className="mx-auto max-w-lg px-4 py-16 text-center">
+              <h2 className="text-lg font-semibold text-gray-800">{PERKS_DISABLED_TITLE}</h2>
+              <p className="mt-2 text-sm text-gray-600">{PERKS_DISABLED_MESSAGE}</p>
+            </div>
           )}
         </main>
       )}

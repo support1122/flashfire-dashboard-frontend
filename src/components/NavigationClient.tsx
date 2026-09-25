@@ -25,6 +25,7 @@ import { useOperationsStore } from "../state_management/Operations.ts";
 import { useDownloadHighlightStore } from "../state_management/DownloadHighlightStore.ts";
 import { useSidebarStore } from "../state_management/SidebarStore.ts";
 import { toastUtils, toastMessages } from "../utils/toast.ts";
+import { arePerksDisabled, PERKS_DISABLED_TITLE } from "../utils/clientPerks.ts";
 import type { DocumentCategoryId, NavigationProps } from "../types/navigation.ts";
 
 // Client-facing navigation: the collapsible sidebar. Operators get the
@@ -47,6 +48,9 @@ const NavigationClient: React.FC<NavigationProps> = ({
   const isProfileRoute = location.pathname === "/profile";
   const ctx = useContext(UserContext);
   const userDetails = ctx?.userDetails;
+  // Upgrade and Refer n Earn are withdrawn permanently once a client goes
+  // inactive with no activity for 14 days. Server decides; see utils/clientPerks.
+  const perksOff = arePerksDisabled(userDetails);
   const [user, setUser] = useState(userDetails?.name || "");
   const [menuOpen, setMenuOpen] = useState(false);
   const [showRemovedJobsModal, setShowRemovedJobsModal] = useState(false);
@@ -404,33 +408,62 @@ const NavigationClient: React.FC<NavigationProps> = ({
 
         {/* Bottom actions */}
         <div className="px-3 pb-5 space-y-1">
+          {/* Upgrade and Refer n Earn render as dead, greyed controls rather than
+              disappearing. A button that vanishes reads as a bug and generates a
+              support ticket; a greyed one with a reason on hover explains itself. */}
           {user && (
-            <Link
-              to={tabHref("upgrade")}
-              onClick={() => onTabChange("upgrade")}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold border-2 border-orange-500 transition-colors ${
-                activeTab === "upgrade" && !isProfileRoute
-                  ? "bg-orange-500 text-white"
-                  : "text-orange-500 hover:bg-orange-500 hover:text-white"
-              }`}
-            >
-              <Rocket className="w-4 h-4 flex-shrink-0" />
-              Upgrade
-            </Link>
+            perksOff ? (
+              <button
+                type="button"
+                disabled
+                title={PERKS_DISABLED_TITLE}
+                aria-disabled="true"
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold border-2 border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+              >
+                <Rocket className="w-4 h-4 flex-shrink-0" />
+                Upgrade
+              </button>
+            ) : (
+              <Link
+                to={tabHref("upgrade")}
+                onClick={() => onTabChange("upgrade")}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold border-2 border-orange-500 transition-colors ${
+                  activeTab === "upgrade" && !isProfileRoute
+                    ? "bg-orange-500 text-white"
+                    : "text-orange-500 hover:bg-orange-500 hover:text-white"
+                }`}
+              >
+                <Rocket className="w-4 h-4 flex-shrink-0" />
+                Upgrade
+              </Link>
+            )
           )}
           {user && (
-            <Link
-              to={tabHref("refer")}
-              onClick={() => { onTabChange("refer"); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold border transition-colors ${
-                activeTab === "refer" && !isProfileRoute
-                  ? "bg-orange-600 border-orange-600 text-white"
-                  : "bg-orange-500 hover:bg-orange-600 text-white border-orange-500 hover:border-orange-400"
-              }`}
-            >
-              <Handshake className="w-4 h-4 flex-shrink-0" />
-              Refer n Earn
-            </Link>
+            perksOff ? (
+              <button
+                type="button"
+                disabled
+                title={PERKS_DISABLED_TITLE}
+                aria-disabled="true"
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+              >
+                <Handshake className="w-4 h-4 flex-shrink-0" />
+                Refer n Earn
+              </button>
+            ) : (
+              <Link
+                to={tabHref("refer")}
+                onClick={() => { onTabChange("refer"); }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold border transition-colors ${
+                  activeTab === "refer" && !isProfileRoute
+                    ? "bg-orange-600 border-orange-600 text-white"
+                    : "bg-orange-500 hover:bg-orange-600 text-white border-orange-500 hover:border-orange-400"
+                }`}
+              >
+                <Handshake className="w-4 h-4 flex-shrink-0" />
+                Refer n Earn
+              </Link>
+            )
           )}
           {user ? (
             role === "operations" ? (
@@ -482,24 +515,48 @@ const NavigationClient: React.FC<NavigationProps> = ({
           </div>
           <div className="flex items-center gap-2">
             {user && (
-              <Link
-                to={tabHref("upgrade")}
-                onClick={() => { onTabChange("upgrade"); setMenuOpen(false); }}
-                className="p-2 border-2 border-orange-500 text-orange-500"
-                title="Upgrade"
-              >
-                <Rocket className="w-4 h-4" />
-              </Link>
+              perksOff ? (
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  className="p-2 border-2 border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                  title={PERKS_DISABLED_TITLE}
+                >
+                  <Rocket className="w-4 h-4" />
+                </button>
+              ) : (
+                <Link
+                  to={tabHref("upgrade")}
+                  onClick={() => { onTabChange("upgrade"); setMenuOpen(false); }}
+                  className="p-2 border-2 border-orange-500 text-orange-500"
+                  title="Upgrade"
+                >
+                  <Rocket className="w-4 h-4" />
+                </Link>
+              )
             )}
             {user && (
-              <Link
-                to={tabHref("refer")}
-                onClick={() => { onTabChange("refer"); setMenuOpen(false); }}
-                className="p-2 bg-orange-500 text-white"
-                title="Refer & Earn"
-              >
-                <Handshake className="w-4 h-4" />
-              </Link>
+              perksOff ? (
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  className="p-2 bg-gray-100 text-gray-400 cursor-not-allowed"
+                  title={PERKS_DISABLED_TITLE}
+                >
+                  <Handshake className="w-4 h-4" />
+                </button>
+              ) : (
+                <Link
+                  to={tabHref("refer")}
+                  onClick={() => { onTabChange("refer"); setMenuOpen(false); }}
+                  className="p-2 bg-orange-500 text-white"
+                  title="Refer & Earn"
+                >
+                  <Handshake className="w-4 h-4" />
+                </Link>
+              )
             )}
             <button
               data-nav-trigger
