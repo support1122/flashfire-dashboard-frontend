@@ -732,6 +732,10 @@ const OperationsManagement = () => {
       if (res.ok && data.ok && data.status === "sent") {
         toastUtils.success(`Sent ${data.sent} recruiter email${data.sent === 1 ? "" : "s"} now.`);
         fetchEmailLogs(1);
+      } else if (data.status === "weekend") {
+        // Not an error and not something settings can fix, so it does not get
+        // a red toast. Recruiter mail is Monday to Friday by design.
+        toastUtils.custom(data.error || "Recruiter emails go out Monday to Friday only.", "info");
       } else if (data.status === "already_sent_today") {
         toastUtils.error(data.message || "Today's emails were already sent for this user.");
       } else {
