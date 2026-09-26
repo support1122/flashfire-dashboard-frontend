@@ -116,7 +116,7 @@ import { useOperationsStore } from "../state_management/Operations";
 import { useContentOffsetClass } from "../state_management/useContentOffset";
 import type { DocumentCategoryId } from "../types/navigation";
 import ChoosePlan from './ChoosePlan';
-import { arePerksDisabled, PERKS_DISABLED_MESSAGE, PERKS_DISABLED_TITLE } from '../utils/clientPerks';
+import { arePerksDisabled } from '../utils/clientPerks';
 
 
 
@@ -135,9 +135,9 @@ export default function MainContent() {
   
   const userDetails = context?.userDetails;
   // Upgrade and Refer n Earn are withdrawn permanently once a client goes
-  // inactive with no activity for 14 days. The nav greys the buttons out; this
-  // turns the two tabs away as well, so ?tab=upgrade typed into the address bar
-  // does not walk straight past them.
+  // inactive for 14 days. The nav removes the buttons entirely; this turns the
+  // two tabs away as well, so a bookmarked ?tab=upgrade does not walk straight
+  // past them into the payment page.
   const perksOff = arePerksDisabled(userDetails);
   const token = context?.token;
   const setData = context?.setData;
@@ -332,13 +332,6 @@ useEffect(() => {
             <Suspense fallback={<LoadingScreen />}>
               <ReferAndEarn />
             </Suspense>
-          )}
-
-          {(activeTab === 'refer' || activeTab === 'upgrade') && perksOff && (
-            <div className="mx-auto max-w-lg px-4 py-16 text-center">
-              <h2 className="text-lg font-semibold text-gray-800">{PERKS_DISABLED_TITLE}</h2>
-              <p className="mt-2 text-sm text-gray-600">{PERKS_DISABLED_MESSAGE}</p>
-            </div>
           )}
         </main>
       )}

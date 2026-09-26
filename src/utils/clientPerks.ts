@@ -14,9 +14,9 @@
  * paying client the moment this shipped, so absence means enabled and only an
  * explicit true takes them away.
  *
- * This is presentation, not security. It greys out the buttons and turns away
- * the two tabs; it is not what stops a determined client from reaching a payment
- * page, and it was never meant to be.
+ * This is presentation, not security. It removes the buttons from the nav and
+ * turns away the two tabs; it is not what stops a determined client from
+ * reaching a payment page, and it was never meant to be.
  */
 
 /** The only part of the session this module cares about. */
@@ -28,9 +28,3 @@ export interface PerkBearingUser {
 export function arePerksDisabled(userDetails: PerkBearingUser | null | undefined): boolean {
      return userDetails?.perksDisabled === true;
 }
-
-/** Shown on hover and in the placeholder panel, so the client is not left guessing. */
-export const PERKS_DISABLED_TITLE = "Not available on an inactive account";
-
-export const PERKS_DISABLED_MESSAGE =
-     "This is not available because your account is inactive. Contact your FlashFire manager to reactivate it.";
