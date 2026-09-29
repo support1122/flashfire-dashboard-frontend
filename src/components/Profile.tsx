@@ -467,11 +467,14 @@ export default function ProfilePage() {
     const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
     const { role } = useOperationsStore();
     const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
-    const isUSClient = (() => {
+    const workEligibilityQuestion = (() => {
         const amt = String(ctx?.userDetails?.amountPaid || '');
-        const sym = amt.match(/^([^0-9]+)/)?.[1];
-        if (!sym) return true;
-        return sym === '$';
+        const sym = amt.match(/^([^0-9]+)/)?.[1] || '';
+        if (sym === 'CA$' || sym === 'CAD') return 'Are you eligible to work in Canada?';
+        if (sym === 'A$' || sym === 'AU$') return 'Are you eligible to work in Australia?';
+        if (sym === '£') return 'Are you eligible to work in United Kingdom?';
+        if (sym === '₹') return null; // hide for India
+        return 'Are you eligible to work in United States?'; // $ or unknown
     })();
 
     useEffect(() => {
@@ -1261,9 +1264,9 @@ export default function ProfilePage() {
                         isEditing={editingSection === "additional"}
                         onValueChange={(v) => setEditData({ ...editData, scholarshipRequired: v })}
                     />
-                    {isUSClient && (
+                    {workEligibilityQuestion && (
                         <InfoRow
-                            title="Are you eligible to work in United States?"
+                            title={workEligibilityQuestion}
                             value={editingSection === "additional" ? editData.usWorkEligibility : (data.usWorkEligibility || "Yes")}
                             isEditing={editingSection === "additional"}
                             onValueChange={(v) => setEditData({ ...editData, usWorkEligibility: v })}
