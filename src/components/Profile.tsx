@@ -467,6 +467,12 @@ export default function ProfilePage() {
     const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
     const { role } = useOperationsStore();
     const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
+    const isUSClient = (() => {
+        const amt = String(ctx?.userDetails?.amountPaid || '');
+        const sym = amt.match(/^([^0-9]+)/)?.[1];
+        if (!sym) return true;
+        return sym === '$';
+    })();
 
     useEffect(() => {
         const fetchLatestProfile = async () => {
@@ -1255,12 +1261,14 @@ export default function ProfilePage() {
                         isEditing={editingSection === "additional"}
                         onValueChange={(v) => setEditData({ ...editData, scholarshipRequired: v })}
                     />
-                    <InfoRow
-                        title="Are you eligible to work in United States?"
-                        value={editingSection === "additional" ? editData.usWorkEligibility : (data.usWorkEligibility || "Yes")}
-                        isEditing={editingSection === "additional"}
-                        onValueChange={(v) => setEditData({ ...editData, usWorkEligibility: v })}
-                    />
+                    {isUSClient && (
+                        <InfoRow
+                            title="Are you eligible to work in United States?"
+                            value={editingSection === "additional" ? editData.usWorkEligibility : (data.usWorkEligibility || "Yes")}
+                            isEditing={editingSection === "additional"}
+                            onValueChange={(v) => setEditData({ ...editData, usWorkEligibility: v })}
+                        />
+                    )}
                     <TextAreaRow
                         title="When are you able to join the company?"
                         value={editingSection === "additional" ? editData.availabilityNote : (() => {
