@@ -467,14 +467,17 @@ export default function ProfilePage() {
     const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
     const { role } = useOperationsStore();
     const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
+    const [clientAmountPaid, setClientAmountPaid] = useState<string | null>(null);
     const workEligibilityQuestion = (() => {
-        const amt = String(ctx?.userDetails?.amountPaid || '');
+        // clientAmountPaid comes from get-profile (correct for both client and ops view)
+        // fall back to ctx.userDetails.amountPaid for client viewing their own profile
+        const amt = String(clientAmountPaid ?? ctx?.userDetails?.amountPaid ?? '');
         const sym = amt.match(/^([^0-9]+)/)?.[1] || '';
         if (sym === 'CA$' || sym === 'CAD') return 'Are you eligible to work in Canada?';
         if (sym === 'A$' || sym === 'AU$') return 'Are you eligible to work in Australia?';
         if (sym === '£') return 'Are you eligible to work in United Kingdom?';
-        if (sym === '₹') return null; // hide for India
-        return 'Are you eligible to work in United States?'; // $ or unknown
+        if (sym === '₹') return null;
+        return 'Are you eligible to work in United States?';
     })();
 
     useEffect(() => {
@@ -492,6 +495,9 @@ export default function ProfilePage() {
                     const data = await response.json();
                     if (data.userProfile) {
                         updateProfile(data.userProfile);
+                    }
+                    if (data.amountPaid) {
+                        setClientAmountPaid(data.amountPaid);
                     }
                 }
             } catch (error) {
