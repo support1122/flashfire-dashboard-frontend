@@ -4,7 +4,7 @@ import { UserContext } from "../state_management/UserContext";
 import { PAGE_CONTAINER, PAGE_MAIN } from "../styles/layout";
 
 type PlanKey = "prime" | "ignite" | "professional" | "executive";
-type Currency = "USD" | "CAD" | "GBP";
+type Currency = "USD" | "CAD" | "GBP" | "AUD";
 
 const PLAN_LABELS: Record<PlanKey, string> = {
   prime: "Prime", ignite: "Ignite", professional: "Professional", executive: "Executive",
@@ -19,10 +19,11 @@ const PLAN_FEATURES: Record<PlanKey, string[]> = {
   executive: ["Cover Letter Included", "Emailing Recruiters", "Portfolio Website"],
 };
 
-const CURRENCY_SYMBOL: Record<Currency, string> = { USD: "$", CAD: "CA$", GBP: "£" };
+const CURRENCY_SYMBOL: Record<Currency, string> = { USD: "$", CAD: "CA$", GBP: "£", AUD: "AU$" };
 
 // Upgrade links: { to, priceUSD, priceCAD, priceGBP, urlUSD, urlCAD, urlGBP }
-const UPGRADES_DATA: Record<string, { to: PlanKey; priceUSD: number; priceCAD: number; priceGBP: number; urlUSD: string; urlCAD: string; urlGBP: string }[]> = {
+// priceAUD / urlAUD are optional: until they are filled in, AUD clients see "Coming soon".
+const UPGRADES_DATA: Record<string, { to: PlanKey; priceUSD: number; priceCAD: number; priceGBP: number; urlUSD: string; urlCAD: string; urlGBP: string; priceAUD?: number; urlAUD?: string }[]> = {
   prime: [
     {
       to: "professional",
@@ -63,7 +64,7 @@ const UPGRADES_DATA: Record<string, { to: PlanKey; priceUSD: number; priceCAD: n
 };
 
 // Booster links per plan per currency
-const BOOSTERS_DATA: Record<PlanKey, { apps: number; priceUSD: number; priceCAD: number; priceGBP: number; urlUSD: string; urlCAD: string; urlGBP: string }[]> = {
+const BOOSTERS_DATA: Record<PlanKey, { apps: number; priceUSD: number; priceCAD: number; priceGBP: number; urlUSD: string; urlCAD: string; urlGBP: string; priceAUD?: number; urlAUD?: string }[]> = {
   prime: [
     { apps: 250, priceUSD: 120, priceCAD: 170, priceGBP: 95, urlUSD: "https://buy.stripe.com/dRmeVf7lm8uSaas6Ob3AY05", urlCAD: "https://buy.stripe.com/00w9AV212eTg6YgfkH3AY0n", urlGBP: "https://buy.stripe.com/eVq6oJdJK26u6Yg7Sf3AY0M" },
     { apps: 500, priceUSD: 200, priceCAD: 280, priceGBP: 160, urlUSD: "https://buy.stripe.com/28E5kF3567qObewegD3AY06", urlCAD: "https://buy.stripe.com/00w7sN2124eCdmE0pN3AY0o", urlGBP: "https://buy.stripe.com/00w9AVcFGdPcciA6Ob3AY0N" },
@@ -99,8 +100,20 @@ function detectCurrency(currency: string | undefined): Currency {
   const c = currency.toUpperCase();
   if (c === "CAD") return "CAD";
   if (c === "GBP") return "GBP";
+  if (c === "AUD") return "AUD";
   return "USD";
 }
+
+type PriceRow = { priceUSD: number; priceCAD: number; priceGBP: number; urlUSD: string; urlCAD: string; urlGBP: string; priceAUD?: number; urlAUD?: string };
+
+function pickPrice(row: PriceRow, currency: Currency): { price: number | undefined; url: string | undefined } {
+  if (currency === "CAD") return { price: row.priceCAD, url: row.urlCAD };
+  if (currency === "GBP") return { price: row.priceGBP, url: row.urlGBP };
+  if (currency === "AUD") return { price: row.priceAUD, url: row.urlAUD };
+  return { price: row.priceUSD, url: row.urlUSD };
+}
+
+const PENDING_URL = "#"; // no Stripe link configured yet for this currency
 
 // Append email as prefilled_email and client_reference_id so the Stripe webhook knows who paid
 function withEmail(url: string, email: string | undefined): string {
@@ -169,10 +182,11 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
             </div>
             <p className="text-xs text-gray-400 mb-3">Unlock more applications and premium features</p>
             <div className={`grid gap-3 ${inline ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
-              {upgradesRaw.map(({ to, priceUSD, priceCAD, priceGBP, urlUSD, urlCAD, urlGBP }) => {
+              {upgradesRaw.map((row) => {
+                const { to } = row;
                 const isPopular = to === "executive";
-                const price = currency === "CAD" ? priceCAD : currency === "GBP" ? priceGBP : priceUSD;
-                const url = withEmail(currency === "CAD" ? urlCAD : currency === "GBP" ? urlGBP : urlUSD, email);
+                const { price, url: rawUrl } = pickPrice(row, currency);
+                const url = rawUrl ? withEmail(rawUrl, email) : PENDING_URL;
                 return (
                   <div key={to} className={`relative overflow-hidden border border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${isPopular ? "" : "bg-white"}`}>
                     {isPopular && (
@@ -199,12 +213,12 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
                         </div>
                         <div className="flex flex-col items-end gap-2 flex-shrink-0">
                           <div className="text-right">
-                            <div className="text-2xl font-extrabold text-gray-900">{sym}{price}</div>
-                            <div className="text-[10px] text-gray-400">upgrade price</div>
+                            <div className="text-2xl font-extrabold text-gray-900">{price != null ? `${sym}${price}` : "—"}</div>
+                            <div className="text-[10px] text-gray-400">{price != null ? "upgrade price" : "coming soon"}</div>
                           </div>
                           <a href={url} target="_blank" rel="noopener noreferrer"
                             className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold transition-colors whitespace-nowrap bg-gray-900 hover:bg-gray-800 text-white">
-                            Upgrade <ArrowUpRight className="w-3 h-3" />
+                            {price != null ? "Upgrade" : "Coming soon"} <ArrowUpRight className="w-3 h-3" />
                           </a>
                         </div>
                       </div>
@@ -224,10 +238,11 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
           </div>
           <p className="text-xs text-gray-400 mb-3">Add more applications to your {PLAN_LABELS[currentPlan]} plan — no tier change</p>
           <div className="grid grid-cols-3 gap-3">
-            {boostersRaw.map(({ apps, priceUSD, priceCAD, priceGBP, urlUSD, urlCAD, urlGBP }, i) => {
+            {boostersRaw.map((row, i) => {
+              const { apps } = row;
               const isBest = i === 2;
-              const price = currency === "CAD" ? priceCAD : currency === "GBP" ? priceGBP : priceUSD;
-              const url = withEmail(currency === "CAD" ? urlCAD : currency === "GBP" ? urlGBP : urlUSD, email);
+              const { price, url: rawUrl } = pickPrice(row, currency);
+              const url = rawUrl ? withEmail(rawUrl, email) : PENDING_URL;
               return (
                 <a key={apps} href={url} target="_blank" rel="noopener noreferrer"
                   className={`group relative flex flex-col items-center border border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] pt-5 pb-4 px-3 transition-all text-center ${isBest ? "bg-gray-50" : "bg-white"}`}>
@@ -239,10 +254,10 @@ export default function ChoosePlan({ open, onClose, inline = false }: Props) {
                   <span className={`text-2xl font-extrabold text-gray-900 transition-colors`}>+{apps}</span>
                   <span className="text-[10px] text-gray-400 mt-0.5">Applications</span>
                   <div className="w-full border-t border-gray-100 mt-3 pt-3">
-                    <span className="text-lg font-extrabold text-gray-900">{sym}{price}</span>
+                    <span className="text-lg font-extrabold text-gray-900">{price != null ? `${sym}${price}` : "—"}</span>
                   </div>
                   <span className={`mt-2 text-[11px] font-bold px-2.5 py-0.5 border transition-colors ${isBest ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-900 border-gray-300 group-hover:bg-gray-900 group-hover:text-white"}`}>
-                    Add On
+                    {price != null ? "Add On" : "Coming soon"}
                   </span>
                 </a>
               );

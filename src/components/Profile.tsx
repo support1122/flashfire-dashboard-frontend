@@ -474,7 +474,7 @@ export default function ProfilePage() {
         const amt = String(clientAmountPaid ?? ctx?.userDetails?.amountPaid ?? '');
         const sym = amt.match(/^([^0-9]+)/)?.[1] || '';
         if (sym === 'CA$' || sym === 'CAD') return 'Are you eligible to work in Canada?';
-        if (sym === 'A$' || sym === 'AU$') return 'Are you eligible to work in Australia?';
+        if (sym === 'A$' || sym === 'AU$' || sym === 'AUD') return 'Are you eligible to work in Australia?';
         if (sym === '£') return 'Are you eligible to work in United Kingdom?';
         if (sym === '₹') return null;
         return 'Are you eligible to work in United States?';
@@ -616,10 +616,11 @@ export default function ProfilePage() {
             // Prefix currency symbol onto expectedSalaryRange if editing professional section
             if (editingSection === "professional" && dataToSave.expectedSalaryRange) {
                 const raw = String(dataToSave.expectedSalaryRange).trim();
-                if (raw && !/^[£$₹]|^CA\$/.test(raw)) {
+                if (raw && !/^[£$₹]|^CA\$|^AU\$/.test(raw)) {
                     const amt = String(ctx?.userDetails?.amountPaid || '');
                     const sym = amt.match(/^([^0-9]+)/)?.[1];
                     if (sym === 'CAD') dataToSave.expectedSalaryRange = `CA$${raw}`;
+                    else if (sym === 'AUD') dataToSave.expectedSalaryRange = `AU$${raw}`;
                     else if (sym) dataToSave.expectedSalaryRange = `${sym}${raw}`;
                 }
             }
@@ -1054,6 +1055,7 @@ export default function ProfilePage() {
                                             const amt = String(ctx?.userDetails?.amountPaid || '');
                                             const sym = amt.match(/^([^0-9]+)/)?.[1];
                                             if (sym === 'CAD') return 'CA$';
+                                            if (sym === 'AUD') return 'AU$';
                                             if (sym) return sym;
                                             return '$';
                                         })()}
@@ -1062,7 +1064,7 @@ export default function ProfilePage() {
                                         type="text"
                                         value={(() => {
                                             const v = editData.expectedSalaryRange || '';
-                                            return v.replace(/^[£$₹]|^CA\$/, '');
+                                            return v.replace(/^[£$₹]|^CA\$|^AU\$/, '');
                                         })()}
                                         onChange={(e) =>
                                             setEditData({ ...editData, expectedSalaryRange: e.target.value })

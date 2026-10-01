@@ -2228,10 +2228,11 @@ const submitForm = async () => {
     const { coverLetterFile, resumeFile, transcriptFile, ...payload } = data;
 
     // Prefix currency symbol onto salary before saving so the DB value is self-contained
-    if (payload.expectedSalaryRange && !/^[£$₹]|^CA\$/.test(payload.expectedSalaryRange)) {
+    if (payload.expectedSalaryRange && !/^[£$₹]|^CA\$|^AU\$/.test(payload.expectedSalaryRange)) {
       const amt = String(ctx?.userDetails?.amountPaid || '');
       const sym = amt.match(/^([^0-9]+)/)?.[1];
       if (sym === 'CAD') payload.expectedSalaryRange = `CA$${payload.expectedSalaryRange}`;
+      else if (sym === 'AUD') payload.expectedSalaryRange = `AU$${payload.expectedSalaryRange}`;
       else if (sym) payload.expectedSalaryRange = `${sym}${payload.expectedSalaryRange}`;
     }
 
@@ -2645,6 +2646,7 @@ const handleSubmit = () => {
                           const amt = String(ctx?.userDetails?.amountPaid || '');
                           const sym = amt.match(/^([^0-9]+)/)?.[1];
                           if (sym === 'CAD') return 'CA$';
+                          if (sym === 'AUD') return 'AU$';
                           if (sym) return sym;
                           return '$';
                         })()}
