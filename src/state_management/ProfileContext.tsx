@@ -319,6 +319,14 @@ export interface UserProfile {
     | "Graduate Visa"
     | "Skilled Worker Visa"
     | "Global Talent Visa"
+    | "Australian Citizen"
+    | "Student Visa (subclass 500)"
+    | "Temporary Graduate Visa (subclass 485)"
+    | "Skilled Independent (subclass 189)"
+    | "Skilled Nominated (subclass 190)"
+    | "Skilled Work Regional (subclass 491)"
+    | "Employer Sponsored (subclass 482)"
+    | "Working Holiday (subclass 417/462)"
     | "Other";
 
   // Address
