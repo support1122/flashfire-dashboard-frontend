@@ -17,6 +17,7 @@ import Optimizer from './components/AiOprimizer/Optimizer.tsx';
 import Inbox from './components/Inbox.tsx';
 import { PostHogSessionControl } from './components/PostHogSessionControl.tsx';
 import { useContentOffsetClass } from './state_management/useContentOffset.ts';
+import { useRequireClientAuth } from './utils/useRequireClientAuth';
 
 // Component to handle Profile page with proper navigation
 function ProfileWithNavigation() {
@@ -24,6 +25,10 @@ function ProfileWithNavigation() {
   // Don't show modal on profile page - user explicitly navigated here to view/edit
   const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
   const contentOffset = useContentOffsetClass();
+  // This route had no auth gate of any kind, so opening /profile logged out
+  // rendered the whole client chrome. Same hole MainContent had.
+  const isAuthed = useRequireClientAuth();
+  if (!isAuthed) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -52,6 +57,10 @@ function InboxWithNavigation() {
   const [activeTab, setActiveTab] = useState('inbox');
   const [userProfileFormVisibility, setUserProfileFormVisibility] = useState(false);
   const contentOffset = useContentOffsetClass();
+  // As above: /inbox was ungated too.
+  const isAuthed = useRequireClientAuth();
+  if (!isAuthed) return null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation
