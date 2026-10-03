@@ -114,7 +114,11 @@ export const UserJobsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               return;
             }
           }
-          // navigate("/login");
+          // Refresh failed and the token is dead. Re-enabled 2026-10-03 along
+          // with the MainContent gate; while this was commented out a client
+          // with an expired session sat on the dashboard watching empty columns
+          // instead of being asked to sign in again.
+          navigate("/login");
           return;
         }
       }

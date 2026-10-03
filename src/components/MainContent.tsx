@@ -117,6 +117,7 @@ import { useContentOffsetClass } from "../state_management/useContentOffset";
 import type { DocumentCategoryId } from "../types/navigation";
 import ChoosePlan from './ChoosePlan';
 import { arePerksDisabled } from '../utils/clientPerks';
+import { useRequireClientAuth } from '../utils/useRequireClientAuth';
 
 
 
@@ -173,18 +174,16 @@ export default function MainContent() {
   // an already-logged-in user. The intended tab is preserved via ?redirect= so the
   // user lands back on the screen they wanted after signing in. Operators are
   // exempt (their session lives in the operations store).
-  // useEffect(() => {
-  //   let storedToken = '';
-  //   try {
-  //     const raw = localStorage.getItem('userAuth');
-  //     if (raw) storedToken = JSON.parse(raw)?.token || '';
-  //   } catch { /* ignore malformed storage */ }
-  //   const hasToken = (!!token && token.length > 0) || storedToken.length > 0;
-  //   if (!hasToken && role !== 'operations') {
-  //     const next = window.location.pathname + window.location.search;
-  //     navigate(`/login?redirect=${encodeURIComponent(next)}`, { replace: true });
-  //   }
-  // }, [token, role, navigate]);
+  //
+  // RE-ENABLED 2026-10-03. The gate was commented out by c0bd710 ("bypass auth
+  // for onboarding ... during testing") on 2026-09-19 and shipped to production,
+  // so portal.flashfirejobs.com served the whole dashboard shell to anyone who
+  // opened it: "Welcome, User", zeros in every tile, and a Sign In button in the
+  // corner. There is no public onboarding route to protect - onboarding is the
+  // NewUserModal that opens INSIDE this page after login - so the bypass had
+  // nothing left to justify it. It now lives in a hook, shared with /profile and
+  // /inbox, which had no gate at all.
+  const isAuthed = useRequireClientAuth();
 useEffect(() => {
   // Guarded and keyed on the email. With an empty dep array this fired on the
   // very first render, before the context had hydrated, and POSTed
@@ -247,18 +246,10 @@ useEffect(() => {
   updateUserDetails();
 }, [userDetails?.email]);
 
-  // Don't render the dashboard for a logged-out visitor — the effect above is
-  // navigating them to /login. Returning null avoids a flash of the full UI
-  // (which is the whole point: no one unauthenticated should see this screen).
-  let hasStoredToken = false;
-  try {
-    const raw = localStorage.getItem('userAuth');
-    if (raw) hasStoredToken = Boolean(JSON.parse(raw)?.token);
-  } catch { /* ignore */ }
-  const isAuthed = (!!token && token.length > 0) || hasStoredToken;
-  // if (!isAuthed && role !== 'operations') {
-  //   return null;
-  // }
+  // The hook's redirect runs AFTER the first paint, so this is what actually
+  // keeps the dashboard off a logged-out screen rather than merely navigating
+  // away from it a frame later.
+  if (!isAuthed) return null;
 
   return (
     <div className="min-h-screen bg-gray-50">
