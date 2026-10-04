@@ -422,7 +422,7 @@ export default function Inbox() {
     const bulkAction = async (action: "markRead" | "markUnread" | "archive" | "trash") => {
         const ids = Array.from(bulkSelected);
         if (!ids.length) return;
-        if (action === "trash" && !window.confirm(`Move ${ids.length} thread(s) to Trash?`)) return;
+        if (action === "trash" && !window.confirm(`Move ${ids.length} thread(s) to Trash? (Flashfire only; Gmail is not changed)`)) return;
         setBusy(true);
         await modifyMessages({ threadIds: ids, action });
         if (action === "archive" || action === "trash") {
@@ -464,7 +464,7 @@ export default function Inbox() {
 
     const trashCurrent = async () => {
         if (!selectedThreadId) return;
-        if (!window.confirm("Move thread to Trash?")) return;
+        if (!window.confirm("Move thread to Trash? (Flashfire only; Gmail is not changed)")) return;
         setBusy(true);
         await modifyMessages({ threadIds: [selectedThreadId], action: "trash" });
         setThreads((prev) => prev.filter((t) => t.threadId !== selectedThreadId));
