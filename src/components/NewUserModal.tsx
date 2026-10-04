@@ -1445,6 +1445,8 @@
 //   );
 // }
 
+import PhoneInput from "./PhoneInput";
+import { parsePhone } from "../utils/countryDialCodes";
 import React, { useContext, useMemo, useState, useEffect } from "react";
 import { UserContext } from "../state_management/UserContext";
 import { Check, User, Briefcase, FileCheck2, ChevronLeft, ChevronRight, ShieldCheck, Sparkles } from "lucide-react";
@@ -1956,10 +1958,11 @@ useEffect(() => {
       
       // Contact Number Validation
       const phone = digitsOnly(data.contactNumber);
-      if (!phone) {
+      const localPhone = digitsOnly(parsePhone(data.contactNumber).number);
+      if (!localPhone) {
         e.contactNumber = "Phone number is required";
-      } else if (phone.length < 10) {
-        e.contactNumber = "Please enter a valid 10-digit phone number";
+      } else if (localPhone.length < 6) {
+        e.contactNumber = "Please enter a valid phone number";
       } else if (phone.length > 15) {
         e.contactNumber = "Phone number is too long";
       }
@@ -2228,7 +2231,7 @@ const submitForm = async () => {
     const { coverLetterFile, resumeFile, transcriptFile, ...payload } = data;
 
     // Prefix currency symbol onto salary before saving so the DB value is self-contained
-    if (payload.expectedSalaryRange && !/^[£$₹]|^CA\$|^AU\$/.test(payload.expectedSalaryRange)) {
+    if (payload.expectedSalaryRange && !/^[£$₹€]|^CA\$|^AU\$/.test(payload.expectedSalaryRange)) {
       const amt = String(ctx?.userDetails?.amountPaid || '');
       const sym = amt.match(/^([^0-9]+)/)?.[1];
       if (sym === 'CAD') payload.expectedSalaryRange = `CA$${payload.expectedSalaryRange}`;
@@ -2353,17 +2356,23 @@ const handleSubmit = () => {
                 </div>
                 <div>
                   <FieldLabel>Contact Number</FieldLabel>
-                  <TextInput 
+                  <PhoneInput
                     hasError={!!errors.contactNumber}
-                    inputMode="tel" 
-                    placeholder="Phone number" 
-                    value={data.contactNumber} 
-                    onChange={(e) => {
-                      set({ contactNumber: e.target.value });
+                    defaultCountry={(() => {
+                      const sym = String(ctx?.userDetails?.amountPaid || '').match(/^([^0-9]+)/)?.[1]?.trim();
+                      if (sym === '£') return 'United Kingdom';
+                      if (sym === '₹') return 'India';
+                      if (sym === 'CAD') return 'Canada';
+                      if (sym === 'AUD') return 'Australia';
+                      return 'United States';
+                    })()}
+                    value={data.contactNumber}
+                    onChange={(v) => {
+                      set({ contactNumber: v });
                       if (errors.contactNumber) {
                         setErrors(prev => ({ ...prev, contactNumber: '' }));
                       }
-                    }} 
+                    }}
                   />
                   <ErrorText>{errors.contactNumber}</ErrorText>
                 </div>

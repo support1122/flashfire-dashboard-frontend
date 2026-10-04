@@ -476,9 +476,22 @@ export default function ProfilePage() {
         if (sym === 'CA$' || sym === 'CAD') return 'Are you eligible to work in Canada?';
         if (sym === 'A$' || sym === 'AU$' || sym === 'AUD') return 'Are you eligible to work in Australia?';
         if (sym === '£') return 'Are you eligible to work in United Kingdom?';
+        if (sym === '€') return 'Are you eligible to work in Europe?';
         if (sym === '₹') return null;
         return 'Are you eligible to work in United States?';
     })();
+    // Older records store the salary without a currency symbol; show it with the
+    // client's symbol (from amountPaid) when the stored value starts with a digit.
+    const withSalarySymbol = (raw: string | undefined | null): string => {
+        const v = String(raw ?? '').trim();
+        if (!v || !/^\d/.test(v)) return v;
+        const amt = String(clientAmountPaid ?? ctx?.userDetails?.amountPaid ?? '');
+        const sym = amt.match(/^([^0-9]+)/)?.[1]?.trim();
+        if (!sym) return v;
+        if (sym === 'CAD') return `CA$${v}`;
+        if (sym === 'AUD') return `AU$${v}`;
+        return `${sym}${v}`;
+    };
 
     useEffect(() => {
         const fetchLatestProfile = async () => {
@@ -616,7 +629,7 @@ export default function ProfilePage() {
             // Prefix currency symbol onto expectedSalaryRange if editing professional section
             if (editingSection === "professional" && dataToSave.expectedSalaryRange) {
                 const raw = String(dataToSave.expectedSalaryRange).trim();
-                if (raw && !/^[£$₹]|^CA\$|^AU\$/.test(raw)) {
+                if (raw && !/^[£$₹€]|^CA\$|^AU\$/.test(raw)) {
                     const amt = String(ctx?.userDetails?.amountPaid || '');
                     const sym = amt.match(/^([^0-9]+)/)?.[1];
                     if (sym === 'CAD') dataToSave.expectedSalaryRange = `CA$${raw}`;
@@ -1064,7 +1077,7 @@ export default function ProfilePage() {
                                         type="text"
                                         value={(() => {
                                             const v = editData.expectedSalaryRange || '';
-                                            return v.replace(/^[£$₹]|^CA\$|^AU\$/, '');
+                                            return v.replace(/^[£$₹€]|^CA\$|^AU\$/, '');
                                         })()}
                                         onChange={(e) =>
                                             setEditData({ ...editData, expectedSalaryRange: e.target.value })
@@ -1079,7 +1092,7 @@ export default function ProfilePage() {
                     ) : (
                         <InfoRow
                             title="Expected Base Salary"
-                            value={data.expectedSalaryRange}
+                            value={withSalarySymbol(data.expectedSalaryRange)}
                         />
                     )}
                     <InfoRow
@@ -1317,7 +1330,7 @@ export default function ProfilePage() {
                             if (data.expectedSalaryNarrative?.trim()) {
                                 return data.expectedSalaryNarrative;
                             }
-                            const salaryRange = data.expectedSalaryRange || "";
+                            const salaryRange = withSalarySymbol(data.expectedSalaryRange);
                             if (!salaryRange || salaryRange.toLowerCase().includes("other")) {
                                 return "";
                             }

@@ -344,7 +344,7 @@ export interface UserProfile {
     | "0-7 Years"
     | "Other";
   expectedSalaryRange: "60k-100k" | "100k-150k" | "150k-200k" | "Other";
-  currency?: "USD" | "GBP" | "CAD" | "AUD" | "INR";
+  currency?: "USD" | "GBP" | "CAD" | "AUD" | "INR" | "EUR";
   preferredLocations: string[];
   targetCompanies: string[];
   reasonForLeaving: string;

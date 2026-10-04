@@ -4,7 +4,7 @@ import { UserContext } from "../state_management/UserContext";
 import { PAGE_CONTAINER, PAGE_MAIN } from "../styles/layout";
 
 type PlanKey = "prime" | "ignite" | "professional" | "executive";
-type Currency = "USD" | "CAD" | "GBP" | "AUD";
+type Currency = "USD" | "CAD" | "GBP" | "AUD" | "EUR";
 
 const PLAN_LABELS: Record<PlanKey, string> = {
   prime: "Prime", ignite: "Ignite", professional: "Professional", executive: "Executive",
@@ -19,11 +19,11 @@ const PLAN_FEATURES: Record<PlanKey, string[]> = {
   executive: ["Cover Letter Included", "Emailing Recruiters", "Portfolio Website"],
 };
 
-const CURRENCY_SYMBOL: Record<Currency, string> = { USD: "$", CAD: "CA$", GBP: "£", AUD: "AU$" };
+const CURRENCY_SYMBOL: Record<Currency, string> = { USD: "$", CAD: "CA$", GBP: "£", AUD: "AU$", EUR: "€" };
 
 // Upgrade links: { to, priceUSD, priceCAD, priceGBP, urlUSD, urlCAD, urlGBP }
-// priceAUD / urlAUD are optional: until they are filled in, AUD clients see "Coming soon".
-const UPGRADES_DATA: Record<string, { to: PlanKey; priceUSD: number; priceCAD: number; priceGBP: number; urlUSD: string; urlCAD: string; urlGBP: string; priceAUD?: number; urlAUD?: string }[]> = {
+// priceAUD / urlAUD (and priceEUR / urlEUR) are optional: until they are filled in, those clients see "Coming soon".
+const UPGRADES_DATA: Record<string, { to: PlanKey; priceUSD: number; priceCAD: number; priceGBP: number; urlUSD: string; urlCAD: string; urlGBP: string; priceAUD?: number; urlAUD?: string; priceEUR?: number; urlEUR?: string }[]> = {
   prime: [
     {
       to: "professional",
@@ -64,7 +64,7 @@ const UPGRADES_DATA: Record<string, { to: PlanKey; priceUSD: number; priceCAD: n
 };
 
 // Booster links per plan per currency
-const BOOSTERS_DATA: Record<PlanKey, { apps: number; priceUSD: number; priceCAD: number; priceGBP: number; urlUSD: string; urlCAD: string; urlGBP: string; priceAUD?: number; urlAUD?: string }[]> = {
+const BOOSTERS_DATA: Record<PlanKey, { apps: number; priceUSD: number; priceCAD: number; priceGBP: number; urlUSD: string; urlCAD: string; urlGBP: string; priceAUD?: number; urlAUD?: string; priceEUR?: number; urlEUR?: string }[]> = {
   prime: [
     { apps: 250, priceUSD: 120, priceCAD: 170, priceGBP: 95, urlUSD: "https://buy.stripe.com/dRmeVf7lm8uSaas6Ob3AY05", urlCAD: "https://buy.stripe.com/00w9AV212eTg6YgfkH3AY0n", urlGBP: "https://buy.stripe.com/eVq6oJdJK26u6Yg7Sf3AY0M" },
     { apps: 500, priceUSD: 200, priceCAD: 280, priceGBP: 160, urlUSD: "https://buy.stripe.com/28E5kF3567qObewegD3AY06", urlCAD: "https://buy.stripe.com/00w7sN2124eCdmE0pN3AY0o", urlGBP: "https://buy.stripe.com/00w9AVcFGdPcciA6Ob3AY0N" },
@@ -101,15 +101,17 @@ function detectCurrency(currency: string | undefined): Currency {
   if (c === "CAD") return "CAD";
   if (c === "GBP") return "GBP";
   if (c === "AUD") return "AUD";
+  if (c === "EUR") return "EUR";
   return "USD";
 }
 
-type PriceRow = { priceUSD: number; priceCAD: number; priceGBP: number; urlUSD: string; urlCAD: string; urlGBP: string; priceAUD?: number; urlAUD?: string };
+type PriceRow = { priceUSD: number; priceCAD: number; priceGBP: number; urlUSD: string; urlCAD: string; urlGBP: string; priceAUD?: number; urlAUD?: string; priceEUR?: number; urlEUR?: string };
 
 function pickPrice(row: PriceRow, currency: Currency): { price: number | undefined; url: string | undefined } {
   if (currency === "CAD") return { price: row.priceCAD, url: row.urlCAD };
   if (currency === "GBP") return { price: row.priceGBP, url: row.urlGBP };
   if (currency === "AUD") return { price: row.priceAUD, url: row.urlAUD };
+  if (currency === "EUR") return { price: row.priceEUR, url: row.urlEUR };
   return { price: row.priceUSD, url: row.urlUSD };
 }
 
