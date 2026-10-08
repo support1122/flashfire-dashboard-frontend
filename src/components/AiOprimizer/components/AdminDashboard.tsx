@@ -424,6 +424,27 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
     }
   };
 
+  const handleDeleteExtensionCode = async (code: string) => {
+    if (!confirm('Are you sure you want to delete extension code ' + code + '?')) return;
+
+    try {
+      const response = await authFetch(API_DASHBOARD, '/api/extension-codes/' + code, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        loadSessionKeys();
+        alert('Extension code deleted successfully');
+      } else {
+        const data = await response.json().catch(() => ({}));
+        alert(data.error || 'Failed to delete extension code');
+      }
+    } catch (error) {
+      console.error('Failed to delete extension code:', error);
+      alert('Failed to delete extension code');
+    }
+  };
+
   const filteredUsers = users?.filter(user => {
     const matchesSearch = user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -776,9 +797,18 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                       </h4>
                       <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
                         {extensionCodes.map((ec, idx) => (
-                          <div key={idx} className="bg-amber-50/70 rounded-2xl p-4 border border-amber-100">
+                          <div key={idx} className="bg-amber-50/70 rounded-2xl p-4 border border-amber-100 group relative">
                             <div className="flex items-center justify-between">
-                              <span className="font-semibold text-gray-900">{ec.name}</span>
+                              <div className="flex items-center space-x-3">
+                                <span className="font-semibold text-gray-900">{ec.name}</span>
+                                <button 
+                                  onClick={() => handleDeleteExtensionCode(ec.code)}
+                                  className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                  title="Delete key"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
                               <code className="bg-amber-100 px-2 py-1 rounded font-mono text-lg">{ec.code}</code>
                             </div>
                             <div className="text-xs text-gray-500 mt-1">Created: {new Date(ec.createdAt).toLocaleString()}</div>
