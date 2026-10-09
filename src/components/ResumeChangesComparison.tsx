@@ -109,7 +109,7 @@ const ResumeChangesComparison = ({ changesMade }: any) => {
         // Handle additional info
         if (item.additionalInfo !== undefined) {
             return (
-                <div className="text-sm">
+                <div className="text-sm whitespace-pre-line">
                     {item.additionalInfo
                         ? renderBoldMarkers(String(item.additionalInfo))
                         : "No additional information"}

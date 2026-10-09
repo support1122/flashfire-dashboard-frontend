@@ -1116,7 +1116,13 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                         } - ${e.degree}${e.field ? `, ${e.field}` : ""}`;
                     totalLines += Math.ceil(mainText.length / 60);
                     if (e.additionalInfo) {
-                        totalLines += Math.ceil(e.additionalInfo.length / 60);
+                        totalLines += e.additionalInfo
+                            .split("\n")
+                            .reduce(
+                                (sum, line) =>
+                                    sum + Math.max(1, Math.ceil(line.length / 60)),
+                                0
+                            );
                     }
                 });
             }
@@ -1967,9 +1973,11 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                                                     lineHeight: styles.lineHeight,
                                                 }}
                                             >
-                                                {renderMarkedText(
-                                                    edu.additionalInfo
-                                                )}
+                                                {edu.additionalInfo
+                                                    .split("\n")
+                                                    .map((line, i) => (
+                                                        <div key={i}>{renderMarkedText(line)}</div>
+                                                    ))}
                                             </div>
                                         )}
                                     </div>

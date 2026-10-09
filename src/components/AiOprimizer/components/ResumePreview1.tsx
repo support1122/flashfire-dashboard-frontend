@@ -371,7 +371,13 @@ These settings will give you the best results for your resume PDF.`);
             data.education.forEach((e) => {
                 totalLines += 1;
                 if (e.additionalInfo) {
-                    totalLines += Math.ceil(e.additionalInfo.length / 80);
+                    totalLines += e.additionalInfo
+                        .split("\n")
+                        .reduce(
+                            (sum, line) =>
+                                sum + Math.max(1, Math.ceil(line.length / 80)),
+                            0
+                        );
                 }
             });
 
@@ -1102,9 +1108,11 @@ These settings will give you the best results for your resume PDF.`);
                                                     marginBottom: "0px",
                                                 }}
                                             >
-                                                {renderMarkedText(
-                                                    edu.additionalInfo
-                                                )}
+                                                {edu.additionalInfo
+                                                    .split("\n")
+                                                    .map((line, i) => (
+                                                        <div key={i}>{renderMarkedText(line)}</div>
+                                                    ))}
                                             </div>
                                         )}
                                     </div>

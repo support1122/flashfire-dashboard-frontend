@@ -828,9 +828,11 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                                                 marginTop: "2px",
                                             }}
                                         >
-                                            {renderMarkedText(
-                                                edu.additionalInfo
-                                            )}
+                                            {edu.additionalInfo
+                                                .split("\n")
+                                                .map((line, i) => (
+                                                    <div key={i}>{renderMarkedText(line)}</div>
+                                                ))}
                                         </div>
                                     )}
                                 </div>

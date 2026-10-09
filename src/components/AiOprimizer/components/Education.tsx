@@ -53,32 +53,13 @@ const parseEducationLinkMarker = (text: string) => {
     };
 };
 
-// Sortable item component
-const SortableEducationItem = ({
-    education,
-    index,
-    onRemove,
-    onUpdate,
+const AdditionalInfoField = ({
+    value,
+    onChange,
 }: {
-    education: EducationItem;
-    index: number;
-    onRemove: (id: string) => void;
-    onUpdate: (id: string, field: string, value: string) => void;
+    value: string;
+    onChange: (value: string) => void;
 }) => {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging,
-    } = useSortable({ id: education.id });
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-    };
-
     const [linkEditor, setLinkEditor] = React.useState<{
         start: number;
         end: number;
@@ -107,7 +88,7 @@ const SortableEducationItem = ({
 
     const insertAdditionalInfoLink = () => {
         if (!linkEditor) return;
-        const current = education.additionalInfo || "";
+        const current = value || "";
         if (linkEditor.mode === "insert" && EDUCATION_LINK_MARKER_REGEX.test(current)) {
             window.alert("Only one hyperlink is allowed in this field.");
             return;
@@ -134,9 +115,155 @@ const SortableEducationItem = ({
                 : current.slice(0, linkEditor.start) +
                   marker +
                   current.slice(linkEditor.end);
-        onUpdate(education.id, "additionalInfo", updated);
+        onChange(updated);
         setLinkEditor(null);
     };
+
+    return (
+                <div>
+                    <textarea
+                        value={value}
+                        onChange={(e) =>
+                            onChange(e.target.value)
+                        }
+                        onSelect={handleAdditionalInfoSelection}
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                        placeholder="e.g., Dean's Master's Scholarship, Specialisation: UX/UI"
+                    />
+                    {parseEducationLinkMarker(value) && (
+                        <div className="mt-1 mb-2 text-xs">
+                            <span className="text-gray-600 mr-2">Linked text:</span>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const parsed = parseEducationLinkMarker(
+                                        value
+                                    );
+                                    if (!parsed) return;
+                                    setLinkEditor({
+                                        start: 0,
+                                        end: 0,
+                                        selectedText: parsed.label,
+                                        url: parsed.url,
+                                        mode: "edit",
+                                    });
+                                }}
+                                className="text-blue-600 hover:text-blue-800"
+                                style={{ textDecoration: "none" }}
+                            >
+                                {parseEducationLinkMarker(value)
+                                    ?.label || "Edit Link"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const parsed = parseEducationLinkMarker(
+                                        value
+                                    );
+                                    if (!parsed) return;
+                                    onChange((value || "").replace(
+                                            parsed.fullMarker,
+                                            parsed.label
+                                        )
+                                    );
+                                    setLinkEditor(null);
+                                }}
+                                className="ml-2 text-red-600 hover:text-red-800"
+                                title="Remove hyperlink"
+                            >
+                                <Trash2 size={12} />
+                            </button>
+                        </div>
+                    )}
+                    {linkEditor && (
+                        <div className="mt-2 p-2 border border-blue-200 bg-blue-50 rounded-md">
+                            <div className="text-xs text-blue-700 mb-2">
+                                Edit hyperlink
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={linkEditor.selectedText}
+                                    onChange={(e) =>
+                                        setLinkEditor((prev) =>
+                                            prev
+                                                ? {
+                                                      ...prev,
+                                                      selectedText:
+                                                          e.target.value,
+                                                  }
+                                                : prev
+                                        )
+                                    }
+                                    placeholder="Link text"
+                                    className="flex-1 min-w-[180px] px-2 py-1 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                />
+                                <input
+                                    type="text"
+                                    value={linkEditor.url}
+                                    onChange={(e) =>
+                                        setLinkEditor((prev) =>
+                                            prev
+                                                ? {
+                                                      ...prev,
+                                                      url: e.target.value,
+                                                  }
+                                                : prev
+                                        )
+                                    }
+                                    placeholder="Enter URL (https://...)"
+                                    className="flex-1 min-w-[220px] px-2 py-1 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={insertAdditionalInfoLink}
+                                    className="px-2 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 whitespace-nowrap"
+                                >
+                                    Insert Link
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setLinkEditor(null)}
+                                    className="px-2 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-100 whitespace-nowrap"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+    );
+};
+
+// Sortable item component
+const SortableEducationItem = ({
+    education,
+    index,
+    onRemove,
+    onUpdate,
+}: {
+    education: EducationItem;
+    index: number;
+    onRemove: (id: string) => void;
+    onUpdate: (id: string, field: string, value: string) => void;
+}) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: education.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    // Multiple entries are stored newline-separated in the single additionalInfo string
+    const infoLines = (education.additionalInfo || "").split("\n");
 
     return (
         <div
@@ -248,127 +375,62 @@ const SortableEducationItem = ({
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Additional Info (Awards, Specialization, etc.)
-                    </label>
-                    <textarea
-                        value={education.additionalInfo}
-                        onChange={(e) =>
-                            onUpdate(
-                                education.id,
-                                "additionalInfo",
-                                e.target.value
-                            )
-                        }
-                        onSelect={handleAdditionalInfoSelection}
-                        rows={2}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                        placeholder="e.g., Dean's Master's Scholarship, Specialisation: UX/UI"
-                    />
-                    {parseEducationLinkMarker(education.additionalInfo) && (
-                        <div className="mt-1 mb-2 text-xs">
-                            <span className="text-gray-600 mr-2">Linked text:</span>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const parsed = parseEducationLinkMarker(
-                                        education.additionalInfo
-                                    );
-                                    if (!parsed) return;
-                                    setLinkEditor({
-                                        start: 0,
-                                        end: 0,
-                                        selectedText: parsed.label,
-                                        url: parsed.url,
-                                        mode: "edit",
-                                    });
-                                }}
-                                className="text-blue-600 hover:text-blue-800"
-                                style={{ textDecoration: "none" }}
-                            >
-                                {parseEducationLinkMarker(education.additionalInfo)
-                                    ?.label || "Edit Link"}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const parsed = parseEducationLinkMarker(
-                                        education.additionalInfo
-                                    );
-                                    if (!parsed) return;
-                                    onUpdate(
-                                        education.id,
-                                        "additionalInfo",
-                                        (education.additionalInfo || "").replace(
-                                            parsed.fullMarker,
-                                            parsed.label
-                                        )
-                                    );
-                                    setLinkEditor(null);
-                                }}
-                                className="ml-2 text-red-600 hover:text-red-800"
-                                title="Remove hyperlink"
-                            >
-                                <Trash2 size={12} />
-                            </button>
-                        </div>
-                    )}
-                    {linkEditor && (
-                        <div className="mt-2 p-2 border border-blue-200 bg-blue-50 rounded-md">
-                            <div className="text-xs text-blue-700 mb-2">
-                                Edit hyperlink
+                    <div className="flex items-center justify-between mb-1">
+                        <label className="block text-sm font-medium text-gray-700">
+                            Additional Info (Awards, Specialization, etc.)
+                        </label>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                onUpdate(
+                                    education.id,
+                                    "additionalInfo",
+                                    [...infoLines, ""].join("\n")
+                                )
+                            }
+                            className="flex items-center gap-1 px-2 py-0.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs"
+                        >
+                            <Plus size={12} />
+                            Add Info
+                        </button>
+                    </div>
+                    <div className="space-y-3">
+                        {infoLines.map((line, i) => (
+                            <div key={i} className="flex items-start gap-2">
+                                <div className="flex-1">
+                                    <AdditionalInfoField
+                                        value={line}
+                                        onChange={(v) => {
+                                            const next = [...infoLines];
+                                            next[i] = v.replace(/\n/g, " ");
+                                            onUpdate(
+                                                education.id,
+                                                "additionalInfo",
+                                                next.join("\n")
+                                            );
+                                        }}
+                                    />
+                                </div>
+                                {infoLines.length > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            onUpdate(
+                                                education.id,
+                                                "additionalInfo",
+                                                infoLines
+                                                    .filter((_, k) => k !== i)
+                                                    .join("\n")
+                                            )
+                                        }
+                                        className="text-red-600 hover:text-red-800 transition-colors mt-2"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                )}
                             </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <input
-                                    type="text"
-                                    value={linkEditor.selectedText}
-                                    onChange={(e) =>
-                                        setLinkEditor((prev) =>
-                                            prev
-                                                ? {
-                                                      ...prev,
-                                                      selectedText:
-                                                          e.target.value,
-                                                  }
-                                                : prev
-                                        )
-                                    }
-                                    placeholder="Link text"
-                                    className="flex-1 min-w-[180px] px-2 py-1 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                />
-                                <input
-                                    type="text"
-                                    value={linkEditor.url}
-                                    onChange={(e) =>
-                                        setLinkEditor((prev) =>
-                                            prev
-                                                ? {
-                                                      ...prev,
-                                                      url: e.target.value,
-                                                  }
-                                                : prev
-                                        )
-                                    }
-                                    placeholder="Enter URL (https://...)"
-                                    className="flex-1 min-w-[220px] px-2 py-1 text-sm border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={insertAdditionalInfoLink}
-                                    className="px-2 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 whitespace-nowrap"
-                                >
-                                    Insert Link
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setLinkEditor(null)}
-                                    className="px-2 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-100 whitespace-nowrap"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>
