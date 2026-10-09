@@ -87,6 +87,7 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
   const [loginHistory, setLoginHistory] = useState<LoginEvent[]>([]);
   const [sessionKeys, setSessionKeys] = useState<SessionKey[]>([]);
   const [extensionCodes, setExtensionCodes] = useState<ExtensionCodeItem[]>([]);
+  const [deletingExtensionCode, setDeletingExtensionCode] = useState<string | null>(null);
   const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'history' | 'sessions' | 'Admin' | 'resume' | 'recruiters' | 'activity' | 'spend'>('overview');
@@ -425,23 +426,27 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
   };
 
   const handleDeleteExtensionCode = async (code: string) => {
-    if (!confirm('Are you sure you want to delete extension code ' + code + '?')) return;
+    if (!confirm('Delete extension code ' + code + '? The extension using it will stop working immediately.')) return;
 
+    setDeletingExtensionCode(code);
     try {
       const response = await authFetch(API_DASHBOARD, '/api/extension-codes/' + code, {
         method: 'DELETE'
       });
 
       if (response.ok) {
-        loadSessionKeys();
-        alert('Extension code deleted successfully');
+        setExtensionCodes((prev) => prev.filter((ec) => ec.code !== code));
       } else {
         const data = await response.json().catch(() => ({}));
         alert(data.error || 'Failed to delete extension code');
+        // 404 means it is already gone; resync the list.
+        if (response.status === 404) loadSessionKeys();
       }
     } catch (error) {
       console.error('Failed to delete extension code:', error);
       alert('Failed to delete extension code');
+    } finally {
+      setDeletingExtensionCode(null);
     }
   };
 
@@ -796,20 +801,23 @@ export default function AdminDashboard({ token, onLogout, onSwitchToResumeBuilde
                         </span>
                       </h4>
                       <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
-                        {extensionCodes.map((ec, idx) => (
-                          <div key={idx} className="bg-amber-50/70 rounded-2xl p-4 border border-amber-100 group relative">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-3">
-                                <span className="font-semibold text-gray-900">{ec.name}</span>
-                                <button 
+                        {extensionCodes.map((ec) => (
+                          <div key={ec.code} className="bg-amber-50/70 rounded-2xl p-4 border border-amber-100">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="font-semibold text-gray-900">{ec.name}</span>
+                              <div className="flex items-center gap-2">
+                                <code className="bg-amber-100 px-2 py-1 rounded font-mono text-lg">{ec.code}</code>
+                                <button
+                                  type="button"
                                   onClick={() => handleDeleteExtensionCode(ec.code)}
-                                  className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                  title="Delete key"
+                                  disabled={deletingExtensionCode === ec.code}
+                                  className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Delete extension code"
+                                  aria-label={`Delete extension code ${ec.code} for ${ec.name}`}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </button>
                               </div>
-                              <code className="bg-amber-100 px-2 py-1 rounded font-mono text-lg">{ec.code}</code>
                             </div>
                             <div className="text-xs text-gray-500 mt-1">Created: {new Date(ec.createdAt).toLocaleString()}</div>
                           </div>
