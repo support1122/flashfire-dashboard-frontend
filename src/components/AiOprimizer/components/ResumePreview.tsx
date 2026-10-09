@@ -3,6 +3,7 @@ import { toastUtils } from "../../../utils/toast";
 import * as pdfjsLib from 'pdfjs-dist';
 import { savePdf } from "../../../utils/savePdf.ts";
 import { useOperationsStore } from "../../../state_management/Operations.ts";
+import { withAdditionalInfoItems } from "../utils/educationPayload";
 // import { ResumeScalingModal } from "./ResumeScalingModal";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
@@ -510,7 +511,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 projects: data.projects || [],
                 leadership: data.leadership || [],
                 skills: data.skills || [],
-                education: data.education || [],
+                education: withAdditionalInfoItems(data.education),
                 publications: data.publications || [],
                 certifications: data.certifications || [],
                 customSections: data.customSections || [],
@@ -652,7 +653,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 projects: data.projects || [],
                 leadership: data.leadership || [],
                 skills: data.skills || [],
-                education: data.education || [],
+                education: withAdditionalInfoItems(data.education),
                 publications: data.publications || [],
                 certifications: data.certifications || [],
                 customSections: data.customSections || [],
@@ -903,7 +904,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({
                 projects: data.projects || [],
                 leadership: data.leadership || [],
                 skills: data.skills || [],
-                education: data.education || [],
+                education: withAdditionalInfoItems(data.education),
                 publications: data.publications || [],
                 certifications: data.certifications || [],
                 customSections: data.customSections || [],
@@ -2403,7 +2404,7 @@ Tip: If the PDF shows extra pages, reduce the scale slightly and try again.`);
                 projects: data.projects || [],
                 leadership: data.leadership || [],
                 skills: data.skills || [],
-                education: data.education || [],
+                education: withAdditionalInfoItems(data.education),
                 publications: data.publications || [],
                 certifications: data.certifications || [],
                 customSections: data.customSections || [],

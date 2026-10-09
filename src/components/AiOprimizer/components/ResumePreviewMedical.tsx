@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { toastUtils } from "../../../utils/toast";
 import * as pdfjsLib from 'pdfjs-dist';
 import { savePdf } from "../../../utils/savePdf.ts";
+import { withAdditionalInfoItems } from "../utils/educationPayload";
 import {
     REQUIRED_MEDICAL_PDF_PAGES,
     countPdfPages,
@@ -1188,7 +1189,7 @@ export const ResumePreviewMedical: React.FC<ResumePreviewProps> = ({
                 projects: data.projects || [],
                 leadership: data.leadership || [],
                 skills: data.skills || [],
-                education: data.education || [],
+                education: withAdditionalInfoItems(data.education),
                 publications: data.publications || [],
                 certifications: data.certifications || [],
                 therapeuticAreas: data.therapeuticAreas || "",
@@ -1296,7 +1297,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                 projects: data.projects || [],
                 leadership: data.leadership || [],
                 skills: data.skills || [],
-                education: data.education || [],
+                education: withAdditionalInfoItems(data.education),
                 publications: data.publications || [],
                 certifications: data.certifications || [],
                 therapeuticAreas: data.therapeuticAreas || "",
@@ -1591,7 +1592,7 @@ Tip: For medical resumes, make sure the PDF is exactly ${REQUIRED_MEDICAL_PDF_PA
                 projects: data.projects || [],
                 leadership: data.leadership || [],
                 skills: data.skills || [],
-                education: data.education || [],
+                education: withAdditionalInfoItems(data.education),
                 publications: data.publications || [],
                 certifications: data.certifications || [],
                 therapeuticAreas: data.therapeuticAreas || "",
