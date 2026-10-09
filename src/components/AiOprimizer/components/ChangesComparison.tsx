@@ -932,7 +932,7 @@ export const ChangesComparison: React.FC<ChangesComparisonProps> = ({
                                             {original.degree}, {original.field}
                                         </div>
                                         {original.additionalInfo && (
-                                            <div className="text-sm text-gray-700">
+                                            <div className="whitespace-pre-line text-sm text-gray-700">
                                                 {original.additionalInfo}
                                             </div>
                                         )}
@@ -956,7 +956,7 @@ export const ChangesComparison: React.FC<ChangesComparisonProps> = ({
                                             {optimized.field}
                                         </div>
                                         {optimized.additionalInfo && (
-                                            <div className="text-sm text-gray-700">
+                                            <div className="whitespace-pre-line text-sm text-gray-700">
                                                 {optimized.additionalInfo}
                                             </div>
                                         )}
