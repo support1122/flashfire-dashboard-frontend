@@ -43,6 +43,7 @@ import { uploadAttachment } from "../utils/uploadService.ts";
 import { optimizeImageUrl } from "../utils/imageCache.ts";
 import { savePdf } from "../utils/savePdf.ts";
 
+import { withAdditionalInfoItems } from "./AiOprimizer/utils/educationPayload";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 const JOB_UPDATE_ENDPOINT = `${API_BASE}/updatechanges`;
 const PLAN_ENDPOINT = `${API_BASE}/api/plans/select`;
@@ -2377,7 +2378,7 @@ export default function JobModal({
                                 projects: optimizedData.projects || [],
                                 leadership: optimizedData.leadership || [],
                                 skills: optimizedData.skills || [],
-                                education: optimizedData.education || [],
+                                education: withAdditionalInfoItems(optimizedData.education),
                                 publications: optimizedData.publications || [],
                                 therapeuticAreas: optimizedData.therapeuticAreas || "",
                                 customSections: optimizedData.customSections || [],
@@ -2432,7 +2433,7 @@ export default function JobModal({
                                 projects: optimizedData.projects || [],
                                 leadership: optimizedData.leadership || [],
                                 skills: optimizedData.skills || [],
-                                education: optimizedData.education || [],
+                                education: withAdditionalInfoItems(optimizedData.education),
                                 publications: optimizedData.publications || [],
                                 customSections: optimizedData.customSections || [],
                                 checkboxStates: {
