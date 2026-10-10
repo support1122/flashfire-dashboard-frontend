@@ -5,6 +5,7 @@ import { UserContext } from "../state_management/UserContext";
 import { toastUtils, toastMessages } from "../utils/toast";
 import SecretKeyModal from "./SecretKeyModal";
 import { useOperationsStore } from "../state_management/Operations";
+import { isOpsToolsClient } from "../utils/opsToolsAccess";
 import { DatePicker } from "./DatePicker";
 import { format, parse, isValid } from "date-fns";
 
@@ -728,7 +729,9 @@ export default function ProfilePage() {
                             )}
                         </p>
 
-                        {gmailConnected !== null && role === 'operations' && (
+                        {/* Operators, plus clients granted the operator tools: the Mail tab reads
+                            the Gmail accounts connected here. */}
+                        {gmailConnected !== null && (role === 'operations' || isOpsToolsClient(ctx?.userDetails)) && (
                         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                             {gmailConnected ? (
                                 <button

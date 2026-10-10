@@ -89,7 +89,12 @@ const refreshToken = useCallback(async (): Promise<boolean> => {
 
     const result = await TokenManager.refreshToken(userDetails.email);
     if (result) {
-      setData({ userDetails: result.userDetails, token: result.token });
+      // Merge, never replace. /refresh-token answers with a slim userDetails,
+      // and swapping it in wholesale dropped every field it does not carry:
+      // perksDisabled brought Upgrade and Refer n Earn back for dormant
+      // clients, and portfolioLinks, currency and the rest went blank, until
+      // the next /get-updated-user put them back.
+      setData({ userDetails: { ...userDetails, ...result.userDetails }, token: result.token });
       return true;
     }
     return false;
@@ -97,7 +102,7 @@ const refreshToken = useCallback(async (): Promise<boolean> => {
     console.error("Token refresh failed:", error);
     return false;
   }
-}, [userDetails?.email, setData]);
+}, [userDetails, setData]);
 
 // Auto token refresh effect
 useEffect(() => {
