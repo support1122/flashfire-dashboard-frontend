@@ -26,6 +26,7 @@ import { useDownloadHighlightStore } from "../state_management/DownloadHighlight
 import { useSidebarStore } from "../state_management/SidebarStore.ts";
 import { toastUtils, toastMessages } from "../utils/toast.ts";
 import { arePerksDisabled } from "../utils/clientPerks.ts";
+import { canUseOpsTools } from "../utils/opsToolsAccess.ts";
 import type { DocumentCategoryId, NavigationProps } from "../types/navigation.ts";
 
 // Client-facing navigation: the collapsible sidebar. Operators get the
@@ -70,6 +71,9 @@ const NavigationClient: React.FC<NavigationProps> = ({
   const { triggerHighlight } = useDownloadHighlightStore();
   const { isOpen: sidebarOpen, toggle: toggleSidebar } = useSidebarStore();
   const isOpsRole = role === "operations" || role === "operator";
+  // Mail and Operations: operators, plus the client accounts the server has
+  // granted the operator tools. See utils/opsToolsAccess.
+  const showOpsTools = canUseOpsTools(role, userDetails);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const longPressTargetRef = useRef<string | null>(null);
 
@@ -158,8 +162,8 @@ const NavigationClient: React.FC<NavigationProps> = ({
     { id: "dashboard", label: "Overview", icon: LayoutDashboard },
     { id: "jobs", label: "Job Tracker", icon: ListChecks },
     { id: "optimizer", label: "Document", icon: FileStack },
-    ...(isOpsRole ? [{ id: "mail", label: "Mail", icon: Mail }] : []),
-    ...(isOpsRole ? [{ id: "operations", label: "Operations", icon: Settings }] : []),
+    ...(showOpsTools ? [{ id: "mail", label: "Mail", icon: Mail }] : []),
+    ...(showOpsTools ? [{ id: "operations", label: "Operations", icon: Settings }] : []),
   ];
 
   const documentSubItems: { id: DocumentCategoryId; label: string }[] = [

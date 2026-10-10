@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { UserContext } from "../state_management/UserContext";
 import { useOperationsStore } from "../state_management/Operations";
+import { canUseOpsTools } from "../utils/opsToolsAccess";
 import {
     Inbox as InboxIcon,
     RefreshCcw,
@@ -196,7 +197,10 @@ const escapeHtml = (s: string) =>
 export default function Inbox() {
     const ctx = useContext(UserContext);
     const { role } = useOperationsStore();
-    const isOpsRole = role === "operations" || role === "operator";
+    // Operators, plus client accounts the server has granted the operator
+    // tools. A granted client reads the Gmail accounts connected to their own
+    // email, exactly as an operator does for the client they have open.
+    const isOpsRole = canUseOpsTools(role, ctx?.userDetails);
     const ownerEmail = ctx?.userDetails?.email || "";
     const token = ctx?.token || "";
 

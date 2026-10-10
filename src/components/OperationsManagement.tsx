@@ -5,6 +5,7 @@ import ClientReminders from './Operations/ClientReminders.tsx';
 import { UserContext } from '../state_management/UserContext.tsx';
 import { toastUtils } from '../utils/toast.ts';
 import { useOperationsStore } from '../state_management/Operations.ts';
+import { canUseOpsTools, isOpsToolsClient } from '../utils/opsToolsAccess.ts';
 import SecretKeyModal from './SecretKeyModal.tsx';
 
 interface Todo {
@@ -56,6 +57,11 @@ const OPERATIONS_SECRET_KEY = "flashfire@2025";
 const OperationsManagement = () => {
   const { userDetails } = useContext(UserContext) || {};
   const { role, name: operatorName } = useOperationsStore();
+  // A client the server has granted the operator tools skips every secret-key
+  // modal on this page: the session lock, WhatsApp and Client Reminders. The
+  // server vouched for them at login, which is what the key stands in for.
+  // See utils/opsToolsAccess.
+  const opsToolsClient = isOpsToolsClient(userDetails);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [lockPeriods, setLockPeriods] = useState<LockPeriod[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +85,7 @@ const OperationsManagement = () => {
   const [exclusionSanitizeAudit, setExclusionSanitizeAudit] = useState<ExclusionAuditEntry[]>([]);
   const [reconcilingJobs, setReconcilingJobs] = useState(false);
   const [operationsSessionUnlocked, setOperationsSessionUnlocked] = useState(() => {
+    if (opsToolsClient) return true;
     try {
       return sessionStorage.getItem(OPERATIONS_SESSION_STORAGE_KEY) === "true";
     } catch {
@@ -103,15 +110,15 @@ const OperationsManagement = () => {
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [linkingUser, setLinkingUser] = useState(false);
   const [userGroupMapping, setUserGroupMapping] = useState<UserGroupMapping | null>(null);
-  const [whatsappUnlocked, setWhatsappUnlocked] = useState(false);
+  const [whatsappUnlocked, setWhatsappUnlocked] = useState(opsToolsClient);
   const [showWhatsappSecretModal, setShowWhatsappSecretModal] = useState(false);
   const [whatsappSecretError, setWhatsappSecretError] = useState('');
-  const [remindersUnlocked, setRemindersUnlocked] = useState(false);
+  const [remindersUnlocked, setRemindersUnlocked] = useState(opsToolsClient);
   const [showRemindersSecretModal, setShowRemindersSecretModal] = useState(false);
   const [remindersSecretError, setRemindersSecretError] = useState('');
   // The reminders API is gated on x-ops-key server-side, so the key the operator
   // typed to unlock the tab is kept in memory and replayed on every request.
-  const [remindersOpsKey, setRemindersOpsKey] = useState('');
+  const [remindersOpsKey, setRemindersOpsKey] = useState(opsToolsClient ? OPERATIONS_SECRET_KEY : '');
   const [emailGroups, setEmailGroups] = useState<{ id: string; name: string; category: string }[]>([]);
   const [emailTemplates, setEmailTemplates] = useState<{ id: string; name: string; subject: string }[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -138,6 +145,17 @@ const OperationsManagement = () => {
   const [loadingEmailLogs, setLoadingEmailLogs] = useState(false);
   const [resendingLogId, setResendingLogId] = useState<string | null>(null);
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+  // The initialisers above cover a hard refresh, where the session is already
+  // in localStorage. This covers the flag arriving after mount (straight after
+  // login, or from /get-updated-user).
+  useEffect(() => {
+    if (!opsToolsClient) return;
+    setOperationsSessionUnlocked(true);
+    setWhatsappUnlocked(true);
+    setRemindersUnlocked(true);
+    setRemindersOpsKey(OPERATIONS_SECRET_KEY);
+  }, [opsToolsClient]);
 
   useEffect(() => {
     if (!operationsSessionUnlocked) {
@@ -1006,7 +1024,7 @@ const OperationsManagement = () => {
     });
   };
 
-  if (role !== 'operations' && role !== 'operator') {
+  if (!canUseOpsTools(role, userDetails)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -1090,21 +1108,24 @@ const OperationsManagement = () => {
               Manage client TODOs, lock periods, and send recruiter emails
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                sessionStorage.removeItem(OPERATIONS_SESSION_STORAGE_KEY);
-              } catch {
-                /* ignore */
-              }
-              setOperationsSessionUnlocked(false);
-            }}
-            className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <Lock className="w-4 h-4" />
-            Lock session
-          </button>
+          {/* A granted client has no key to unlock with again, so no lock. */}
+          {!opsToolsClient && (
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  sessionStorage.removeItem(OPERATIONS_SESSION_STORAGE_KEY);
+                } catch {
+                  /* ignore */
+                }
+                setOperationsSessionUnlocked(false);
+              }}
+              className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <Lock className="w-4 h-4" />
+              Lock session
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 mb-6">
