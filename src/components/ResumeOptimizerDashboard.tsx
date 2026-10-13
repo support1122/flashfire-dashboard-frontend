@@ -128,6 +128,7 @@ export default function ResumeOptimizerDashboard() {
         setChangedFields,
         sectionOrder,
         setSectionOrder,
+        sectionTitles,
         showPublications,
         setShowPublications,
         showTherapeuticAreas,
@@ -452,6 +453,9 @@ export default function ResumeOptimizerDashboard() {
                     showTherapeuticAreas: showTherapeuticAreas,
                 },
                 sectionOrder: sectionOrder,
+                // Omitting this made the resume service save {} and wipe every
+                // renamed heading on the client's base resume.
+                sectionTitles: sectionTitles || {},
                 createdBy: "operations",
             };
 
@@ -627,7 +631,8 @@ export default function ResumeOptimizerDashboard() {
                         showPublications: showPublications,
                         showTherapeuticAreas: showTherapeuticAreas,
                         version: versionV,
-                        sectionOrder: sectionOrder
+                        sectionOrder: sectionOrder,
+                        sectionTitles: sectionTitles || {}
                     }
                 }),
             });
@@ -1296,6 +1301,7 @@ export default function ResumeOptimizerDashboard() {
                                                 changedFields={new Set()}
                                                 showPrintButtons={true}
                                                 sectionOrder={sectionOrder}
+                                                sectionTitles={sectionTitles || {}}
                                             />
                                         ) : null}
 
@@ -1309,6 +1315,7 @@ export default function ResumeOptimizerDashboard() {
                                                 changedFields={new Set()}
                                                 showPrintButtons={true}
                                                 sectionOrder={sectionOrder}
+                                                sectionTitles={sectionTitles || {}}
                                             />
                                         ) : null}
 
@@ -1322,6 +1329,7 @@ export default function ResumeOptimizerDashboard() {
                                                 showTherapeuticAreas={showTherapeuticAreas}
                                                 showPrintButtons={true}
                                                 sectionOrder={sectionOrder}
+                                                sectionTitles={sectionTitles || {}}
                                             />
                                         ) : null}
                                     </div>
@@ -1399,7 +1407,7 @@ export default function ResumeOptimizerDashboard() {
                                                                 },
                                                                 {
                                                                     id: "leadership",
-                                                                    title: "Leadership & Volunteering",
+                                                                    title: sectionTitles?.leadership || "Leadership & Volunteering",
                                                                     component: showLeadership ? (
                                                                         <Leadership
                                                                             data={optimizedData.leadership}
@@ -1491,6 +1499,7 @@ export default function ResumeOptimizerDashboard() {
                                                                 changedFields={new Set()}
                                                                 showPrintButtons={true}
                                                                 sectionOrder={sectionOrder}
+                                                                sectionTitles={sectionTitles || {}}
                                                             />
                                                         )}
 
@@ -1504,6 +1513,7 @@ export default function ResumeOptimizerDashboard() {
                                                                 changedFields={new Set()}
                                                                 showPrintButtons={true}
                                                                 sectionOrder={sectionOrder}
+                                                                sectionTitles={sectionTitles || {}}
                                                             />
                                                         )}
 
@@ -1517,6 +1527,7 @@ export default function ResumeOptimizerDashboard() {
                                                                 showTherapeuticAreas={showTherapeuticAreas}
                                                                 showPrintButtons={true}
                                                                 sectionOrder={sectionOrder}
+                                                                sectionTitles={sectionTitles || {}}
                                                             />
                                                         )}
                                                     </>
