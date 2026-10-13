@@ -42,6 +42,7 @@ import { ResumePreviewMedical } from "./AiOprimizer/components/ResumePreviewMedi
 import { uploadAttachment } from "../utils/uploadService.ts";
 import { optimizeImageUrl } from "../utils/imageCache.ts";
 import { savePdf } from "../utils/savePdf.ts";
+import { sectionTitlesOf } from "../utils/sectionTitles.ts";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 const JOB_UPDATE_ENDPOINT = `${API_BASE}/updatechanges`;
@@ -1800,6 +1801,7 @@ export default function JobModal({
                                                     showPrintButtons
                                                     showDirectPdfButton={role === "operations"}
                                                     sectionOrder={resumeData.sectionOrder}
+                                                    sectionTitles={sectionTitlesOf(resumeData)}
                                                     onDownloadClick={handleDownloadClick}
                                                 />
                                             );
@@ -1816,6 +1818,7 @@ export default function JobModal({
                                                 showPrintButtons
                                                 showDirectPdfButton={role === "operations"}
                                                 sectionOrder={resumeData.sectionOrder}
+                                                sectionTitles={sectionTitlesOf(resumeData)}
                                                 onDownloadClick={handleDownloadClick}
                                             />
                                         );
@@ -2296,6 +2299,7 @@ export default function JobModal({
                         showPublications: resumeData.checkboxStates?.showPublications || false,
                         showTherapeuticAreas: resumeData.checkboxStates?.showTherapeuticAreas || false,
                         version: resumeData.V || 0,
+                        sectionTitles: sectionTitlesOf(resumeData),
                         sectionOrder: resumeData.sectionOrder || [
                             "personalInfo",
                             "summary",
@@ -2325,6 +2329,7 @@ export default function JobModal({
                 showPublications: resumeData.checkboxStates?.showPublications || false,
                 showTherapeuticAreas: resumeData.checkboxStates?.showTherapeuticAreas || false,
                 version: resumeData.V || 0,
+                sectionTitles: sectionTitlesOf(resumeData),
                 sectionOrder: resumeData.sectionOrder || [
                     "personalInfo",
                     "summary",
@@ -2353,6 +2358,7 @@ export default function JobModal({
                     showPublications: resumeData.checkboxStates?.showPublications || false,
                     showTherapeuticAreas: resumeData.checkboxStates?.showTherapeuticAreas || false,
                     version: resumeData.V || 0,
+                    sectionTitles: sectionTitlesOf(resumeData),
                     sectionOrder: resumeData.sectionOrder || [
                         "personalInfo",
                         "summary",
@@ -2388,10 +2394,7 @@ export default function JobModal({
                                     showPublications: resumeData.checkboxStates?.showPublications || false,
                                     showTherapeuticAreas: resumeData.checkboxStates?.showTherapeuticAreas || false,
                                 },
-                                sectionTitles:
-                                    (optimizedData as any)?.sectionTitles
-                                    || (resumeData as any)?.sectionTitles
-                                    || {},
+                                sectionTitles: sectionTitlesOf(optimizedData, resumeData),
                             };
                             const pdfResponse = await fetch(`${pdfServerUrl}/v1/generate-pdf`, {
                                 method: "POST",
@@ -2441,10 +2444,7 @@ export default function JobModal({
                                     showLeadership: resumeData.checkboxStates?.showLeadership || false,
                                     showPublications: resumeData.checkboxStates?.showPublications || false,
                                 },
-                                sectionTitles:
-                                    (optimizedData as any)?.sectionTitles
-                                    || (resumeData as any)?.sectionTitles
-                                    || {},
+                                sectionTitles: sectionTitlesOf(optimizedData, resumeData),
                                 sectionOrder: resumeData.sectionOrder || [
                                     "personalInfo",
                                     "summary",
@@ -2965,6 +2965,7 @@ export default function JobModal({
                                         showPrintButtons
                                         showDirectPdfButton={role === "operations"}
                                         sectionOrder={optimizedResumeMetadata.sectionOrder}
+                                        sectionTitles={sectionTitlesOf(optimizedResumeMetadata, optimizedResumeData)}
                                         onDownloadClick={handleDownloadClick}
                                     />
                                 ) : (
@@ -2979,6 +2980,7 @@ export default function JobModal({
                                         showPrintButtons
                                         showDirectPdfButton={role === "operations"}
                                         sectionOrder={optimizedResumeMetadata.sectionOrder}
+                                        sectionTitles={sectionTitlesOf(optimizedResumeMetadata, optimizedResumeData)}
                                         onDownloadClick={handleDownloadClick}
                                     />
                                 )}

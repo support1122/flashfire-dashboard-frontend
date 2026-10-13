@@ -2383,7 +2383,9 @@ function App() {
                         showCertifications: showCertifications,
                         showTherapeuticAreas: showTherapeuticAreas,
                         version: versionV,
-                        sectionOrder: sectionOrder
+                        sectionOrder: sectionOrder,
+                        // Without this the job copy lost every renamed heading.
+                        sectionTitles: sectionTitles || {}
                     }
                 }),
             });
