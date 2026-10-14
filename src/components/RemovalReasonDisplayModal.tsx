@@ -1,4 +1,4 @@
-import { XCircle, AlertCircle, Calendar } from 'lucide-react';
+import { XCircle, AlertCircle, Calendar, Lock } from 'lucide-react';
 
 interface RemovalReasonDisplayModalProps {
   isOpen: boolean;
@@ -8,7 +8,21 @@ interface RemovalReasonDisplayModalProps {
   removedBy?: string;
   jobTitle: string;
   companyName: string;
+  /**
+   * The operator's written reason. Only ever passed in the operator view,
+   * which fetches it from /operations/job-removal-note; a client's view has
+   * no way to obtain it.
+   */
+  operatorNote?: { reason: string; by: string; at: string | null } | null;
 }
+
+const formatNoteDate = (at: string | null): string => {
+  if (!at) return '';
+  const d = new Date(at);
+  return Number.isNaN(d.getTime())
+    ? ''
+    : d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
+};
 
 export default function RemovalReasonDisplayModal({ 
   isOpen, 
@@ -17,7 +31,8 @@ export default function RemovalReasonDisplayModal({
   removalDate,
   removedBy,
   jobTitle,
-  companyName
+  companyName,
+  operatorNote = null,
 }: RemovalReasonDisplayModalProps) {
   if (!isOpen) return null;
 
@@ -63,6 +78,26 @@ export default function RemovalReasonDisplayModal({
             </p>
           </div>
 
+          {operatorNote?.reason && (
+            <div className="mb-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Lock className="w-4 h-4 text-orange-600" aria-hidden="true" />
+                <span className="text-sm font-medium text-gray-700">Operator note (internal)</span>
+              </div>
+              <div className="w-full px-4 py-3 border border-orange-200 rounded-lg bg-orange-50 text-gray-900 whitespace-pre-wrap break-words">
+                {operatorNote.reason}
+              </div>
+              {(operatorNote.by || operatorNote.at) && (
+                <p className="mt-2 text-xs text-gray-600">
+                  {[operatorNote.by && `By ${operatorNote.by}`, formatNoteDate(operatorNote.at)].filter(Boolean).join(' · ')}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">Only operators see this note. The client never does.</p>
+            </div>
+          )}
+
+          {removalReason && (
+          <>
           <div className="mb-4 space-y-2">
             {removedBy && (
               <div className="text-sm text-gray-600">
@@ -79,12 +114,14 @@ export default function RemovalReasonDisplayModal({
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Reason
+              {operatorNote?.reason ? "Client's reason" : 'Reason'}
             </label>
             <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 whitespace-pre-wrap break-words">
               {removalReason}
             </div>
           </div>
+          </>
+          )}
         </div>
 
         <div className="flex-shrink-0 flex justify-end px-6 py-4 border-t border-gray-200 bg-white">

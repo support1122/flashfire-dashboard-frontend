@@ -16,6 +16,22 @@ const QUICK_REASONS = [
   'Duplicate job',
 ];
 
+// Operator (intern) tags. These are internal and never reach the client: an
+// operator's reason is stored apart from the client's own removal reason and
+// is only readable through /operations/job-removal-note.
+const OPERATOR_QUICK_REASONS = [
+  'Job posting closed',
+  'Link broken or expired',
+  'Duplicate job',
+  'Does not match client profile',
+  'Location or visa mismatch',
+  'Client asked to remove',
+];
+
+// Must match OPERATOR_REASON_MIN_LENGTH in the backend's
+// Utils/operatorRemovalReason.js, which rejects anything shorter with a 422.
+const OPERATOR_REASON_MIN_LENGTH = 10;
+
 const companyInitials = (name: string): string => {
   const words = name?.trim().split(/\s+/).filter(Boolean) ?? [];
   if (words.length === 0) return '?';
@@ -41,6 +57,12 @@ interface RemovalReasonModalProps {
   onConfirm: (reason: string) => void;
   jobTitle: string;
   companyName: string;
+  /**
+   * "client" (default): the existing flow, where a tag or text is enough.
+   * "operator": a WRITTEN reason of at least OPERATOR_REASON_MIN_LENGTH
+   * characters is mandatory (tags alone do not count), and it is internal.
+   */
+  audience?: 'client' | 'operator';
 }
 
 export default function RemovalReasonModal({ 
@@ -48,8 +70,11 @@ export default function RemovalReasonModal({
   onClose, 
   onConfirm,
   jobTitle,
-  companyName 
+  companyName,
+  audience = 'client',
 }: RemovalReasonModalProps) {
+  const isOperator = audience === 'operator';
+  const quickReasons = isOperator ? OPERATOR_QUICK_REASONS : QUICK_REASONS;
   const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [details, setDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,6 +84,11 @@ export default function RemovalReasonModal({
   const composedReason = [selectedReasons.join('; '), details.trim()]
     .filter(Boolean)
     .join('. ');
+
+  // Operators must write the reason themselves; a tag alone is not enough.
+  const writtenLength = details.replace(/\s+/g, ' ').trim().length;
+  const charsStillNeeded = isOperator ? Math.max(0, OPERATOR_REASON_MIN_LENGTH - writtenLength) : 0;
+  const canSubmit = isOperator ? charsStillNeeded === 0 : Boolean(composedReason);
 
   useEffect(() => {
     if (isOpen) {
@@ -100,7 +130,8 @@ export default function RemovalReasonModal({
   };
 
   const handleSubmit = async () => {
-    if (!composedReason) {
+    if (!canSubmit) {
+      textareaRef.current?.focus();
       return;
     }
 
@@ -152,7 +183,9 @@ export default function RemovalReasonModal({
             Remove Job Card
             <Trash2 className="w-5 h-5 text-gray-500" />
           </h2>
-          <p className="text-base text-gray-700 mt-0.5">Please provide a reason</p>
+          <p className="text-base text-gray-700 mt-0.5">
+            {isOperator ? 'A written reason is required' : 'Please provide a reason'}
+          </p>
         </div>
 
         {/* Content */}
@@ -179,10 +212,13 @@ export default function RemovalReasonModal({
           </div>
 
           <p className="block text-base font-semibold text-gray-800 mb-3">
-            What didn't work? <span className="font-normal text-gray-400">(pick any that apply)</span>
+            {isOperator ? 'Quick tags' : "What didn't work?"}{' '}
+            <span className="font-normal text-gray-400">
+              {isOperator ? '(optional, the written reason below is still required)' : '(pick any that apply)'}
+            </span>
           </p>
           <div className="grid grid-cols-2 gap-3 mb-6" role="group" aria-label="Common removal reasons">
-            {QUICK_REASONS.map((quickReason) => {
+            {quickReasons.map((quickReason) => {
               const selected = selectedReasons.includes(quickReason);
               return (
                 <button
@@ -206,7 +242,7 @@ export default function RemovalReasonModal({
                       </svg>
                     )}
                   </span>
-                  <span className="truncate">{quickReason}</span>
+                  <span className="leading-snug">{quickReason}</span>
                 </button>
               );
             })}
@@ -217,27 +253,42 @@ export default function RemovalReasonModal({
             className="block text-base font-medium text-gray-600 mb-2.5"
           >
             Reason for Removal
+            {isOperator && <span className="text-red-600"> *</span>}
           </label>
           <textarea
             id="removal-reason-textarea"
             ref={textareaRef}
             value={details}
             onChange={(e) => setDetails(e.target.value)}
-            placeholder="Enter the reason for moving this job card to removed."
+            placeholder={
+              isOperator
+                ? `Write why you are removing this job (at least ${OPERATOR_REASON_MIN_LENGTH} characters).`
+                : 'Enter the reason for moving this job card to removed.'
+            }
             rows={4}
             maxLength={REASON_MAX_LENGTH}
             disabled={isSubmitting}
             className="w-full px-5 py-4 bg-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 disabled:cursor-not-allowed resize-none transition-all placeholder:text-gray-500"
             aria-required="true"
+            aria-invalid={isOperator && writtenLength > 0 && charsStillNeeded > 0}
             aria-describedby="removal-reason-description"
           />
+          {isOperator && (
+            <p className={`mt-2 text-sm ${charsStillNeeded > 0 ? 'text-gray-500' : 'text-green-700'}`} aria-live="polite">
+              {charsStillNeeded > 0
+                ? `${charsStillNeeded} more character${charsStillNeeded === 1 ? '' : 's'} needed`
+                : 'Reason looks good'}
+            </p>
+          )}
 
           <div
             id="removal-reason-description"
             className="mt-5 flex items-center justify-center bg-white border border-orange-200 rounded-xl px-4 py-3"
           >
             <p className="text-sm text-gray-500 text-center">
-              This information will be sent to the operations teams.
+              {isOperator
+                ? 'Only operators see this reason. The client never does.'
+                : 'This information will be sent to the operations teams.'}
             </p>
           </div>
         </div>
@@ -253,8 +304,8 @@ export default function RemovalReasonModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!composedReason || isSubmitting}
-            className="flex-1 bg-orange-500 text-white px-4 py-4 rounded-lg font-semibold hover:bg-orange-600 transition-colors disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-300"
+            disabled={!canSubmit || isSubmitting}
+            className="flex-1 bg-orange-500 text-white px-4 py-4 rounded-lg font-semibold hover:bg-orange-600 transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-orange-300"
           >
             {isSubmitting ? 'Removing...' : 'Remove'}
           </button>
