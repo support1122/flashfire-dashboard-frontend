@@ -24,8 +24,6 @@ const JobCard: React.FC<JobCardProps> = ({
   job,
   onDragStart,
   onDragEnd,
-  onEdit,
-  onDelete,
   onShowRemovalReason,
 }) => {
   const { isHighlighting } = useDownloadHighlightStore();
@@ -44,7 +42,7 @@ const JobCard: React.FC<JobCardProps> = ({
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = () => {
     if (!isRemoved || !onShowRemovalReason) return;
     
     longPressTimer.current = setTimeout(() => {
@@ -68,7 +66,7 @@ const JobCard: React.FC<JobCardProps> = ({
     }
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleTouchStart = () => {
     if (!isRemoved || !onShowRemovalReason) return;
     
     longPressTimer.current = setTimeout(() => {
@@ -92,9 +90,6 @@ const JobCard: React.FC<JobCardProps> = ({
       }
     };
   }, []);
-  const getCompanyDomain = (companyName: string) => {
-    return companyName.replace(/\s+/g, '').toLowerCase();
-  };
   const shouldHighlight = isHighlighting &&
     (role === "operator" || role === "operations") &&
     !job.downloaded;
@@ -145,8 +140,8 @@ const JobCard: React.FC<JobCardProps> = ({
       const data = await res.json();
       if (!res.ok || !data?.success) throw new Error(data?.message || "could not load the reason");
       setWhy(data.aiDecision || null);
-    } catch (err: any) {
-      setWhyError(err?.message || "could not load the reason");
+    } catch (err) {
+      setWhyError(err instanceof Error ? err.message : "could not load the reason");
     } finally {
       setWhyLoading(false);
     }
@@ -244,15 +239,37 @@ const JobCard: React.FC<JobCardProps> = ({
 
       {/* Operator-only. The reason is not in the list payload - see openWhy. */}
       {isOps && (
-        <button
-          type="button"
-          onClick={openWhy}
-          className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
-          title="Why the extension picked this job"
-        >
-          <HelpCircle className="w-3 h-3" />
-          Why picked?
-        </button>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <button
+            type="button"
+            onClick={openWhy}
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+            title="Why the extension picked this job"
+          >
+            <HelpCircle className="w-3 h-3" />
+            Why picked?
+          </button>
+          {/* Same modal the 5-second hold opens; the removal note is fetched on
+              demand by JobTracker, so no extra data rides on the card. */}
+          {isRemoved && onShowRemovalReason && (
+            <button
+              type="button"
+              onClick={(e) => {
+                // Not a card click (that opens the job modal), and not the
+                // start of a long press.
+                e.stopPropagation();
+                onShowRemovalReason(job);
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-orange-600 hover:text-orange-800 hover:underline"
+              title="Why this job was removed"
+            >
+              <HelpCircle className="w-3 h-3" />
+              Why removed?
+            </button>
+          )}
+        </div>
       )}
 
       {isOps && (autoOptCompleted || autoOptFailed || autoOptSkipped || autoOptPending || autoOptProcessing || autoOptUnknown) && (

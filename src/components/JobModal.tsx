@@ -45,6 +45,15 @@ import { savePdf } from "../utils/savePdf.ts";
 import { sectionTitlesOf } from "../utils/sectionTitles.ts";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+
+const formatRemovalNoteDate = (at: string | null): string => {
+    if (!at) return "";
+    const d = new Date(at);
+    return Number.isNaN(d.getTime())
+        ? ""
+        : d.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
+};
+
 const JOB_UPDATE_ENDPOINT = `${API_BASE}/updatechanges`;
 const PLAN_ENDPOINT = `${API_BASE}/api/plans/select`;
 
@@ -574,10 +583,13 @@ export default function JobModal({
         const saved = localStorage.getItem('resumePreview_lastScale');
         return saved ? parseFloat(saved) : 1.0;
     });
+    // Both removal reasons, operator view only. operatorNote is the intern's
+    // internal write-up; removalReason is the client's own. Either can be absent.
     const [removalReasonData, setRemovalReasonData] = useState<{
         removalReason: string;
         removalDate: string;
         removedBy: string;
+        operatorNote: { reason: string; by: string; at: string | null } | null;
     } | null>(null);
 
 
@@ -646,7 +658,10 @@ export default function JobModal({
             if (isRemoved) {
                 setRemovalReasonData(null);
                 
-                fetch(`${API_BASE}/get-removal-reason`, {
+                // /get-removal-reason only carries the client's reason and is
+                // empty when an operator removed the card. The operations
+                // endpoint returns the operator note as well.
+                fetch(`${API_BASE}/operations/job-removal-note`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -658,13 +673,16 @@ export default function JobModal({
                 })
                 .then(res => res.json())
                 .then(result => {
-                    if (result.success && result.removalReason) {
-                        setRemovalReasonData({
-                            removalReason: result.removalReason,
-                            removalDate: result.removalDate || '',
-                            removedBy: result.removedBy || 'user'
-                        });
-                    }
+                    if (!result.success) return;
+                    if (!result.clientReason && !result.operatorRemoval) return;
+                    setRemovalReasonData({
+                        removalReason: result.clientReason?.reason || '',
+                        removalDate: result.clientReason?.date || '',
+                        removedBy: result.clientReason?.by || 'user',
+                        operatorNote: result.operatorRemoval
+                            ? { reason: result.operatorRemoval.reason, by: result.operatorRemoval.by, at: result.operatorRemoval.at }
+                            : null,
+                    });
                 })
                 .catch(error => {
                     console.error('Error fetching removal reason:', error);
@@ -2073,18 +2091,50 @@ export default function JobModal({
                                                 </svg>
                                             </span>
                                             <h3 className="flex items-center mb-1 text-md font-semibold text-red-800">
-                                                🚨 Removed by {removalReasonData.removedBy}
+                                                Removal reason
                                             </h3>
-                                            <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r mt-2">
-                                                <p className="text-sm text-red-700">
-                                                    {removalReasonData.removalReason}
-                                                </p>
-                                                {removalReasonData.removalDate && (
-                                                    <p className="mt-1 text-xs text-red-600">
-                                                        Removed on: {removalReasonData.removalDate}
+                                            {removalReasonData.operatorNote?.reason && (
+                                                <div className="mt-2">
+                                                    <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                                                        Operator note (internal)
                                                     </p>
-                                                )}
-                                            </div>
+                                                    <div className="bg-orange-50 border-l-4 border-orange-400 p-3 rounded-r">
+                                                        <p className="text-sm text-gray-900 whitespace-pre-wrap break-words">
+                                                            {removalReasonData.operatorNote.reason}
+                                                        </p>
+                                                    </div>
+                                                    {(removalReasonData.operatorNote.by || removalReasonData.operatorNote.at) && (
+                                                        <p className="mt-1 text-xs text-gray-500">
+                                                            {[
+                                                                removalReasonData.operatorNote.by && `By ${removalReasonData.operatorNote.by}`,
+                                                                formatRemovalNoteDate(removalReasonData.operatorNote.at),
+                                                            ].filter(Boolean).join(' · ')}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {removalReasonData.removalReason && (
+                                                <div className="mt-3">
+                                                    <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                                                        {removalReasonData.operatorNote?.reason ? "Client's reason" : `Removed by ${removalReasonData.removedBy}`}
+                                                    </p>
+                                                    <div className="bg-red-50 border-l-4 border-red-400 p-3 rounded-r">
+                                                        <p className="text-sm text-red-700 whitespace-pre-wrap break-words">
+                                                            {removalReasonData.removalReason}
+                                                        </p>
+                                                        {removalReasonData.removalDate && (
+                                                            <p className="mt-1 text-xs text-red-600">
+                                                                Removed on: {removalReasonData.removalDate}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {removalReasonData.operatorNote?.reason && (
+                                                <p className="mt-2 text-xs text-gray-400">
+                                                    Visible to operators only. The client never sees the operator note.
+                                                </p>
+                                            )}
                                         </li>
                                     )}
                                 </ol>
