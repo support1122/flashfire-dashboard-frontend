@@ -34,12 +34,18 @@ const JobTracker = () => {
     const [showRemovalReasonDisplayModal, setShowRemovalReasonDisplayModal] = useState(false);
     const [showOpsRemoveUserConfirm, setShowOpsRemoveUserConfirm] = useState(false);
     const [pendingOpsUserRemovalJob, setPendingOpsUserRemovalJob] = useState<Job | null>(null);
+    // Operator (intern) moving a card to Removed: the job waiting on their
+    // mandatory written reason. Operator-only; see RemovalReasonModal audience.
+    const [opsReasonJob, setOpsReasonJob] = useState<Job | null>(null);
     const [removalReasonData, setRemovalReasonData] = useState<{
         removalReason: string;
         removalDate: string;
         removedBy: string;
         jobTitle: string;
         companyName: string;
+        // Present only when an operator fetched it from
+        // /operations/job-removal-note. Never fetched for a client.
+        operatorNote?: { reason: string; by: string; at: string | null } | null;
     } | null>(null);
     const { userJobs, setUserJobs } = useUserJobs();
     const { userDetails, token } = useContext(UserContext) || {};
@@ -89,7 +95,9 @@ const JobTracker = () => {
     }, [notifyCooldown]);
 
     // near other useState hooks
-    const [pendingMove, setPendingMove] = useState<{ jobID: string; status: JobStatus } | null>(null);
+    // removalReason rides along when an operator's move to Removed has to wait
+    // for an attachment upload, so the reason they already wrote is not lost.
+    const [pendingMove, setPendingMove] = useState<{ jobID: string; status: JobStatus; removalReason?: string } | null>(null);
 
     const boardRef = useRef<HTMLDivElement | null>(null);
 
@@ -628,7 +636,7 @@ const JobTracker = () => {
                     )
                 );
                 clearPendingUpdate(jobID);
-                toastUtils.error("Failed to update job status");
+                toastUtils.error(resFromServer?.message || "Failed to update job status");
                 console.error("Failed to update job status on server");
             }
         } catch (error) {
@@ -644,19 +652,19 @@ const JobTracker = () => {
         }
     };
 
-    const continueOperationsMoveToRemoved = (job: Job) => {
+    const continueOperationsMoveToRemoved = (job: Job, removalReason: string) => {
         const hasAttachments =
             job.attachments && Array.isArray(job.attachments) && job.attachments.length > 0;
         if (!hasAttachments) {
             setSelectedJob(job);
-            setPendingMove({ jobID: job.jobID, status: "deleted" });
+            setPendingMove({ jobID: job.jobID, status: "deleted", removalReason });
             setShowJobModal(true);
             toastUtils.error(
                 "Please upload at least one image attachment before moving this job card to Removed."
             );
             return;
         }
-        onUpdateJobStatus(job.jobID, "deleted", userDetails);
+        onUpdateJobStatus(job.jobID, "deleted", userDetails, removalReason);
     };
 
     const checkLockPeriod = async (): Promise<{ isLocked: boolean; message: string | null }> => {
@@ -716,16 +724,18 @@ const JobTracker = () => {
             return;
         }
 
-        // Operations: client-added job — confirm before Removed (attachments checked after)
+        // Operations: client-added job — confirm before Removed. The written
+        // reason and the attachment check follow the confirmation.
         if (status === "deleted" && isOps && isUserOriginatedJob(job)) {
             setPendingOpsUserRemovalJob(job);
             setShowOpsRemoveUserConfirm(true);
             return;
         }
 
-        // Operations: moving to Removed — require at least one attachment
+        // Operations: moving to Removed — a written reason is mandatory, then
+        // at least one attachment. The backend rejects the move without one.
         if (status === "deleted" && isOps) {
-            continueOperationsMoveToRemoved(job);
+            setOpsReasonJob(job);
             return;
         }
 
@@ -773,10 +783,52 @@ const JobTracker = () => {
         setShowOpsRemoveUserConfirm(false);
         const job = pendingOpsUserRemovalJob;
         setPendingOpsUserRemovalJob(null);
-        if (job) continueOperationsMoveToRemoved(job);
+        if (job) setOpsReasonJob(job);
+    };
+
+    const handleOpsRemovalReasonConfirm = async (reason: string) => {
+        const job = opsReasonJob;
+        setOpsReasonJob(null);
+        if (job) continueOperationsMoveToRemoved(job, reason);
+    };
+
+    // Operators read both reasons (the client's own, and the operator's
+    // internal note) from an operations endpoint. Clients keep using
+    // /get-removal-reason, which never returns the operator note.
+    const handleShowOperatorRemovalNote = async (job: Job) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/operations/job-removal-note`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ jobID: job.jobID, userEmail: userDetails?.email }),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                toastUtils.error(result.message || 'No removal reason found');
+                return;
+            }
+            setRemovalReasonData({
+                removalReason: result.clientReason?.reason || '',
+                removalDate: result.clientReason?.date || '',
+                removedBy: result.clientReason?.by || '',
+                jobTitle: result.jobTitle || job.jobTitle,
+                companyName: result.companyName || job.companyName,
+                operatorNote: result.operatorRemoval
+                    ? { reason: result.operatorRemoval.reason, by: result.operatorRemoval.by, at: result.operatorRemoval.at }
+                    : null,
+            });
+            setShowRemovalReasonDisplayModal(true);
+        } catch (error) {
+            console.error('Error fetching operator removal note:', error);
+            toastUtils.error('Failed to fetch removal reason');
+        }
     };
 
     const handleShowRemovalReason = async (job: Job) => {
+        if (role === "operations" || role === "operator") {
+            await handleShowOperatorRemovalNote(job);
+            return;
+        }
         try {
             const response = await fetch(`${API_BASE_URL}/get-removal-reason`, {
                 method: 'POST',
@@ -1236,7 +1288,8 @@ const JobTracker = () => {
                                 onUpdateJobStatus(
                                     pendingMove.jobID,
                                     pendingMove.status,
-                                    userDetails
+                                    userDetails,
+                                    pendingMove.removalReason
                                 );
                                 setPendingMove(null);
                                 setShowJobModal(false);
@@ -1251,7 +1304,8 @@ const JobTracker = () => {
                                 onUpdateJobStatus(
                                     pendingMove.jobID,
                                     pendingMove.status,
-                                    userDetails
+                                    userDetails,
+                                    pendingMove.removalReason
                                 );
                                 setPendingMove(null);
                                 setShowJobModal(false);
@@ -1276,7 +1330,8 @@ const JobTracker = () => {
                                     onUpdateJobStatus(
                                         pendingMove.jobID,
                                         pendingMove.status,
-                                        userDetails
+                                        userDetails,
+                                        pendingMove.removalReason
                                     );
                                     setPendingMove(null);
                                     setShowJobModal(false);
@@ -1286,7 +1341,8 @@ const JobTracker = () => {
                                     onUpdateJobStatus(
                                         pendingMove.jobID,
                                         pendingMove.status,
-                                        userDetails
+                                        userDetails,
+                                        pendingMove.removalReason
                                     );
                                     setPendingMove(null);
                                     setShowJobModal(false);
@@ -1350,6 +1406,18 @@ const JobTracker = () => {
                     />
                 </Suspense>
             )}
+            {opsReasonJob && (
+                <Suspense fallback={<LoadingScreen />}>
+                    <RemovalReasonModal
+                        isOpen={Boolean(opsReasonJob)}
+                        audience="operator"
+                        onClose={() => setOpsReasonJob(null)}
+                        onConfirm={handleOpsRemovalReasonConfirm}
+                        jobTitle={opsReasonJob.jobTitle}
+                        companyName={opsReasonJob.companyName}
+                    />
+                </Suspense>
+            )}
             {showRemovalReasonModal && pendingRemovalJob && (
                 <Suspense fallback={<LoadingScreen />}>
                     <RemovalReasonModal
@@ -1375,6 +1443,7 @@ const JobTracker = () => {
                         removalReason={removalReasonData.removalReason}
                         removalDate={removalReasonData.removalDate}
                         removedBy={removalReasonData.removedBy}
+                        operatorNote={removalReasonData.operatorNote ?? null}
                         jobTitle={removalReasonData.jobTitle}
                         companyName={removalReasonData.companyName}
                     />
