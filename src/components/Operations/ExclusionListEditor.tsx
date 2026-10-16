@@ -8,6 +8,9 @@ type Props = {
   items: string[];
   onChange: (next: string[]) => void;
   footerHint: string;
+  /** Also split on commas. For lists of plain names ("Walmart, Amazon"), never
+   *  for excluded entries, where a comma can sit inside one value. */
+  splitOnComma?: boolean;
 };
 
 function normalizeKey(s: string) {
@@ -20,7 +23,8 @@ export function ExclusionListEditor({
   searchPlaceholder,
   items,
   onChange,
-  footerHint
+  footerHint,
+  splitOnComma = false
 }: Props) {
   const [input, setInput] = useState("");
   const [search, setSearch] = useState("");
@@ -37,7 +41,7 @@ export function ExclusionListEditor({
 
   const addFromString = (value: string) => {
     const parts = value
-      .split(/[\r\n|]+/)
+      .split(splitOnComma ? /[\r\n|,]+/ : /[\r\n|]+/)
       .map((v) => v.trim())
       .filter(Boolean);
     if (!parts.length) return;
@@ -73,7 +77,7 @@ export function ExclusionListEditor({
     const pasted = e.clipboardData.getData("text");
     if (!pasted || !pasted.trim()) return;
     const trimmed = pasted.trim();
-    if (/[\r\n|]/.test(trimmed)) {
+    if ((splitOnComma ? /[\r\n|,]/ : /[\r\n|]/).test(trimmed)) {
       e.preventDefault();
       addFromString(trimmed);
       setInput("");
