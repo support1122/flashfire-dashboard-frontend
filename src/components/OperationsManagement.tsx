@@ -81,7 +81,8 @@ const OperationsManagement = () => {
   const [activeSection, setActiveSection] = useState<"operations" | "email" | "whatsapp" | "reminders">("operations");
   const [excludedCompanies, setExcludedCompanies] = useState<string[]>([]);
   const [excludedLocations, setExcludedLocations] = useState<string[]>([]);
-  const [extensionsSubTab, setExtensionsSubTab] = useState<"companies" | "locations">("companies");
+  const [includedCompanies, setIncludedCompanies] = useState<string[]>([]);
+  const [extensionsSubTab, setExtensionsSubTab] = useState<"companies" | "locations" | "included">("companies");
   const [exclusionSanitizeAudit, setExclusionSanitizeAudit] = useState<ExclusionAuditEntry[]>([]);
   const [reconcilingJobs, setReconcilingJobs] = useState(false);
   const [operationsSessionUnlocked, setOperationsSessionUnlocked] = useState(() => {
@@ -182,6 +183,7 @@ const OperationsManagement = () => {
         setLockPeriods(result.data.lockPeriods || []);
         setExcludedCompanies(result.data.excludedCompanies || []);
         setExcludedLocations(result.data.excludedLocations || []);
+        setIncludedCompanies(result.data.includedCompanies || []);
         setExclusionSanitizeAudit(result.data.exclusionSanitizeAudit || []);
       } else {
         // toastUtils.error('Failed to load operations data');
@@ -337,6 +339,7 @@ const OperationsManagement = () => {
             lockPeriods,
             excludedCompanies,
             excludedLocations,
+            includedCompanies,
             operatorName: opsName
           }),
         });
@@ -353,7 +356,7 @@ const OperationsManagement = () => {
         setSaving(false);
       }
     }, 1000); // Debounce for 1 second
-  }, [todos, lockPeriods, excludedCompanies, excludedLocations, userDetails?.email, operatorName, API_BASE_URL, operationsSessionUnlocked]);
+  }, [todos, lockPeriods, excludedCompanies, excludedLocations, includedCompanies, userDetails?.email, operatorName, API_BASE_URL, operationsSessionUnlocked]);
 
   // Auto-save whenever todos or lockPeriods change
   useEffect(() => {
@@ -370,7 +373,7 @@ const OperationsManagement = () => {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [todos, lockPeriods, excludedCompanies, excludedLocations, loading, userDetails?.email, autoSave, operationsSessionUnlocked]);
+  }, [todos, lockPeriods, excludedCompanies, excludedLocations, includedCompanies, loading, userDetails?.email, autoSave, operationsSessionUnlocked]);
 
   const toggleTodo = (todoId: string) => {
     setTodos(todos.map(todo =>
@@ -1532,7 +1535,7 @@ const OperationsManagement = () => {
                   <div>
                     <h3 className="text-lg font-semibold text-violet-950">Extensions</h3>
                     <p className="text-xs text-violet-700/80">
-                      Blocked company names and locations for the job extension (not visible to clients)
+                      Blocked and allowed companies, and blocked locations, for the job extension (not visible to clients)
                     </p>
                   </div>
                 </div>
@@ -1574,6 +1577,17 @@ const OperationsManagement = () => {
                   >
                     Excluded locations
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setExtensionsSubTab('included')}
+                    className={`text-left px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                      extensionsSubTab === 'included'
+                        ? 'bg-violet-600 text-white shadow'
+                        : 'text-violet-900 hover:bg-violet-100/80'
+                    }`}
+                  >
+                    Included companies
+                  </button>
                 </div>
                 <div className="flex-1 p-5 min-w-0">
                   {extensionsSubTab === 'companies' ? (
@@ -1585,6 +1599,23 @@ const OperationsManagement = () => {
                       onChange={setExcludedCompanies}
                       footerHint="Multiple entries: use | between values, or one per line. Commas inside a name are OK. Duplicates ignored (case-insensitive)."
                     />
+                  ) : extensionsSubTab === 'included' ? (
+                    <div className="space-y-3">
+                      <p className="text-xs text-violet-900/80 rounded-xl bg-violet-50 border border-violet-100 px-3 py-2">
+                        {includedCompanies.length > 0
+                          ? <>Only jobs from these {includedCompanies.length} companies can be pushed for this client. Every other company is blocked, and the AI summary lists them automatically.</>
+                          : <>Empty means no rule: jobs from any company can be pushed. Add companies to allow only those.</>}
+                      </p>
+                      <ExclusionListEditor
+                        label="Add company names"
+                        placeholder="e.g. Walmart, Amazon, Apple"
+                        searchPlaceholder="Search in this list"
+                        items={includedCompanies}
+                        onChange={setIncludedCompanies}
+                        splitOnComma
+                        footerHint="Paste a comma-separated list, use |, or one per line. Duplicates ignored (case-insensitive). Subsidiaries count: AWS for Amazon, Instagram for Meta, JPMorganChase for Chase."
+                      />
+                    </div>
                   ) : (
                     <ExclusionListEditor
                       label="Add locations / countries"
