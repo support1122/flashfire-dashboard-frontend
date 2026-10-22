@@ -12,6 +12,7 @@ import { useUserProfile } from "../state_management/ProfileContext.tsx";
 import LoadingScreen from "./LoadingScreen.tsx";
 import NewUserModal from "./NewUserModal.tsx";
 import DashboardManagerDisplay from "./DashboardManagerDisplay.tsx";
+import ExtensionAccessCode from "./ExtensionAccessCode.tsx";
 import { PAGE_HEADER_BAR, PAGE_HEADER_INNER, PAGE_MAIN } from "../styles/layout.ts";
 import ReferralBenefitsDisplay from "./ReferralBenefitsDisplay.tsx";
 
@@ -204,6 +205,7 @@ const Dashboard: React.FC = () => {
             <p className="text-sm text-gray-500 mt-1">Track your applications here, success starts today</p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <ExtensionAccessCode />
             <DashboardManagerDisplay />
             <ReferralBenefitsDisplay />
           </div>
