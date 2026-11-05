@@ -4,7 +4,8 @@ import { useUserProfile, UserProfile } from "../state_management/ProfileContext"
 import { UserContext } from "../state_management/UserContext";
 import { toastUtils, toastMessages } from "../utils/toast";
 import SecretKeyModal from "./SecretKeyModal";
-import { useOperationsStore } from "../state_management/Operations";
+import { useOperationsStore, isOpsRole } from "../state_management/Operations";
+import AppPasswordConnect, { AppPasswordStatus } from "./AppPasswordConnect";
 import { isOpsToolsClient } from "../utils/opsToolsAccess";
 import { DatePicker } from "./DatePicker";
 import { format, parse, isValid } from "date-fns";
@@ -468,6 +469,10 @@ export default function ProfilePage() {
     const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
     const { role } = useOperationsStore();
     const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
+    // Operator-only app password (IMAP + SMTP). While connected it is what reads
+    // and sends the client's mail, so the Google button steps aside.
+    const [appPassword, setAppPassword] = useState<AppPasswordStatus | null>(null);
+    const isOperator = isOpsRole(role);
     const [clientAmountPaid, setClientAmountPaid] = useState<string | null>(null);
     const workEligibilityQuestion = (() => {
         // clientAmountPaid comes from get-profile (correct for both client and ops view)
@@ -731,8 +736,21 @@ export default function ProfilePage() {
 
                         {/* Operators, plus clients granted the operator tools: the Mail tab reads
                             the Gmail accounts connected here. */}
-                        {gmailConnected !== null && (role === 'operations' || isOpsToolsClient(ctx?.userDetails)) && (
+                        {(isOperator || isOpsToolsClient(ctx?.userDetails)) && (
                         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                            {/* Operators only: the server refuses anyone else. */}
+                            {isOperator && ctx?.userDetails?.email && (
+                                <AppPasswordConnect
+                                    apiBaseUrl={import.meta.env.VITE_API_BASE_URL as string}
+                                    token={ctx?.token}
+                                    clientEmail={ctx.userDetails.email}
+                                    onStatusChange={setAppPassword}
+                                />
+                            )}
+                            {/* Google OAuth: the fallback until Google verifies the app.
+                                Hidden while an app password is connected. */}
+                            {gmailConnected !== null && (!isOperator || appPassword !== null) && !appPassword?.connected && (
+                            <>
                             {gmailConnected ? (
                                 <button
                                     type="button"
@@ -756,6 +774,8 @@ export default function ProfilePage() {
                                     <span className="inline-block h-2 w-2 rounded-full bg-red-300" />
                                     <span>Connect Gmail for recruiter emails</span>
                                 </button>
+                            )}
+                            </>
                             )}
                         </div>
                         )}
