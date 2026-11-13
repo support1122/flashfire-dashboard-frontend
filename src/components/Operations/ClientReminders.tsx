@@ -22,6 +22,7 @@ import {
   Zap
 } from "lucide-react";
 import { toastUtils } from "../../utils/toast.ts";
+import ReminderDeliveryHistory from "./ReminderDeliveryHistory.tsx";
 
 /*
  * Operations > Client Reminders.
@@ -616,7 +617,9 @@ export default function ClientReminders({
   const dirty = baseline !== "" && baseline !== fingerprint(items, webhookUrl);
   const paymentEmailDirty = paymentEmail.trim() !== (bundle?.resolvedPaymentEmail || "").trim();
   const canSavePaymentEmail = paymentEmailDirty && isEmailish(paymentEmail) && !savingPaymentEmail;
-  const history = useMemo(() => (bundle?.config?.history || []).slice(0, 8), [bundle]);
+  const [historyVersion, setHistoryVersion] = useState(0);
+
+  const itemLabels = useMemo(() => new Map(catalogue.map((meta) => [meta.key, meta.label])), [catalogue]);
 
   const catalogueByKey = useMemo(() => {
     const map = new Map<string, CatalogueItem>();
@@ -831,6 +834,8 @@ export default function ClientReminders({
       toastUtils.error(err instanceof Error ? err.message : "Send failed");
     } finally {
       setSendingKey("");
+      // The send wrote a delivery row; show it.
+      setHistoryVersion((n) => n + 1);
     }
   };
 
@@ -876,815 +881,767 @@ export default function ClientReminders({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      {/* LEFT: the catalogue */}
-      <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 px-5 py-4 text-white">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <h3 className="flex items-center gap-2 text-lg font-semibold">
-                <BellRing className="h-5 w-5" />
-                <span>What to notify</span>
-              </h3>
-              <p className="mt-0.5 truncate text-xs text-white/80">
-                {clientName ? `${clientName} - ` : ""}
-                {clientEmail}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {dirty && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
-                  Unsaved changes
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={load}
-                disabled={loading}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/25 disabled:opacity-50"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-                Refresh
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={!dirty || saving}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-                  !dirty || saving
-                    ? "cursor-not-allowed bg-white/20 text-white/60"
-                    : "bg-white text-violet-700 shadow-sm hover:bg-violet-50"
-                }`}
-              >
-                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                {saving ? "Saving..." : "Save settings"}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {bundle?.preview && (
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-gray-100 bg-violet-50/50 px-5 py-3 text-xs text-gray-600">
-            <span className="inline-flex items-center gap-1.5 font-semibold uppercase tracking-wide text-violet-700">
-              <Activity className="h-3.5 w-3.5" />
-              Activity snapshot
-            </span>
-            <span>
-              Today: <strong className="text-gray-900">{bundle.preview.today?.added ?? 0}</strong> added,{" "}
-              <strong className="text-gray-900">{bundle.preview.today?.applied ?? 0}</strong> applied
-            </span>
-            <span>
-              Last 7 days: <strong className="text-gray-900">{bundle.preview.week?.added ?? 0}</strong>{" "}
-              added, <strong className="text-gray-900">{bundle.preview.week?.applied ?? 0}</strong>{" "}
-              applied
-            </span>
-          </div>
-        )}
-
-        {/* Inbox milestone forwarding. Sits above the scheduled reports because
-            it is a different kind of thing: event-driven off the client's real
-            mailbox rather than a report on our own job data. */}
-        {!loading && !loadError && bundle && (
-          <div className="border-b border-gray-100 bg-white px-5 py-4">
-            <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-gradient-to-br from-amber-50/60 to-white p-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex min-w-0 items-start gap-3">
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-                  <Mail className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h4 className="text-sm font-bold text-gray-900">Important inbox mail</h4>
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-600">
-                      As it happens
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-gray-600">
-                    When the hourly inbox scan finds an interview, assignment or offer in this client's
-                    connected mailbox, forward it to them straight away over the channels below. Each mail
-                    is sent once per channel and never twice.
-                  </p>
-                  <p className="mt-1.5 text-xs leading-relaxed text-gray-500">
-                    On for every client. Switch it off only when this client asks, or when their inbox is
-                    noisy enough that the calls stop being useful. Clicking unsubscribe in one of our
-                    emails switches it off here too.
-                  </p>
-                  {!inboxAlertsEnabled && (
-                    <p className="mt-1.5 text-xs font-medium text-amber-800">
-                      This client is opted out, so no interview, assignment or offer mail reaches them.
-                    </p>
-                  )}
-                </div>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        {/* LEFT: the catalogue */}
+        <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 px-5 py-4 text-white">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <h3 className="flex items-center gap-2 text-lg font-semibold">
+                  <BellRing className="h-5 w-5" />
+                  <span>What to notify</span>
+                </h3>
+                <p className="mt-0.5 truncate text-xs text-white/80">
+                  {clientName ? `${clientName} - ` : ""}
+                  {clientEmail}
+                </p>
               </div>
-
-              <div className="flex shrink-0 items-center gap-2.5 sm:pt-1">
-                <span
-                  className={`text-xs font-bold ${inboxAlertsEnabled ? "text-emerald-700" : "text-gray-500"}`}
-                >
-                  {inboxAlertsEnabled ? "On" : "Off"}
-                </span>
+              <div className="flex items-center gap-2">
+                {dirty && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+                    Unsaved changes
+                  </span>
+                )}
                 <button
                   type="button"
-                  role="switch"
-                  aria-checked={inboxAlertsEnabled}
-                  aria-label={
-                    inboxAlertsEnabled
-                      ? "Inbox milestone alerts are on for this client. Click to opt them out."
-                      : "This client is opted out of inbox milestone alerts. Click to turn them back on."
-                  }
-                  onClick={() => void handleToggleInboxAlerts(!inboxAlertsEnabled)}
-                  disabled={savingInboxAlerts}
-                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
-                    inboxAlertsEnabled ? "bg-emerald-500" : "bg-gray-300"
+                  onClick={load}
+                  disabled={loading}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/25 disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                  Refresh
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={!dirty || saving}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                    !dirty || saving
+                      ? "cursor-not-allowed bg-white/20 text-white/60"
+                      : "bg-white text-violet-700 shadow-sm hover:bg-violet-50"
                   }`}
                 >
-                  {savingInboxAlerts ? (
-                    <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin text-white" />
-                  ) : (
-                    <span
-                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                        inboxAlertsEnabled ? "translate-x-[22px]" : "translate-x-0.5"
-                      }`}
-                    />
-                  )}
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  {saving ? "Saving..." : "Save settings"}
                 </button>
               </div>
             </div>
           </div>
-        )}
 
-        {loading ? (
-          <div className="divide-y divide-gray-100">
-            <RowSkeleton />
-            <RowSkeleton />
-            <RowSkeleton />
-          </div>
-        ) : loadError ? (
-          <div className="p-10 text-center">
-            <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-500" />
-            <p className="text-sm font-semibold text-gray-900">Could not load reminder settings</p>
-            <p className="mx-auto mt-1 max-w-sm text-xs text-gray-600">{loadError}</p>
-            <button
-              type="button"
-              onClick={load}
-              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Try again
-            </button>
-          </div>
-        ) : catalogue.length === 0 ? (
-          <div className="p-12 text-center">
-            <BellRing className="mx-auto mb-3 h-8 w-8 text-gray-300" />
-            <p className="text-sm font-semibold text-gray-900">No reminder types available</p>
-            <p className="mt-1 text-xs text-gray-500">
-              The server returned an empty catalogue. Nothing can be scheduled yet.
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="hidden grid-cols-[minmax(0,1fr)_104px_104px] gap-3 border-b border-gray-100 bg-gray-50/80 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 lg:grid">
-              <span>Report</span>
-              <span className="text-center">Mattermost</span>
-              <span className="text-center">Payment email</span>
+          {bundle?.preview && (
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-gray-100 bg-violet-50/50 px-5 py-3 text-xs text-gray-600">
+              <span className="inline-flex items-center gap-1.5 font-semibold uppercase tracking-wide text-violet-700">
+                <Activity className="h-3.5 w-3.5" />
+                Activity snapshot
+              </span>
+              <span>
+                Today: <strong className="text-gray-900">{bundle.preview.today?.added ?? 0}</strong> added,{" "}
+                <strong className="text-gray-900">{bundle.preview.today?.applied ?? 0}</strong> applied
+              </span>
+              <span>
+                Last 7 days: <strong className="text-gray-900">{bundle.preview.week?.added ?? 0}</strong>{" "}
+                added, <strong className="text-gray-900">{bundle.preview.week?.applied ?? 0}</strong>{" "}
+                applied
+              </span>
             </div>
+          )}
 
-            <div className="divide-y divide-gray-100">
-              {items.map((item) => {
-                const meta = catalogueByKey.get(item.key);
-                if (!meta) return null;
-                const busy = sendingKey === item.key;
-                const rowDisabled = busy;
-                const showNoActivityEscape = noActivityKeys.includes(item.key);
-                const tone = toneForStatus(item.lastStatus);
-                const stamp = formatIstStamp(item.lastSentAt);
+          {/* Inbox milestone forwarding. Sits above the scheduled reports because
+              it is a different kind of thing: event-driven off the client's real
+              mailbox rather than a report on our own job data. */}
+          {!loading && !loadError && bundle && (
+            <div className="border-b border-gray-100 bg-white px-5 py-4">
+              <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-gradient-to-br from-amber-50/60 to-white p-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                    <Mail className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-sm font-bold text-gray-900">Important inbox mail</h4>
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-600">
+                        As it happens
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-gray-600">
+                      When the hourly inbox scan finds an interview, assignment or offer in this client's
+                      connected mailbox, forward it to them straight away over the channels below. Each mail
+                      is sent once per channel and never twice.
+                    </p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-gray-500">
+                      On for every client. Switch it off only when this client asks, or when their inbox is
+                      noisy enough that the calls stop being useful. Clicking unsubscribe in one of our
+                      emails switches it off here too.
+                    </p>
+                    {!inboxAlertsEnabled && (
+                      <p className="mt-1.5 text-xs font-medium text-amber-800">
+                        This client is opted out, so no interview, assignment or offer mail reaches them.
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-                return (
-                  <div
-                    key={item.key}
-                    className={`grid grid-cols-1 gap-x-3 gap-y-3 px-5 py-5 transition-colors lg:grid-cols-[minmax(0,1fr)_104px_104px] ${
-                      item.enabled ? "bg-white hover:bg-violet-50/30" : "bg-gray-50/40 hover:bg-gray-50"
+                <div className="flex shrink-0 items-center gap-2.5 sm:pt-1">
+                  <span
+                    className={`text-xs font-bold ${inboxAlertsEnabled ? "text-emerald-700" : "text-gray-500"}`}
+                  >
+                    {inboxAlertsEnabled ? "On" : "Off"}
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={inboxAlertsEnabled}
+                    aria-label={
+                      inboxAlertsEnabled
+                        ? "Inbox milestone alerts are on for this client. Click to opt them out."
+                        : "This client is opted out of inbox milestone alerts. Click to turn them back on."
+                    }
+                    onClick={() => void handleToggleInboxAlerts(!inboxAlertsEnabled)}
+                    disabled={savingInboxAlerts}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                      inboxAlertsEnabled ? "bg-emerald-500" : "bg-gray-300"
                     }`}
                   >
-                    <div className="min-w-0">
-                      <div className="flex items-start gap-3">
-                        <Toggle
-                          checked={item.enabled}
-                          disabled={rowDisabled}
-                          onChange={(next) => patchItem(item.key, { enabled: next })}
-                          label={`Enable ${meta.label}`}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`text-sm font-semibold ${
-                                item.enabled ? "text-gray-900" : "text-gray-500"
-                              }`}
-                            >
-                              {meta.label}
-                            </span>
-                            <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                              {CADENCE_LABEL[meta.cadence] || meta.cadence}
-                            </span>
-                            {meta.activityGated && (
+                    {savingInboxAlerts ? (
+                      <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin text-white" />
+                    ) : (
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                          inboxAlertsEnabled ? "translate-x-[22px]" : "translate-x-0.5"
+                        }`}
+                      />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="divide-y divide-gray-100">
+              <RowSkeleton />
+              <RowSkeleton />
+              <RowSkeleton />
+            </div>
+          ) : loadError ? (
+            <div className="p-10 text-center">
+              <AlertCircle className="mx-auto mb-3 h-8 w-8 text-red-500" />
+              <p className="text-sm font-semibold text-gray-900">Could not load reminder settings</p>
+              <p className="mx-auto mt-1 max-w-sm text-xs text-gray-600">{loadError}</p>
+              <button
+                type="button"
+                onClick={load}
+                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Try again
+              </button>
+            </div>
+          ) : catalogue.length === 0 ? (
+            <div className="p-12 text-center">
+              <BellRing className="mx-auto mb-3 h-8 w-8 text-gray-300" />
+              <p className="text-sm font-semibold text-gray-900">No reminder types available</p>
+              <p className="mt-1 text-xs text-gray-500">
+                The server returned an empty catalogue. Nothing can be scheduled yet.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="hidden grid-cols-[minmax(0,1fr)_104px_104px] gap-3 border-b border-gray-100 bg-gray-50/80 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 lg:grid">
+                <span>Report</span>
+                <span className="text-center">Mattermost</span>
+                <span className="text-center">Payment email</span>
+              </div>
+
+              <div className="divide-y divide-gray-100">
+                {items.map((item) => {
+                  const meta = catalogueByKey.get(item.key);
+                  if (!meta) return null;
+                  const busy = sendingKey === item.key;
+                  const rowDisabled = busy;
+                  const showNoActivityEscape = noActivityKeys.includes(item.key);
+                  const tone = toneForStatus(item.lastStatus);
+                  const stamp = formatIstStamp(item.lastSentAt);
+
+                  return (
+                    <div
+                      key={item.key}
+                      className={`grid grid-cols-1 gap-x-3 gap-y-3 px-5 py-5 transition-colors lg:grid-cols-[minmax(0,1fr)_104px_104px] ${
+                        item.enabled ? "bg-white hover:bg-violet-50/30" : "bg-gray-50/40 hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-start gap-3">
+                          <Toggle
+                            checked={item.enabled}
+                            disabled={rowDisabled}
+                            onChange={(next) => patchItem(item.key, { enabled: next })}
+                            label={`Enable ${meta.label}`}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
                               <span
-                                title="Nothing is sent when the period had no jobs added and no applications submitted"
-                                className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700"
+                                className={`text-sm font-semibold ${
+                                  item.enabled ? "text-gray-900" : "text-gray-500"
+                                }`}
                               >
-                                <Zap className="h-3 w-3" />
-                                Skips empty
+                                {meta.label}
                               </span>
-                            )}
-                          </div>
-                          <p className="mt-1 text-xs leading-relaxed text-gray-500">
-                            {meta.description}
-                          </p>
-
-                          {meta.scheduleFields.length > 0 && (
-                            <div className="mt-3 flex flex-wrap items-end gap-3">
-                              {meta.scheduleFields.includes("dayOfWeek") && (
-                                <div>
-                                  <label
-                                    htmlFor={`${item.key}-dow`}
-                                    className="mb-1 block text-[11px] font-medium text-gray-500"
-                                  >
-                                    Day
-                                  </label>
-                                  <select
-                                    id={`${item.key}-dow`}
-                                    value={item.dayOfWeek}
-                                    disabled={rowDisabled}
-                                    onChange={(e) =>
-                                      patchItem(item.key, { dayOfWeek: Number(e.target.value) })
-                                    }
-                                    className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-800 outline-none transition-shadow focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed disabled:bg-gray-100"
-                                  >
-                                    {DAY_NAMES.map((day, index) => (
-                                      <option key={day} value={index}>
-                                        {day}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              )}
-
-                              {meta.scheduleFields.includes("dayOfMonth") && (
-                                <div>
-                                  <label
-                                    htmlFor={`${item.key}-dom`}
-                                    className="mb-1 block text-[11px] font-medium text-gray-500"
-                                  >
-                                    Day of month
-                                  </label>
-                                  <select
-                                    id={`${item.key}-dom`}
-                                    value={item.dayOfMonth}
-                                    disabled={rowDisabled}
-                                    onChange={(e) =>
-                                      patchItem(item.key, { dayOfMonth: Number(e.target.value) })
-                                    }
-                                    className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-800 outline-none transition-shadow focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed disabled:bg-gray-100"
-                                  >
-                                    {DAY_OF_MONTH_CHOICES.map((day) => (
-                                      <option key={day} value={day}>
-                                        {day}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                              )}
-
-                              {meta.scheduleFields.includes("inactivityDays") && (
-                                <div>
-                                  <label
-                                    htmlFor={`${item.key}-idle`}
-                                    className="mb-1 block text-[11px] font-medium text-gray-500"
-                                  >
-                                    Idle days
-                                  </label>
-                                  <input
-                                    id={`${item.key}-idle`}
-                                    type="number"
-                                    min={1}
-                                    max={30}
-                                    value={item.inactivityDays}
-                                    disabled={rowDisabled}
-                                    onChange={(e) =>
-                                      patchItem(item.key, {
-                                        inactivityDays: Math.min(
-                                          30,
-                                          Math.max(1, Number(e.target.value) || 1)
-                                        )
-                                      })
-                                    }
-                                    className="w-20 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-800 outline-none transition-shadow focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed disabled:bg-gray-100"
-                                  />
-                                </div>
-                              )}
-
-                              {meta.scheduleFields.includes("sendAtIST") && (
-                                <div>
-                                  <label
-                                    htmlFor={`${item.key}-time`}
-                                    className="mb-1 block text-[11px] font-medium text-gray-500"
-                                  >
-                                    Time (IST)
-                                  </label>
-                                  <input
-                                    id={`${item.key}-time`}
-                                    type="time"
-                                    value={item.sendAtIST}
-                                    disabled={rowDisabled}
-                                    onChange={(e) =>
-                                      patchItem(item.key, { sendAtIST: e.target.value })
-                                    }
-                                    className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-800 outline-none transition-shadow focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed disabled:bg-gray-100"
-                                  />
-                                </div>
+                              <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                                {CADENCE_LABEL[meta.cadence] || meta.cadence}
+                              </span>
+                              {meta.activityGated && (
+                                <span
+                                  title="Nothing is sent when the period had no jobs added and no applications submitted"
+                                  className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700"
+                                >
+                                  <Zap className="h-3 w-3" />
+                                  Skips empty
+                                </span>
                               )}
                             </div>
-                          )}
+                            <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                              {meta.description}
+                            </p>
 
-                          {meta.scheduleFields.includes("autoOnThreshold") && (
-                            <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50/80 p-3">
-                              <label className="flex cursor-pointer items-start gap-2.5">
-                                <input
-                                  type="checkbox"
-                                  checked={item.autoOnThreshold}
-                                  disabled={rowDisabled}
-                                  onChange={(e) =>
-                                    patchItem(item.key, { autoOnThreshold: e.target.checked })
-                                  }
-                                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 text-violet-600 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed"
-                                />
-                                <span className="min-w-0">
-                                  <span className="block text-xs font-semibold text-gray-800">
-                                    Send early once enough roles are added
-                                  </span>
-                                  <span className="mt-0.5 block text-[11px] leading-relaxed text-gray-600">
-                                    Instead of waiting for the time above, send the summary a set delay
-                                    after the client passes a role count for the day. Whichever comes
-                                    first wins, and the client still gets exactly one summary a day.
-                                  </span>
-                                </span>
-                              </label>
-
-                              {item.autoOnThreshold && (
-                                <div className="mt-2.5 flex flex-wrap items-end gap-3 pl-6.5">
+                            {meta.scheduleFields.length > 0 && (
+                              <div className="mt-3 flex flex-wrap items-end gap-3">
+                                {meta.scheduleFields.includes("dayOfWeek") && (
                                   <div>
                                     <label
-                                      htmlFor={`${item.key}-auto-count`}
+                                      htmlFor={`${item.key}-dow`}
                                       className="mb-1 block text-[11px] font-medium text-gray-500"
                                     >
-                                      Roles added
+                                      Day
+                                    </label>
+                                    <select
+                                      id={`${item.key}-dow`}
+                                      value={item.dayOfWeek}
+                                      disabled={rowDisabled}
+                                      onChange={(e) =>
+                                        patchItem(item.key, { dayOfWeek: Number(e.target.value) })
+                                      }
+                                      className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-800 outline-none transition-shadow focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+                                    >
+                                      {DAY_NAMES.map((day, index) => (
+                                        <option key={day} value={index}>
+                                          {day}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )}
+
+                                {meta.scheduleFields.includes("dayOfMonth") && (
+                                  <div>
+                                    <label
+                                      htmlFor={`${item.key}-dom`}
+                                      className="mb-1 block text-[11px] font-medium text-gray-500"
+                                    >
+                                      Day of month
+                                    </label>
+                                    <select
+                                      id={`${item.key}-dom`}
+                                      value={item.dayOfMonth}
+                                      disabled={rowDisabled}
+                                      onChange={(e) =>
+                                        patchItem(item.key, { dayOfMonth: Number(e.target.value) })
+                                      }
+                                      className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-800 outline-none transition-shadow focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+                                    >
+                                      {DAY_OF_MONTH_CHOICES.map((day) => (
+                                        <option key={day} value={day}>
+                                          {day}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )}
+
+                                {meta.scheduleFields.includes("inactivityDays") && (
+                                  <div>
+                                    <label
+                                      htmlFor={`${item.key}-idle`}
+                                      className="mb-1 block text-[11px] font-medium text-gray-500"
+                                    >
+                                      Idle days
                                     </label>
                                     <input
-                                      id={`${item.key}-auto-count`}
+                                      id={`${item.key}-idle`}
                                       type="number"
-                                      min={2}
-                                      max={200}
-                                      value={item.autoThresholdCount}
+                                      min={1}
+                                      max={30}
+                                      value={item.inactivityDays}
                                       disabled={rowDisabled}
                                       onChange={(e) =>
                                         patchItem(item.key, {
-                                          autoThresholdCount: Math.min(
-                                            200,
-                                            Math.max(2, Number(e.target.value) || 2)
+                                          inactivityDays: Math.min(
+                                            30,
+                                            Math.max(1, Number(e.target.value) || 1)
                                           )
                                         })
                                       }
                                       className="w-20 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-800 outline-none transition-shadow focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed disabled:bg-gray-100"
                                     />
                                   </div>
+                                )}
+
+                                {meta.scheduleFields.includes("sendAtIST") && (
                                   <div>
                                     <label
-                                      htmlFor={`${item.key}-auto-delay`}
+                                      htmlFor={`${item.key}-time`}
                                       className="mb-1 block text-[11px] font-medium text-gray-500"
                                     >
-                                      Wait (minutes)
+                                      Time (IST)
                                     </label>
                                     <input
-                                      id={`${item.key}-auto-delay`}
-                                      type="number"
-                                      min={0}
-                                      max={720}
-                                      step={15}
-                                      value={item.autoDelayMinutes}
+                                      id={`${item.key}-time`}
+                                      type="time"
+                                      value={item.sendAtIST}
                                       disabled={rowDisabled}
                                       onChange={(e) =>
-                                        patchItem(item.key, {
-                                          autoDelayMinutes: Math.min(
-                                            720,
-                                            Math.max(0, Number(e.target.value) || 0)
-                                          )
-                                        })
+                                        patchItem(item.key, { sendAtIST: e.target.value })
                                       }
-                                      className="w-24 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-800 outline-none transition-shadow focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+                                      className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-800 outline-none transition-shadow focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed disabled:bg-gray-100"
                                     />
                                   </div>
-                                  <p className="pb-1.5 text-[11px] text-gray-500">
-                                    Sends {item.autoDelayMinutes} min after the{" "}
-                                    {item.autoThresholdCount}
-                                    <sup>{item.autoThresholdCount === 1 ? "st" : "th"}</sup> role of the day.
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          )}
+                                )}
+                              </div>
+                            )}
+
+                            {meta.scheduleFields.includes("autoOnThreshold") && (
+                              <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50/80 p-3">
+                                <label className="flex cursor-pointer items-start gap-2.5">
+                                  <input
+                                    type="checkbox"
+                                    checked={item.autoOnThreshold}
+                                    disabled={rowDisabled}
+                                    onChange={(e) =>
+                                      patchItem(item.key, { autoOnThreshold: e.target.checked })
+                                    }
+                                    className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 text-violet-600 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed"
+                                  />
+                                  <span className="min-w-0">
+                                    <span className="block text-xs font-semibold text-gray-800">
+                                      Send early once enough roles are added
+                                    </span>
+                                    <span className="mt-0.5 block text-[11px] leading-relaxed text-gray-600">
+                                      Instead of waiting for the time above, send the summary a set delay
+                                      after the client passes a role count for the day. Whichever comes
+                                      first wins, and the client still gets exactly one summary a day.
+                                    </span>
+                                  </span>
+                                </label>
+
+                                {item.autoOnThreshold && (
+                                  <div className="mt-2.5 flex flex-wrap items-end gap-3 pl-6.5">
+                                    <div>
+                                      <label
+                                        htmlFor={`${item.key}-auto-count`}
+                                        className="mb-1 block text-[11px] font-medium text-gray-500"
+                                      >
+                                        Roles added
+                                      </label>
+                                      <input
+                                        id={`${item.key}-auto-count`}
+                                        type="number"
+                                        min={2}
+                                        max={200}
+                                        value={item.autoThresholdCount}
+                                        disabled={rowDisabled}
+                                        onChange={(e) =>
+                                          patchItem(item.key, {
+                                            autoThresholdCount: Math.min(
+                                              200,
+                                              Math.max(2, Number(e.target.value) || 2)
+                                            )
+                                          })
+                                        }
+                                        className="w-20 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-800 outline-none transition-shadow focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label
+                                        htmlFor={`${item.key}-auto-delay`}
+                                        className="mb-1 block text-[11px] font-medium text-gray-500"
+                                      >
+                                        Wait (minutes)
+                                      </label>
+                                      <input
+                                        id={`${item.key}-auto-delay`}
+                                        type="number"
+                                        min={0}
+                                        max={720}
+                                        step={15}
+                                        value={item.autoDelayMinutes}
+                                        disabled={rowDisabled}
+                                        onChange={(e) =>
+                                          patchItem(item.key, {
+                                            autoDelayMinutes: Math.min(
+                                              720,
+                                              Math.max(0, Number(e.target.value) || 0)
+                                            )
+                                          })
+                                        }
+                                        className="w-24 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-800 outline-none transition-shadow focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+                                      />
+                                    </div>
+                                    <p className="pb-1.5 text-[11px] text-gray-500">
+                                      Sends {item.autoDelayMinutes} min after the{" "}
+                                      {item.autoThresholdCount}
+                                      <sup>{item.autoThresholdCount === 1 ? "st" : "th"}</sup> role of the day.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
 
 
-                          <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => runSendNow(item.key, false)}
-                              disabled={rowDisabled || Boolean(sendingKey)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              {busy ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Send className="h-3.5 w-3.5" />
-                              )}
-                              {busy ? "Sending..." : "Send now"}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handlePreview(item.key)}
-                              disabled={rowDisabled || Boolean(previewingKey)}
-                              title="Preview what would be delivered"
-                              aria-label={`Preview ${meta.label}`}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              {previewingKey === item.key ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Eye className="h-3.5 w-3.5" />
-                              )}
-                            </button>
-
-                            {showNoActivityEscape && (
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
                               <button
                                 type="button"
-                                onClick={() => runSendNow(item.key, true)}
+                                onClick={() => runSendNow(item.key, false)}
                                 disabled={rowDisabled || Boolean(sendingKey)}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 transition-colors hover:bg-violet-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
                               >
-                                <AlertCircle className="h-3.5 w-3.5" />
-                                Send anyway
+                                {busy ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Send className="h-3.5 w-3.5" />
+                                )}
+                                {busy ? "Sending..." : "Send now"}
                               </button>
-                            )}
-                          </div>
 
-                          <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
-                            {item.lastStatus ? (
-                              <>
-                                <StatusPill tone={tone}>
-                                  {tone === "sent" && <CheckCircle2 className="h-3 w-3" />}
-                                  {tone === "failed" && <AlertCircle className="h-3 w-3" />}
-                                  {tone === "skipped" && <Ban className="h-3 w-3" />}
-                                  {tone === "partial" && <Info className="h-3 w-3" />}
-                                  {item.lastStatus === "sent" && stamp
-                                    ? `Sent ${stamp}`
-                                    : item.lastStatus === "skipped"
-                                      ? `Skipped - ${humanReason(item.lastError || "no activity")}`
-                                      : item.lastStatus === "failed"
-                                        ? `Failed - ${humanReason(item.lastError || "unknown error")}`
-                                        : item.lastStatus === "partial"
-                                          ? `Partial - ${item.lastError || "one channel failed"}`
-                                          : item.lastStatus}
+                              <button
+                                type="button"
+                                onClick={() => handlePreview(item.key)}
+                                disabled={rowDisabled || Boolean(previewingKey)}
+                                title="Preview what would be delivered"
+                                aria-label={`Preview ${meta.label}`}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {previewingKey === item.key ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Eye className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+
+                              {showNoActivityEscape && (
+                                <button
+                                  type="button"
+                                  onClick={() => runSendNow(item.key, true)}
+                                  disabled={rowDisabled || Boolean(sendingKey)}
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  <AlertCircle className="h-3.5 w-3.5" />
+                                  Send anyway
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+                              {item.lastStatus ? (
+                                <>
+                                  <StatusPill tone={tone}>
+                                    {tone === "sent" && <CheckCircle2 className="h-3 w-3" />}
+                                    {tone === "failed" && <AlertCircle className="h-3 w-3" />}
+                                    {tone === "skipped" && <Ban className="h-3 w-3" />}
+                                    {tone === "partial" && <Info className="h-3 w-3" />}
+                                    {item.lastStatus === "sent" && stamp
+                                      ? `Sent ${stamp}`
+                                      : item.lastStatus === "skipped"
+                                        ? `Skipped - ${humanReason(item.lastError || "no activity")}`
+                                        : item.lastStatus === "failed"
+                                          ? `Failed - ${humanReason(item.lastError || "unknown error")}`
+                                          : item.lastStatus === "partial"
+                                            ? `Partial - ${item.lastError || "one channel failed"}`
+                                            : item.lastStatus}
+                                  </StatusPill>
+                                  {item.lastStatus !== "sent" && stamp && <span>at {stamp}</span>}
+                                </>
+                              ) : (
+                                <StatusPill tone="idle">
+                                  <Clock className="h-3 w-3" />
+                                  Never run
                                 </StatusPill>
-                                {item.lastStatus !== "sent" && stamp && <span>at {stamp}</span>}
-                              </>
-                            ) : (
-                              <StatusPill tone="idle">
-                                <Clock className="h-3 w-3" />
-                                Never run
-                              </StatusPill>
-                            )}
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
+
+                      <div className="lg:flex lg:items-start lg:justify-center lg:pt-1">
+                        <ChannelCheckbox
+                          checked={item.channels.mattermost}
+                          disabled={rowDisabled || !hasWebhook}
+                          onChange={(next) => patchChannel(item.key, "mattermost", next)}
+                          label="Mattermost"
+                          hint={
+                            hasWebhook
+                              ? "Deliver this report to the client's Mattermost channel"
+                              : "Save a Mattermost webhook URL first"
+                          }
+                        />
+                      </div>
+
+                      <div className="lg:flex lg:items-start lg:justify-center lg:pt-1">
+                        {/* Internal items mail the FlashFire team inbox, so the
+                            client's payment email neither gates nor labels them.
+                            The backend enforces the routing either way; this is
+                            the operator-facing truth of where the mail goes. */}
+                        <ChannelCheckbox
+                          checked={item.channels.email}
+                          disabled={rowDisabled || (!meta.internal && !hasPaymentEmail)}
+                          onChange={(next) => patchChannel(item.key, "email", next)}
+                          label={meta.internal ? "Team email" : "Payment email"}
+                          hint={
+                            meta.internal
+                              ? "Internal alert - emails the FlashFire team inbox, never the client"
+                              : hasPaymentEmail
+                                ? "Deliver this report to the client's payment email"
+                                : "No payment email resolved for this client yet"
+                          }
+                        />
+                      </div>
                     </div>
-
-                    <div className="lg:flex lg:items-start lg:justify-center lg:pt-1">
-                      <ChannelCheckbox
-                        checked={item.channels.mattermost}
-                        disabled={rowDisabled || !hasWebhook}
-                        onChange={(next) => patchChannel(item.key, "mattermost", next)}
-                        label="Mattermost"
-                        hint={
-                          hasWebhook
-                            ? "Deliver this report to the client's Mattermost channel"
-                            : "Save a Mattermost webhook URL first"
-                        }
-                      />
-                    </div>
-
-                    <div className="lg:flex lg:items-start lg:justify-center lg:pt-1">
-                      {/* Internal items mail the FlashFire team inbox, so the
-                          client's payment email neither gates nor labels them.
-                          The backend enforces the routing either way; this is
-                          the operator-facing truth of where the mail goes. */}
-                      <ChannelCheckbox
-                        checked={item.channels.email}
-                        disabled={rowDisabled || (!meta.internal && !hasPaymentEmail)}
-                        onChange={(next) => patchChannel(item.key, "email", next)}
-                        label={meta.internal ? "Team email" : "Payment email"}
-                        hint={
-                          meta.internal
-                            ? "Internal alert - emails the FlashFire team inbox, never the client"
-                            : hasPaymentEmail
-                              ? "Deliver this report to the client's payment email"
-                              : "No payment email resolved for this client yet"
-                        }
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="flex items-start gap-2 text-xs text-gray-500">
-                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
-                <span>
-                  Reports with the "skips empty" badge stay silent when the period had no jobs added
-                  and no applications submitted.
-                </span>
-              </p>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={!dirty || saving}
-                className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all ${
-                  !dirty || saving
-                    ? "cursor-not-allowed bg-gray-200 text-gray-500"
-                    : "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md hover:opacity-90"
-                }`}
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {saving ? "Saving..." : dirty ? "Save settings" : "All changes saved"}
-              </button>
-            </div>
-          </>
-        )}
-      </section>
-
-      {/* RIGHT: delivery channels */}
-      <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
-        <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-100 bg-gradient-to-r from-slate-50 to-violet-50 px-5 py-4">
-            <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-              <Send className="h-4 w-4 text-violet-600" />
-              Delivery channels
-            </h3>
-            <p className="mt-0.5 text-xs text-gray-500">Where every enabled report is delivered.</p>
-          </div>
-
-          <div className="space-y-5 p-5">
-            {/* Payment email */}
-            <div>
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <label
-                  htmlFor="reminders-payment-email"
-                  className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-600"
-                >
-                  <Mail className="h-3.5 w-3.5 text-gray-400" />
-                  Payment email
-                </label>
-                <span
-                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                    paymentSource === "tracking"
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : paymentSource === "override"
-                        ? "border-blue-200 bg-blue-50 text-blue-700"
-                        : "border-gray-200 bg-gray-50 text-gray-500"
-                  }`}
-                >
-                  {paymentSource === "tracking"
-                    ? "Client record"
-                    : paymentSource === "override"
-                      ? "Local override"
-                      : "Not set"}
-                </span>
+                  );
+                })}
               </div>
-              <div className="flex gap-2">
-                <input
-                  id="reminders-payment-email"
-                  type="email"
-                  value={paymentEmail}
-                  onChange={(e) => setPaymentEmail(e.target.value)}
-                  placeholder="billing@client.com"
-                  disabled={loading || savingPaymentEmail}
-                  className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-shadow placeholder:text-gray-400 focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:bg-gray-100"
-                />
+
+              <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="flex items-start gap-2 text-xs text-gray-500">
+                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
+                  <span>
+                    Reports with the "skips empty" badge stay silent when the period had no jobs added
+                    and no applications submitted.
+                  </span>
+                </p>
                 <button
                   type="button"
-                  onClick={handleSavePaymentEmail}
-                  disabled={!canSavePaymentEmail}
-                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold transition-all ${
-                    canSavePaymentEmail
-                      ? "bg-violet-600 text-white shadow-sm hover:bg-violet-700"
-                      : "cursor-not-allowed bg-gray-200 text-gray-500"
+                  onClick={handleSave}
+                  disabled={!dirty || saving}
+                  className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all ${
+                    !dirty || saving
+                      ? "cursor-not-allowed bg-gray-200 text-gray-500"
+                      : "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md hover:opacity-90"
                   }`}
                 >
-                  {savingPaymentEmail ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Save className="h-3.5 w-3.5" />
-                  )}
-                  Save
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {saving ? "Saving..." : dirty ? "Save settings" : "All changes saved"}
                 </button>
               </div>
-              {paymentEmail.trim() !== "" && !isEmailish(paymentEmail) && (
-                <p className="mt-1.5 text-[11px] text-red-600">That does not look like an email address.</p>
-              )}
-              {bundle && !bundle.trackingMatched && (
-                <p className="mt-1.5 text-[11px] text-gray-500">
-                  No client record matched this email, so the address is stored as a local override.
-                </p>
-              )}
+            </>
+          )}
+        </section>
+
+        {/* RIGHT: delivery channels */}
+        <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
+          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-100 bg-gradient-to-r from-slate-50 to-violet-50 px-5 py-4">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <Send className="h-4 w-4 text-violet-600" />
+                Delivery channels
+              </h3>
+              <p className="mt-0.5 text-xs text-gray-500">Where every enabled report is delivered.</p>
             </div>
 
-            {/* Mattermost webhook */}
-            <div>
-              <label
-                htmlFor="reminders-webhook"
-                className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-600"
-              >
-                <MessageSquare className="h-3.5 w-3.5 text-gray-400" />
-                Mattermost webhook
-              </label>
-              <div className="flex gap-2">
-                <div className="relative min-w-0 flex-1">
+            <div className="space-y-5 p-5">
+              {/* Payment email */}
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <label
+                    htmlFor="reminders-payment-email"
+                    className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-600"
+                  >
+                    <Mail className="h-3.5 w-3.5 text-gray-400" />
+                    Payment email
+                  </label>
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                      paymentSource === "tracking"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : paymentSource === "override"
+                          ? "border-blue-200 bg-blue-50 text-blue-700"
+                          : "border-gray-200 bg-gray-50 text-gray-500"
+                    }`}
+                  >
+                    {paymentSource === "tracking"
+                      ? "Client record"
+                      : paymentSource === "override"
+                        ? "Local override"
+                        : "Not set"}
+                  </span>
+                </div>
+                <div className="flex gap-2">
                   <input
-                    id="reminders-webhook"
-                    type={showWebhook ? "text" : "password"}
-                    value={webhookUrl}
-                    onChange={(e) => {
-                      setWebhookUrl(e.target.value);
-                      setWebhookTestResult(null);
-                    }}
-                    placeholder="https://your-server/hooks/xxxxxxxx"
-                    autoComplete="off"
-                    spellCheck={false}
-                    disabled={loading}
-                    className="w-full rounded-xl border border-gray-300 bg-white py-2 pl-3 pr-10 text-sm text-gray-900 outline-none transition-shadow placeholder:text-gray-400 focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:bg-gray-100"
+                    id="reminders-payment-email"
+                    type="email"
+                    value={paymentEmail}
+                    onChange={(e) => setPaymentEmail(e.target.value)}
+                    placeholder="billing@client.com"
+                    disabled={loading || savingPaymentEmail}
+                    className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-shadow placeholder:text-gray-400 focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:bg-gray-100"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowWebhook((v) => !v)}
-                    aria-label={showWebhook ? "Hide webhook URL" : "Show webhook URL"}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 transition-colors hover:text-gray-600"
+                    onClick={handleSavePaymentEmail}
+                    disabled={!canSavePaymentEmail}
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold transition-all ${
+                      canSavePaymentEmail
+                        ? "bg-violet-600 text-white shadow-sm hover:bg-violet-700"
+                        : "cursor-not-allowed bg-gray-200 text-gray-500"
+                    }`}
                   >
-                    {showWebhook ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {savingPaymentEmail ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Save className="h-3.5 w-3.5" />
+                    )}
+                    Save
                   </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleTestWebhook}
-                  disabled={testingWebhook || !webhookUrl.trim()}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {testingWebhook ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Link2 className="h-3.5 w-3.5" />
-                  )}
-                  Test
-                </button>
+                {paymentEmail.trim() !== "" && !isEmailish(paymentEmail) && (
+                  <p className="mt-1.5 text-[11px] text-red-600">That does not look like an email address.</p>
+                )}
+                {bundle && !bundle.trackingMatched && (
+                  <p className="mt-1.5 text-[11px] text-gray-500">
+                    No client record matched this email, so the address is stored as a local override.
+                  </p>
+                )}
               </div>
-              <p className="mt-1.5 text-[11px] text-gray-500">
-                Incoming webhook from the client's Mattermost server, in the form
-                https://your-server/hooks/....
-              </p>
-              <p className="mt-1 text-[11px] text-gray-500">
-                Once saved, every client email is mirrored here as well: the daily activity
-                summary, application milestones (resume ready, 150 / 300 / plan complete),
-                the onboarding sequence (base résumé, cover letter, LinkedIn) and inbox alerts.
-              </p>
-              {webhookTestResult && (
-                <p
-                  className={`mt-1.5 flex items-start gap-1.5 text-[11px] ${
-                    webhookTestResult.ok ? "text-emerald-700" : "text-red-600"
-                  }`}
-                >
-                  {webhookTestResult.ok ? (
-                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  ) : (
-                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  )}
-                  <span>{webhookTestResult.message}</span>
-                </p>
-              )}
-              {webhookUrl.trim() !== savedWebhook && (
-                <p className="mt-1.5 text-[11px] text-amber-700">
-                  Not saved yet. Use "Save settings" to activate this webhook.
-                </p>
-              )}
-            </div>
 
-            {/* Status strip */}
-            <div className="grid grid-cols-2 gap-2 rounded-xl border border-gray-200 bg-gray-50/70 p-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck
-                  className={`h-4 w-4 shrink-0 ${
-                    bundle?.smtpConfigured ? "text-emerald-600" : "text-gray-400"
-                  }`}
-                />
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">SMTP</p>
+              {/* Mattermost webhook */}
+              <div>
+                <label
+                  htmlFor="reminders-webhook"
+                  className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-600"
+                >
+                  <MessageSquare className="h-3.5 w-3.5 text-gray-400" />
+                  Mattermost webhook
+                </label>
+                <div className="flex gap-2">
+                  <div className="relative min-w-0 flex-1">
+                    <input
+                      id="reminders-webhook"
+                      type={showWebhook ? "text" : "password"}
+                      value={webhookUrl}
+                      onChange={(e) => {
+                        setWebhookUrl(e.target.value);
+                        setWebhookTestResult(null);
+                      }}
+                      placeholder="https://your-server/hooks/xxxxxxxx"
+                      autoComplete="off"
+                      spellCheck={false}
+                      disabled={loading}
+                      className="w-full rounded-xl border border-gray-300 bg-white py-2 pl-3 pr-10 text-sm text-gray-900 outline-none transition-shadow placeholder:text-gray-400 focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:bg-gray-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowWebhook((v) => !v)}
+                      aria-label={showWebhook ? "Hide webhook URL" : "Show webhook URL"}
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 transition-colors hover:text-gray-600"
+                    >
+                      {showWebhook ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleTestWebhook}
+                    disabled={testingWebhook || !webhookUrl.trim()}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {testingWebhook ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Link2 className="h-3.5 w-3.5" />
+                    )}
+                    Test
+                  </button>
+                </div>
+                <p className="mt-1.5 text-[11px] text-gray-500">
+                  Incoming webhook from the client's Mattermost server, in the form
+                  https://your-server/hooks/....
+                </p>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Once saved, every client email is mirrored here as well: the daily activity
+                  summary, application milestones (resume ready, 150 / 300 / plan complete),
+                  the onboarding sequence (base résumé, cover letter, LinkedIn) and inbox alerts.
+                </p>
+                {webhookTestResult && (
                   <p
-                    className={`text-xs font-semibold ${
-                      bundle?.smtpConfigured ? "text-emerald-700" : "text-gray-500"
+                    className={`mt-1.5 flex items-start gap-1.5 text-[11px] ${
+                      webhookTestResult.ok ? "text-emerald-700" : "text-red-600"
                     }`}
                   >
-                    {bundle?.smtpConfigured ? "Configured" : "Not configured"}
+                    {webhookTestResult.ok ? (
+                      <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    ) : (
+                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    )}
+                    <span>{webhookTestResult.message}</span>
                   </p>
-                </div>
+                )}
+                {webhookUrl.trim() !== savedWebhook && (
+                  <p className="mt-1.5 text-[11px] text-amber-700">
+                    Not saved yet. Use "Save settings" to activate this webhook.
+                  </p>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <CalendarClock
-                  className={`h-4 w-4 shrink-0 ${
-                    bundle?.workerEnabled ? "text-emerald-600" : "text-amber-500"
-                  }`}
-                />
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-                    Scheduler
-                  </p>
-                  <p
-                    className={`text-xs font-semibold ${
-                      bundle?.workerEnabled ? "text-emerald-700" : "text-amber-600"
+
+              {/* Status strip */}
+              <div className="grid grid-cols-2 gap-2 rounded-xl border border-gray-200 bg-gray-50/70 p-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck
+                    className={`h-4 w-4 shrink-0 ${
+                      bundle?.smtpConfigured ? "text-emerald-600" : "text-gray-400"
                     }`}
-                  >
-                    {bundle?.workerEnabled ? "Running" : "Disabled"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Recent activity */}
-        <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-100 bg-gradient-to-r from-slate-50 to-indigo-50 px-5 py-4">
-            <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-              <Clock className="h-4 w-4 text-indigo-600" />
-              Recent activity
-            </h3>
-            <p className="mt-0.5 text-xs text-gray-500">The last few delivery attempts.</p>
-          </div>
-
-          {loading ? (
-            <div className="space-y-3 p-5">
-              <div className="h-10 animate-pulse rounded-lg bg-gray-100" />
-              <div className="h-10 animate-pulse rounded-lg bg-gray-100" />
-              <div className="h-10 animate-pulse rounded-lg bg-gray-100" />
-            </div>
-          ) : history.length === 0 ? (
-            <div className="px-5 py-10 text-center">
-              <Clock className="mx-auto mb-2 h-6 w-6 text-gray-300" />
-              <p className="text-xs text-gray-500">
-                Nothing delivered yet. Runs will show up here once a report goes out.
-              </p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-gray-100">
-              {history.map((row, index) => {
-                const meta = row.itemKey ? catalogueByKey.get(row.itemKey) : undefined;
-                const tone = toneForStatus(row.status || "");
-                return (
-                  <li key={`${row.at || "row"}-${row.itemKey || index}-${index}`} className="px-5 py-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-semibold text-gray-900">
-                          {meta?.label || row.itemKey || "Reminder"}
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-gray-500">
-                          {formatIstStamp(row.at) || "unknown time"}
-                          {row.trigger ? ` - ${row.trigger}` : ""}
-                        </p>
-                      </div>
-                      <StatusPill tone={tone}>{row.status || "unknown"}</StatusPill>
-                    </div>
-                    <p className="mt-1 text-[11px] text-gray-500">
-                      {row.stats?.added ?? 0} added, {row.stats?.applied ?? 0} applied
-                      {row.email?.attempted ? (row.email.ok ? " - email ok" : " - email failed") : ""}
-                      {row.mattermost?.attempted
-                        ? row.mattermost.ok
-                          ? " - mattermost ok"
-                          : " - mattermost failed"
-                        : ""}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">SMTP</p>
+                    <p
+                      className={`text-xs font-semibold ${
+                        bundle?.smtpConfigured ? "text-emerald-700" : "text-gray-500"
+                      }`}
+                    >
+                      {bundle?.smtpConfigured ? "Configured" : "Not configured"}
                     </p>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-      </aside>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CalendarClock
+                    className={`h-4 w-4 shrink-0 ${
+                      bundle?.workerEnabled ? "text-emerald-600" : "text-amber-500"
+                    }`}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                      Scheduler
+                    </p>
+                    <p
+                      className={`text-xs font-semibold ${
+                        bundle?.workerEnabled ? "text-emerald-700" : "text-amber-600"
+                      }`}
+                    >
+                      {bundle?.workerEnabled ? "Running" : "Disabled"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      <ReminderDeliveryHistory
+        apiBaseUrl={apiBaseUrl}
+        opsKey={opsKey}
+        clientEmail={clientEmail}
+        itemLabels={itemLabels}
+        refreshToken={historyVersion}
+      />
 
       {preview && <PreviewModal preview={preview} onClose={() => setPreview(null)} />}
     </div>
