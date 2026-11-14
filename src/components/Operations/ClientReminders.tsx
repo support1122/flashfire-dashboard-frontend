@@ -8,12 +8,9 @@ import {
   CheckCircle2,
   Clock,
   Eye,
-  EyeOff,
   Info,
-  Link2,
   Loader2,
   Mail,
-  MessageSquare,
   RefreshCw,
   Save,
   Send,
@@ -41,7 +38,7 @@ type Cadence = "daily" | "weekly" | "monthly" | "event";
 
 interface CatalogueDefaults {
   enabled?: boolean;
-  channels?: { mattermost?: boolean; email?: boolean };
+  channels?: { email?: boolean };
   sendAtIST?: string;
   dayOfWeek?: number;
   dayOfMonth?: number;
@@ -66,7 +63,6 @@ interface CatalogueItem {
 interface ItemConfig {
   key: string;
   enabled: boolean;
-  channels: { mattermost: boolean; email: boolean };
   sendAtIST: string;
   dayOfWeek: number;
   dayOfMonth: number;
@@ -86,7 +82,6 @@ interface HistoryRow {
   periodKey?: string;
   status?: string;
   email?: { attempted?: boolean; ok?: boolean; to?: string; error?: string };
-  mattermost?: { attempted?: boolean; ok?: boolean; error?: string };
   stats?: { added?: number; applied?: number };
   trigger?: string;
 }
@@ -97,7 +92,6 @@ interface ReminderConfig {
   /** Forward inbox milestones to the client. Opt-in, off by default. */
   inboxAlertsEnabled?: boolean;
   paymentEmailOverride?: string;
-  mattermostWebhookUrl?: string;
   items?: ItemConfig[];
   history?: HistoryRow[];
   updatedBy?: string;
@@ -140,15 +134,10 @@ interface PaymentEmailResponse extends ApiEnvelope {
   source?: "tracking" | "override" | "none";
 }
 
-interface TestWebhookResponse extends ApiEnvelope {
-  ok?: boolean;
-}
-
 interface SendNowResponse extends ApiEnvelope {
   status?: "sent" | "partial" | "skipped" | "failed";
   reason?: string;
   email?: { attempted?: boolean; ok?: boolean; to?: string; error?: string };
-  mattermost?: { attempted?: boolean; ok?: boolean; error?: string };
   stats?: { added?: number; applied?: number };
   periodKey?: string;
   subject?: string;
@@ -158,7 +147,6 @@ interface PreviewResponse extends ApiEnvelope {
   subject?: string;
   html?: string;
   text?: string;
-  mattermostText?: string;
   isEmpty?: boolean;
   window?: { from?: string; to?: string; label?: string };
 }
@@ -169,7 +157,6 @@ interface PreviewState {
   subject: string;
   html: string;
   text: string;
-  mattermostText: string;
   isEmpty: boolean;
   windowLabel: string;
 }
@@ -226,10 +213,6 @@ function normalizeItems(catalogue: CatalogueItem[], raw: ItemConfig[] | undefine
     return {
       key: meta.key,
       enabled: pickBool(saved?.enabled, defaults.enabled),
-      channels: {
-        mattermost: pickBool(saved?.channels?.mattermost, defaults.channels?.mattermost),
-        email: pickBool(saved?.channels?.email, defaults.channels?.email)
-      },
       sendAtIST: saved?.sendAtIST || defaults.sendAtIST || "09:00",
       dayOfWeek: pickInt(saved?.dayOfWeek, defaults.dayOfWeek, 1),
       dayOfMonth: pickInt(saved?.dayOfMonth, defaults.dayOfMonth, 1),
@@ -246,14 +229,11 @@ function normalizeItems(catalogue: CatalogueItem[], raw: ItemConfig[] | undefine
 }
 
 /** Only the operator-editable fields take part in the dirty check. */
-function fingerprint(items: ItemConfig[], webhook: string): string {
+function fingerprint(items: ItemConfig[]): string {
   return JSON.stringify({
-    webhook: webhook.trim(),
     items: items.map((i) => [
       i.key,
       i.enabled,
-      i.channels.mattermost,
-      i.channels.email,
       i.sendAtIST,
       i.dayOfWeek,
       i.dayOfMonth,
@@ -356,39 +336,6 @@ function Toggle({
   );
 }
 
-function ChannelCheckbox({
-  checked,
-  disabled,
-  onChange,
-  label,
-  hint
-}: {
-  checked: boolean;
-  disabled: boolean;
-  onChange: (next: boolean) => void;
-  label: string;
-  hint: string;
-}) {
-  return (
-    <label
-      title={hint}
-      className={`flex items-center gap-2 lg:justify-center ${
-        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
-      }`}
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-        aria-label={label}
-        className="h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500 disabled:cursor-not-allowed"
-      />
-      <span className="text-xs font-medium text-gray-600 lg:hidden">{label}</span>
-    </label>
-  );
-}
-
 function RowSkeleton() {
   return (
     <div className="animate-pulse px-5 py-5">
@@ -411,8 +358,6 @@ function PreviewModal({
   preview: PreviewState;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<"email" | "mattermost">("email");
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -438,31 +383,6 @@ function PreviewModal({
             </button>
           </div>
 
-          <div className="flex items-center gap-2 border-b border-gray-200 px-6 pt-4">
-            <button
-              type="button"
-              onClick={() => setTab("email")}
-              className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors ${
-                tab === "email"
-                  ? "border-b-2 border-violet-600 text-violet-700"
-                  : "text-gray-500 hover:text-gray-800"
-              }`}
-            >
-              Email
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("mattermost")}
-              className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors ${
-                tab === "mattermost"
-                  ? "border-b-2 border-violet-600 text-violet-700"
-                  : "text-gray-500 hover:text-gray-800"
-              }`}
-            >
-              Mattermost
-            </button>
-          </div>
-
           <div className="max-h-[65vh] overflow-y-auto bg-gray-50 p-6">
             {preview.isEmpty && (
               <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
@@ -479,8 +399,7 @@ function PreviewModal({
               </div>
             )}
 
-            {tab === "email" ? (
-              <div>
+            <div>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
                   Subject
                 </p>
@@ -499,12 +418,7 @@ function PreviewModal({
                     This item does not render an email body for the current window.
                   </p>
                 )}
-              </div>
-            ) : (
-              <pre className="whitespace-pre-wrap break-words rounded-xl border border-gray-200 bg-white p-4 font-mono text-xs leading-relaxed text-gray-800">
-                {preview.mattermostText || "(no Mattermost message for this window)"}
-              </pre>
-            )}
+            </div>
           </div>
         </div>
       </div>
@@ -524,9 +438,7 @@ export default function ClientReminders({
   const [bundle, setBundle] = useState<RemindersBundle | null>(null);
 
   const [items, setItems] = useState<ItemConfig[]>([]);
-  const [webhookUrl, setWebhookUrl] = useState("");
   const [baseline, setBaseline] = useState("");
-  const [showWebhook, setShowWebhook] = useState(false);
 
   const [paymentEmail, setPaymentEmail] = useState("");
   const [paymentSource, setPaymentSource] = useState<"tracking" | "override" | "none">("none");
@@ -534,10 +446,6 @@ export default function ClientReminders({
 
   const [saving, setSaving] = useState(false);
   const [savingInboxAlerts, setSavingInboxAlerts] = useState(false);
-  const [testingWebhook, setTestingWebhook] = useState(false);
-  const [webhookTestResult, setWebhookTestResult] = useState<{ ok: boolean; message: string } | null>(
-    null
-  );
 
   const [sendingKey, setSendingKey] = useState("");
   const [previewingKey, setPreviewingKey] = useState("");
@@ -547,11 +455,9 @@ export default function ClientReminders({
   const applyBundle = useCallback((next: RemindersBundle) => {
     const catalogue = Array.isArray(next.catalogue) ? next.catalogue : [];
     const normalized = normalizeItems(catalogue, next.config?.items);
-    const webhook = next.config?.mattermostWebhookUrl || "";
     setBundle(next);
     setItems(normalized);
-    setWebhookUrl(webhook);
-    setBaseline(fingerprint(normalized, webhook));
+    setBaseline(fingerprint(normalized));
     setPaymentEmail(next.resolvedPaymentEmail || "");
     setPaymentSource(next.paymentEmailSource || "none");
   }, []);
@@ -611,10 +517,8 @@ export default function ClientReminders({
 
   const catalogue = useMemo(() => bundle?.catalogue || [], [bundle]);
   const inboxAlertsEnabled = bundle?.config?.inboxAlertsEnabled === true;
-  const savedWebhook = (bundle?.config?.mattermostWebhookUrl || "").trim();
-  const hasWebhook = savedWebhook.length > 0;
   const hasPaymentEmail = Boolean((bundle?.resolvedPaymentEmail || "").trim());
-  const dirty = baseline !== "" && baseline !== fingerprint(items, webhookUrl);
+  const dirty = baseline !== "" && baseline !== fingerprint(items);
   const paymentEmailDirty = paymentEmail.trim() !== (bundle?.resolvedPaymentEmail || "").trim();
   const canSavePaymentEmail = paymentEmailDirty && isEmailish(paymentEmail) && !savingPaymentEmail;
   const [historyVersion, setHistoryVersion] = useState(0);
@@ -629,14 +533,6 @@ export default function ClientReminders({
 
   const patchItem = useCallback((key: string, patch: Partial<ItemConfig>) => {
     setItems((prev) => prev.map((item) => (item.key === key ? { ...item, ...patch } : item)));
-  }, []);
-
-  const patchChannel = useCallback((key: string, channel: "mattermost" | "email", value: boolean) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.key === key ? { ...item, channels: { ...item.channels, [channel]: value } } : item
-      )
-    );
   }, []);
 
   /**
@@ -679,11 +575,11 @@ export default function ClientReminders({
     try {
       const data = await call<SaveResponse>("PUT", "", {
         clientEmail,
-        mattermostWebhookUrl: webhookUrl.trim(),
         items: items.map((item) => ({
           key: item.key,
           enabled: item.enabled,
-          channels: { mattermost: item.channels.mattermost, email: item.channels.email },
+          // Email is the only channel, so an enabled report always emails.
+          channels: { email: true },
           sendAtIST: item.sendAtIST,
           dayOfWeek: item.dayOfWeek,
           dayOfMonth: item.dayOfMonth,
@@ -702,10 +598,8 @@ export default function ClientReminders({
       // (dayOfMonth, inactivityDays, a rejected sendAtIST) show up immediately.
       setBundle((prev) => (prev ? { ...prev, config: savedConfig } : prev));
       const normalized = normalizeItems(catalogue, savedConfig.items);
-      const webhook = savedConfig.mattermostWebhookUrl || "";
       setItems(normalized);
-      setWebhookUrl(webhook);
-      setBaseline(fingerprint(normalized, webhook));
+      setBaseline(fingerprint(normalized));
       toastUtils.success("Reminder settings saved");
     } catch (err) {
       toastUtils.error(err instanceof Error ? err.message : "Save failed");
@@ -738,37 +632,6 @@ export default function ClientReminders({
       toastUtils.error(err instanceof Error ? err.message : "Could not save the payment email");
     } finally {
       setSavingPaymentEmail(false);
-    }
-  };
-
-  const handleTestWebhook = async () => {
-    const candidate = webhookUrl.trim();
-    if (!candidate) {
-      setWebhookTestResult({ ok: false, message: "Enter a webhook URL first" });
-      return;
-    }
-    setTestingWebhook(true);
-    setWebhookTestResult(null);
-    try {
-      const data = await call<TestWebhookResponse>("POST", "/test-mattermost", {
-        clientEmail,
-        webhookUrl: candidate
-      });
-      if (data.success && data.ok) {
-        setWebhookTestResult({ ok: true, message: "Test message delivered" });
-      } else {
-        setWebhookTestResult({
-          ok: false,
-          message: data.error || data.message || "Mattermost rejected the test message"
-        });
-      }
-    } catch (err) {
-      setWebhookTestResult({
-        ok: false,
-        message: err instanceof Error ? err.message : "Test failed"
-      });
-    } finally {
-      setTestingWebhook(false);
     }
   };
 
@@ -806,10 +669,10 @@ export default function ClientReminders({
         toastUtils.success(`${label} sent`);
       } else if (data.status === "partial") {
         setNoActivityKeys((prev) => prev.filter((k) => k !== itemKey));
-        const failure = data.email?.error || data.mattermost?.error || "one channel failed";
-        toastUtils.custom(`${label} partially sent: ${failure}`, "info");
+        // Legacy status from before email became the only channel.
+        toastUtils.success(`${label} sent`);
       } else {
-        const failure = data.reason || data.email?.error || data.mattermost?.error || "unknown error";
+        const failure = data.reason || data.email?.error || "unknown error";
         toastUtils.error(`${label} failed: ${humanReason(failure)}`);
       }
 
@@ -819,12 +682,10 @@ export default function ClientReminders({
         if (refreshed.success && refreshed.data) {
           const keepDirty = dirty;
           const currentItems = items;
-          const currentWebhook = webhookUrl;
           applyBundle(refreshed.data);
           if (keepDirty) {
             // Never throw away unsaved edits just because a send refreshed state.
             setItems(currentItems);
-            setWebhookUrl(currentWebhook);
           }
         }
       } catch {
@@ -854,7 +715,6 @@ export default function ClientReminders({
         subject: data.subject || "",
         html: data.html || "",
         text: data.text || "",
-        mattermostText: data.mattermostText || "",
         isEmpty: data.isEmpty === true,
         windowLabel: data.window?.label || ""
       });
@@ -967,8 +827,8 @@ export default function ClientReminders({
                     </div>
                     <p className="mt-1 text-xs leading-relaxed text-gray-600">
                       When the hourly inbox scan finds an interview, assignment or offer in this client's
-                      connected mailbox, forward it to them straight away over the channels below. Each mail
-                      is sent once per channel and never twice.
+                      connected mailbox, email it to their payment email straight away. Each mail is sent
+                      once and never twice.
                     </p>
                     <p className="mt-1.5 text-xs leading-relaxed text-gray-500">
                       On for every client. Switch it off only when this client asks, or when their inbox is
@@ -1049,10 +909,9 @@ export default function ClientReminders({
             </div>
           ) : (
             <>
-              <div className="hidden grid-cols-[minmax(0,1fr)_104px_104px] gap-3 border-b border-gray-100 bg-gray-50/80 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 lg:grid">
+              <div className="hidden grid-cols-[minmax(0,1fr)_128px] gap-3 border-b border-gray-100 bg-gray-50/80 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 lg:grid">
                 <span>Report</span>
-                <span className="text-center">Mattermost</span>
-                <span className="text-center">Payment email</span>
+                <span className="text-center">Emails</span>
               </div>
 
               <div className="divide-y divide-gray-100">
@@ -1068,7 +927,7 @@ export default function ClientReminders({
                   return (
                     <div
                       key={item.key}
-                      className={`grid grid-cols-1 gap-x-3 gap-y-3 px-5 py-5 transition-colors lg:grid-cols-[minmax(0,1fr)_104px_104px] ${
+                      className={`grid grid-cols-1 gap-x-3 gap-y-3 px-5 py-5 transition-colors lg:grid-cols-[minmax(0,1fr)_128px] ${
                         item.enabled ? "bg-white hover:bg-violet-50/30" : "bg-gray-50/40 hover:bg-gray-50"
                       }`}
                     >
@@ -1374,37 +1233,27 @@ export default function ClientReminders({
                       </div>
 
                       <div className="lg:flex lg:items-start lg:justify-center lg:pt-1">
-                        <ChannelCheckbox
-                          checked={item.channels.mattermost}
-                          disabled={rowDisabled || !hasWebhook}
-                          onChange={(next) => patchChannel(item.key, "mattermost", next)}
-                          label="Mattermost"
-                          hint={
-                            hasWebhook
-                              ? "Deliver this report to the client's Mattermost channel"
-                              : "Save a Mattermost webhook URL first"
-                          }
-                        />
-                      </div>
-
-                      <div className="lg:flex lg:items-start lg:justify-center lg:pt-1">
                         {/* Internal items mail the FlashFire team inbox, so the
                             client's payment email neither gates nor labels them.
                             The backend enforces the routing either way; this is
                             the operator-facing truth of where the mail goes. */}
-                        <ChannelCheckbox
-                          checked={item.channels.email}
-                          disabled={rowDisabled || (!meta.internal && !hasPaymentEmail)}
-                          onChange={(next) => patchChannel(item.key, "email", next)}
-                          label={meta.internal ? "Team email" : "Payment email"}
-                          hint={
+                        <span
+                          title={
                             meta.internal
-                              ? "Internal alert - emails the FlashFire team inbox, never the client"
+                              ? "Internal alert: emails the FlashFire team inbox, never the client"
                               : hasPaymentEmail
-                                ? "Deliver this report to the client's payment email"
-                                : "No payment email resolved for this client yet"
+                                ? "Delivered to the client's payment email"
+                                : "No payment email on file, so nothing can be delivered"
                           }
-                        />
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                            meta.internal || hasPaymentEmail
+                              ? "border-gray-200 bg-white text-gray-600"
+                              : "border-amber-200 bg-amber-50 text-amber-700"
+                          }`}
+                        >
+                          <Mail className="h-3 w-3" />
+                          {meta.internal ? "Team email" : hasPaymentEmail ? "Payment email" : "No payment email"}
+                        </span>
                       </div>
                     </div>
                   );
@@ -1437,15 +1286,15 @@ export default function ClientReminders({
           )}
         </section>
 
-        {/* RIGHT: delivery channels */}
+        {/* RIGHT: delivery address */}
         <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
           <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
             <div className="border-b border-gray-100 bg-gradient-to-r from-slate-50 to-violet-50 px-5 py-4">
               <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                 <Send className="h-4 w-4 text-violet-600" />
-                Delivery channels
+                Delivery
               </h3>
-              <p className="mt-0.5 text-xs text-gray-500">Where every enabled report is delivered.</p>
+              <p className="mt-0.5 text-xs text-gray-500">Every enabled report is emailed to this address.</p>
             </div>
 
             <div className="space-y-5 p-5">
@@ -1509,84 +1358,6 @@ export default function ClientReminders({
                 {bundle && !bundle.trackingMatched && (
                   <p className="mt-1.5 text-[11px] text-gray-500">
                     No client record matched this email, so the address is stored as a local override.
-                  </p>
-                )}
-              </div>
-
-              {/* Mattermost webhook */}
-              <div>
-                <label
-                  htmlFor="reminders-webhook"
-                  className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-600"
-                >
-                  <MessageSquare className="h-3.5 w-3.5 text-gray-400" />
-                  Mattermost webhook
-                </label>
-                <div className="flex gap-2">
-                  <div className="relative min-w-0 flex-1">
-                    <input
-                      id="reminders-webhook"
-                      type={showWebhook ? "text" : "password"}
-                      value={webhookUrl}
-                      onChange={(e) => {
-                        setWebhookUrl(e.target.value);
-                        setWebhookTestResult(null);
-                      }}
-                      placeholder="https://your-server/hooks/xxxxxxxx"
-                      autoComplete="off"
-                      spellCheck={false}
-                      disabled={loading}
-                      className="w-full rounded-xl border border-gray-300 bg-white py-2 pl-3 pr-10 text-sm text-gray-900 outline-none transition-shadow placeholder:text-gray-400 focus:border-violet-400 focus:ring-2 focus:ring-violet-500 disabled:bg-gray-100"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowWebhook((v) => !v)}
-                      aria-label={showWebhook ? "Hide webhook URL" : "Show webhook URL"}
-                      className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 transition-colors hover:text-gray-600"
-                    >
-                      {showWebhook ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleTestWebhook}
-                    disabled={testingWebhook || !webhookUrl.trim()}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {testingWebhook ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Link2 className="h-3.5 w-3.5" />
-                    )}
-                    Test
-                  </button>
-                </div>
-                <p className="mt-1.5 text-[11px] text-gray-500">
-                  Incoming webhook from the client's Mattermost server, in the form
-                  https://your-server/hooks/....
-                </p>
-                <p className="mt-1 text-[11px] text-gray-500">
-                  Once saved, every client email is mirrored here as well: the daily activity
-                  summary, application milestones (resume ready, 150 / 300 / plan complete),
-                  the onboarding sequence (base résumé, cover letter, LinkedIn) and inbox alerts.
-                </p>
-                {webhookTestResult && (
-                  <p
-                    className={`mt-1.5 flex items-start gap-1.5 text-[11px] ${
-                      webhookTestResult.ok ? "text-emerald-700" : "text-red-600"
-                    }`}
-                  >
-                    {webhookTestResult.ok ? (
-                      <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    ) : (
-                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    )}
-                    <span>{webhookTestResult.message}</span>
-                  </p>
-                )}
-                {webhookUrl.trim() !== savedWebhook && (
-                  <p className="mt-1.5 text-[11px] text-amber-700">
-                    Not saved yet. Use "Save settings" to activate this webhook.
                   </p>
                 )}
               </div>

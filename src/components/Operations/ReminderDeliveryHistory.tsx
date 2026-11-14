@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarClock, ChevronLeft, ChevronRight, Clock, Loader2, Mail, MessageSquare, RefreshCw } from "lucide-react";
+import { CalendarClock, ChevronLeft, ChevronRight, Clock, Loader2, Mail, RefreshCw } from "lucide-react";
 
 /*
  * Operations > Reminders > Delivery history.
@@ -11,8 +11,9 @@ import { CalendarClock, ChevronLeft, ChevronRight, Clock, Loader2, Mail, Message
  * item, computed by the backend with the worker's own due rule.
  */
 
+/** "partial" only appears on rows logged before email became the only channel. */
 type Status = "sent" | "partial" | "failed" | "skipped";
-type StatusFilter = "all" | "delivered" | Status;
+type StatusFilter = "all" | "sent" | "failed" | "skipped";
 
 interface DeliveryRow {
   id: string;
@@ -25,7 +26,6 @@ interface DeliveryRow {
   reason?: string;
   subject?: string;
   email?: { attempted?: boolean; ok?: boolean; to?: string; error?: string };
-  mattermost?: { attempted?: boolean; ok?: boolean; error?: string };
   stats?: { added?: number; applied?: number };
   at: string;
 }
@@ -38,7 +38,7 @@ interface DeliveriesResponse {
   pageSize: number;
   total: number;
   totalPages: number;
-  counts: Record<Status, number>;
+  counts: Partial<Record<Status, number>>;
   scheduled: ScheduledSend[];
 }
 
@@ -65,9 +65,7 @@ const PAGE_SIZE = 25;
 
 const FILTERS: { key: StatusFilter; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "delivered", label: "Delivered" },
   { key: "sent", label: "Sent" },
-  { key: "partial", label: "Partial" },
   { key: "failed", label: "Failed" },
   { key: "skipped", label: "Skipped" }
 ];
@@ -91,7 +89,7 @@ const REASON_LABEL: Record<string, string> = {
   no_activity: "No activity in the period",
   client_is_active: "Client is active",
   no_channel: "No channel enabled",
-  no_destination: "No email address or webhook"
+  no_destination: "No email address on file"
 };
 
 function humanReason(reason: string | undefined): string {
@@ -214,9 +212,9 @@ export default function ReminderDeliveryHistory({ apiBaseUrl, opsKey, clientEmai
   const counts = data?.counts;
   const countFor = (key: StatusFilter): number | null => {
     if (!counts) return null;
-    if (key === "all") return counts.sent + counts.partial + counts.failed + counts.skipped;
-    if (key === "delivered") return counts.sent + counts.partial;
-    return counts[key];
+    const n = (k: Status) => counts[k] ?? 0;
+    if (key === "all") return n("sent") + n("partial") + n("failed") + n("skipped");
+    return n(key);
   };
 
   const total = data?.total ?? 0;
@@ -382,14 +380,15 @@ export default function ReminderDeliveryHistory({ apiBaseUrl, opsKey, clientEmai
                 <th scope="col" className="px-3 py-2.5">Report</th>
                 <th scope="col" className="px-3 py-2.5">Result</th>
                 <th scope="col" className="px-3 py-2.5">Email</th>
-                <th scope="col" className="px-3 py-2.5">Mattermost</th>
                 <th scope="col" className="whitespace-nowrap px-5 py-2.5 text-right">Added / applied</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {rows.map((row) => {
                 const when = istStamp(row.at);
-                const reason = row.status === "sent" ? "" : humanReason(row.reason);
+                // A legacy "partial" row is judged by its email half alone.
+                const shown: Status = row.status === "partial" ? (row.email?.ok ? "sent" : "failed") : row.status;
+                const reason = shown === "sent" ? "" : humanReason(row.reason);
                 return (
                   <tr key={row.id} className="align-top hover:bg-gray-50/60">
                     <td className="whitespace-nowrap px-5 py-3">
@@ -403,8 +402,8 @@ export default function ReminderDeliveryHistory({ apiBaseUrl, opsKey, clientEmai
                       <p className="text-[11px] text-gray-500">{TRIGGER_LABEL[row.trigger || "cron"] || row.trigger}</p>
                     </td>
                     <td className="max-w-[240px] px-3 py-3">
-                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold capitalize ${PILL[row.status] || PILL.skipped}`}>
-                        {row.status}
+                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold capitalize ${PILL[shown] || PILL.skipped}`}>
+                        {shown}
                       </span>
                       {reason && <p className="mt-1 text-[11px] text-gray-500" title={row.reason}>{reason}</p>}
                     </td>
@@ -415,14 +414,6 @@ export default function ReminderDeliveryHistory({ apiBaseUrl, opsKey, clientEmai
                         ok={row.email?.ok}
                         detail={row.email?.to}
                         error={row.email?.error}
-                      />
-                    </td>
-                    <td className="max-w-[200px] px-3 py-3">
-                      <ChannelCell
-                        icon={<MessageSquare className="h-3 w-3" />}
-                        attempted={row.mattermost?.attempted}
-                        ok={row.mattermost?.ok}
-                        error={row.mattermost?.error}
                       />
                     </td>
                     <td className="whitespace-nowrap px-5 py-3 text-right text-xs tabular-nums text-gray-700">
