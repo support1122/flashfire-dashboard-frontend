@@ -2,6 +2,7 @@ import { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { CheckCircle2, Circle, Plus, Trash2, Calendar, Lock, X, ChevronDown, ChevronUp, Edit2, Mail, Paperclip, Send, MessageSquare, Link2, Loader2, ChevronLeft, ChevronRight, Puzzle, Check, AlertCircle, RefreshCw, BellRing } from 'lucide-react';
 import { ExclusionListEditor } from './Operations/ExclusionListEditor.tsx';
 import ClientReminders from './Operations/ClientReminders.tsx';
+import BaseCoverLetterCard from './Operations/BaseCoverLetterCard.tsx';
 import { UserContext } from '../state_management/UserContext.tsx';
 import { toastUtils } from '../utils/toast.ts';
 import { useOperationsStore } from '../state_management/Operations.ts';
@@ -56,7 +57,7 @@ const OPERATIONS_SECRET_KEY = "flashfire@2025";
 
 const OperationsManagement = () => {
   const { userDetails } = useContext(UserContext) || {};
-  const { role, name: operatorName } = useOperationsStore();
+  const { role, name: operatorName, email: operatorEmail } = useOperationsStore();
   // A client the server has granted the operator tools skips every secret-key
   // modal on this page: the session lock, WhatsApp and Client Reminders. The
   // server vouched for them at login, which is what the key stands in for.
@@ -146,6 +147,11 @@ const OperationsManagement = () => {
   const [loadingEmailLogs, setLoadingEmailLogs] = useState(false);
   const [resendingLogId, setResendingLogId] = useState<string | null>(null);
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  // The operations section only renders once the session is unlocked, and the
+  // unlock only succeeds with OPERATIONS_SECRET_KEY, so that is the key the
+  // operator holds. It survives a refresh through the session flag, where the
+  // typed value would not.
+  const operationsOpsKey = operationsSessionUnlocked ? OPERATIONS_SECRET_KEY : '';
 
   // The initialisers above cover a hard refresh, where the session is already
   // in localStorage. This covers the flag arriving after mount (straight after
@@ -1649,6 +1655,15 @@ const OperationsManagement = () => {
                 </div>
               )}
             </div>
+
+            <BaseCoverLetterCard
+              apiBaseUrl={API_BASE_URL}
+              clientEmail={userDetails?.email || ""}
+              clientName={userDetails?.name || ""}
+              operatorEmail={operatorEmail || ""}
+              operatorName={operatorName || role || "operations"}
+              opsKey={operationsOpsKey}
+            />
           </>
         )}
 
