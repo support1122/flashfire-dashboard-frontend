@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Save,
   Send,
+  ScanSearch,
   ShieldCheck,
   X,
   Zap
@@ -94,6 +95,8 @@ interface ReminderConfig {
   inboxAlertsEnabled?: boolean;
   /** Move a job card to Rejected from a verified rejection mail. Off by default. */
   mailAutoRejectEnabled?: boolean;
+  /** Post each new mail's Jev decision to Discord. Off by default. */
+  jevWatchEnabled?: boolean;
   paymentEmailOverride?: string;
   items?: ItemConfig[];
   history?: HistoryRow[];
@@ -116,6 +119,8 @@ interface RemindersBundle {
   smtpConfigured: boolean;
   workerEnabled: boolean;
   preview: { today: ActivityCounts; week: ActivityCounts };
+  /** What "Run on previous mails" would read. Missing on an older backend. */
+  jevBackfill?: { mails: number; totalMails: number; running: boolean };
 }
 
 interface ApiEnvelope {
@@ -130,6 +135,10 @@ interface GetResponse extends ApiEnvelope {
 
 interface SaveResponse extends ApiEnvelope {
   data?: { config: ReminderConfig };
+}
+
+interface JevBackfillResponse extends ApiEnvelope {
+  data?: { mails: number; totalMails: number };
 }
 
 interface PaymentEmailResponse extends ApiEnvelope {
@@ -452,6 +461,8 @@ export default function ClientReminders({
   const [saving, setSaving] = useState(false);
   const [savingInboxAlerts, setSavingInboxAlerts] = useState(false);
   const [savingAutoReject, setSavingAutoReject] = useState(false);
+  const [savingJevWatch, setSavingJevWatch] = useState(false);
+  const [startingBackfill, setStartingBackfill] = useState(false);
 
   const [sendingKey, setSendingKey] = useState("");
   const [previewingKey, setPreviewingKey] = useState("");
@@ -524,6 +535,10 @@ export default function ClientReminders({
   const catalogue = useMemo(() => bundle?.catalogue || [], [bundle]);
   const inboxAlertsEnabled = bundle?.config?.inboxAlertsEnabled === true;
   const autoRejectEnabled = bundle?.config?.mailAutoRejectEnabled === true;
+  const jevWatchEnabled = bundle?.config?.jevWatchEnabled === true;
+  const backfillMails = bundle?.jevBackfill?.mails ?? 0;
+  const backfillTotal = bundle?.jevBackfill?.totalMails ?? 0;
+  const backfillRunning = bundle?.jevBackfill?.running === true;
   const hasPaymentEmail = Boolean((bundle?.resolvedPaymentEmail || "").trim());
   const dirty = baseline !== "" && baseline !== fingerprint(items);
   const paymentEmailDirty = paymentEmail.trim() !== (bundle?.resolvedPaymentEmail || "").trim();
@@ -604,6 +619,81 @@ export default function ClientReminders({
       toastUtils.error(err instanceof Error ? err.message : "Could not change auto-reject");
     } finally {
       setSavingAutoReject(false);
+    }
+  };
+
+  /**
+   * Jev watch. Same save-on-click rule, posts only this field. Covers mail the
+   * hourly scan reads from now on; earlier mail is the button below.
+   */
+  const handleToggleJevWatch = async (next: boolean) => {
+    if (savingJevWatch) return;
+    setSavingJevWatch(true);
+    try {
+      const data = await call<SaveResponse>("PUT", "", {
+        clientEmail,
+        jevWatchEnabled: next,
+        updatedBy
+      });
+      const savedConfig = data.data?.config;
+      if (!data.success || !savedConfig) {
+        throw new Error(data.message || data.error || "Could not change the Jev watch");
+      }
+      setBundle((prev) => (prev ? { ...prev, config: savedConfig } : prev));
+      toastUtils.success(
+        next
+          ? "Jev watch is ON: new mail for this client goes to Discord from the next hourly scan"
+          : "Jev watch is OFF for this client"
+      );
+    } catch (err) {
+      toastUtils.error(err instanceof Error ? err.message : "Could not change the Jev watch");
+    } finally {
+      setSavingJevWatch(false);
+    }
+  };
+
+  // While a Jev run is going, re-read only its status every 5 s so the button
+  // comes back by itself when the run ends. Stops as soon as it is done.
+  useEffect(() => {
+    if (!backfillRunning || !clientEmail) return undefined;
+    let cancelled = false;
+    const timer = window.setInterval(async () => {
+      try {
+        const data = await call<GetResponse>("POST", "/get", { clientEmail });
+        const next = data.data?.jevBackfill;
+        if (cancelled || !next || next.running) return;
+        setBundle((prev) => (prev ? { ...prev, jevBackfill: next } : prev));
+        toastUtils.success("Jev finished reading the previous mails. The result is on Discord.");
+      } catch {
+        // A missed status check is harmless; the next tick tries again.
+      }
+    }, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [backfillRunning, call, clientEmail]);
+
+  /** One-off: Jev re-reads this client's earlier mail and reports on Discord. */
+  const handleRunJevBackfill = async () => {
+    if (startingBackfill || backfillRunning) return;
+    setStartingBackfill(true);
+    try {
+      const data = await call<JevBackfillResponse>("POST", "/jev-backfill", { clientEmail, updatedBy });
+      if (!data.success || !data.data) {
+        throw new Error(data.message || data.error || "Could not start the Jev run");
+      }
+      const { mails, totalMails } = data.data;
+      setBundle((prev) =>
+        prev ? { ...prev, jevBackfill: { mails, totalMails, running: true } } : prev
+      );
+      toastUtils.success(
+        `Jev is reading ${mails} previous mail${mails === 1 ? "" : "s"}. The result lands on Discord in a minute or two.`
+      );
+    } catch (err) {
+      toastUtils.error(err instanceof Error ? err.message : "Could not start the Jev run");
+    } finally {
+      setStartingBackfill(false);
     }
   };
 
@@ -969,6 +1059,90 @@ export default function ClientReminders({
                         }`}
                       />
                     )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Jev watch: the AI second look's calls on Discord. Off by default. */}
+              <div className="mt-3 rounded-xl border border-gray-200 bg-gradient-to-br from-sky-50/60 to-white p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
+                      <ScanSearch className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="text-sm font-bold text-gray-900">Watch Jev on Discord</h4>
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-600">
+                          Off by default
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs leading-relaxed text-gray-600">
+                        After each hourly inbox scan, post one Discord card listing this client's new mails and
+                        what Jev made of them: interview, assessment, offer, rejection or nothing, with how sure
+                        it was and what happened next.
+                      </p>
+                      <p className="mt-1.5 text-xs leading-relaxed text-gray-500">
+                        Only for us. The client gets nothing, and switching it on changes no decision. It covers
+                        new mail from the next scan; use the button below for earlier mail.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2.5 sm:pt-1">
+                    <span
+                      className={`text-xs font-bold ${jevWatchEnabled ? "text-emerald-700" : "text-gray-500"}`}
+                    >
+                      {jevWatchEnabled ? "On" : "Off"}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={jevWatchEnabled}
+                      aria-label={
+                        jevWatchEnabled
+                          ? "Jev's decisions on this client's new mail go to Discord. Click to turn it off."
+                          : "Jev's decisions on this client's mail are not posted. Click to turn it on."
+                      }
+                      onClick={() => void handleToggleJevWatch(!jevWatchEnabled)}
+                      disabled={savingJevWatch}
+                      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+                        jevWatchEnabled ? "bg-emerald-500" : "bg-gray-300"
+                      }`}
+                    >
+                      {savingJevWatch ? (
+                        <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin text-white" />
+                      ) : (
+                        <span
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                            jevWatchEnabled ? "translate-x-[22px]" : "translate-x-0.5"
+                          }`}
+                        />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-col gap-2 border-t border-sky-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs leading-relaxed text-gray-600">
+                    {backfillTotal === 0
+                      ? "No scanned mail for this client yet."
+                      : backfillTotal > backfillMails
+                        ? `Run Jev on the latest ${backfillMails} of ${backfillTotal} earlier mails and post what it finds. Read-only: no client email, no job moved.`
+                        : `Run Jev on all ${backfillMails} earlier mail${backfillMails === 1 ? "" : "s"} and post what it finds. Read-only: no client email, no job moved.`}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void handleRunJevBackfill()}
+                    disabled={startingBackfill || backfillRunning || backfillTotal === 0}
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-sky-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-800 transition-colors hover:bg-sky-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {startingBackfill || backfillRunning ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ScanSearch className="h-3.5 w-3.5" />
+                    )}
+                    {backfillRunning ? "Running, check Discord" : "Run on previous mails"}
                   </button>
                 </div>
               </div>
